@@ -10,7 +10,7 @@ public interface IGpt
     GptHeader Header { get; }
     IReadOnlyList<GptEntry> Entries { get; }
     IReadOnlyList<GptUnallocatedRegion> UnallocatedRegions { get; }
-    IReadOnlyList<GptPartitionOverlap> Overlaps { get; }
+    IReadOnlyList<GptEntryOverlap> Overlaps { get; }
     GptCrcStatus CrcStatus { get; }
 
     GptRedundancyStatus SourceRedundancyStatus { get; }

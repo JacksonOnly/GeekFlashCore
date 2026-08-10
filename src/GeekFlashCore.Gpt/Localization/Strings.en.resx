@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="CompletePrimaryHeaderSectorRequired" xml:space="preserve"><value>A complete primary GPT header sector is required.</value></data>
+  <data name="PrimarySignatureNotFound" xml:space="preserve"><value>The primary GPT signature was not found at LBA 1.</value></data>
+  <data name="InvalidHeaderSize" xml:space="preserve"><value>Invalid GPT header size: {0}.</value></data>
+  <data name="PrimaryCurrentLbaMustBeOne" xml:space="preserve"><value>The primary GPT current LBA must be 1, but was {0}.</value></data>
+  <data name="InvalidAlternateLba" xml:space="preserve"><value>Invalid GPT alternate LBA: {0}.</value></data>
+  <data name="InvalidUsableLbaRange" xml:space="preserve"><value>The GPT usable LBA range is invalid.</value></data>
+  <data name="InvalidPartitionEntryLba" xml:space="preserve"><value>Invalid GPT partition entry LBA: {0}.</value></data>
+  <data name="InvalidPartitionEntryCount" xml:space="preserve"><value>Invalid GPT partition entry count: {0}.</value></data>
+  <data name="InvalidPartitionEntrySize" xml:space="preserve"><value>Invalid GPT partition entry size: {0}.</value></data>
+  <data name="ProtectiveMbrAndPrimaryRequired" xml:space="preserve"><value>At least the protective MBR and primary GPT header are required.</value></data>
+  <data name="PartitionEntryArrayTooLarge" xml:space="preserve"><value>The GPT partition entry array exceeds the supported size.</value></data>
+  <data name="BlockDeviceIncompleteEntryArray" xml:space="preserve"><value>The block device does not contain the complete GPT partition entry array.</value></data>
+  <data name="BufferIncompleteEntryArray" xml:space="preserve"><value>The supplied buffer does not contain the complete GPT partition entry array.</value></data>
+  <data name="PartitionEntryCrcMismatch" xml:space="preserve"><value>GPT partition entry CRC mismatch: expected {0}, actual {1}.</value></data>
+  <data name="PartitionEntryOutsideUsableRange" xml:space="preserve"><value>GPT partition entry {0} is outside the usable LBA range.</value></data>
+  <data name="HeaderCrcMismatch" xml:space="preserve"><value>GPT header CRC mismatch: expected {0}, actual {1}.</value></data>
+  <data name="InvalidSectorSize" xml:space="preserve"><value>The sector size must be a power of two between 512 and 65536.</value></data>
+  <data name="BlockDeviceEndedDuringRead" xml:space="preserve"><value>The block device ended while reading GPT data.</value></data>
+  <data name="CrcValidationFailed" xml:space="preserve"><value>GPT CRC validation failed.</value></data>
+  <data name="InputStreamMustBeReadableAndSeekable" xml:space="preserve"><value>The GPT input stream must be readable and seekable.</value></data>
+  <data name="ImageLargerThanTwoGiBUnsupported" xml:space="preserve"><value>Stream inputs larger than 2 GiB are not supported; use ParseFile instead.</value></data>
+  <data name="UnpatchWouldUnderflow" xml:space="preserve"><value>Unpatching would underflow the final partition LBA.</value></data>
+  <data name="OutputStreamMustBeWritableAndSeekable" xml:space="preserve"><value>The GPT output stream must be writable and seekable.</value></data>
+  <data name="PartitionGuidsCannotBothBeEmpty" xml:space="preserve"><value>A real GPT partition cannot have both GUIDs empty.</value></data>
+  <data name="PartitionIdCannotBeEmpty" xml:space="preserve"><value>The GPT partition unique GUID cannot be empty.</value></data>
+  <data name="PartitionIdMustBeUnique" xml:space="preserve"><value>The GPT partition unique GUID must be unique: {0}.</value></data>
+  <data name="FirstLbaExceedsLastLba" xml:space="preserve"><value>The partition FirstLba cannot exceed LastLba.</value></data>
+  <data name="PartitionOutsideUsableRange" xml:space="preserve"><value>The partition must be inside the GPT usable LBA range.</value></data>
+  <data name="NoPartitionEntrySlotsAvailable" xml:space="preserve"><value>No GPT partition entry slots are available.</value></data>
+  <data name="EntrySlotOutsidePhysicalCapacity" xml:space="preserve"><value>A GPT entry slot is outside the physical capacity.</value></data>
+  <data name="PartitionNumberNotFound" xml:space="preserve"><value>Partition number {0} was not found.</value></data>
+  <data name="PatchRequiresPartition" xml:space="preserve"><value>Patch operations require at least one partition.</value></data>
+  <data name="HeaderOnlyDocumentCannotBeEdited" xml:space="preserve"><value>A header-only GPT document cannot be edited or exported.</value></data>
+  <data name="SourceImageTypeCannotBeExported" xml:space="preserve"><value>GPT source image type {0} cannot be exported.</value></data>
+  <data name="ImageTypeCannotBeExported" xml:space="preserve"><value>GPT image type {0} cannot be exported.</value></data>
+  <data name="BackupExportRequiresGeometry" xml:space="preserve"><value>Backup GPT export requires valid alternate disk geometry.</value></data>
+  <data name="PartitionEntriesExceedCapacity" xml:space="preserve"><value>The GPT partition entries exceed physical capacity.</value></data>
+  <data name="HeaderRequiresMinimumBytes" xml:space="preserve"><value>A GPT header requires at least 92 bytes.</value></data>
+  <data name="SignatureNotFound" xml:space="preserve"><value>The GPT signature was not found.</value></data>
+  <data name="HeaderDestinationRequiresMinimumBytes" xml:space="preserve"><value>A GPT header destination requires at least 92 bytes.</value></data>
+  <data name="PartitionNameInvalidUtf16" xml:space="preserve"><value>The partition name contains invalid UTF-16 data.</value></data>
+  <data name="PartitionNameExceedsLimit" xml:space="preserve"><value>The partition name exceeds the {0}-character GPT limit.</value></data>
+  <data name="EntrySizeInvalid" xml:space="preserve"><value>The GPT entry size must be an eight-byte-aligned value of at least 128 bytes.</value></data>
+  <data name="DestinationTooSmall" xml:space="preserve"><value>The destination is too small for the GPT image.</value></data>
+  <data name="EntrySlotExceedsOutputCapacity" xml:space="preserve"><value>A GPT entry slot exceeds the output capacity.</value></data>
+  <data name="ProtectiveMbrRequiresSector" xml:space="preserve"><value>The protective MBR requires a sector of at least 512 bytes.</value></data>
+  <data name="ImageTooSmallForHeader" xml:space="preserve"><value>The image is too small to contain a GPT header.</value></data>
+  <data name="TooManyValidHeaders" xml:space="preserve"><value>More than two structurally valid GPT headers were found.</value></data>
+  <data name="HeaderNotSectorAligned" xml:space="preserve"><value>The GPT header is not aligned to the detected sector size.</value></data>
+  <data name="HeaderExceedsSectorSize" xml:space="preserve"><value>The GPT header size exceeds the logical sector size.</value></data>
+  <data name="SectorSizeCannotBeInferred" xml:space="preserve"><value>The GPT logical sector size could not be inferred.</value></data>
+  <data name="HeadersDoNotFormPair" xml:space="preserve"><value>The two GPT headers do not form a main/backup pair.</value></data>
+  <data name="ImageTypeCannotBeDetermined" xml:space="preserve"><value>The GPT image type could not be determined.</value></data>
+  <data name="HeaderLbaCannotBeMapped" xml:space="preserve"><value>The GPT header LBA cannot be mapped into this image fragment.</value></data>
+  <data name="EntryLbaPrecedesFragment" xml:space="preserve"><value>The GPT partition entry LBA precedes this image fragment.</value></data>
+  <data name="EntryOffsetExceedsSupportedSize" xml:space="preserve"><value>The GPT partition entry offset exceeds the supported image size.</value></data>
+  <data name="ImageMissingDeclaredEntryArray" xml:space="preserve"><value>The image does not contain the declared GPT partition entry array.</value></data>
+  <data name="EntryCapacityNegative" xml:space="preserve"><value>The GPT partition entry capacity is negative.</value></data>
+  <data name="PhysicalEntryCapacityInvalid" xml:space="preserve"><value>The GPT partition entry physical capacity is invalid.</value></data>
+  <data name="LayoutHasNoHeader" xml:space="preserve"><value>The GPT layout has no header.</value></data>
+  <data name="RedundantCopiesInconsistent" xml:space="preserve"><value>The primary and backup GPT copies are both present but inconsistent.</value></data>
+  <data name="PartitionEntryEmptyTypeId" xml:space="preserve"><value>Partition entry {0} has an empty type GUID.</value></data>
+  <data name="EntrySlotOccupied" xml:space="preserve"><value>Partition entry slot {0} is already occupied.</value></data>
+  <data name="EntryCountExcludesSlot" xml:space="preserve"><value>The declared entry count cannot exclude an occupied physical slot.</value></data>
+  <data name="ActiveMaskZero" xml:space="preserve"><value>The active attribute mask cannot be zero.</value></data>
+  <data name="AbPartitionsNotFound" xml:space="preserve"><value>No A/B partition names were found.</value></data>
+  <data name="AbCompletePairsRequired" xml:space="preserve"><value>A/B switching requires every slotted partition to have a matching pair.</value></data>
+  <data name="OutputPathHasNoParent" xml:space="preserve"><value>The output path has no parent directory.</value></data>
+  <data name="EntryBlockUnexpectedLength" xml:space="preserve"><value>The entry block has an unexpected length.</value></data>
+  <data name="PreservedHeaderTooShort" xml:space="preserve"><value>The preserved GPT header is shorter than HeaderSize.</value></data>
+  <data name="PatchRequiresLastUsableLba" xml:space="preserve"><value>Patch requires an explicit LastUsableLba when disk geometry is unavailable.</value></data>
+  <data name="PreservedFullDiskRequired" xml:space="preserve"><value>A preserved full-disk source image is required.</value></data>
+  <data name="FullDiskBytesMissing" xml:space="preserve"><value>The full-disk source bytes were not retained.</value></data>
+  <data name="FullDiskSourceChanged" xml:space="preserve"><value>The full-disk source file has changed since it was parsed. Reopen it before saving.</value></data>
+  <data name="FullDiskTooLargeForArray" xml:space="preserve"><value>The full-disk image is too large for one byte array. Use SaveFile, WriteTo, or explicitly export a compact GPT format.</value></data>
+  <data name="GeometryContainerMismatch" xml:space="preserve"><value>The edited GPT geometry no longer matches the full-disk container length.</value></data>
+  <data name="UnpatchedBackupInFullDisk" xml:space="preserve"><value>An unpatched GPT cannot retain a physical backup header in a full-disk image.</value></data>
+  <data name="PartitionNameInvalidOnDisk" xml:space="preserve"><value>Partition entry {0} contains invalid UTF-16 name data.</value></data>
+  <data name="UnpatchRequiresSingleCompactCopy" xml:space="preserve"><value>Unpatch requires a compact single-copy Main or Backup GPT image.</value></data>
+</root>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="CompletePrimaryHeaderSectorRequired" xml:space="preserve"><value>需要完整的主 GPT Header 扇区。</value></data>
+  <data name="PrimarySignatureNotFound" xml:space="preserve"><value>未在 LBA 1 找到主 GPT 签名。</value></data>
+  <data name="InvalidHeaderSize" xml:space="preserve"><value>GPT Header 大小无效：{0}。</value></data>
+  <data name="PrimaryCurrentLbaMustBeOne" xml:space="preserve"><value>主 GPT 的当前 LBA 必须为 1，实际为 {0}。</value></data>
+  <data name="InvalidAlternateLba" xml:space="preserve"><value>GPT 备用 LBA 无效：{0}。</value></data>
+  <data name="InvalidUsableLbaRange" xml:space="preserve"><value>GPT 可用 LBA 范围无效。</value></data>
+  <data name="InvalidPartitionEntryLba" xml:space="preserve"><value>GPT 分区条目 LBA 无效：{0}。</value></data>
+  <data name="InvalidPartitionEntryCount" xml:space="preserve"><value>GPT 分区条目数量无效：{0}。</value></data>
+  <data name="InvalidPartitionEntrySize" xml:space="preserve"><value>GPT 分区条目大小无效：{0}。</value></data>
+  <data name="ProtectiveMbrAndPrimaryRequired" xml:space="preserve"><value>镜像至少必须包含保护 MBR 和主 GPT Header。</value></data>
+  <data name="PartitionEntryArrayTooLarge" xml:space="preserve"><value>GPT 分区条目数组超过支持的大小。</value></data>
+  <data name="BlockDeviceIncompleteEntryArray" xml:space="preserve"><value>块设备未包含完整的 GPT 分区条目数组。</value></data>
+  <data name="BufferIncompleteEntryArray" xml:space="preserve"><value>提供的缓冲区未包含完整的 GPT 分区条目数组。</value></data>
+  <data name="PartitionEntryCrcMismatch" xml:space="preserve"><value>GPT 分区条目 CRC 不匹配：期望 {0}，实际 {1}。</value></data>
+  <data name="PartitionEntryOutsideUsableRange" xml:space="preserve"><value>GPT 分区条目 {0} 超出可用 LBA 范围。</value></data>
+  <data name="HeaderCrcMismatch" xml:space="preserve"><value>GPT Header CRC 不匹配：期望 {0}，实际 {1}。</value></data>
+  <data name="InvalidSectorSize" xml:space="preserve"><value>扇区大小必须是 512 到 65536 之间的二次幂。</value></data>
+  <data name="BlockDeviceEndedDuringRead" xml:space="preserve"><value>读取 GPT 数据时块设备提前结束。</value></data>
+  <data name="CrcValidationFailed" xml:space="preserve"><value>GPT CRC 验证失败。</value></data>
+  <data name="InputStreamMustBeReadableAndSeekable" xml:space="preserve"><value>GPT 输入流必须可读且可定位。</value></data>
+  <data name="ImageLargerThanTwoGiBUnsupported" xml:space="preserve"><value>Stream 输入不支持大于 2 GiB 的 GPT 镜像；请改用 ParseFile。</value></data>
+  <data name="UnpatchWouldUnderflow" xml:space="preserve"><value>取消补丁会导致最后一个分区的 LBA 下溢。</value></data>
+  <data name="OutputStreamMustBeWritableAndSeekable" xml:space="preserve"><value>GPT 输出流必须可写且可定位。</value></data>
+  <data name="PartitionGuidsCannotBothBeEmpty" xml:space="preserve"><value>实际 GPT 分区的类型 GUID 和唯一 GUID 不能同时为空。</value></data>
+  <data name="PartitionIdCannotBeEmpty" xml:space="preserve"><value>GPT 分区的唯一 GUID 不能为空。</value></data>
+  <data name="PartitionIdMustBeUnique" xml:space="preserve"><value>GPT 分区的唯一 GUID 必须唯一：{0}。</value></data>
+  <data name="FirstLbaExceedsLastLba" xml:space="preserve"><value>分区的 FirstLba 不能大于 LastLba。</value></data>
+  <data name="PartitionOutsideUsableRange" xml:space="preserve"><value>分区必须位于 GPT 可用 LBA 范围内。</value></data>
+  <data name="NoPartitionEntrySlotsAvailable" xml:space="preserve"><value>没有可用的 GPT 分区条目槽位。</value></data>
+  <data name="EntrySlotOutsidePhysicalCapacity" xml:space="preserve"><value>GPT 条目槽位超出物理容量。</value></data>
+  <data name="PartitionNumberNotFound" xml:space="preserve"><value>未找到编号为 {0} 的分区。</value></data>
+  <data name="PatchRequiresPartition" xml:space="preserve"><value>补丁操作至少需要一个分区。</value></data>
+  <data name="HeaderOnlyDocumentCannotBeEdited" xml:space="preserve"><value>仅包含 Header 的 GPT 文档不能编辑或导出。</value></data>
+  <data name="SourceImageTypeCannotBeExported" xml:space="preserve"><value>GPT 源镜像类型 {0} 无法导出。</value></data>
+  <data name="ImageTypeCannotBeExported" xml:space="preserve"><value>GPT 镜像类型 {0} 无法导出。</value></data>
+  <data name="BackupExportRequiresGeometry" xml:space="preserve"><value>导出备用 GPT 需要有效的备用磁盘几何信息。</value></data>
+  <data name="PartitionEntriesExceedCapacity" xml:space="preserve"><value>GPT 分区条目超出物理容量。</value></data>
+  <data name="HeaderRequiresMinimumBytes" xml:space="preserve"><value>GPT Header 至少需要 92 字节。</value></data>
+  <data name="SignatureNotFound" xml:space="preserve"><value>未找到 GPT 签名。</value></data>
+  <data name="HeaderDestinationRequiresMinimumBytes" xml:space="preserve"><value>GPT Header 目标缓冲区至少需要 92 字节。</value></data>
+  <data name="PartitionNameInvalidUtf16" xml:space="preserve"><value>分区名称包含无效的 UTF-16 数据。</value></data>
+  <data name="PartitionNameExceedsLimit" xml:space="preserve"><value>分区名称超过 GPT 的 {0} 字符限制。</value></data>
+  <data name="EntrySizeInvalid" xml:space="preserve"><value>GPT 条目大小必须是至少 128 字节且按八字节对齐的值。</value></data>
+  <data name="DestinationTooSmall" xml:space="preserve"><value>目标缓冲区不足以容纳 GPT 镜像。</value></data>
+  <data name="EntrySlotExceedsOutputCapacity" xml:space="preserve"><value>GPT 条目槽位超出输出容量。</value></data>
+  <data name="ProtectiveMbrRequiresSector" xml:space="preserve"><value>保护 MBR 需要至少 512 字节的扇区。</value></data>
+  <data name="ImageTooSmallForHeader" xml:space="preserve"><value>镜像太小，无法包含 GPT Header。</value></data>
+  <data name="TooManyValidHeaders" xml:space="preserve"><value>发现超过两个结构有效的 GPT Header。</value></data>
+  <data name="HeaderNotSectorAligned" xml:space="preserve"><value>GPT Header 未按检测到的扇区大小对齐。</value></data>
+  <data name="HeaderExceedsSectorSize" xml:space="preserve"><value>GPT Header 大小超过逻辑扇区大小。</value></data>
+  <data name="SectorSizeCannotBeInferred" xml:space="preserve"><value>无法推断 GPT 逻辑扇区大小。</value></data>
+  <data name="HeadersDoNotFormPair" xml:space="preserve"><value>两个 GPT Header 未构成主备配对。</value></data>
+  <data name="ImageTypeCannotBeDetermined" xml:space="preserve"><value>无法确定 GPT 镜像类型。</value></data>
+  <data name="HeaderLbaCannotBeMapped" xml:space="preserve"><value>GPT Header LBA 无法映射到此镜像片段。</value></data>
+  <data name="EntryLbaPrecedesFragment" xml:space="preserve"><value>GPT 分区条目 LBA 位于此镜像片段之前。</value></data>
+  <data name="EntryOffsetExceedsSupportedSize" xml:space="preserve"><value>GPT 分区条目偏移超过支持的镜像大小。</value></data>
+  <data name="ImageMissingDeclaredEntryArray" xml:space="preserve"><value>镜像未包含声明的 GPT 分区条目数组。</value></data>
+  <data name="EntryCapacityNegative" xml:space="preserve"><value>GPT 分区条目容量为负值。</value></data>
+  <data name="PhysicalEntryCapacityInvalid" xml:space="preserve"><value>GPT 分区条目的物理容量无效。</value></data>
+  <data name="LayoutHasNoHeader" xml:space="preserve"><value>GPT 布局中没有 Header。</value></data>
+  <data name="RedundantCopiesInconsistent" xml:space="preserve"><value>主 GPT 和备用 GPT 副本均存在，但内容不一致。</value></data>
+  <data name="PartitionEntryEmptyTypeId" xml:space="preserve"><value>GPT 分区条目 {0} 的类型 GUID 为空。</value></data>
+  <data name="EntrySlotOccupied" xml:space="preserve"><value>GPT 分区条目槽位 {0} 已被占用。</value></data>
+  <data name="EntryCountExcludesSlot" xml:space="preserve"><value>声明的条目数量不能排除已占用的物理槽位。</value></data>
+  <data name="ActiveMaskZero" xml:space="preserve"><value>活动属性掩码不能为零。</value></data>
+  <data name="AbPartitionsNotFound" xml:space="preserve"><value>未找到任何 A/B 分区名称。</value></data>
+  <data name="AbCompletePairsRequired" xml:space="preserve"><value>A/B 切换要求每个带槽位后缀的分区都有对应的配对分区。</value></data>
+  <data name="OutputPathHasNoParent" xml:space="preserve"><value>输出路径没有父目录。</value></data>
+  <data name="EntryBlockUnexpectedLength" xml:space="preserve"><value>GPT 条目数据块长度不符合预期。</value></data>
+  <data name="PreservedHeaderTooShort" xml:space="preserve"><value>保留的 GPT Header 长度小于 HeaderSize。</value></data>
+  <data name="PatchRequiresLastUsableLba" xml:space="preserve"><value>磁盘几何信息不可用时，应用补丁需要显式指定 LastUsableLba。</value></data>
+  <data name="PreservedFullDiskRequired" xml:space="preserve"><value>需要已保留的完整磁盘源镜像。</value></data>
+  <data name="FullDiskBytesMissing" xml:space="preserve"><value>未保留完整磁盘源镜像的字节数据。</value></data>
+  <data name="FullDiskSourceChanged" xml:space="preserve"><value>完整磁盘源文件自解析后已发生变化。请重新打开后再保存。</value></data>
+  <data name="FullDiskTooLargeForArray" xml:space="preserve"><value>完整磁盘过大，无法导出到单个字节数组。请使用 SaveFile、WriteTo，或显式导出紧凑 GPT 格式。</value></data>
+  <data name="GeometryContainerMismatch" xml:space="preserve"><value>编辑后的 GPT 磁盘几何信息不再与完整磁盘容器长度匹配。</value></data>
+  <data name="UnpatchedBackupInFullDisk" xml:space="preserve"><value>未应用补丁的 GPT 不能在完整磁盘镜像中保留物理备用 Header。</value></data>
+  <data name="PartitionNameInvalidOnDisk" xml:space="preserve"><value>GPT 分区条目 {0} 包含无效的 UTF-16 名称数据。</value></data>
+  <data name="UnpatchRequiresSingleCompactCopy" xml:space="preserve"><value>取消补丁需要紧凑格式、仅含单个副本的主 GPT 或备用 GPT 镜像。</value></data>
+</root>

@@ -8,6 +8,8 @@
 
     <ItemGroup>
       <ProjectReference Include="..\GeekFlashCore.Gpt.Abstractions\GeekFlashCore.Gpt.Abstractions.csproj" />
+      <ProjectReference Include="..\GeekFlashCore.IO.BlockDevice\GeekFlashCore.IO.BlockDevice.csproj" />
+      <ProjectReference Include="..\GeekFlashCore.Shared\GeekFlashCore.Shared.csproj" />
     </ItemGroup>
 
 </Project>

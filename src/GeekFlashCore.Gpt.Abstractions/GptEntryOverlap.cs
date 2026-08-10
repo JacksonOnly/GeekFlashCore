@@ -1,6 +1,6 @@
 namespace GeekFlashCore.Gpt.Abstractions;
 
-public sealed record GptPartitionOverlap(
+public sealed record GptEntryOverlap(
     int FirstPartitionNumber,
     int SecondPartitionNumber,
     ulong FirstLba,

@@ -1,11 +1,15 @@
+using System.Buffers;
+
 namespace GeekFlashCore.IO.BlockDevice;
 
 public sealed class ReadAheadBlockDevice : IReadableBlockDevice
 {
     private readonly IReadableBlockDevice _source;
     private readonly bool _ownsSource;
-    private readonly byte[] _window;
+    private readonly ArrayPool<byte> _pool;
+    private readonly int _windowSize;
     private readonly object _gate = new();
+    private byte[]? _window;
     private long _windowOffset = -1;
     private int _windowLength;
     private bool _disposed;
@@ -30,7 +34,9 @@ public sealed class ReadAheadBlockDevice : IReadableBlockDevice
         if (!Enum.IsDefined(ownership)) throw new ArgumentOutOfRangeException(nameof(ownership));
 
         int alignedWindowSize = limits.ValidateReadAheadSize(windowSize, source.LogicalBlockSize);
-        _window = new byte[alignedWindowSize];
+        _pool = ArrayPool<byte>.Shared;
+        _window = _pool.Rent(alignedWindowSize);
+        _windowSize = alignedWindowSize;
         _source = source;
         _ownsSource = ownership == DeviceOwnership.Transfer;
     }
@@ -45,7 +51,7 @@ public sealed class ReadAheadBlockDevice : IReadableBlockDevice
         int totalLength = BlockDeviceIO.GetReadLength(this, offset, destination.Length);
         if (totalLength == 0) return 0;
 
-        if (totalLength >= _window.Length)
+        if (totalLength >= _windowSize)
         {
             int read = _source.ReadAt(offset, destination[..totalLength]);
             return BlockDeviceIO.ValidateReadResult(read, totalLength);
@@ -53,11 +59,12 @@ public sealed class ReadAheadBlockDevice : IReadableBlockDevice
 
         lock (_gate)
         {
+            byte[] window = GetWindow();
             int copied = 0;
             while (copied < totalLength)
             {
                 long currentOffset = checked(offset + copied);
-                EnsureWindow(currentOffset);
+                EnsureWindow(window, currentOffset);
                 int windowIndex = checked((int)(currentOffset - _windowOffset));
                 int partLength = Math.Min(totalLength - copied, _windowLength - windowIndex);
                 if (partLength <= 0)
@@ -65,7 +72,7 @@ public sealed class ReadAheadBlockDevice : IReadableBlockDevice
                     throw new EndOfStreamException(Strings.ReadAheadMadeNoProgress);
                 }
 
-                _window.AsSpan(windowIndex, partLength).CopyTo(destination[copied..]);
+                window.AsSpan(windowIndex, partLength).CopyTo(destination[copied..]);
                 copied += partLength;
             }
 
@@ -77,19 +84,32 @@ public sealed class ReadAheadBlockDevice : IReadableBlockDevice
     {
         if (_disposed) return;
         _disposed = true;
-        if (_ownsSource) _source.Dispose();
-        GC.SuppressFinalize(this);
+        byte[]? window = Interlocked.Exchange(ref _window, null);
+        try
+        {
+            if (_ownsSource) _source.Dispose();
+        }
+        finally
+        {
+            if (window is not null)
+            {
+                window.AsSpan(0, _windowSize).Clear();
+                _pool.Return(window);
+            }
+
+            GC.SuppressFinalize(this);
+        }
     }
 
-    private void EnsureWindow(long offset)
+    private void EnsureWindow(byte[] window, long offset)
     {
         if (Contains(offset)) return;
 
         long windowOffset = AlignDown(offset, LogicalBlockSize);
-        int length = (int)Math.Min(_window.Length, Length - windowOffset);
+        int length = (int)Math.Min(_windowSize, Length - windowOffset);
         _windowOffset = windowOffset;
         _windowLength = 0;
-        BlockDeviceIO.ReadExactlyAt(_source, windowOffset, _window.AsSpan(0, length));
+        BlockDeviceIO.ReadExactlyAt(_source, windowOffset, window.AsSpan(0, length));
         _windowLength = length;
     }
 
@@ -99,5 +119,7 @@ public sealed class ReadAheadBlockDevice : IReadableBlockDevice
         offset - _windowOffset < _windowLength;
 
     private static long AlignDown(long value, int alignment) => value - value % alignment;
+    private byte[] GetWindow() =>
+        Volatile.Read(ref _window) ?? throw new ObjectDisposedException(nameof(ReadAheadBlockDevice));
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
 }

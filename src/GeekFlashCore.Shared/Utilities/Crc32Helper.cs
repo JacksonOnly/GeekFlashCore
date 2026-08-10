@@ -1,4 +1,5 @@
 ﻿namespace GeekFlashCore.Shared.Utilities;
+
 public static class Crc32Helper
 {
     private static readonly uint[] Crc32Table =

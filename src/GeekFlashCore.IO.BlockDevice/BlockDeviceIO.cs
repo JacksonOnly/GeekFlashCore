@@ -8,15 +8,23 @@ public static class BlockDeviceIO
         int requestedLength)
     {
         ArgumentNullException.ThrowIfNull(device);
+        return GetReadLength(device.Length, offset, requestedLength);
+    }
+
+    internal static int GetReadLength(
+        long deviceLength,
+        long offset,
+        int requestedLength)
+    {
         ArgumentOutOfRangeException.ThrowIfNegative(offset);
         ArgumentOutOfRangeException.ThrowIfNegative(requestedLength);
 
-        if (offset >= device.Length || requestedLength == 0)
+        if (offset >= deviceLength || requestedLength == 0)
         {
             return 0;
         }
 
-        return (int)Math.Min(requestedLength, device.Length - offset);
+        return (int)Math.Min(requestedLength, deviceLength - offset);
     }
 
     public static int ValidateReadResult(int read, int requestedLength)

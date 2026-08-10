@@ -55,7 +55,7 @@ public static class SparseImageParser
 
     private static SparseImage ParseCore(Stream source)
     {
-        Span<byte> bytes = stackalloc byte[SparseConstant.ChunkLength];
+        Span<byte> bytes = stackalloc byte[SparseConstant.HeaderLength];
         source.ReadExactly(bytes);
 
         uint magic = BinaryPrimitives.ReadUInt32LittleEndian(bytes);
@@ -72,7 +72,7 @@ public static class SparseImageParser
             throw new InvalidDataException(Strings.StreamInvalidMagic);
         if (majorVersion != SparseConstant.HeaderMajorVer)
             throw new InvalidDataException(Strings.FormatUnsupportedLegacyVersion(majorVersion));
-        if (fileHeaderSize < SparseConstant.ChunkLength || chunkHeaderSize < SparseConstant.ChunkLength)
+        if (fileHeaderSize < SparseConstant.HeaderLength || chunkHeaderSize < SparseConstant.ChunkLength)
             throw new InvalidDataException(Strings.LegacyInvalidHeaderSize);
         if (blockSize == 0 || (blockSize & 3) != 0)
             throw new InvalidDataException(Strings.LegacyInvalidBlockSize);

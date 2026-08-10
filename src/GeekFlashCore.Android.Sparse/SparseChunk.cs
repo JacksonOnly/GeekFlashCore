@@ -7,8 +7,6 @@ namespace GeekFlashCore.Android.Sparse;
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct SparseChunk
 {
-    internal const int IndexEntrySize = 32;
-
     private readonly ulong _metadata;
 
     internal SparseChunk(

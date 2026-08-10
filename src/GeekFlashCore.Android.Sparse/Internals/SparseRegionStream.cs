@@ -60,7 +60,7 @@ internal sealed class SparseRegionStream : Stream
             }
             else
             {
-                Fill(destination, chunk.FillPattern, _chunkPosition);
+                SparsePattern.Fill(destination, chunk.FillPattern, _chunkPosition);
             }
 
             written += count;
@@ -76,30 +76,6 @@ internal sealed class SparseRegionStream : Stream
         }
 
         return written;
-    }
-
-    private static void Fill(Span<byte> destination, uint pattern, long patternOffset)
-    {
-        Span<byte> patternBytes = stackalloc byte[sizeof(uint)];
-        BinaryPrimitives.WriteUInt32LittleEndian(patternBytes, pattern);
-
-        int phase = (int)(patternOffset & 3);
-        int prefix = Math.Min(destination.Length, sizeof(uint) - phase);
-        patternBytes[phase..(phase + prefix)].CopyTo(destination);
-        int filled = prefix;
-
-        if (filled == destination.Length)
-            return;
-
-        int seedLength = Math.Min(sizeof(uint), destination.Length - filled);
-        patternBytes[..seedLength].CopyTo(destination[filled..]);
-        filled += seedLength;
-        while (filled < destination.Length)
-        {
-            int copyLength = Math.Min(filled - prefix, destination.Length - filled);
-            destination.Slice(prefix, copyLength).CopyTo(destination[filled..]);
-            filled += copyLength;
-        }
     }
 
     public override void Flush()

@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/GeekFlashCore.Android.Lp/GeekFlashCore.Android.Lp.csproj" />
+  <Project Path="src/GeekFlashCore.Android.Sparse/GeekFlashCore.Android.Sparse.csproj" />
+  <Project Path="src/GeekFlashCore.Shared/GeekFlashCore.Shared.csproj" />
+</Solution>

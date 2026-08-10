@@ -6,4 +6,8 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\GeekFlashCore.Gpt.Abstractions\GeekFlashCore.Gpt.Abstractions.csproj" />
+    </ItemGroup>
+
 </Project>

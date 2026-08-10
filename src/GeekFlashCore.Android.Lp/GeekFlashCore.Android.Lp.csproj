@@ -6,4 +6,7 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\GeekFlashCore.Shared\GeekFlashCore.Shared.csproj" />
+    </ItemGroup>
 </Project>

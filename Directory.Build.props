@@ -1,8 +1,9 @@
 <Project>
-    <ItemGroup Condition="'$(IsGeekFlashCoreRuntimeProject)' == 'true'">
-    <PackageReference Include="Microsoft.CodeAnalysis.ResxSourceGenerator" Version="5.0.0-1.25277.114"
-                      PrivateAssets="all"
-                      IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.ResxSourceGenerator"
+      Version="5.0.0-1.25277.114"
+      PrivateAssets="all"
+      IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
     <AdditionalFiles Include="$(MSBuildProjectDirectory)\Localization\**\*.resx" />
   </ItemGroup>
 </Project>

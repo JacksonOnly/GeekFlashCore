@@ -1,0 +1,5 @@
+<Project>
+  <ItemGroup>
+    <EmbeddedResource Update="Localization\**\*.resx" EmitFormatMethods="true" Public="false" />
+  </ItemGroup>
+</Project>

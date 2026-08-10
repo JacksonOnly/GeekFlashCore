@@ -1,4 +1,10 @@
 <Solution>
+  <Folder Name="/Abstractions/">
+    <Project Path="src/GeekFlashCore.IO.BlockDevice.Abstractions/GeekFlashCore.IO.BlockDevice.Abstractions.csproj" />
+  </Folder>
+  <Folder Name="/IO/">
+    <Project Path="src/GeekFlashCore.IO.BlockDevice/GeekFlashCore.IO.BlockDevice.csproj" />
+  </Folder>
   <Project Path="src/GeekFlashCore.Android.Lp/GeekFlashCore.Android.Lp.csproj" />
   <Project Path="src/GeekFlashCore.Android.Sparse/GeekFlashCore.Android.Sparse.csproj" />
   <Project Path="src/GeekFlashCore.Shared/GeekFlashCore.Shared.csproj" />

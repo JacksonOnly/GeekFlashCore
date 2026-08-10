@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="InvalidBlockDeviceReadLength" xml:space="preserve"><value>块设备返回了无效的读取长度。</value></data>
+  <data name="RequestedRangeExceedsBlockDevice" xml:space="preserve"><value>请求的范围超出块设备边界。</value></data>
+  <data name="BlockDeviceMadeNoProgress" xml:space="preserve"><value>块设备读取没有取得进展。</value></data>
+  <data name="BlockDeviceReadOnly" xml:space="preserve"><value>块设备为只读。</value></data>
+  <data name="WriteExceedsBlockDeviceBoundary" xml:space="preserve"><value>写入超出块设备边界。</value></data>
+  <data name="PositionOutsideBlockDeviceBoundary" xml:space="preserve"><value>位置位于块设备边界之外。</value></data>
+  <data name="SourceInvalidReadLength" xml:space="preserve"><value>源流返回了无效的读取长度。</value></data>
+  <data name="SourceEndedEarly" xml:space="preserve"><value>源流在达到请求长度前结束。</value></data>
+  <data name="SourceMustBeReadable" xml:space="preserve"><value>源流必须可读。</value></data>
+  <data name="DestinationMustBeWritable" xml:space="preserve"><value>目标流必须可写。</value></data>
+  <data name="ExpectedRange" xml:space="preserve"><value>值必须在 {0} 到 {1} 之间。</value></data>
+  <data name="ArrayPoolReturnedNull" xml:space="preserve"><value>数组池返回了 null。</value></data>
+  <data name="ArrayPoolBufferTooSmall" xml:space="preserve"><value>数组池返回的缓冲区小于请求长度。</value></data>
+  <data name="ArrayPoolBucketExceedsBudget" xml:space="preserve"><value>数组池桶超过了 {0} 字节的预算容量。</value></data>
+  <data name="ByteBudgetReleasedMultipleTimes" xml:space="preserve"><value>字节预算被重复释放。</value></data>
+  <data name="FileHandleInvalid" xml:space="preserve"><value>文件句柄必须处于打开且有效的状态。</value></data>
+  <data name="BlockDeviceIdRequired" xml:space="preserve"><value>块设备 ID 为必填项。</value></data>
+  <data name="AtLeastOneSourceRequired" xml:space="preserve"><value>至少需要一个源设备。</value></data>
+  <data name="SourceDevicesContainNull" xml:space="preserve"><value>源设备集合不能包含 null 项。</value></data>
+  <data name="ExtentInvalid" xml:space="preserve"><value>Extent 包含无效值。</value></data>
+  <data name="ExtentsMustBeSortedAndCoverDevice" xml:space="preserve"><value>Extent 必须有序并完整覆盖逻辑设备。</value></data>
+  <data name="ExtentLogicalRangeOverflow" xml:space="preserve"><value>Extent 的逻辑范围发生溢出。</value></data>
+  <data name="ExtentExceedsLogicalDevice" xml:space="preserve"><value>Extent 超出逻辑设备边界。</value></data>
+  <data name="ZeroExtentReferencesStorage" xml:space="preserve"><value>零填充 Extent 不能引用物理存储。</value></data>
+  <data name="LinearExtentUnknownSource" xml:space="preserve"><value>线性 Extent 引用了未知源设备。</value></data>
+  <data name="LinearExtentExceedsSource" xml:space="preserve"><value>线性 Extent 超出源设备边界。</value></data>
+  <data name="ExtentsMustCoverDevice" xml:space="preserve"><value>Extent 必须完整覆盖逻辑设备。</value></data>
+  <data name="LogicalOffsetNotCovered" xml:space="preserve"><value>逻辑偏移未被任何 Extent 覆盖。</value></data>
+  <data name="ReadAheadMadeNoProgress" xml:space="preserve"><value>预读窗口没有取得进展。</value></data>
+  <data name="SliceExceedsSource" xml:space="preserve"><value>切片超出源设备边界。</value></data>
+  <data name="BlockDeviceLengthFixed" xml:space="preserve"><value>块设备长度固定，不能调整。</value></data>
+</root>

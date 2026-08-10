@@ -9,5 +9,5 @@
     <ItemGroup>
       <ProjectReference Include="..\GeekFlashCore.IO.BlockDevice.Abstractions\GeekFlashCore.IO.BlockDevice.Abstractions.csproj" />
     </ItemGroup>
-
+    
 </Project>

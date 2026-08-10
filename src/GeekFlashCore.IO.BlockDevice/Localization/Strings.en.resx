@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="InvalidBlockDeviceReadLength" xml:space="preserve"><value>The block device returned an invalid read length.</value></data>
+  <data name="RequestedRangeExceedsBlockDevice" xml:space="preserve"><value>The requested range exceeds the block device.</value></data>
+  <data name="BlockDeviceMadeNoProgress" xml:space="preserve"><value>The block device made no progress.</value></data>
+  <data name="BlockDeviceReadOnly" xml:space="preserve"><value>The block device is read-only.</value></data>
+  <data name="WriteExceedsBlockDeviceBoundary" xml:space="preserve"><value>The write exceeds the block device boundary.</value></data>
+  <data name="PositionOutsideBlockDeviceBoundary" xml:space="preserve"><value>The position is outside the block device boundary.</value></data>
+  <data name="SourceInvalidReadLength" xml:space="preserve"><value>The source stream returned an invalid read length.</value></data>
+  <data name="SourceEndedEarly" xml:space="preserve"><value>The source ended before the requested length.</value></data>
+  <data name="SourceMustBeReadable" xml:space="preserve"><value>The source stream must be readable.</value></data>
+  <data name="DestinationMustBeWritable" xml:space="preserve"><value>The destination stream must be writable.</value></data>
+  <data name="ExpectedRange" xml:space="preserve"><value>Expected {0}..{1}.</value></data>
+  <data name="ArrayPoolReturnedNull" xml:space="preserve"><value>The array pool returned null.</value></data>
+  <data name="ArrayPoolBufferTooSmall" xml:space="preserve"><value>The array pool returned a buffer smaller than requested.</value></data>
+  <data name="ArrayPoolBucketExceedsBudget" xml:space="preserve"><value>The array pool bucket exceeds the byte budget capacity of {0} bytes.</value></data>
+  <data name="ByteBudgetReleasedMultipleTimes" xml:space="preserve"><value>The byte budget was released more than once.</value></data>
+  <data name="FileHandleInvalid" xml:space="preserve"><value>The file handle must be open and valid.</value></data>
+  <data name="BlockDeviceIdRequired" xml:space="preserve"><value>Block device ID is required.</value></data>
+  <data name="AtLeastOneSourceRequired" xml:space="preserve"><value>At least one source device is required.</value></data>
+  <data name="SourceDevicesContainNull" xml:space="preserve"><value>Source devices cannot contain null entries.</value></data>
+  <data name="ExtentInvalid" xml:space="preserve"><value>An extent contains invalid values.</value></data>
+  <data name="ExtentsMustBeSortedAndCoverDevice" xml:space="preserve"><value>Extents must be sorted and completely cover the logical device.</value></data>
+  <data name="ExtentLogicalRangeOverflow" xml:space="preserve"><value>An extent logical range overflows.</value></data>
+  <data name="ExtentExceedsLogicalDevice" xml:space="preserve"><value>An extent exceeds the logical device.</value></data>
+  <data name="ZeroExtentReferencesStorage" xml:space="preserve"><value>A zero extent cannot reference physical storage.</value></data>
+  <data name="LinearExtentUnknownSource" xml:space="preserve"><value>A linear extent references an unknown source.</value></data>
+  <data name="LinearExtentExceedsSource" xml:space="preserve"><value>A linear extent exceeds its source device.</value></data>
+  <data name="ExtentsMustCoverDevice" xml:space="preserve"><value>Extents must completely cover the logical device.</value></data>
+  <data name="LogicalOffsetNotCovered" xml:space="preserve"><value>The logical offset is not covered by an extent.</value></data>
+  <data name="ReadAheadMadeNoProgress" xml:space="preserve"><value>The read-ahead window made no progress.</value></data>
+  <data name="SliceExceedsSource" xml:space="preserve"><value>The slice exceeds the source device.</value></data>
+  <data name="BlockDeviceLengthFixed" xml:space="preserve"><value>The block device has a fixed length and cannot be resized.</value></data>
+</root>

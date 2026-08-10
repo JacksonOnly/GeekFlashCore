@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="BlockDeviceIdRequired" xml:space="preserve"><value>Block device ID is required.</value></data>
+  <data name="ExpectedRange" xml:space="preserve"><value>Expected {0}..{1}.</value></data>
+  <data name="AlignedReadAheadSizeExceeded" xml:space="preserve"><value>The aligned read-ahead size must not exceed {0} bytes.</value></data>
+</root>

@@ -432,3 +432,6 @@ FodyWeavers.xsd
 riderModule.iml
 /_ReSharper.Caches/
 .idea/
+
+# Temp
+temp/

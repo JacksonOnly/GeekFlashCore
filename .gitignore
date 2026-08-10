@@ -427,3 +427,8 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Rider 
+riderModule.iml
+/_ReSharper.Caches/
+.idea/

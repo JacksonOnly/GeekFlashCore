@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="SourceMustBeReadableAndSeekable" xml:space="preserve"><value>The sparse source stream must be readable and seekable.</value></data>
+  <data name="SourceMustBeReadable" xml:space="preserve"><value>The sparse source stream must be readable.</value></data>
+  <data name="DestinationMustBeWritable" xml:space="preserve"><value>The destination stream must be writable.</value></data>
+  <data name="ImageTruncated" xml:space="preserve"><value>The sparse image is truncated.</value></data>
+  <data name="ValuesExceedSupportedLimits" xml:space="preserve"><value>The sparse image contains values that exceed supported limits.</value></data>
+  <data name="SourceCouldNotBeRead" xml:space="preserve"><value>The sparse source could not be read.</value></data>
+  <data name="MetadataOverflow" xml:space="preserve"><value>Sparse metadata arithmetic overflowed.</value></data>
+  <data name="InvalidMagic" xml:space="preserve"><value>The source is not an Android sparse image.</value></data>
+  <data name="StreamInvalidMagic" xml:space="preserve"><value>The stream is not an Android sparse image.</value></data>
+  <data name="UnsupportedVersion" xml:space="preserve"><value>Sparse major version {0} is not supported.</value></data>
+  <data name="UnsupportedLegacyVersion" xml:space="preserve"><value>Unsupported sparse major version {0}.</value></data>
+  <data name="InvalidHeaderSize" xml:space="preserve"><value>Sparse header sizes are invalid.</value></data>
+  <data name="LegacyInvalidHeaderSize" xml:space="preserve"><value>The sparse image declares an invalid header size.</value></data>
+  <data name="InvalidBlockSize" xml:space="preserve"><value>Sparse block size is invalid.</value></data>
+  <data name="LegacyInvalidBlockSize" xml:space="preserve"><value>The sparse block size must be a non-zero multiple of four.</value></data>
+  <data name="EmptyImage" xml:space="preserve"><value>Sparse block and chunk counts must be nonzero.</value></data>
+  <data name="ChunkLimitExceeded" xml:space="preserve"><value>The sparse chunk index exceeds configured limits.</value></data>
+  <data name="FileHeaderExceedsSource" xml:space="preserve"><value>Sparse file header exceeds the source.</value></data>
+  <data name="ChunkHeadersExceedSource" xml:space="preserve"><value>Sparse chunk headers exceed the source.</value></data>
+  <data name="LegacyChunkHeadersMissing" xml:space="preserve"><value>The sparse image does not contain all declared chunk headers.</value></data>
+  <data name="ChunkPayloadExceedsSource" xml:space="preserve"><value>Sparse chunk {0} payload exceeds the source.</value></data>
+  <data name="InvalidChunk" xml:space="preserve"><value>Sparse chunk {0} is invalid: {1}.</value></data>
+  <data name="ChunkTotalSizeTooSmall" xml:space="preserve"><value>total size is smaller than the chunk header</value></data>
+  <data name="LegacyChunkTotalSizeTooSmall" xml:space="preserve"><value>total size is smaller than its header</value></data>
+  <data name="RawPayloadSizeMismatch" xml:space="preserve"><value>RAW payload size does not match output size</value></data>
+  <data name="LegacyRawPayloadSizeMismatch" xml:space="preserve"><value>RAW payload size does not match its block count</value></data>
+  <data name="FillPayloadSizeInvalid" xml:space="preserve"><value>FILL payload must be four bytes</value></data>
+  <data name="LegacyFillPayloadSizeInvalid" xml:space="preserve"><value>FILL payload must contain one 32-bit pattern</value></data>
+  <data name="DontCarePayloadNotEmpty" xml:space="preserve"><value>DONT_CARE must not contain a payload</value></data>
+  <data name="Crc32PayloadInvalid" xml:space="preserve"><value>CRC32 requires zero blocks and four payload bytes</value></data>
+  <data name="LegacyCrc32PayloadInvalid" xml:space="preserve"><value>CRC32 payload must be empty or four bytes</value></data>
+  <data name="UnsupportedChunkType" xml:space="preserve"><value>Sparse chunk type 0x{0} is not supported.</value></data>
+  <data name="UnknownChunkType" xml:space="preserve"><value>unknown chunk type 0x{0}</value></data>
+  <data name="ExpandedLengthMismatch" xml:space="preserve"><value>Sparse chunks expand to {0} bytes instead of {1}.</value></data>
+  <data name="BlockCountMismatch" xml:space="preserve"><value>Sparse block count mismatch: header declares {0}, chunks describe {1}.</value></data>
+  <data name="NonDataChunkMapped" xml:space="preserve"><value>A non-data sparse chunk was mapped into the expanded range.</value></data>
+  <data name="ChunkIndexDoesNotCoverOffset" xml:space="preserve"><value>The sparse chunk index does not cover the expanded offset.</value></data>
+  <data name="ProbeSourceMustBeReadable" xml:space="preserve"><value>The probe source stream must be readable.</value></data>
+  <data name="ProbeInvalidReadLength" xml:space="preserve"><value>The probe source returned an invalid read length.</value></data>
+  <data name="ReplayAlreadyOpenedOrDisposed" xml:space="preserve"><value>The replay stream has already been opened or the session is disposed.</value></data>
+  <data name="ReplayInvalidReadLength" xml:space="preserve"><value>The replay source returned an invalid read length.</value></data>
+  <data name="ConsumeRawPayloadBeforeAdvance" xml:space="preserve"><value>Consume or skip the current RAW payload before advancing.</value></data>
+  <data name="CurrentChunkHasNoRawPayload" xml:space="preserve"><value>The current chunk does not expose a RAW payload.</value></data>
+  <data name="InvalidSourceReadLength" xml:space="preserve"><value>The sparse source returned an invalid read length.</value></data>
+  <data name="ExpansionMustStartBeforeIteration" xml:space="preserve"><value>Expansion must begin before chunk iteration starts.</value></data>
+  <data name="RawPayloadTruncated" xml:space="preserve"><value>The sparse RAW payload is truncated.</value></data>
+  <data name="ChecksumMismatch" xml:space="preserve"><value>Sparse CRC32 chunk expected 0x{0}, calculated 0x{1}.</value></data>
+  <data name="ImageChecksumMismatch" xml:space="preserve"><value>Sparse image checksum expected 0x{0}, calculated 0x{1}.</value></data>
+  <data name="ReaderFaulted" xml:space="preserve"><value>The sparse reader is faulted.</value></data>
+  <data name="ReaderExpansionCompleted" xml:space="preserve"><value>The sparse reader has completed expansion.</value></data>
+  <data name="StreamOperationNotSupported" xml:space="preserve"><value>This sparse stream does not support the operation.</value></data>
+</root>

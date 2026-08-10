@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="SourceMustBeReadableAndSeekable" xml:space="preserve"><value>Sparse 源流必须可读且可定位。</value></data>
+  <data name="SourceMustBeReadable" xml:space="preserve"><value>Sparse 源流必须可读。</value></data>
+  <data name="DestinationMustBeWritable" xml:space="preserve"><value>目标流必须可写。</value></data>
+  <data name="ImageTruncated" xml:space="preserve"><value>Sparse 镜像已截断。</value></data>
+  <data name="ValuesExceedSupportedLimits" xml:space="preserve"><value>Sparse 镜像包含超出支持范围的值。</value></data>
+  <data name="SourceCouldNotBeRead" xml:space="preserve"><value>无法读取 Sparse 源。</value></data>
+  <data name="MetadataOverflow" xml:space="preserve"><value>Sparse Metadata 算术运算发生溢出。</value></data>
+  <data name="InvalidMagic" xml:space="preserve"><value>源不是 Android Sparse 镜像。</value></data>
+  <data name="StreamInvalidMagic" xml:space="preserve"><value>流不是 Android Sparse 镜像。</value></data>
+  <data name="UnsupportedVersion" xml:space="preserve"><value>不支持 Sparse 主版本 {0}。</value></data>
+  <data name="UnsupportedLegacyVersion" xml:space="preserve"><value>不支持 Sparse 主版本 {0}。</value></data>
+  <data name="InvalidHeaderSize" xml:space="preserve"><value>Sparse Header 大小无效。</value></data>
+  <data name="LegacyInvalidHeaderSize" xml:space="preserve"><value>Sparse 镜像声明的 Header 大小无效。</value></data>
+  <data name="InvalidBlockSize" xml:space="preserve"><value>Sparse 块大小无效。</value></data>
+  <data name="LegacyInvalidBlockSize" xml:space="preserve"><value>Sparse 块大小必须是非零的四字节倍数。</value></data>
+  <data name="EmptyImage" xml:space="preserve"><value>Sparse 的块数和 Chunk 数必须非零。</value></data>
+  <data name="ChunkLimitExceeded" xml:space="preserve"><value>Sparse Chunk 索引超出配置限制。</value></data>
+  <data name="FileHeaderExceedsSource" xml:space="preserve"><value>Sparse 文件 Header 超出源边界。</value></data>
+  <data name="ChunkHeadersExceedSource" xml:space="preserve"><value>Sparse Chunk Header 超出源边界。</value></data>
+  <data name="LegacyChunkHeadersMissing" xml:space="preserve"><value>Sparse 镜像未包含全部声明的 Chunk Header。</value></data>
+  <data name="ChunkPayloadExceedsSource" xml:space="preserve"><value>Sparse Chunk {0} 的 Payload 超出源边界。</value></data>
+  <data name="InvalidChunk" xml:space="preserve"><value>Sparse Chunk {0} 无效：{1}。</value></data>
+  <data name="ChunkTotalSizeTooSmall" xml:space="preserve"><value>总大小小于 Chunk Header</value></data>
+  <data name="LegacyChunkTotalSizeTooSmall" xml:space="preserve"><value>总大小小于其 Header</value></data>
+  <data name="RawPayloadSizeMismatch" xml:space="preserve"><value>RAW Payload 大小与输出大小不匹配</value></data>
+  <data name="LegacyRawPayloadSizeMismatch" xml:space="preserve"><value>RAW Payload 大小与块数不匹配</value></data>
+  <data name="FillPayloadSizeInvalid" xml:space="preserve"><value>FILL Payload 必须为四字节</value></data>
+  <data name="LegacyFillPayloadSizeInvalid" xml:space="preserve"><value>FILL Payload 必须包含一个 32 位模式</value></data>
+  <data name="DontCarePayloadNotEmpty" xml:space="preserve"><value>DONT_CARE 不能包含 Payload</value></data>
+  <data name="Crc32PayloadInvalid" xml:space="preserve"><value>CRC32 必须声明零个块并包含四字节 Payload</value></data>
+  <data name="LegacyCrc32PayloadInvalid" xml:space="preserve"><value>CRC32 Payload 必须为空或为四字节</value></data>
+  <data name="UnsupportedChunkType" xml:space="preserve"><value>不支持 Sparse Chunk 类型 0x{0}。</value></data>
+  <data name="UnknownChunkType" xml:space="preserve"><value>未知 Chunk 类型 0x{0}</value></data>
+  <data name="ExpandedLengthMismatch" xml:space="preserve"><value>Sparse Chunk 展开为 {0} 字节，而声明值为 {1} 字节。</value></data>
+  <data name="BlockCountMismatch" xml:space="preserve"><value>Sparse 块数不匹配：Header 声明 {0}，Chunk 描述 {1}。</value></data>
+  <data name="NonDataChunkMapped" xml:space="preserve"><value>非数据 Sparse Chunk 被映射到了展开范围。</value></data>
+  <data name="ChunkIndexDoesNotCoverOffset" xml:space="preserve"><value>Sparse Chunk 索引未覆盖展开偏移。</value></data>
+  <data name="ProbeSourceMustBeReadable" xml:space="preserve"><value>探测源流必须可读。</value></data>
+  <data name="ProbeInvalidReadLength" xml:space="preserve"><value>探测源返回了无效的读取长度。</value></data>
+  <data name="ReplayAlreadyOpenedOrDisposed" xml:space="preserve"><value>重放流已打开，或会话已释放。</value></data>
+  <data name="ReplayInvalidReadLength" xml:space="preserve"><value>重放源返回了无效的读取长度。</value></data>
+  <data name="ConsumeRawPayloadBeforeAdvance" xml:space="preserve"><value>继续前必须读取或跳过当前 RAW Payload。</value></data>
+  <data name="CurrentChunkHasNoRawPayload" xml:space="preserve"><value>当前 Chunk 不提供 RAW Payload。</value></data>
+  <data name="InvalidSourceReadLength" xml:space="preserve"><value>Sparse 源返回了无效的读取长度。</value></data>
+  <data name="ExpansionMustStartBeforeIteration" xml:space="preserve"><value>必须在开始迭代 Chunk 前执行展开。</value></data>
+  <data name="RawPayloadTruncated" xml:space="preserve"><value>Sparse RAW Payload 已截断。</value></data>
+  <data name="ChecksumMismatch" xml:space="preserve"><value>Sparse CRC32 Chunk 期望值为 0x{0}，计算值为 0x{1}。</value></data>
+  <data name="ImageChecksumMismatch" xml:space="preserve"><value>Sparse 镜像校验和期望值为 0x{0}，计算值为 0x{1}。</value></data>
+  <data name="ReaderFaulted" xml:space="preserve"><value>Sparse 读取器处于故障状态。</value></data>
+  <data name="ReaderExpansionCompleted" xml:space="preserve"><value>Sparse 读取器已完成展开。</value></data>
+  <data name="StreamOperationNotSupported" xml:space="preserve"><value>此 Sparse 流不支持该操作。</value></data>
+</root>

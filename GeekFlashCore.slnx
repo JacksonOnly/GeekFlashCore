@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/Abstractions/">
+    <Project Path="src/GeekFlashCore.Gpt.Abstractions/GeekFlashCore.Gpt.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.IO.BlockDevice.Abstractions/GeekFlashCore.IO.BlockDevice.Abstractions.csproj" />
   </Folder>
   <Folder Name="/IO/">
@@ -7,5 +8,6 @@
   </Folder>
   <Project Path="src/GeekFlashCore.Android.Lp/GeekFlashCore.Android.Lp.csproj" />
   <Project Path="src/GeekFlashCore.Android.Sparse/GeekFlashCore.Android.Sparse.csproj" />
+  <Project Path="src/GeekFlashCore.Gpt/GeekFlashCore.Gpt.csproj" />
   <Project Path="src/GeekFlashCore.Shared/GeekFlashCore.Shared.csproj" />
 </Solution>

@@ -4,7 +4,7 @@
     <Project Path="src/GeekFlashCore.BlockDevice.Abstractions/GeekFlashCore.BlockDevice.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.FileSystem.Abstractions/GeekFlashCore.FileSystem.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.Gpt.Abstractions/GeekFlashCore.Gpt.Abstractions.csproj" />
-    <Project Path="src/GeekFlashCore.IO.BlockDevice.Abstractions/GeekFlashCore.IO.BlockDevice.Abstractions.csproj" />
+    <Project Path="src/GeekFlashCore.Transport.Abstractions/GeekFlashCore.Transport.Abstractions.csproj" />
   </Folder>
   <Folder Name="/Android/">
     <Project Path="src/GeekFlashCore.Android.Lp/GeekFlashCore.Android.Lp.csproj" />
@@ -18,8 +18,6 @@
     <Project Path="src/GeekFlashCore.FileSystem.Erofs/GeekFlashCore.FileSystem.Erofs.csproj" />
     <Project Path="src/GeekFlashCore.FileSystem.Ext/GeekFlashCore.FileSystem.Ext.csproj" />
   </Folder>
-  <Folder Name="/IO/">
-    <Project Path="src/GeekFlashCore.IO.BlockDevice/GeekFlashCore.IO.BlockDevice.csproj" />
-  </Folder>
+  <Folder Name="/Transport/" />
   <Project Path="src/GeekFlashCore.Shared/GeekFlashCore.Shared.csproj" />
 </Solution>

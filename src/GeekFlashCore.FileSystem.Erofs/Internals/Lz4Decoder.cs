@@ -1,9 +1,8 @@
-﻿using System;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 
-namespace GeekFlashCore.Shared.Algorithms;
+namespace GeekFlashCore.FileSystem.Erofs.Internals;
 
-public static unsafe class Lz4Decoder
+internal static unsafe class Lz4Decoder
 {
     private const int MinimumMatchLength = 4;
 

@@ -3,6 +3,8 @@ using System.Globalization;
 using GeekFlashCore.Android.Sparse.Constants;
 using GeekFlashCore.Android.Sparse.Models;
 using GeekFlashCore.Android.Sparse.Types;
+using GeekFlashCore.IO.BlockDevice;
+using GeekFlashCore.IO.BlockDevice.Abstractions;
 
 namespace GeekFlashCore.Android.Sparse;
 
@@ -26,6 +28,248 @@ public static class SparseImageParser
         {
             source.Position = position;
         }
+    }
+    public static SparseDocument Open(
+        IReadableBlockDevice source,
+        DeviceOwnership ownership)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (!Enum.IsDefined(ownership)) throw new ArgumentOutOfRangeException(nameof(ownership));
+
+        try
+        {
+            return OpenCore(source, ownership);
+        }
+        catch (Exception exception) when (exception is BlockDeviceException or IOException)
+        {
+            throw SparseFailure(
+                Strings.SourceCouldNotBeRead,
+                source,
+                0,
+                exception);
+        }
+        catch (OverflowException exception)
+        {
+            throw SparseFailure(
+                Strings.MetadataOverflow,
+                source,
+                0,
+                exception);
+        }
+    }
+
+    private static SparseDocument OpenCore(
+        IReadableBlockDevice source,
+        DeviceOwnership ownership)
+    {
+        Span<byte> bytes = stackalloc byte[SparseConstant.HeaderLength];
+        BlockDeviceIO.ReadExactlyAt(source, 0, bytes);
+
+        uint magic = BinaryPrimitives.ReadUInt32LittleEndian(bytes);
+        ushort majorVersion = BinaryPrimitives.ReadUInt16LittleEndian(bytes[4..]);
+        ushort minorVersion = BinaryPrimitives.ReadUInt16LittleEndian(bytes[6..]);
+        ushort fileHeaderSize = BinaryPrimitives.ReadUInt16LittleEndian(bytes[8..]);
+        ushort chunkHeaderSize = BinaryPrimitives.ReadUInt16LittleEndian(bytes[10..]);
+        uint blockSize = BinaryPrimitives.ReadUInt32LittleEndian(bytes[12..]);
+        uint totalBlocks = BinaryPrimitives.ReadUInt32LittleEndian(bytes[16..]);
+        uint totalChunks = BinaryPrimitives.ReadUInt32LittleEndian(bytes[20..]);
+        uint imageChecksum = BinaryPrimitives.ReadUInt32LittleEndian(bytes[24..]);
+
+        if (magic != SparseConstant.HeaderMagic)
+        {
+            throw SparseFailure(
+                Strings.InvalidMagic,
+                source,
+                0);
+        }
+
+        if (majorVersion != SparseConstant.HeaderMajorVer)
+        {
+            throw SparseFailure(
+                Strings.FormatUnsupportedVersion(majorVersion),
+                source,
+                4,
+                featureId: majorVersion);
+        }
+
+        if (fileHeaderSize < SparseConstant.HeaderLength || chunkHeaderSize < SparseConstant.ChunkLength)
+        {
+            throw Corrupt(source, 8, Strings.InvalidHeaderSize);
+        }
+
+        if (blockSize == 0 || (blockSize & 3) != 0 || blockSize > int.MaxValue)
+        {
+            throw Corrupt(source, 12, Strings.InvalidBlockSize);
+        }
+
+        if (totalBlocks == 0 || totalChunks == 0)
+        {
+            throw Corrupt(source, 16, Strings.EmptyImage);
+        }
+
+        if (totalChunks > Array.MaxLength)
+        {
+            throw SparseFailure(
+                Strings.ChunkLimitExceeded,
+                source,
+                20);
+        }
+
+        if (fileHeaderSize > source.Length)
+        {
+            throw Truncated(source, fileHeaderSize, Strings.FileHeaderExceedsSource);
+        }
+
+        long availableForHeaders = source.Length - fileHeaderSize;
+        if (totalChunks > (ulong)(availableForHeaders / chunkHeaderSize))
+        {
+            throw Truncated(source, fileHeaderSize, Strings.ChunkHeadersExceedSource);
+        }
+
+        var header = new SparseHeader(
+            majorVersion,
+            minorVersion,
+            fileHeaderSize,
+            chunkHeaderSize,
+            blockSize,
+            totalBlocks,
+            totalChunks,
+            imageChecksum);
+        long rawLength = header.RawLength;
+        var chunks = GC.AllocateUninitializedArray<SparseChunk>((int)totalChunks);
+        long physicalOffset = fileHeaderSize;
+        long outputOffset = 0;
+        Span<byte> chunkHeader = stackalloc byte[SparseConstant.ChunkLength];
+        Span<byte> valueBytes = stackalloc byte[sizeof(uint)];
+
+        for (int index = 0; index < chunks.Length; index++)
+        {
+            BlockDeviceIO.ReadExactlyAt(source, physicalOffset, chunkHeader);
+            ushort typeValue = BinaryPrimitives.ReadUInt16LittleEndian(chunkHeader);
+            uint chunkBlocks = BinaryPrimitives.ReadUInt32LittleEndian(chunkHeader[4..]);
+            uint totalSize = BinaryPrimitives.ReadUInt32LittleEndian(chunkHeader[8..]);
+            if (totalSize < chunkHeaderSize)
+            {
+                throw CorruptChunk(source, physicalOffset, index, Strings.ChunkTotalSizeTooSmall);
+            }
+
+            long payloadOffset = checked(physicalOffset + chunkHeaderSize);
+            uint payloadLength = totalSize - chunkHeaderSize;
+            if (payloadOffset > source.Length - payloadLength)
+            {
+                throw Truncated(
+                    source,
+                    payloadOffset,
+                    Strings.FormatChunkPayloadExceedsSource(index),
+                    index);
+            }
+
+            long outputLength = checked((long)chunkBlocks * blockSize);
+            SparseChunkType type = (SparseChunkType)typeValue;
+            uint value = 0;
+
+            switch (type)
+            {
+                case SparseChunkType.Raw:
+                    if (outputLength > uint.MaxValue || payloadLength != (uint)outputLength)
+                    {
+                        throw CorruptChunk(source, physicalOffset, index, Strings.RawPayloadSizeMismatch);
+                    }
+                    break;
+
+                case SparseChunkType.Fill:
+                    if (payloadLength != sizeof(uint))
+                    {
+                        throw CorruptChunk(source, physicalOffset, index, Strings.FillPayloadSizeInvalid);
+                    }
+                    BlockDeviceIO.ReadExactlyAt(source, payloadOffset, valueBytes);
+                    value = BinaryPrimitives.ReadUInt32LittleEndian(valueBytes);
+                    break;
+
+                case SparseChunkType.DontCare:
+                    if (payloadLength != 0)
+                    {
+                        throw CorruptChunk(source, physicalOffset, index, Strings.DontCarePayloadNotEmpty);
+                    }
+                    break;
+
+                case SparseChunkType.Crc32:
+                    if (chunkBlocks != 0 || payloadLength != sizeof(uint))
+                    {
+                        throw CorruptChunk(source, physicalOffset, index, Strings.Crc32PayloadInvalid);
+                    }
+                    BlockDeviceIO.ReadExactlyAt(source, payloadOffset, valueBytes);
+                    value = BinaryPrimitives.ReadUInt32LittleEndian(valueBytes);
+                    break;
+
+                default:
+                    throw SparseFailure(
+                        Strings.FormatUnsupportedChunkType(
+                            typeValue.ToString("X4", CultureInfo.InvariantCulture)),
+                        source,
+                        physicalOffset,
+                        featureId: typeValue,
+                        objectId: $"chunk:{index}");
+            }
+
+            chunks[index] = new SparseChunk(outputOffset, outputLength, payloadOffset, type, value);
+            outputOffset = checked(outputOffset + outputLength);
+            physicalOffset = checked(payloadOffset + payloadLength);
+        }
+
+        if (outputOffset != rawLength)
+        {
+            throw Corrupt(
+                source,
+                physicalOffset,
+                Strings.FormatExpandedLengthMismatch(outputOffset, rawLength));
+        }
+
+        return new SparseDocument(source, header, chunks, physicalOffset, ownership);
+    }
+    private static SparseException Corrupt(
+        IReadableBlockDevice source,
+        long offset,
+        string message) =>
+        SparseFailure(message, source, offset);
+
+    private static SparseException CorruptChunk(
+        IReadableBlockDevice source,
+        long offset,
+        int index,
+        string reason) =>
+        SparseFailure(
+            Strings.FormatInvalidChunk(index, reason),
+            source,
+            offset,
+            objectId: $"chunk:{index}");
+
+    private static SparseException Truncated(
+        IReadableBlockDevice source,
+        long offset,
+        string message,
+        int? index = null) =>
+        SparseFailure(
+            message,
+            source,
+            offset,
+            objectId: index is null ? null : $"chunk:{index.Value}");
+
+    private static SparseException SparseFailure(
+        string message,
+        IReadableBlockDevice source,
+        long offset,
+        Exception? innerException = null,
+        ulong? featureId = null,
+        string? objectId = null)
+    {
+        string context = $"blockDeviceId: {source.Id}; deviceRelativeOffset: {offset}";
+        if (objectId is not null)
+            context += $"; objectId: {objectId}";
+        if (featureId is not null)
+            context += $"; featureId: {featureId.Value}";
+
+        return new SparseException($"{message} ({context})", innerException);
     }
 
     public static SparseImage Parse(Stream source)

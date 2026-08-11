@@ -461,7 +461,7 @@ public sealed class ErofsVolume : IFileSystemVolume
 
     internal void ThrowIfDisposed()
     {
-        if(_disposed)
+        if (_disposed)
             throw new ObjectDisposedException(nameof(ErofsVolume));
     }
 

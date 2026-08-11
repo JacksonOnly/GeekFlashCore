@@ -1,6 +1,7 @@
 using GeekFlashCore.Abstractions;
 
 namespace GeekFlashCore.Android.Sparse;
+
 public sealed class SparseException : GeekFlashCoreException
 {
     public SparseException()

@@ -414,8 +414,8 @@ public sealed class ExtVolume : IFileSystemVolume
 
     internal void ThrowIfDisposed()
     {
-        if(_disposed)
-            throw new  ObjectDisposedException(nameof(ExtVolume));
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(ExtVolume));
     }
 
     internal ExtFileSystemException Corrupt(

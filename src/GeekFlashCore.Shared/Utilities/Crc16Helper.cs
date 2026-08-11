@@ -20,7 +20,7 @@ public static class Crc16Helper
 
         return crc;
     }
-    public static ushort Append(ushort crc,ReadOnlySpan<byte> data)
+    public static ushort Append(ushort crc, ReadOnlySpan<byte> data)
     {
         foreach (byte value in data)
         {

@@ -1,6 +1,6 @@
 ﻿namespace GeekFlashCore.Shared.Utilities;
 
-public class Crc16Helper
+public static class Crc16Helper
 {
     public static ushort Compute(ReadOnlySpan<byte> data)
     {

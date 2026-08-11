@@ -29,24 +29,24 @@ internal static class GptFormatValidator
             : MaximumSectorSize;
         if (header.HeaderSize < GptCodec.MinimumHeaderSize ||
             header.HeaderSize > maximumHeaderSize)
-            throw new InvalidDataException(
+            throw new GptException(
                 Strings.FormatInvalidHeaderSize(header.HeaderSize));
         if (header.PartitionEntryCount == 0 ||
             header.PartitionEntryCount > MaximumEntryCount)
-            throw new InvalidDataException(
+            throw new GptException(
                 Strings.FormatInvalidPartitionEntryCount(header.PartitionEntryCount));
         if (header.PartitionEntrySize < GptCodec.MinimumEntrySize ||
             (header.PartitionEntrySize & 7) != 0)
-            throw new InvalidDataException(
+            throw new GptException(
                 Strings.FormatInvalidPartitionEntrySize(header.PartitionEntrySize));
         if (header.CurrentLba == ulong.MaxValue ||
             header.AlternateLba == ulong.MaxValue ||
             header.CurrentLba != 0 && header.CurrentLba == header.AlternateLba)
-            throw new InvalidDataException(
+            throw new GptException(
                 Strings.FormatInvalidAlternateLba(header.AlternateLba));
         if (header.LastUsableLba != 0 &&
             header.FirstUsableLba > header.LastUsableLba)
-            throw new InvalidDataException(Strings.InvalidUsableLbaRange);
+            throw new GptException(Strings.InvalidUsableLbaRange);
     }
 
     public static int GetEntryArrayLength(GptHeader header) =>

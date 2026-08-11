@@ -7,7 +7,7 @@ namespace GeekFlashCore.Gpt;
 
 internal sealed class GuidPartitionTable : IGpt
 {
-    
+
     private readonly GptLayout _layout;
     private readonly GptHeaderLayout _activeLayout;
     private readonly List<GptEntry> _entries;
@@ -175,7 +175,7 @@ internal sealed class GuidPartitionTable : IGpt
         GptEntry entry = _entries[position];
         if (entry.SlotIndex == slotIndex) return;
         if (_entries.Any(item => item.SlotIndex == slotIndex))
-            throw new InvalidOperationException(
+            throw new GptException(
                 Strings.FormatEntrySlotOccupied(slotIndex));
 
         byte[] block = GetEntryBlock(entry.SlotIndex);
@@ -218,7 +218,7 @@ internal sealed class GuidPartitionTable : IGpt
             ? 0
             : checked(_entries.Max(static entry => entry.SlotIndex) + 1);
         if (entryCount < requiredCount)
-            throw new InvalidOperationException(Strings.EntryCountExcludesSlot);
+            throw new GptException(Strings.EntryCountExcludesSlot);
 
         int oldCount = checked((int)_header.PartitionEntryCount);
         if (entryCount > oldCount)
@@ -256,7 +256,7 @@ internal sealed class GuidPartitionTable : IGpt
         EnsureEntriesLoaded();
         if (ContainerType != GptContainerType.Compact ||
             ImageType is not (GptImageType.Main or GptImageType.Backup))
-            throw new InvalidOperationException(Strings.UnpatchRequiresSingleCompactCopy);
+            throw new GptException(Strings.UnpatchRequiresSingleCompactCopy);
         ApplyUnpatch(ref _header, _entries, _entryStorage!, lastUsableLba, ImageType);
         RefreshDerivedState();
     }
@@ -313,7 +313,7 @@ internal sealed class GuidPartitionTable : IGpt
         string fullPath = Path.GetFullPath(path);
         string? directory = Path.GetDirectoryName(fullPath);
         if (string.IsNullOrEmpty(directory))
-            throw new InvalidOperationException(Strings.OutputPathHasNoParent);
+            throw new GptException(Strings.OutputPathHasNoParent);
         Directory.CreateDirectory(directory);
         string temporaryPath = Path.Combine(
             directory,
@@ -371,7 +371,7 @@ internal sealed class GuidPartitionTable : IGpt
             case GptPatchMode.Unpatch:
                 if (preserveFullDisk ||
                     outputType is GptImageType.Both or GptImageType.SgdiskBackup)
-                    throw new InvalidOperationException(
+                    throw new GptException(
                         Strings.UnpatchRequiresSingleCompactCopy);
                 ApplyUnpatch(ref header, entries, entryStorage, options.LastUsableLba, outputType);
                 break;
@@ -402,7 +402,7 @@ internal sealed class GuidPartitionTable : IGpt
             ResolveBackupLba(_header) <= 1 &&
             options.PatchMode != GptPatchMode.Patch &&
             !isUnpatchedBackup)
-            throw new InvalidOperationException(Strings.BackupExportRequiresGeometry);
+            throw new GptException(Strings.BackupExportRequiresGeometry);
         return imageType;
     }
 
@@ -468,7 +468,7 @@ internal sealed class GuidPartitionTable : IGpt
     private int FindFirstFreeSlot()
     {
         if (_entries.Count >= AvailableEntryCount)
-            throw new InvalidOperationException(Strings.NoPartitionEntrySlotsAvailable);
+            throw new GptException(Strings.NoPartitionEntrySlotsAvailable);
         Span<bool> used = AvailableEntryCount <= 256
             ? stackalloc bool[AvailableEntryCount]
             : new bool[AvailableEntryCount];
@@ -497,7 +497,7 @@ internal sealed class GuidPartitionTable : IGpt
             ? 0
             : checked(_entries.Max(static entry => entry.SlotIndex) + 1);
         if (requiredEntryCount > AvailableEntryCount)
-            throw new InvalidOperationException(Strings.PartitionEntriesExceedCapacity);
+            throw new GptException(Strings.PartitionEntriesExceedCapacity);
         if ((uint)requiredEntryCount > _header.PartitionEntryCount)
         {
             var occupiedSlots = _entries
@@ -524,7 +524,7 @@ internal sealed class GuidPartitionTable : IGpt
     private void EnsureEntriesLoaded()
     {
         if (_entryStorage is null)
-            throw new InvalidOperationException(Strings.HeaderOnlyDocumentCannotBeEdited);
+            throw new GptException(Strings.HeaderOnlyDocumentCannotBeEdited);
     }
 
     private byte[] GetEntryBlock(int slotIndex)
@@ -561,7 +561,7 @@ internal sealed class GuidPartitionTable : IGpt
     {
         int headerSize = checked((int)header.HeaderSize);
         if (template.Length < headerSize)
-            throw new InvalidDataException(Strings.PreservedHeaderTooShort);
+            throw new GptException(Strings.PreservedHeaderTooShort);
         byte[] buffer = template[..headerSize].ToArray();
         GptCodec.WriteHeader(buffer, header with { HeaderCrc32 = 0 });
         return Crc32Helper.Compute(buffer);
@@ -623,7 +623,7 @@ internal sealed class GuidPartitionTable : IGpt
         int position = FindSpatialLastPosition(entries);
         GptEntry last = entries[position];
         if (last.FirstLba == 0)
-            throw new InvalidOperationException(Strings.UnpatchWouldUnderflow);
+            throw new GptException(Strings.UnpatchWouldUnderflow);
         GptEntry updatedEntry = last with { LastLba = last.FirstLba - 1 };
         GptHeader updatedHeader = imageType == GptImageType.Backup
             ? header with
@@ -653,7 +653,7 @@ internal sealed class GuidPartitionTable : IGpt
     private static int FindSpatialLastPosition(IReadOnlyList<GptEntry> entries)
     {
         if (entries.Count == 0)
-            throw new InvalidOperationException(Strings.PatchRequiresPartition);
+            throw new GptException(Strings.PatchRequiresPartition);
         int result = 0;
         for (int position = 1; position < entries.Count; position++)
         {
@@ -675,7 +675,7 @@ internal sealed class GuidPartitionTable : IGpt
         ulong backupLba = ResolveBackupLba(header);
         if (backupLba > entryArraySectors + 1)
             return checked(backupLba - entryArraySectors - 1);
-        throw new InvalidOperationException(Strings.PatchRequiresLastUsableLba);
+        throw new GptException(Strings.PatchRequiresLastUsableLba);
     }
 
     private ulong GetPatchEntryArraySectorCount(bool preserveFullDisk)
@@ -705,17 +705,17 @@ internal sealed class GuidPartitionTable : IGpt
         {
             backupHeaderLba = checked((ulong)(backup.HeaderOffset / SectorSize));
             if (backupHeaderLba != backup.Header.CurrentLba)
-                throw new InvalidOperationException(Strings.GeometryContainerMismatch);
+                throw new GptException(Strings.GeometryContainerMismatch);
         }
         else
         {
             backupHeaderLba = checked((ulong)(_layout.SourceLength / SectorSize) - 1);
             ulong declaredBackupLba = ResolveBackupLba(_header);
             if (declaredBackupLba > 1 && declaredBackupLba != backupHeaderLba)
-                throw new InvalidOperationException(Strings.GeometryContainerMismatch);
+                throw new GptException(Strings.GeometryContainerMismatch);
         }
         if (backupHeaderLba <= entryArraySectors)
-            throw new InvalidOperationException(Strings.BackupExportRequiresGeometry);
+            throw new GptException(Strings.BackupExportRequiresGeometry);
         ulong expected = checked(backupHeaderLba - entryArraySectors - 1);
         if (requested is not null && requested.Value != expected)
             throw new ArgumentOutOfRangeException(nameof(requested));

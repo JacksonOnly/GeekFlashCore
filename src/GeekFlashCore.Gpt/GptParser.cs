@@ -7,7 +7,7 @@ namespace GeekFlashCore.Gpt;
 
 public class GptParser : IGptParser
 {
-    
+
     public IGpt Parse(
         ReadOnlySpan<byte> image,
         GptParseOptions? options = null)
@@ -44,10 +44,10 @@ public class GptParser : IGptParser
         GptCrcStatus status = document.CrcStatus;
         if (options.CrcPolicy == GptCrcPolicy.Strict &&
             (!status.HeaderValid || status.PartitionEntryArrayValid is false))
-            throw new InvalidDataException(Strings.CrcValidationFailed);
+            throw new GptException(Strings.CrcValidationFailed);
         if (options.RequireRedundantCopiesConsistent &&
             document.SourceRedundancyStatus.CopiesConsistent is false)
-            throw new InvalidDataException(Strings.RedundantCopiesInconsistent);
+            throw new GptException(Strings.RedundantCopiesInconsistent);
         if (options.CrcPolicy == GptCrcPolicy.Repair &&
             (!status.HeaderValid || status.PartitionEntryArrayValid is false))
             document.RepairCrc();
@@ -99,7 +99,7 @@ public class GptParser : IGptParser
                         out GptLayout? layout))
                     return ParseLayout(layout, options);
             }
-            catch (InvalidDataException) when (sourceLength <= int.MaxValue)
+            catch (GptException) when (sourceLength <= int.MaxValue)
             {
                 // Compact and sgdisk containers use the span detector below.
             }
@@ -124,14 +124,14 @@ public class GptParser : IGptParser
         int slotIndex)
     {
         if (partition.TypeId == Guid.Empty && !options.AllowEmptyPartitionTypeId)
-            throw new InvalidDataException(
+            throw new GptException(
                 Strings.FormatPartitionEntryEmptyTypeId(slotIndex));
 
         bool isUnpatchedSentinel = partition.FirstLba > 0 &&
             partition.LastLba == partition.FirstLba - 1;
         if (partition.FirstLba > partition.LastLba &&
             !(options.AllowUnpatchedPartitionGeometry && isUnpatchedSentinel))
-            throw new InvalidDataException(
+            throw new GptException(
                 Strings.FormatPartitionEntryOutsideUsableRange(slotIndex));
 
         bool hasUsableRange = header.LastUsableLba >= header.FirstUsableLba &&
@@ -139,14 +139,14 @@ public class GptParser : IGptParser
         if (!hasUsableRange)
         {
             if (!options.AllowUnpatchedPartitionGeometry)
-                throw new InvalidDataException(Strings.InvalidUsableLbaRange);
+                throw new GptException(Strings.InvalidUsableLbaRange);
             return;
         }
 
         if (!options.AllowUnpatchedPartitionGeometry &&
             (partition.FirstLba < header.FirstUsableLba ||
              !isUnpatchedSentinel && partition.LastLba > header.LastUsableLba))
-            throw new InvalidDataException(
+            throw new GptException(
                 Strings.FormatPartitionEntryOutsideUsableRange(slotIndex));
     }
 
@@ -159,7 +159,7 @@ public class GptParser : IGptParser
         GptHeaderLayout? alternate = preferred.Copy == GptHeaderCopy.Primary
             ? layout.BackupHeader
             : layout.MainHeader;
-        InvalidDataException? preferredError = null;
+        GptException? preferredError = null;
         foreach (GptHeaderLayout candidate in EnumerateCandidates(preferred, alternate))
         {
             if (!ReferenceEquals(candidate, preferred) &&
@@ -170,12 +170,12 @@ public class GptParser : IGptParser
             {
                 return (candidate, ParseEntries(candidate, options), candidate.EntryStorage.ToArray());
             }
-            catch (InvalidDataException exception)
+            catch (GptException exception)
             {
                 preferredError ??= exception;
             }
         }
-        throw preferredError ?? new InvalidDataException(Strings.CrcValidationFailed);
+        throw preferredError ?? new GptException(Strings.CrcValidationFailed);
     }
 
     private static IEnumerable<GptHeaderLayout> EnumerateCandidates(
@@ -228,7 +228,7 @@ public class GptParser : IGptParser
         }
         catch (DecoderFallbackException exception)
         {
-            throw new InvalidDataException(
+            throw new GptException(
                 Strings.FormatPartitionNameInvalidOnDisk(slotIndex),
                 exception);
         }

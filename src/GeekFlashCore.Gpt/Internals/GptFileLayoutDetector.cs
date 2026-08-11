@@ -48,7 +48,7 @@ internal static class GptFileLayoutDetector
         ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
         long sourceLength = stream.Length;
         if (sourceLength < GptCodec.MinimumHeaderSize)
-            throw new InvalidDataException(Strings.ImageTooSmallForHeader);
+            throw new GptException(Strings.ImageTooSmallForHeader);
 
         (int SectorSize, FileHeaderCandidate? Primary) resolved =
             ResolvePrimary(stream, sourceLength, sectorSize);
@@ -90,7 +90,7 @@ internal static class GptFileLayoutDetector
             GptHeaderCopy.Backup,
             headerOnly);
         if (primary is null && backup is null)
-            throw new InvalidDataException(Strings.LayoutHasNoHeader);
+            throw new GptException(Strings.LayoutHasNoHeader);
 
         byte[] protectiveMbr = ReadBytes(stream, 0, resolved.SectorSize);
         return new GptLayout(
@@ -134,7 +134,7 @@ internal static class GptFileLayoutDetector
         }
 
         if (matches.Count > 1)
-            throw new InvalidDataException(Strings.SectorSizeCannotBeInferred);
+            throw new GptException(Strings.SectorSizeCannotBeInferred);
         return matches.Count == 1
             ? matches[0]
             : (GptFormatValidator.MinimumSectorSize, null);
@@ -204,7 +204,7 @@ internal static class GptFileLayoutDetector
                     var candidate = new FileHeaderCandidate(absoluteOffset, header);
                     if (IsBackup(candidate)) matches.Add((inferredSectorSize, candidate));
                 }
-                catch (InvalidDataException)
+                catch (GptException)
                 {
                 }
                 catch (OverflowException)
@@ -220,9 +220,9 @@ internal static class GptFileLayoutDetector
             .OrderByDescending(static match => match.Candidate.Offset)
             .ToArray();
         if (distinct.Length == 0)
-            throw new InvalidDataException(Strings.SignatureNotFound);
+            throw new GptException(Strings.SignatureNotFound);
         if (distinct.Select(static match => match.SectorSize).Distinct().Skip(1).Any())
-            throw new InvalidDataException(Strings.SectorSizeCannotBeInferred);
+            throw new GptException(Strings.SectorSizeCannotBeInferred);
 
         resolved = (distinct[0].SectorSize, null);
         return distinct[0].Candidate;
@@ -241,7 +241,7 @@ internal static class GptFileLayoutDetector
                 sectorSize,
                 out _);
         }
-        catch (InvalidDataException)
+        catch (GptException)
         {
             return null;
         }
@@ -257,15 +257,15 @@ internal static class GptFileLayoutDetector
             int validated = GptFormatValidator.ValidateSectorSize(explicitSize);
             if (header.CurrentLba > long.MaxValue / (ulong)validated ||
                 checked((long)header.CurrentLba * validated) != headerOffset)
-                throw new InvalidDataException(Strings.HeaderLbaCannotBeMapped);
+                throw new GptException(Strings.HeaderLbaCannotBeMapped);
             return validated;
         }
 
         if (header.CurrentLba == 0 || (ulong)headerOffset % header.CurrentLba != 0)
-            throw new InvalidDataException(Strings.SectorSizeCannotBeInferred);
+            throw new GptException(Strings.SectorSizeCannotBeInferred);
         ulong inferred = (ulong)headerOffset / header.CurrentLba;
         if (inferred > int.MaxValue)
-            throw new InvalidDataException(Strings.SectorSizeCannotBeInferred);
+            throw new GptException(Strings.SectorSizeCannotBeInferred);
         return GptFormatValidator.ValidateSectorSize((int)inferred);
     }
 
@@ -288,7 +288,7 @@ internal static class GptFileLayoutDetector
                 copy,
                 headerOnly);
         }
-        catch (InvalidDataException)
+        catch (GptException)
         {
             return null;
         }
@@ -311,27 +311,27 @@ internal static class GptFileLayoutDetector
         ulong expectedHeaderOffset = checked(header.CurrentLba * (ulong)sectorSize);
         if (expectedHeaderOffset > long.MaxValue ||
             checked((long)expectedHeaderOffset) != candidate.Offset)
-            throw new InvalidDataException(Strings.HeaderLbaCannotBeMapped);
+            throw new GptException(Strings.HeaderLbaCannotBeMapped);
 
         ulong entriesOffsetValue = checked(header.PartitionEntryLba * (ulong)sectorSize);
         if (entriesOffsetValue > long.MaxValue)
-            throw new InvalidDataException(Strings.EntryOffsetExceedsSupportedSize);
+            throw new GptException(Strings.EntryOffsetExceedsSupportedSize);
         long entriesOffset = checked((long)entriesOffsetValue);
         long capacityBytes = copy == GptHeaderCopy.Backup
             ? checked(candidate.Offset - entriesOffset)
             : ResolvePrimaryCapacity(sourceLength, sectorSize, entriesOffset, header);
         if (entriesOffset < 0 || capacityBytes < 0 || entriesOffset > sourceLength ||
             capacityBytes > sourceLength - entriesOffset)
-            throw new InvalidDataException(Strings.EntryCapacityNegative);
+            throw new GptException(Strings.EntryCapacityNegative);
 
         int declaredBytes = GptFormatValidator.GetEntryArrayLength(header);
         if (declaredBytes > capacityBytes)
-            throw new InvalidDataException(Strings.ImageMissingDeclaredEntryArray);
+            throw new GptException(Strings.ImageMissingDeclaredEntryArray);
         int availableEntryCount = checked((int)(
             (ulong)capacityBytes / header.PartitionEntrySize));
         if (availableEntryCount < header.PartitionEntryCount ||
             availableEntryCount > GptFormatValidator.MaximumEntryCount)
-            throw new InvalidDataException(Strings.PhysicalEntryCapacityInvalid);
+            throw new GptException(Strings.PhysicalEntryCapacityInvalid);
 
         byte[] headerBytes = ReadBytes(stream, candidate.Offset, sectorSize);
         bool headerCrcValid = GptFormatValidator.IsHeaderCrcValid(headerBytes, header);
@@ -384,7 +384,7 @@ internal static class GptFileLayoutDetector
             GptFormatValidator.ValidateHeaderStructure(header, sectorSize);
             return new FileHeaderCandidate(offset, header);
         }
-        catch (InvalidDataException)
+        catch (GptException)
         {
             return null;
         }
@@ -509,7 +509,7 @@ internal static class GptFileLayoutDetector
                         !MapsToPhysicalOffset(candidate, sectorSize))
                         return true;
                 }
-                catch (InvalidDataException)
+                catch (GptException)
                 {
                 }
                 catch (OverflowException)

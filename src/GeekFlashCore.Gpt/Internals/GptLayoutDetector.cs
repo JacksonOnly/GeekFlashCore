@@ -11,11 +11,11 @@ internal static class GptLayoutDetector
         bool headerOnly = false)
     {
         if (image.Length < GptCodec.MinimumHeaderSize)
-            throw new InvalidDataException(Strings.ImageTooSmallForHeader);
+            throw new GptException(Strings.ImageTooSmallForHeader);
 
         List<HeaderCandidate> candidates = FindCandidates(image);
         if (candidates.Count == 0)
-            throw new InvalidDataException(Strings.SignatureNotFound);
+            throw new GptException(Strings.SignatureNotFound);
 
         bool isSgdisk = IsSgdiskLayout(candidates);
         int resolvedSectorSize = sectorSize is int explicitSize
@@ -45,7 +45,7 @@ internal static class GptLayoutDetector
             isSgdisk,
             headerOnly);
         if (main is null && backup is null)
-            throw new InvalidDataException(Strings.LayoutHasNoHeader);
+            throw new GptException(Strings.LayoutHasNoHeader);
 
         GptImageType imageType = isSgdisk
             ? GptImageType.SgdiskBackup
@@ -102,7 +102,7 @@ internal static class GptLayoutDetector
                     GptFormatValidator.ValidateHeaderStructure(header);
                     candidates.Add(new HeaderCandidate(offset, header));
                 }
-                catch (InvalidDataException)
+                catch (GptException)
                 {
                 }
             }
@@ -134,7 +134,7 @@ internal static class GptLayoutDetector
             if (IsValidSectorSize(inferred)) return inferred;
         }
 
-        throw new InvalidDataException(Strings.SectorSizeCannotBeInferred);
+        throw new GptException(Strings.SectorSizeCannotBeInferred);
     }
 
     private static int InferSgdiskSectorSize(
@@ -170,7 +170,7 @@ internal static class GptLayoutDetector
 
         return matches.Count == 1
             ? matches[0]
-            : throw new InvalidDataException(Strings.SectorSizeCannotBeInferred);
+            : throw new GptException(Strings.SectorSizeCannotBeInferred);
     }
 
     private static HeaderCandidate? SelectMainCandidate(
@@ -207,7 +207,7 @@ internal static class GptLayoutDetector
         {
             return MapHeader(image, sectorSize, candidate, copy, isSgdisk, headerOnly);
         }
-        catch (InvalidDataException)
+        catch (GptException)
         {
             return null;
         }
@@ -229,7 +229,7 @@ internal static class GptLayoutDetector
         int headerStorageSize = isSgdisk ? SgdiskBlockSize : sectorSize;
         GptFormatValidator.ValidateHeaderStructure(header, headerStorageSize);
         if (candidate.Offset > image.Length - headerStorageSize)
-            throw new InvalidDataException(Strings.ImageTooSmallForHeader);
+            throw new GptException(Strings.ImageTooSmallForHeader);
 
         int entriesOffset;
         long capacityBytes;
@@ -253,15 +253,15 @@ internal static class GptLayoutDetector
             {
                 ulong headerFileSector = (ulong)(candidate.Offset / sectorSize);
                 if (header.CurrentLba < headerFileSector)
-                    throw new InvalidDataException(Strings.HeaderLbaCannotBeMapped);
+                    throw new GptException(Strings.HeaderLbaCannotBeMapped);
                 ulong fragmentBaseLba = header.CurrentLba - headerFileSector;
                 if (header.PartitionEntryLba < fragmentBaseLba)
-                    throw new InvalidDataException(Strings.EntryLbaPrecedesFragment);
+                    throw new GptException(Strings.EntryLbaPrecedesFragment);
 
                 ulong entryFileSector = header.PartitionEntryLba - fragmentBaseLba;
                 ulong entriesOffset64 = checked(entryFileSector * (ulong)sectorSize);
                 if (entriesOffset64 > int.MaxValue)
-                    throw new InvalidDataException(Strings.EntryOffsetExceedsSupportedSize);
+                    throw new GptException(Strings.EntryOffsetExceedsSupportedSize);
                 entriesOffset = (int)entriesOffset64;
 
                 if (copy == GptHeaderCopy.Backup)
@@ -284,14 +284,14 @@ internal static class GptLayoutDetector
 
         if (entriesOffset < 0 || capacityBytes < 0 ||
             entriesOffset > image.Length || capacityBytes > image.Length - entriesOffset)
-            throw new InvalidDataException(Strings.EntryCapacityNegative);
+            throw new GptException(Strings.EntryCapacityNegative);
         int declaredBytes = GptFormatValidator.GetEntryArrayLength(header);
         if (declaredBytes > capacityBytes)
-            throw new InvalidDataException(Strings.ImageMissingDeclaredEntryArray);
+            throw new GptException(Strings.ImageMissingDeclaredEntryArray);
         int availableEntryCount = checked((int)((ulong)capacityBytes / header.PartitionEntrySize));
         if (availableEntryCount < header.PartitionEntryCount ||
             availableEntryCount > GptFormatValidator.MaximumEntryCount)
-            throw new InvalidDataException(Strings.PhysicalEntryCapacityInvalid);
+            throw new GptException(Strings.PhysicalEntryCapacityInvalid);
 
         byte[] headerBytes = image.Slice(candidate.Offset, headerStorageSize).ToArray();
         bool headerCrcValid = GptFormatValidator.IsHeaderCrcValid(headerBytes, header);

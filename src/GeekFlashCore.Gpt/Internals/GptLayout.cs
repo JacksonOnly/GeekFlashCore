@@ -30,7 +30,7 @@ internal sealed record GptLayout(
     public GptHeaderLayout ActiveHeader =>
         SelectUsable(MainHeader, BackupHeader) ??
         MainHeader ?? BackupHeader ??
-        throw new InvalidOperationException(Strings.LayoutHasNoHeader);
+        throw new GptException(Strings.LayoutHasNoHeader);
 
     public GptRedundancyStatus RedundancyStatus
     {

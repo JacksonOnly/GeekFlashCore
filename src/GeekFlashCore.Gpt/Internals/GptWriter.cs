@@ -23,7 +23,7 @@ internal static class GptWriter
         {
             if (snapshot.Layout.ContainerType != GptContainerType.FullDisk ||
                 snapshot.Layout.SourceImage is null && snapshot.Layout.SourcePath is null)
-                throw new InvalidOperationException(Strings.PreservedFullDiskRequired);
+                throw new GptException(Strings.PreservedFullDiskRequired);
             if (snapshot.Layout.SourceLength > int.MaxValue)
                 throw new NotSupportedException(Strings.FullDiskTooLargeForArray);
             return checked((int)snapshot.Layout.SourceLength);
@@ -112,7 +112,7 @@ internal static class GptWriter
         ulong capacitySectors = (ulong)(capacityBytes / sectorSize);
         ulong backupLba = ResolveBackupLba(snapshot.Header);
         if (imageType == GptImageType.Both && backupLba <= 1)
-            throw new InvalidOperationException(Strings.BackupExportRequiresGeometry);
+            throw new GptException(Strings.BackupExportRequiresGeometry);
 
         destination.Clear();
         int mainEntriesOffset = 2 * sectorSize;
@@ -154,7 +154,7 @@ internal static class GptWriter
             if (backupLba > 1)
             {
                 if (backupLba <= capacitySectors)
-                    throw new InvalidOperationException(Strings.BackupExportRequiresGeometry);
+                    throw new GptException(Strings.BackupExportRequiresGeometry);
                 backupHeader = snapshot.Header with
                 {
                     CurrentLba = backupLba,
@@ -175,7 +175,7 @@ internal static class GptWriter
             }
             else
             {
-                throw new InvalidOperationException(Strings.BackupExportRequiresGeometry);
+                throw new GptException(Strings.BackupExportRequiresGeometry);
             }
             WriteHeaderSector(
                 destination.Slice(backupHeaderOffset, sectorSize),
@@ -190,14 +190,14 @@ internal static class GptWriter
     {
         ulong backupLba = ResolveBackupLba(snapshot.Header);
         if (backupLba <= 1)
-            throw new InvalidOperationException(Strings.BackupExportRequiresGeometry);
+            throw new GptException(Strings.BackupExportRequiresGeometry);
         int declaredBytes = GptFormatValidator.GetEntryArrayLength(snapshot.Header);
         ulong capacitySectors = GptFormatValidator.GetPhysicalEntryArraySectorCount(
             snapshot.AvailableEntryCount,
             snapshot.Header.PartitionEntrySize,
             snapshot.Layout.SectorSize);
         if (backupLba <= capacitySectors)
-            throw new InvalidOperationException(Strings.BackupExportRequiresGeometry);
+            throw new GptException(Strings.BackupExportRequiresGeometry);
 
         destination.Clear();
         WriteProtectiveMbr(destination[..SgdiskBlockSize]);
@@ -234,7 +234,7 @@ internal static class GptWriter
         GptWriteSnapshot snapshot)
     {
         byte[] source = snapshot.Layout.SourceImage ??
-            throw new InvalidOperationException(Strings.FullDiskBytesMissing);
+            throw new GptException(Strings.FullDiskBytesMissing);
         source.CopyTo(destination);
         foreach (GptWriteRegion region in CreateFullDiskWriteRegions(snapshot))
             region.Bytes.Span.CopyTo(destination.Slice(
@@ -247,14 +247,14 @@ internal static class GptWriter
     {
         if (snapshot.Layout.ContainerType != GptContainerType.FullDisk ||
             snapshot.Layout.SourceImage is null && snapshot.Layout.SourcePath is null)
-            throw new InvalidOperationException(Strings.PreservedFullDiskRequired);
+            throw new GptException(Strings.PreservedFullDiskRequired);
 
         var regions = new List<GptWriteRegion>(5);
         ulong backupLba = ResolveBackupLba(snapshot.Header);
         ulong diskSectorCount = (ulong)snapshot.Layout.SourceLength /
                                 (ulong)snapshot.Layout.SectorSize;
         if (backupLba > 1 && backupLba + 1 > diskSectorCount)
-            throw new InvalidOperationException(Strings.GeometryContainerMismatch);
+            throw new GptException(Strings.GeometryContainerMismatch);
         var updatedMbr = new byte[snapshot.Layout.SectorSize];
         WriteProtectiveMbr(updatedMbr);
         regions.Add(new GptWriteRegion(0, updatedMbr));
@@ -267,7 +267,7 @@ internal static class GptWriter
             if (primary.HeaderOffset / snapshot.Layout.SectorSize != 1 ||
                 primary.EntriesOffset / snapshot.Layout.SectorSize !=
                 checked((long)primary.Header.PartitionEntryLba))
-                throw new InvalidOperationException(Strings.GeometryContainerMismatch);
+                throw new GptException(Strings.GeometryContainerMismatch);
             var entries = GC.AllocateUninitializedArray<byte>(primary.CapacityBytes);
             WriteEntryStorage(entries, snapshot);
             regions.Add(new GptWriteRegion(primary.EntriesOffset, entries));
@@ -287,11 +287,11 @@ internal static class GptWriter
         if (snapshot.Layout.BackupHeader is GptHeaderLayout backup)
         {
             if (backupLba <= 1)
-                throw new InvalidOperationException(Strings.UnpatchedBackupInFullDisk);
+                throw new GptException(Strings.UnpatchedBackupInFullDisk);
             if ((ulong)(backup.HeaderOffset / snapshot.Layout.SectorSize) != backupLba ||
                 (ulong)(backup.EntriesOffset / snapshot.Layout.SectorSize) !=
                 backup.Header.PartitionEntryLba)
-                throw new InvalidOperationException(Strings.GeometryContainerMismatch);
+                throw new GptException(Strings.GeometryContainerMismatch);
             var entries = GC.AllocateUninitializedArray<byte>(backup.CapacityBytes);
             WriteEntryStorage(entries, snapshot);
             regions.Add(new GptWriteRegion(backup.EntriesOffset, entries));
@@ -334,7 +334,7 @@ internal static class GptWriter
         {
             if (region.Offset < previousEnd || region.Offset < 0 ||
                 region.Offset > sourceLength - region.Bytes.Length)
-                throw new InvalidOperationException(Strings.GeometryContainerMismatch);
+                throw new GptException(Strings.GeometryContainerMismatch);
             previousEnd = checked(region.Offset + region.Bytes.Length);
         }
     }
@@ -342,7 +342,7 @@ internal static class GptWriter
     private static FileStream OpenFullDiskSource(GptLayout layout)
     {
         string path = layout.SourcePath ??
-            throw new InvalidOperationException(Strings.FullDiskBytesMissing);
+            throw new GptException(Strings.FullDiskBytesMissing);
         var source = new FileStream(
             path,
             FileMode.Open,
@@ -355,12 +355,12 @@ internal static class GptWriter
             File.GetLastWriteTimeUtc(path) != expectedWriteTime)
         {
             source.Dispose();
-            throw new InvalidOperationException(Strings.FullDiskSourceChanged);
+            throw new GptException(Strings.FullDiskSourceChanged);
         }
         if (!SourceSnapshotMatches(source, layout))
         {
             source.Dispose();
-            throw new InvalidOperationException(Strings.FullDiskSourceChanged);
+            throw new GptException(Strings.FullDiskSourceChanged);
         }
         source.Seek(0, SeekOrigin.Begin);
         return source;
@@ -419,7 +419,7 @@ internal static class GptWriter
     {
         int declaredBytes = GptFormatValidator.GetEntryArrayLength(snapshot.Header);
         if (destination.Length < declaredBytes || snapshot.EntryStorage.Length < declaredBytes)
-            throw new InvalidOperationException(Strings.EntrySlotExceedsOutputCapacity);
+            throw new GptException(Strings.EntrySlotExceedsOutputCapacity);
         int copyLength = Math.Min(destination.Length, snapshot.EntryStorage.Length);
         snapshot.EntryStorage.AsSpan(0, copyLength).CopyTo(destination);
         if (copyLength < destination.Length) destination[copyLength..].Clear();
@@ -441,7 +441,7 @@ internal static class GptWriter
         GptCodec.WriteHeader(sector, withoutCrc);
         int headerSize = checked((int)header.HeaderSize);
         if (headerSize > sector.Length)
-            throw new InvalidDataException(Strings.HeaderExceedsSectorSize);
+            throw new GptException(Strings.HeaderExceedsSectorSize);
         uint crc = Crc32Helper.Compute(sector[..headerSize]);
         GptCodec.WriteHeader(sector, withoutCrc with { HeaderCrc32 = crc });
     }

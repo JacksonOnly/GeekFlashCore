@@ -20,9 +20,9 @@ internal static class GptCodec
     public static GptHeader ReadHeader(ReadOnlySpan<byte> source)
     {
         if (source.Length < MinimumHeaderSize)
-            throw new InvalidDataException(Strings.HeaderRequiresMinimumBytes);
+            throw new GptException(Strings.HeaderRequiresMinimumBytes);
         if (!source.StartsWith(Signature))
-            throw new InvalidDataException(Strings.SignatureNotFound);
+            throw new GptException(Strings.SignatureNotFound);
 
         return new GptHeader(
             BinaryPrimitives.ReadUInt32LittleEndian(source[8..12]),

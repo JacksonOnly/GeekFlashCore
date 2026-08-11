@@ -18,6 +18,8 @@
     <Project Path="src/GeekFlashCore.FileSystem.Erofs/GeekFlashCore.FileSystem.Erofs.csproj" />
     <Project Path="src/GeekFlashCore.FileSystem.Ext/GeekFlashCore.FileSystem.Ext.csproj" />
   </Folder>
-  <Folder Name="/Transport/" />
+  <Folder Name="/Transport/">
+    <Project Path="src/GeekFlashCore.Transport.SerialPort/GeekFlashCore.Transport.SerialPort.csproj" />
+  </Folder>
   <Project Path="src/GeekFlashCore.Shared/GeekFlashCore.Shared.csproj" />
 </Solution>

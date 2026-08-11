@@ -29,7 +29,7 @@ internal static class SparseImagePlanSplitter
                 case SparseChunkType.DontCare:
                     break;
                 default:
-                    throw new InvalidDataException(Strings.UnsupportedChunkType);
+                    throw new SparseException(Strings.UnsupportedChunkType);
             }
         }
 
@@ -195,7 +195,7 @@ internal static class SparseImagePlanSplitter
         private void AddPlan()
         {
             if (_chunks.Count > ushort.MaxValue)
-                throw new InvalidDataException(Strings.ChunkLimitExceeded);
+                throw new SparseException(Strings.ChunkLimitExceeded);
             _parts.Add(new SparseImageWritePlan(
                 sourcePlan.SourceLength,
                 sourcePlan.RawLength,

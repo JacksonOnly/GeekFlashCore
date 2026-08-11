@@ -57,7 +57,7 @@ public sealed class SparseExpandedBlockDevice : IReadableBlockDevice
                     break;
 
                 default:
-                    throw new InvalidDataException(Strings.NonDataChunkMapped);
+                    throw new SparseException(Strings.NonDataChunkMapped);
             }
 
             written += partLength;
@@ -96,7 +96,7 @@ public sealed class SparseExpandedBlockDevice : IReadableBlockDevice
             }
         }
 
-        throw new InvalidDataException(Strings.ChunkIndexDoesNotCoverOffset);
+        throw new SparseException(Strings.ChunkIndexDoesNotCoverOffset);
     }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);

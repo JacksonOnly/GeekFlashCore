@@ -118,7 +118,7 @@ public sealed class SparseDocument : IDisposable
                         part.Clear();
                         break;
                     default:
-                        throw new InvalidDataException(Strings.NonDataChunkMapped);
+                        throw new SparseException(Strings.NonDataChunkMapped);
                 }
 
                 checksum = Crc32Helper.Append(checksum, part);
@@ -212,7 +212,7 @@ public sealed class SparseDocument : IDisposable
         if (_disposed) throw new ObjectDisposedException(nameof(SparseDocument));
     }
 
-    private InvalidDataException ChecksumMismatch(
+    private SparseException ChecksumMismatch(
         int chunkIndex,
         long payloadOffset,
         uint expected,
@@ -227,7 +227,7 @@ public sealed class SparseDocument : IDisposable
         );
 
 
-    private InvalidDataException ImageChecksumMismatch(uint expected, uint actual) =>
+    private SparseException ImageChecksumMismatch(uint expected, uint actual) =>
         new(
             $"{Strings.FormatImageChecksumMismatch(
                 expected.ToString("X8", CultureInfo.InvariantCulture),

@@ -20,11 +20,11 @@ internal static class SparseImagePlanner
     {
         long sourceLength = source.Length;
         if (sourceLength <= 0)
-            throw new InvalidDataException(Strings.EmptyImage);
+            throw new SparseException(Strings.EmptyImage);
 
         ulong totalBlocks64 = checked(((ulong)sourceLength + (uint)options.BlockSize - 1) / (uint)options.BlockSize);
         if (totalBlocks64 > uint.MaxValue)
-            throw new InvalidDataException(Strings.ValuesExceedSupportedLimits);
+            throw new SparseException(Strings.ValuesExceedSupportedLimits);
 
         uint totalBlocks = (uint)totalBlocks64;
         long expandedLength = checked((long)totalBlocks * options.BlockSize);
@@ -258,7 +258,7 @@ internal static class SparseImagePlanner
                     SparseChunkType.Raw => checked((long)chunk.BlockCount * options.BlockSize),
                     SparseChunkType.Fill => sizeof(uint),
                     SparseChunkType.DontCare => 0,
-                    _ => throw new InvalidDataException(Strings.UnsupportedChunkType)
+                    _ => throw new SparseException(Strings.UnsupportedChunkType)
                 };
                 encodedLength = checked(encodedLength + SparseConstant.ChunkLength + payload);
             }
@@ -281,7 +281,7 @@ internal static class SparseImagePlanner
         {
             int maximum = options.MaxChunkCount - (options.IncludeCrc32Chunk ? 1 : 0);
             if (_chunks.Count >= maximum)
-                throw new InvalidDataException(Strings.ChunkLimitExceeded);
+                throw new SparseException(Strings.ChunkLimitExceeded);
         }
     }
 }

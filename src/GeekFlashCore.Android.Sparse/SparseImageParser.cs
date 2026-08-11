@@ -41,11 +41,11 @@ public static class SparseImageParser
         }
         catch (EndOfStreamException exception)
         {
-            throw new InvalidDataException(Strings.ImageTruncated, exception);
+            throw new SparseException(Strings.ImageTruncated, exception);
         }
         catch (OverflowException exception)
         {
-            throw new InvalidDataException(Strings.ValuesExceedSupportedLimits, exception);
+            throw new SparseException(Strings.ValuesExceedSupportedLimits, exception);
         }
         finally
         {
@@ -69,17 +69,17 @@ public static class SparseImageParser
         uint imageChecksum = BinaryPrimitives.ReadUInt32LittleEndian(bytes[24..]);
 
         if (magic != SparseConstant.HeaderMagic)
-            throw new InvalidDataException(Strings.StreamInvalidMagic);
+            throw new SparseException(Strings.StreamInvalidMagic);
         if (majorVersion != SparseConstant.HeaderMajorVer)
-            throw new InvalidDataException(Strings.FormatUnsupportedLegacyVersion(majorVersion));
+            throw new SparseException(Strings.FormatUnsupportedLegacyVersion(majorVersion));
         if (fileHeaderSize < SparseConstant.HeaderLength || chunkHeaderSize < SparseConstant.ChunkLength)
-            throw new InvalidDataException(Strings.LegacyInvalidHeaderSize);
+            throw new SparseException(Strings.LegacyInvalidHeaderSize);
         if (blockSize == 0 || (blockSize & 3) != 0)
-            throw new InvalidDataException(Strings.LegacyInvalidBlockSize);
+            throw new SparseException(Strings.LegacyInvalidBlockSize);
 
         Skip(source, fileHeaderSize - SparseConstant.HeaderLength);
         if (totalChunks > (ulong)(source.Length - source.Position) / chunkHeaderSize)
-            throw new InvalidDataException(Strings.LegacyChunkHeadersMissing);
+            throw new SparseException(Strings.LegacyChunkHeadersMissing);
 
         var header = new SparseHeader(
             majorVersion,
@@ -170,7 +170,7 @@ public static class SparseImageParser
 
         FlushRawRegion(regions, rawChunks, rawStartBlock, ref rawLength);
         if (currentBlock != totalBlocks)
-            throw new InvalidDataException(
+            throw new SparseException(
                 Strings.FormatBlockCountMismatch(totalBlocks, currentBlock));
 
         return new SparseImage(header, regions);
@@ -211,6 +211,6 @@ public static class SparseImageParser
         return true;
     }
 
-    private static InvalidDataException InvalidChunk(uint index, string reason) =>
+    private static SparseException InvalidChunk(uint index, string reason) =>
         new(Strings.FormatInvalidChunk(index, reason));
 }

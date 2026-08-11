@@ -49,7 +49,7 @@ internal static class SparseImageEncoder
                     case SparseChunkType.DontCare:
                         break;
                     default:
-                        throw new InvalidDataException(Strings.UnsupportedChunkType);
+                        throw new SparseException(Strings.UnsupportedChunkType);
                 }
 
                 completed = checked(completed + (long)chunk.BlockCount * plan.BlockSize);
@@ -125,7 +125,7 @@ internal static class SparseImageEncoder
                 case SparseChunkType.DontCare:
                     break;
                 default:
-                    throw new InvalidDataException(Strings.UnsupportedChunkType);
+                    throw new SparseException(Strings.UnsupportedChunkType);
             }
 
             completed = checked(completed + (long)chunk.BlockCount * plan.BlockSize);
@@ -253,7 +253,7 @@ internal static class SparseImageEncoder
             SparseChunkType.Raw => checked((uint)((long)chunk.BlockCount * blockSize)),
             SparseChunkType.Fill => sizeof(uint),
             SparseChunkType.DontCare => 0,
-            _ => throw new InvalidDataException(Strings.UnsupportedChunkType)
+            _ => throw new SparseException(Strings.UnsupportedChunkType)
         };
         WriteChunkHeader(
             destination,

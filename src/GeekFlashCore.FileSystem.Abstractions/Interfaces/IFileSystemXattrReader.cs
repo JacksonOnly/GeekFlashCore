@@ -1,4 +1,4 @@
-﻿namespace GeekFlashCore.FileSystem.Abstractions.Interfaces;
+﻿namespace GeekFlashCore.FileSystem.Abstractions;
 
 public interface IFileSystemXattrReader : IDisposable
 {

@@ -1,6 +1,5 @@
 ﻿using System.Buffers.Binary;
 using GeekFlashCore.FileSystem.Abstractions;
-using GeekFlashCore.FileSystem.Abstractions.Interfaces;
 using GeekFlashCore.FileSystem.Ext.Constants;
 using GeekFlashCore.FileSystem.Ext.Internals;
 using GeekFlashCore.FileSystem.Ext.Models;

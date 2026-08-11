@@ -1,6 +1,6 @@
 ﻿using GeekFlashCore.IO.BlockDevice.Abstractions;
 
-namespace GeekFlashCore.FileSystem.Abstractions.Interfaces;
+namespace GeekFlashCore.FileSystem.Abstractions;
 
 public interface IFileSystemDriver
 {

@@ -7,9 +7,14 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="SharpCompress" Version="0.50.4" />
+      <PackageReference Include="ZstdSharp.Port" Version="0.8.8" />
+    </ItemGroup>
+
+    <ItemGroup>
       <ProjectReference Include="..\GeekFlashCore.FileSystem.Abstractions\GeekFlashCore.FileSystem.Abstractions.csproj" />
       <ProjectReference Include="..\GeekFlashCore.IO.BlockDevice\GeekFlashCore.IO.BlockDevice.csproj" />
       <ProjectReference Include="..\GeekFlashCore.Shared\GeekFlashCore.Shared.csproj" />
     </ItemGroup>
-
+    
 </Project>

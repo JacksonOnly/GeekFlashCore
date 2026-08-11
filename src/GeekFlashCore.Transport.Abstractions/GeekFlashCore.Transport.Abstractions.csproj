@@ -10,8 +10,4 @@
       <ProjectReference Include="..\GeekFlashCore.Abstractions\GeekFlashCore.Abstractions.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Interfaces\" />
-    </ItemGroup>
-
 </Project>

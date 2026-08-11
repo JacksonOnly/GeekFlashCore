@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="InvalidFormat" xml:space="preserve"><value>The input is not a valid Ext filesystem.</value></data>
+  <data name="CorruptMetadata" xml:space="preserve"><value>The Ext filesystem metadata is corrupt or inconsistent.</value></data>
+  <data name="ChecksumMismatch" xml:space="preserve"><value>The Ext filesystem checksum does not match.</value></data>
+  <data name="UnsupportedFeature" xml:space="preserve"><value>The Ext filesystem uses a feature unsupported by this reader.</value></data>
+  <data name="ResourceLimitExceeded" xml:space="preserve"><value>The Ext filesystem data exceeds a configured resource limit.</value></data>
+  <data name="EncryptionKeyRequired" xml:space="preserve"><value>The Ext filesystem data is encrypted and requires a decryption key.</value></data>
+  <data name="IoFailure" xml:space="preserve"><value>An I/O error occurred while reading the Ext filesystem.</value></data>
+  <data name="DirectoryCursorNoCurrent" xml:space="preserve"><value>The directory cursor has no current entry.</value></data>
+  <data name="XattrCursorNoCurrent" xml:space="preserve"><value>The xattr cursor has no current entry.</value></data>
+  <data name="NodeNotDirectory" xml:space="preserve"><value>The specified node is not a directory.</value></data>
+  <data name="NodeNotRegularFile" xml:space="preserve"><value>The specified node is not a regular file.</value></data>
+  <data name="NodeNotSymbolicLink" xml:space="preserve"><value>The specified node is not a symbolic link.</value></data>
+  <data name="PositionOutsideFile" xml:space="preserve"><value>The position is outside the Ext file.</value></data>
+  <data name="PositionOutsideValue" xml:space="preserve"><value>The position is outside the value stream.</value></data>
+  <data name="DestinationTooSmall" xml:space="preserve"><value>The destination buffer is too small.</value></data>
+  <data name="SuperblockBufferTooSmall" xml:space="preserve"><value>The Ext superblock buffer is too small.</value></data>
+  <data name="ReadOnlyStream" xml:space="preserve"><value>This Ext stream is read-only and cannot be written or resized.</value></data>
+</root>

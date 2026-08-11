@@ -1,22 +1,5 @@
 namespace GeekFlashCore.Gpt.Abstractions;
 
-public enum GptHeaderCopy
-{
-    None,
-    Primary,
-    Backup
-}
-
-public sealed record GptCopyStatus(
-    bool Present,
-    bool HeaderCrcValid,
-    bool? PartitionEntryArrayValid,
-    string? Error = null)
-{
-    public bool IsUsable =>
-        Present && HeaderCrcValid && PartitionEntryArrayValid is not false && Error is null;
-}
-
 public sealed record GptRedundancyStatus(
     GptCopyStatus Primary,
     GptCopyStatus Backup,

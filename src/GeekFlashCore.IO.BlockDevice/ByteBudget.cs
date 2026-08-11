@@ -124,7 +124,7 @@ public sealed class ByteBudget
             if (_inUse < 0)
             {
                 _inUse += byteCount;
-                throw new InvalidOperationException(Strings.ByteBudgetReleasedMultipleTimes);
+                throw new BlockDeviceException(Strings.ByteBudgetReleasedMultipleTimes);
             }
 
             DrainWaiters(ref cancelled, ref granted);

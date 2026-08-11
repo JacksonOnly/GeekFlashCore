@@ -149,13 +149,13 @@ public sealed class BlockDeviceStream : Stream
     private void ValidateWriteLength(int length)
     {
         if (_position > _device.Length - length)
-            throw new IOException(Strings.WriteExceedsBlockDeviceBoundary);
+            throw new BlockDeviceException(Strings.WriteExceedsBlockDeviceBoundary);
     }
 
     private void ValidatePosition(long value)
     {
         if (value < 0 || value > _device.Length)
-            throw new IOException(Strings.PositionOutsideBlockDeviceBoundary);
+            throw new BlockDeviceException(Strings.PositionOutsideBlockDeviceBoundary);
     }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);

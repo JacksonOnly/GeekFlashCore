@@ -33,7 +33,7 @@ public static class BlockDeviceIO
 
         if ((uint)read > (uint)requestedLength)
         {
-            throw new IOException(Strings.InvalidBlockDeviceReadLength);
+            throw new BlockDeviceException(Strings.InvalidBlockDeviceReadLength);
         }
 
         return read;
@@ -54,7 +54,7 @@ public static class BlockDeviceIO
 
         if (offset > device.Length - destination.Length)
         {
-            throw new EndOfStreamException(Strings.RequestedRangeExceedsBlockDevice);
+            throw new BlockDeviceException(Strings.RequestedRangeExceedsBlockDevice);
         }
 
         int written = 0;
@@ -68,7 +68,7 @@ public static class BlockDeviceIO
 
             if (read == 0)
             {
-                throw new EndOfStreamException(Strings.BlockDeviceMadeNoProgress);
+                throw new BlockDeviceException(Strings.BlockDeviceMadeNoProgress);
             }
 
             written += read;

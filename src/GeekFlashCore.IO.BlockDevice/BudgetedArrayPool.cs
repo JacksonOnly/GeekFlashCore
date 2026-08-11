@@ -209,14 +209,14 @@ public sealed class BudgetedArrayPool
     private byte[] RentAndValidate(int minimumLength)
     {
         byte[] rented = _pool.Rent(minimumLength) ??
-            throw new InvalidOperationException(Strings.ArrayPoolReturnedNull);
+            throw new BlockDeviceException(Strings.ArrayPoolReturnedNull);
         if (rented.Length >= minimumLength)
         {
             return rented;
         }
 
         _pool.Return(rented);
-        throw new InvalidOperationException(Strings.ArrayPoolBufferTooSmall);
+        throw new BlockDeviceException(Strings.ArrayPoolBufferTooSmall);
     }
 
     private static void ValidateMinimumLength(int minimumLength) =>

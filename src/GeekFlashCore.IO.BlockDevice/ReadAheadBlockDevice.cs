@@ -69,7 +69,7 @@ public sealed class ReadAheadBlockDevice : IReadableBlockDevice
                 int partLength = Math.Min(totalLength - copied, _windowLength - windowIndex);
                 if (partLength <= 0)
                 {
-                    throw new EndOfStreamException(Strings.ReadAheadMadeNoProgress);
+                    throw new BlockDeviceException(Strings.ReadAheadMadeNoProgress);
                 }
 
                 window.AsSpan(windowIndex, partLength).CopyTo(destination[copied..]);

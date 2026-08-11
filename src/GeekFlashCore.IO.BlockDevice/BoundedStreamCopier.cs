@@ -82,12 +82,12 @@ public static class BoundedStreamCopier
                 .ConfigureAwait(false);
             if ((uint)read > (uint)requested)
             {
-                throw new IOException(Strings.SourceInvalidReadLength);
+                throw new BlockDeviceException(Strings.SourceInvalidReadLength);
             }
 
             if (read == 0)
             {
-                throw new EndOfStreamException(Strings.SourceEndedEarly);
+                throw new BlockDeviceException(Strings.SourceEndedEarly);
             }
 
             await destination

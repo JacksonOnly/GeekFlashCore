@@ -5,7 +5,7 @@ namespace GeekFlashCore.FileSystem.Ext.Constants;
 internal static class ExtFormat
 {
     public const string FormatId = "ext";
-    public const string ResourceKey = "FileSystems.Ext";
+    public const string ResourceKey = "FileSystem.Ext";
     public const ushort Magic = 0xEF53;
     public const int SuperblockOffset = 1024;
     public const int SuperblockSize = 1024;

@@ -12,7 +12,8 @@
   <Folder Name="/Disk/">
     <Project Path="src/GeekFlashCore.Gpt/GeekFlashCore.Gpt.csproj" />
   </Folder>
-  <Folder Name="/FileSystem/" >
+  <Folder Name="/FileSystem/">
+    <Project Path="src/GeekFlashCore.FileSystem.Erofs/GeekFlashCore.FileSystem.Erofs.csproj" />
     <Project Path="src/GeekFlashCore.FileSystem.Ext/GeekFlashCore.FileSystem.Ext.csproj" />
   </Folder>
   <Folder Name="/IO/">

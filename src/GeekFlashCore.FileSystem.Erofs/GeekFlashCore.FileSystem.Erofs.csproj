@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\GeekFlashCore.FileSystem.Abstractions\GeekFlashCore.FileSystem.Abstractions.csproj" />
+      <ProjectReference Include="..\GeekFlashCore.IO.BlockDevice\GeekFlashCore.IO.BlockDevice.csproj" />
+      <ProjectReference Include="..\GeekFlashCore.Shared\GeekFlashCore.Shared.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -4,8 +4,8 @@ using System.Runtime.InteropServices;
 using GeekFlashCore.Android.Sparse.Constants;
 using GeekFlashCore.Android.Sparse.Models;
 using GeekFlashCore.Android.Sparse.Types;
-using GeekFlashCore.IO.BlockDevice;
-using GeekFlashCore.IO.BlockDevice.Abstractions;
+using GeekFlashCore.BlockDevice;
+using GeekFlashCore.BlockDevice.Abstractions;
 using GeekFlashCore.Shared.Utilities;
 
 namespace GeekFlashCore.Android.Sparse.Internals;

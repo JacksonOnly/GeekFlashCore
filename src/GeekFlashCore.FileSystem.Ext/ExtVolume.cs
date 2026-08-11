@@ -4,8 +4,8 @@ using GeekFlashCore.FileSystem.Abstractions;
 using GeekFlashCore.FileSystem.Ext.Constants;
 using GeekFlashCore.FileSystem.Ext.Models;
 using GeekFlashCore.FileSystem.Ext.Types;
-using GeekFlashCore.IO.BlockDevice;
-using GeekFlashCore.IO.BlockDevice.Abstractions;
+using GeekFlashCore.BlockDevice;
+using GeekFlashCore.BlockDevice.Abstractions;
 using GeekFlashCore.Shared.Utilities;
 
 namespace GeekFlashCore.FileSystem.Ext;

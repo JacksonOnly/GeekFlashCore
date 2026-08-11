@@ -3,8 +3,8 @@ using GeekFlashCore.FileSystem.Abstractions;
 using GeekFlashCore.FileSystem.Erofs.Constants;
 using GeekFlashCore.FileSystem.Erofs.Internals;
 using GeekFlashCore.FileSystem.Erofs.Models;
-using GeekFlashCore.IO.BlockDevice;
-using GeekFlashCore.IO.BlockDevice.Abstractions;
+using GeekFlashCore.BlockDevice;
+using GeekFlashCore.BlockDevice.Abstractions;
 
 namespace GeekFlashCore.FileSystem.Erofs;
 

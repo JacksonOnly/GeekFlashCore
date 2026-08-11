@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/Abstractions/">
     <Project Path="src/GeekFlashCore.Abstractions/GeekFlashCore.Abstractions.csproj" />
+    <Project Path="src/GeekFlashCore.BlockDevice.Abstractions/GeekFlashCore.BlockDevice.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.FileSystem.Abstractions/GeekFlashCore.FileSystem.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.Gpt.Abstractions/GeekFlashCore.Gpt.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.IO.BlockDevice.Abstractions/GeekFlashCore.IO.BlockDevice.Abstractions.csproj" />
@@ -13,6 +14,7 @@
     <Project Path="src/GeekFlashCore.Gpt/GeekFlashCore.Gpt.csproj" />
   </Folder>
   <Folder Name="/FileSystem/">
+    <Project Path="src/GeekFlashCore.BlockDevice/GeekFlashCore.BlockDevice.csproj" />
     <Project Path="src/GeekFlashCore.FileSystem.Erofs/GeekFlashCore.FileSystem.Erofs.csproj" />
     <Project Path="src/GeekFlashCore.FileSystem.Ext/GeekFlashCore.FileSystem.Ext.csproj" />
   </Folder>

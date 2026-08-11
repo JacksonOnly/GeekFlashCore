@@ -3,8 +3,8 @@ using System.Text;
 using GeekFlashCore.FileSystem.Ext.Constants;
 using GeekFlashCore.FileSystem.Ext.Models;
 using GeekFlashCore.FileSystem.Ext.Types;
-using GeekFlashCore.IO.BlockDevice;
-using GeekFlashCore.IO.BlockDevice.Abstractions;
+using GeekFlashCore.BlockDevice;
+using GeekFlashCore.BlockDevice.Abstractions;
 
 namespace GeekFlashCore.FileSystem.Ext.Internals;
 

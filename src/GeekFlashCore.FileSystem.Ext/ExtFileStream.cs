@@ -2,7 +2,7 @@
 using GeekFlashCore.FileSystem.Ext.Constants;
 using GeekFlashCore.FileSystem.Ext.Models;
 using GeekFlashCore.FileSystem.Ext.Types;
-using GeekFlashCore.IO.BlockDevice;
+using GeekFlashCore.BlockDevice;
 
 namespace GeekFlashCore.FileSystem.Ext;
 

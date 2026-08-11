@@ -7,8 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\GeekFlashCore.Abstractions\GeekFlashCore.Abstractions.csproj" />
       <ProjectReference Include="..\GeekFlashCore.BlockDevice.Abstractions\GeekFlashCore.BlockDevice.Abstractions.csproj" />
     </ItemGroup>
-
+    
 </Project>

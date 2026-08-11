@@ -2,7 +2,7 @@
 using GeekFlashCore.FileSystem.Erofs.Internals;
 using GeekFlashCore.FileSystem.Erofs.Models;
 using GeekFlashCore.FileSystem.Erofs.Types;
-using GeekFlashCore.IO.BlockDevice;
+using GeekFlashCore.BlockDevice;
 
 namespace GeekFlashCore.FileSystem.Erofs;
 

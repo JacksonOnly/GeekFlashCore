@@ -2,8 +2,8 @@
 using GeekFlashCore.Android.Sparse.Constants;
 using GeekFlashCore.Android.Sparse.Internals;
 using GeekFlashCore.Android.Sparse.Models;
-using GeekFlashCore.IO.BlockDevice;
-using GeekFlashCore.IO.BlockDevice.Abstractions;
+using GeekFlashCore.BlockDevice;
+using GeekFlashCore.BlockDevice.Abstractions;
 
 namespace GeekFlashCore.Android.Sparse;
 

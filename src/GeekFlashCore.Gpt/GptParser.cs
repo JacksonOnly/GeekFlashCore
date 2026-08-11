@@ -1,7 +1,7 @@
 ﻿using System.Buffers;
 using System.Text;
 using GeekFlashCore.Gpt.Internals;
-using GeekFlashCore.IO.BlockDevice;
+using GeekFlashCore.BlockDevice;
 
 namespace GeekFlashCore.Gpt;
 

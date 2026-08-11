@@ -1,5 +1,5 @@
 ﻿using GeekFlashCore.Android.Sparse.Constants;
-using GeekFlashCore.IO.BlockDevice;
+using GeekFlashCore.BlockDevice;
 
 namespace GeekFlashCore.Android.Sparse.Models;
 

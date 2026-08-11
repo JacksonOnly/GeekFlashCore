@@ -1,4 +1,4 @@
-﻿using GeekFlashCore.IO.BlockDevice.Abstractions;
+﻿using GeekFlashCore.BlockDevice.Abstractions;
 
 namespace GeekFlashCore.FileSystem.Abstractions;
 

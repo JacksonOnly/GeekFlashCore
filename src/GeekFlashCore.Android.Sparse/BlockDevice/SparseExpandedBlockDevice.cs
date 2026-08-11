@@ -1,8 +1,8 @@
 ﻿using System.Buffers.Binary;
 using GeekFlashCore.Android.Sparse.Types;
 using GeekFlashCore.Android.Sparse.Internals;
-using GeekFlashCore.IO.BlockDevice;
-using GeekFlashCore.IO.BlockDevice.Abstractions;
+using GeekFlashCore.BlockDevice;
+using GeekFlashCore.BlockDevice.Abstractions;
 
 namespace GeekFlashCore.Android.Sparse.BlockDevice;
 

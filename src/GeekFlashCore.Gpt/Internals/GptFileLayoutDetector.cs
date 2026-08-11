@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using GeekFlashCore.IO.BlockDevice;
-using GeekFlashCore.IO.BlockDevice.Abstractions;
+using GeekFlashCore.BlockDevice;
+using GeekFlashCore.BlockDevice.Abstractions;
 
 namespace GeekFlashCore.Gpt.Internals;
 

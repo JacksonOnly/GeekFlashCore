@@ -1,4 +1,4 @@
-﻿using GeekFlashCore.IO.BlockDevice;
+﻿using GeekFlashCore.BlockDevice;
 
 namespace GeekFlashCore.FileSystem.Erofs.Internals;
 

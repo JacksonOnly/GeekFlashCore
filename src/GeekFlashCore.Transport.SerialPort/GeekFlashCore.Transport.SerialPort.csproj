@@ -7,7 +7,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\GeekFlashCore.Shared\GeekFlashCore.Shared.csproj" />
       <ProjectReference Include="..\GeekFlashCore.Transport.Abstractions\GeekFlashCore.Transport.Abstractions.csproj" />
     </ItemGroup>
 

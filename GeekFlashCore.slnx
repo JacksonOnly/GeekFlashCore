@@ -5,6 +5,7 @@
     <Project Path="src/GeekFlashCore.FileSystem.Abstractions/GeekFlashCore.FileSystem.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.Gpt.Abstractions/GeekFlashCore.Gpt.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.Transport.Abstractions/GeekFlashCore.Transport.Abstractions.csproj" />
+    <Project Path="src/GeekFlashCore.UsbWatcher.Abstractions/GeekFlashCore.UsbWatcher.Abstractions.csproj" />
   </Folder>
   <Folder Name="/Android/">
     <Project Path="src/GeekFlashCore.Android.Lp/GeekFlashCore.Android.Lp.csproj" />
@@ -21,6 +22,9 @@
   <Folder Name="/Transport/">
     <Project Path="src/GeekFlashCore.Transport.LibUsb/GeekFlashCore.Transport.LibUsb.csproj" />
     <Project Path="src/GeekFlashCore.Transport.SerialPort/GeekFlashCore.Transport.SerialPort.csproj" />
+  </Folder>
+  <Folder Name="/Utility/">
+    <Project Path="src/GeekFlashCore.UsbWatcher/GeekFlashCore.UsbWatcher.csproj" />
   </Folder>
   <Project Path="src/GeekFlashCore.Shared/GeekFlashCore.Shared.csproj" />
 </Solution>

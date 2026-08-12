@@ -22,7 +22,7 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
     private UsbEndpointWriter? _writer;
     private bool _disposed;
     private bool _opened;
-    
+
     private readonly UsbContext _context;
     private readonly int _bufferSize;
     private int _claimedInterface;
@@ -85,7 +85,7 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
             {
                 foreach (var usbInterfaceInfo in usbConfigInfo.Interfaces)
                 {
-                    if(usbInterfaceInfo.Number != _claimedInterface)
+                    if (usbInterfaceInfo.Number != _claimedInterface)
                         continue;
                     if (usbInterfaceInfo.Endpoints.Count > 1)
                     {
@@ -222,7 +222,7 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
             Error error = reader.Read(data, 0, out int transferLength);
             if (error == Error.Timeout)
                 return 0;
-            ThrowTransferError(error, "USB available-data read",0);
+            ThrowTransferError(error, "USB available-data read", 0);
             return transferLength;
         }
     }
@@ -407,7 +407,7 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
 
         if (_device.IsOpen)
             _device.Close();
-        
+
         _context.Dispose();
         _opened = false;
     }

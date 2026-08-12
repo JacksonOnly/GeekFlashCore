@@ -14,7 +14,7 @@ public record SectorTarget : StorageTarget
 {
     public long StartSector { get; init; }
     public long SectorCount { get; init; }
-    public long SectorSize { get; init; } = 512; 
+    public long SectorSize { get; init; } = 512;
 }
 
 public record OffsetTarget : StorageTarget

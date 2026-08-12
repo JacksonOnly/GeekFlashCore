@@ -1,6 +1,6 @@
 ﻿namespace GeekFlashCore.Protocol.Abstractions;
 
-public class PartitionInfo(string? name,long? offset,long? address,long? length,IReadOnlyDictionary<string,string>? metadata)
+public class PartitionInfo(string? name, long? offset, long? address, long? length, IReadOnlyDictionary<string, string>? metadata)
 {
     public string? Name { get; set; } = name;
     public long? Offset { get; set; } = offset;

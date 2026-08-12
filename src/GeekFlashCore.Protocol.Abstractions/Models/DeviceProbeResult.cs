@@ -6,7 +6,7 @@ public class DeviceProbeResult
     public string ErrorMessage { get; set; } = string.Empty;
     public ProtocolType ProtocolType { get; set; }
 
-    public static DeviceProbeResult Ok(ProtocolType  protocolType)
+    public static DeviceProbeResult Ok(ProtocolType protocolType)
     {
         return new DeviceProbeResult()
         {
@@ -14,8 +14,8 @@ public class DeviceProbeResult
             ProtocolType = protocolType,
         };
     }
-    
-    public static DeviceProbeResult Fail(ProtocolType  protocolType)
+
+    public static DeviceProbeResult Fail(ProtocolType protocolType)
     {
         return new DeviceProbeResult()
         {

@@ -11,4 +11,8 @@
       <ProjectReference Include="..\GeekFlashCore.Transport.Abstractions\GeekFlashCore.Transport.Abstractions.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="System.IO.Ports" Version="10.0.11" />
+    </ItemGroup>
+
 </Project>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="SerialRead_OffsetCountOutsideBuffer" xml:space="preserve"><value>偏移量和数量超出了目标缓冲区。</value></data>
+  <data name="SerialRead_SourceReturnedTooManyBytes" xml:space="preserve"><value>串口数据源返回的字节数超过了请求数量。</value></data>
+  <data name="SerialTransport_PortNameRequired" xml:space="preserve"><value>必须指定串口名称。</value></data>
+  <data name="SerialTransport_NotOpen" xml:space="preserve"><value>串口尚未打开。</value></data>
+  <data name="SerialTransport_InvalidBufferSize" xml:space="preserve"><value>串口缓冲区 {0} 的大小必须为正数，当前值为 {1}。</value></data>
+  <data name="SerialTransport_MaximumReadBufferTooSmall" xml:space="preserve"><value>最大接收缓冲区大小 {0} 不能小于初始读取缓冲区大小 {1}。</value></data>
+  <data name="SerialTransport_ReadTimedOut" xml:space="preserve"><value>从串口 {0} 读取超时（等待 {1} 毫秒，期望 {2} 字节，已接收 {3} 字节）。</value></data>
+  <data name="SerialTransport_ReceiveBufferExceeded" xml:space="preserve"><value>串口 {0} 的接收缓冲区超过上限 {1} 字节（需要 {2} 字节）。</value></data>
+  <data name="SerialTransport_InvalidTimeout" xml:space="preserve"><value>超时时间必须为非负数或无限等待，当前值为 {0}。</value></data>
+  <data name="SerialRead_InvalidOffset" xml:space="preserve"><value>偏移量不能为负数，当前值为 {0}。</value></data>
+  <data name="SerialRead_InvalidCount" xml:space="preserve"><value>读取数量不能为负数，当前值为 {0}。</value></data>
+</root>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="SerialRead_OffsetCountOutsideBuffer" xml:space="preserve"><value>The offset and count exceed the destination buffer.</value></data>
+  <data name="SerialRead_SourceReturnedTooManyBytes" xml:space="preserve"><value>The serial source returned more bytes than requested.</value></data>
+  <data name="SerialTransport_PortNameRequired" xml:space="preserve"><value>A serial port name is required.</value></data>
+  <data name="SerialTransport_NotOpen" xml:space="preserve"><value>The serial port is not open.</value></data>
+  <data name="SerialTransport_InvalidBufferSize" xml:space="preserve"><value>Serial buffer {0} must have a positive size; the current value is {1}.</value></data>
+  <data name="SerialTransport_MaximumReadBufferTooSmall" xml:space="preserve"><value>The maximum receive buffer size {0} cannot be smaller than the initial read buffer size {1}.</value></data>
+  <data name="SerialTransport_ReadTimedOut" xml:space="preserve"><value>Reading from serial port {0} timed out after {1} ms (expected {2} bytes, received {3}).</value></data>
+  <data name="SerialTransport_ReceiveBufferExceeded" xml:space="preserve"><value>The receive buffer for serial port {0} exceeded its {1}-byte limit ({2} bytes required).</value></data>
+  <data name="SerialTransport_InvalidTimeout" xml:space="preserve"><value>The timeout must be non-negative or infinite; the current value is {0}.</value></data>
+  <data name="SerialRead_InvalidOffset" xml:space="preserve"><value>The offset cannot be negative; the current value is {0}.</value></data>
+  <data name="SerialRead_InvalidCount" xml:space="preserve"><value>The count cannot be negative; the current value is {0}.</value></data>
+</root>

@@ -4,6 +4,7 @@
     <Project Path="src/GeekFlashCore.BlockDevice.Abstractions/GeekFlashCore.BlockDevice.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.FileSystem.Abstractions/GeekFlashCore.FileSystem.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.Gpt.Abstractions/GeekFlashCore.Gpt.Abstractions.csproj" />
+    <Project Path="src/GeekFlashCore.Protocol.Abstractions/GeekFlashCore.Protocol.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.Transport.Abstractions/GeekFlashCore.Transport.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.UsbWatcher.Abstractions/GeekFlashCore.UsbWatcher.Abstractions.csproj" />
   </Folder>
@@ -19,6 +20,7 @@
     <Project Path="src/GeekFlashCore.FileSystem.Erofs/GeekFlashCore.FileSystem.Erofs.csproj" />
     <Project Path="src/GeekFlashCore.FileSystem.Ext/GeekFlashCore.FileSystem.Ext.csproj" />
   </Folder>
+  <Folder Name="/Protocol/" />
   <Folder Name="/Transport/">
     <Project Path="src/GeekFlashCore.Transport.LibUsb/GeekFlashCore.Transport.LibUsb.csproj" />
     <Project Path="src/GeekFlashCore.Transport.SerialPort/GeekFlashCore.Transport.SerialPort.csproj" />

@@ -3,7 +3,6 @@
 public class DeviceProbeResult
 {
     public bool IsSuccess { get; set; }
-    public string ErrorMessage { get; set; } = string.Empty;
     public ProtocolType ProtocolType { get; set; }
 
     public static DeviceProbeResult Ok(ProtocolType protocolType)
@@ -15,12 +14,11 @@ public class DeviceProbeResult
         };
     }
 
-    public static DeviceProbeResult Fail(ProtocolType protocolType)
+    public static DeviceProbeResult Fail()
     {
         return new DeviceProbeResult()
         {
-            IsSuccess = true,
-            ProtocolType = protocolType,
+            IsSuccess = false
         };
     }
 }

@@ -14,4 +14,5 @@ public interface IProtocol : IAsyncDisposable
     Task<ReadDestination> ReadAsync(ReadDestination destination, IProgress<ProgressRecord>? progress = null, CancellationToken ct = default);
     Task<bool> EraseAsync(StorageTarget target, IProgress<ProgressRecord>? progress = null, CancellationToken ct = default);
     Task<IReadOnlyList<PartitionInfo>> GetPartitionsAsync(IProgress<ProgressRecord>? progress = null, CancellationToken ct = default);
+    Task<bool> RebootAsync(ProtocolRebootMode mode,IProgress<ProgressRecord>? progress = null, CancellationToken ct = default);
 }

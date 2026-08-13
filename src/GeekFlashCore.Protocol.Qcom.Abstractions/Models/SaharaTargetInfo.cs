@@ -1,11 +1,13 @@
 ﻿namespace GeekFlashCore.Protocol.Qcom.Abstractions;
 
-public record SaharaTargetInfo(
-    uint Version,
-    uint MinimumVersionSupported,
-    uint MaximumPacketSizeSupported,
-    SaharaMode Mode,
-    ulong? Serial,
-    ulong? SblVersion,
-    byte[] CaHash,
-    SaharaMsmHwInfo MsmHwInfo);
+public record SaharaTargetInfo
+{
+    public uint Version { get; set; }
+    public uint MinimumVersionSupported { get; set; }
+    public uint MaximumPacketSizeSupported { get; set; }
+    public SaharaMode Mode { get; set; }
+    public ulong? Serial { get; set; }
+    public ulong? SblVersion { get; set; }
+    public byte[]? CaHash { get; set; }
+    public SaharaMsmHwInfo? MsmHwInfo { get; set; }
+}

@@ -21,7 +21,9 @@
     <Project Path="src/GeekFlashCore.FileSystem.Erofs/GeekFlashCore.FileSystem.Erofs.csproj" />
     <Project Path="src/GeekFlashCore.FileSystem.Ext/GeekFlashCore.FileSystem.Ext.csproj" />
   </Folder>
-  <Folder Name="/Protocol/" />
+  <Folder Name="/Protocol/">
+    <Project Path="src/GeekFlashCore.Protocol.Qcom/GeekFlashCore.Protocol.Qcom.csproj" />
+  </Folder>
   <Folder Name="/Transport/">
     <Project Path="src/GeekFlashCore.Transport.LibUsb/GeekFlashCore.Transport.LibUsb.csproj" />
     <Project Path="src/GeekFlashCore.Transport.SerialPort/GeekFlashCore.Transport.SerialPort.csproj" />

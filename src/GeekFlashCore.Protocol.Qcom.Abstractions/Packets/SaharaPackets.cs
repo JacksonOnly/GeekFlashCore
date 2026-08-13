@@ -2,8 +2,8 @@
 
 public ref struct SaharaHelloRequest()
 {
-    public readonly SaharaCommand Command = SaharaCommand.Hello;
-    public readonly uint Length = SaharaPacketConstants.HelloSize;
+    public const SaharaCommand Command = SaharaCommand.Hello;
+    public const int Length = SaharaPacketConstants.HelloSize;
     public uint Version;
     public uint VersionSupported;
     public uint CommandPacketLength;
@@ -34,8 +34,8 @@ public ref struct SaharaHelloRequest()
 
 public ref struct SaharaHelloResponse()
 {
-    public readonly SaharaCommand Command = SaharaCommand.HelloResponse;
-    public readonly uint Length = SaharaPacketConstants.HelloResponseSize;
+    public const SaharaCommand Command = SaharaCommand.HelloResponse;
+    public const int Length = SaharaPacketConstants.HelloResponseSize;
     public uint Version;
     public uint VersionSupported;
     public SaharaStatus Status;
@@ -65,8 +65,8 @@ public ref struct SaharaHelloResponse()
 
 public ref struct SaharaExecuteRequest()
 {
-    public readonly SaharaCommand Command = SaharaCommand.Execute;
-    public readonly uint Length = SaharaPacketConstants.ExecuteSize;
+    public const SaharaCommand Command = SaharaCommand.Execute;
+    public const int Length = SaharaPacketConstants.ExecuteSize;
     public SaharaExecuteCommand ClientCommand;
 
     public SaharaExecuteRequest(SaharaExecuteCommand clientCommand) : this()
@@ -77,8 +77,8 @@ public ref struct SaharaExecuteRequest()
 
 public ref struct SaharaExecuteResponse()
 {
-    public readonly SaharaCommand Command = SaharaCommand.ExecuteResponse;
-    public readonly uint Length = SaharaPacketConstants.ExecuteResponseSize;
+    public const SaharaCommand Command = SaharaCommand.ExecuteResponse;
+    public const int Length = SaharaPacketConstants.ExecuteResponseSize;
     public SaharaExecuteCommand ClientCommand;
     public uint DataLength;
 
@@ -91,8 +91,8 @@ public ref struct SaharaExecuteResponse()
 
 public ref struct SaharaExecuteDataResponse()
 {
-    public readonly SaharaCommand Command = SaharaCommand.ExecuteDataResponse;
-    public readonly uint Length = SaharaPacketConstants.ExecuteDataResponseSize;
+    public const SaharaCommand Command = SaharaCommand.ExecuteDataResponse;
+    public const int Length = SaharaPacketConstants.ExecuteDataResponseSize;
     public SaharaExecuteCommand ClientCommand;
 
     public SaharaExecuteDataResponse(SaharaExecuteCommand clientCommand) : this()
@@ -103,8 +103,8 @@ public ref struct SaharaExecuteDataResponse()
 
 public ref struct SaharaReadData32BitRequest()
 {
-    public readonly SaharaCommand Command = SaharaCommand.ReadData32Bit;
-    public readonly uint Length = SaharaPacketConstants.ReadData32BitSize;
+    public const SaharaCommand Command = SaharaCommand.ReadData32Bit;
+    public const int Length = SaharaPacketConstants.ReadData32BitSize;
     public uint ImageId;
     public uint DataOffset;
     public uint DataLength;
@@ -119,8 +119,8 @@ public ref struct SaharaReadData32BitRequest()
 
 public ref struct SaharaReadData64BitRequest()
 {
-    public readonly SaharaCommand Command = SaharaCommand.ReadData32Bit;
-    public readonly uint Length = SaharaPacketConstants.ReadData32BitSize;
+    public const SaharaCommand Command = SaharaCommand.ReadData32Bit;
+    public const int Length = SaharaPacketConstants.ReadData32BitSize;
     public ulong ImageId;
     public ulong DataOffset;
     public ulong DataLength;
@@ -135,8 +135,8 @@ public ref struct SaharaReadData64BitRequest()
 
 public ref struct SaharaEndImageTxResponse()
 {
-    public readonly SaharaCommand Command = SaharaCommand.EndImageTransmit;
-    public readonly uint Length = SaharaPacketConstants.EndImageTransmitSize;
+    public const SaharaCommand Command = SaharaCommand.EndImageTransmit;
+    public const int Length = SaharaPacketConstants.EndImageTransmitSize;
     public uint ImageId;
     public SaharaStatus Status;
 
@@ -149,14 +149,14 @@ public ref struct SaharaEndImageTxResponse()
 
 public ref struct SaharaDoneRequest()
 {
-    public readonly SaharaCommand Command = SaharaCommand.Done;
-    public readonly uint Length = SaharaPacketConstants.DoneSize;
+    public const SaharaCommand Command = SaharaCommand.Done;
+    public const int Length = SaharaPacketConstants.DoneSize;
 }
 
 public ref struct SaharaDoneResponse()
 {
-    public readonly SaharaCommand Command = SaharaCommand.DoneResponse;
-    public readonly uint Length = SaharaPacketConstants.DoneResponseSize;
+    public const SaharaCommand Command = SaharaCommand.DoneResponse;
+    public const int Length = SaharaPacketConstants.DoneResponseSize;
     public SaharaMode ImageTxStatus;
 
     public SaharaDoneResponse(SaharaMode imageTxStatus) : this()
@@ -167,26 +167,26 @@ public ref struct SaharaDoneResponse()
 
 public ref struct SaharaResetRequest()
 {
-    public readonly SaharaCommand Command = SaharaCommand.Reset;
-    public readonly uint Length = SaharaPacketConstants.ResetSize;
+    public const SaharaCommand Command = SaharaCommand.Reset;
+    public const int Length = SaharaPacketConstants.ResetSize;
 }
 
 public ref struct SaharaResetResponse()
 {
-    public readonly SaharaCommand Command = SaharaCommand.ResetResponse;
-    public readonly uint Length = SaharaPacketConstants.ResetResponseSize;
+    public const SaharaCommand Command = SaharaCommand.ResetResponse;
+    public const int Length = SaharaPacketConstants.ResetResponseSize;
 }
 
 public ref struct SaharaResetStateMachineRequest()
 {
-    public SaharaCommand Command = SaharaCommand.ResetStateMachine;
-    public uint Length = SaharaPacketConstants.ResetStateMachineSize;
+    public const SaharaCommand Command = SaharaCommand.ResetStateMachine;
+    public const int Length = SaharaPacketConstants.ResetStateMachineSize;
 }
 
 public ref struct SaharaMemoryDebug32BitRequest()
 {
-    public readonly SaharaCommand Command = SaharaCommand.MemoryDebug32Bit;
-    public readonly uint Length = SaharaPacketConstants.MemoryDebug32BitSize;
+    public const SaharaCommand Command = SaharaCommand.MemoryDebug32Bit;
+    public const int Length = SaharaPacketConstants.MemoryDebug32BitSize;
     public uint MemoryTableAddress;
     public uint MemoryTableLength;
 
@@ -199,8 +199,8 @@ public ref struct SaharaMemoryDebug32BitRequest()
 
 public ref struct SaharaMemoryDebug64BitRequest()
 {
-    public readonly SaharaCommand Command = SaharaCommand.MemoryDebug64Bit;
-    public readonly uint Length = SaharaPacketConstants.MemoryDebug64BitSize;
+    public const SaharaCommand Command = SaharaCommand.MemoryDebug64Bit;
+    public const int Length = SaharaPacketConstants.MemoryDebug64BitSize;
     public ulong MemoryTableAddress;
     public ulong MemoryTableLength;
 
@@ -213,8 +213,8 @@ public ref struct SaharaMemoryDebug64BitRequest()
 
 public ref struct SaharaMemoryRead32BitRequest()
 {
-    public readonly SaharaCommand Command = SaharaCommand.MemoryRead32Bit;
-    public readonly uint Length = SaharaPacketConstants.MemoryRead32BitSize;
+    public const SaharaCommand Command = SaharaCommand.MemoryRead32Bit;
+    public const int Length = SaharaPacketConstants.MemoryRead32BitSize;
     public uint MemoryAddress;
     public uint MemoryLength;
 
@@ -227,8 +227,8 @@ public ref struct SaharaMemoryRead32BitRequest()
 
 public ref struct SaharaMemoryRead64BitRequest()
 {
-    public readonly SaharaCommand Command = SaharaCommand.MemoryRead64Bit;
-    public readonly uint Length = SaharaPacketConstants.MemoryRead64BitSize;
+    public const SaharaCommand Command = SaharaCommand.MemoryRead64Bit;
+    public const int Length = SaharaPacketConstants.MemoryRead64BitSize;
     public ulong MemoryAddress;
     public ulong MemoryLength;
 
@@ -241,14 +241,14 @@ public ref struct SaharaMemoryRead64BitRequest()
 
 public ref struct SaharaReadyResponse()
 {
-    public readonly SaharaCommand Command = SaharaCommand.ReadyResponse;
-    public readonly uint Length = SaharaPacketConstants.ReadyResponseSize;
+    public const SaharaCommand Command = SaharaCommand.ReadyResponse;
+    public const int Length = SaharaPacketConstants.ReadyResponseSize;
 }
 
 public ref struct SaharaSwitchModeRequest()
 {
-    public readonly SaharaCommand Command = SaharaCommand.SwitchMode;
-    public readonly uint Length = SaharaPacketConstants.SwitchModeSize;
+    public const SaharaCommand Command = SaharaCommand.SwitchMode;
+    public const int Length = SaharaPacketConstants.SwitchModeSize;
     public SaharaMode Mode;
 
     public SaharaSwitchModeRequest(SaharaMode mode) : this()

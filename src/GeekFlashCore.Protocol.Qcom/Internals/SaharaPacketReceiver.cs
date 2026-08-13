@@ -6,7 +6,7 @@ using GeekFlashCore.Transport.Abstractions;
 
 namespace GeekFlashCore.Protocol.Qcom.Internals;
 
-internal readonly ref struct SaharaPacketReceiver
+internal readonly struct SaharaPacketReceiver
 {
     private readonly ITransport _transport;
 

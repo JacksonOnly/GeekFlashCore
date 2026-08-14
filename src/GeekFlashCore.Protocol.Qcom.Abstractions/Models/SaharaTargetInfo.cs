@@ -8,6 +8,6 @@ public record SaharaTargetInfo
     public SaharaMode Mode { get; set; }
     public ulong? Serial { get; set; }
     public ulong? SblVersion { get; set; }
-    public byte[]? CaHash { get; set; }
+    public ReadOnlyMemory<byte>? CaHash { get; set; }
     public SaharaMsmHwInfo? MsmHwInfo { get; set; }
 }

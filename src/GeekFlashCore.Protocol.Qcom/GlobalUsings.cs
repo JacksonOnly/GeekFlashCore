@@ -1,0 +1,1 @@
+﻿global using GeekFlashCore.Protocol.Qcom.Localization;

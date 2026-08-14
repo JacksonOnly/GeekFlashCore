@@ -1,0 +1,181 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true"></xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Sahara_TargetAlreadyInFirehose" xml:space="preserve">
+        <value>设备已经处于 Firehose 模式</value>
+    </data>
+  <data name="Common_TransportIsClosed" xml:space="preserve">
+    <value>Transport 是关闭的</value>
+  </data>
+  <data name="Sahara_CantReceivePacket" xml:space="preserve">
+    <value>无法读取包 '{0}'</value>
+  </data>
+  <data name="Sahara_InvalidPacketLength" xml:space="preserve">
+    <value>包长度无效 '{0}'</value>
+  </data>
+  <data name="Sahara_InvalidMode" xml:space="preserve">
+    <value>错误的Sahara模式.\r\n当前 {0}, 预期 {1}</value>
+  </data>
+  <data name="Sahara_InvalidResponse" xml:space="preserve">
+    <value>无法获取 '{0}' 包</value>
+  </data>
+  <data name="Sahara_ImageNotFound" xml:space="preserve">
+    <value>无法找到镜像Id为 '{0}' 的镜像</value>
+  </data>
+  <data name="Sahara_UnexpectedCommand" xml:space="preserve">
+    <value>意外的Sahara命令 '{0}'</value>
+  </data>
+  <data name="Sahara_UnexpectedStatus" xml:space="preserve">
+    <value>意外的Sahara状态 '{0}'</value>
+  </data>
+  <data name="SaharaStatus_Success" xml:space="preserve">
+    <value>成功</value>
+  </data>
+  <data name="SaharaNak_InvalidCmd" xml:space="preserve">
+    <value>当前状态收到无效命令</value>
+  </data>
+  <data name="SaharaNak_ProtocolMismatch" xml:space="preserve">
+    <value>主机与目标机协议不匹配</value>
+  </data>
+  <data name="SaharaNak_InvalidTargetProtocol" xml:space="preserve">
+    <value>无效的目标机协议版本</value>
+  </data>
+  <data name="SaharaNak_InvalidHostProtocol" xml:space="preserve">
+    <value>无效的主机协议版本</value>
+  </data>
+  <data name="SaharaNak_InvalidPacketSize" xml:space="preserve">
+    <value>收到无效的包大小</value>
+  </data>
+  <data name="SaharaNak_UnexpectedImageId" xml:space="preserve">
+    <value>收到意外的镜像ID</value>
+  </data>
+  <data name="SaharaNak_InvalidHeaderSize" xml:space="preserve">
+    <value>收到无效的镜像头大小</value>
+  </data>
+  <data name="SaharaNak_InvalidDataSize" xml:space="preserve">
+    <value>收到无效的镜像数据大小</value>
+  </data>
+  <data name="SaharaNak_InvalidImageType" xml:space="preserve">
+    <value>收到无效的镜像类型</value>
+  </data>
+  <data name="SaharaNak_InvalidTxLength" xml:space="preserve">
+    <value>无效的发送长度</value>
+  </data>
+  <data name="SaharaNak_InvalidRxLength" xml:space="preserve">
+    <value>无效的接收长度</value>
+  </data>
+  <data name="SaharaNak_GeneralTxRxError" xml:space="preserve">
+    <value>通用发送或接收错误</value>
+  </data>
+  <data name="SaharaNak_ReadDataError" xml:space="preserve">
+    <value>发送READ_DATA包时出错</value>
+  </data>
+  <data name="SaharaNak_UnsupportedNumPhdrs" xml:space="preserve">
+    <value>无法接收指定数量的程序头</value>
+  </data>
+  <data name="SaharaNak_InvalidPdhrSize" xml:space="preserve">
+    <value>程序头数据长度无效</value>
+  </data>
+  <data name="SaharaNak_MultipleSharedSeg" xml:space="preserve">
+    <value>ELF镜像中发现多个共享段</value>
+  </data>
+  <data name="SaharaNak_UninitPhdrLoc" xml:space="preserve">
+    <value>程序头位置未初始化</value>
+  </data>
+  <data name="SaharaNak_InvalidDestAddr" xml:space="preserve">
+    <value>无效的目标地址</value>
+  </data>
+  <data name="SaharaNak_InvalidImgHdrDataSize" xml:space="preserve">
+    <value>镜像头中的数据大小无效</value>
+  </data>
+  <data name="SaharaNak_InvalidElfHdr" xml:space="preserve">
+    <value>收到无效的ELF头</value>
+  </data>
+  <data name="SaharaNak_UnknownHostError" xml:space="preserve">
+    <value>HELLO_RESP中收到未知主机错误</value>
+  </data>
+  <data name="SaharaNak_TimeoutRx" xml:space="preserve">
+    <value>接收数据超时</value>
+  </data>
+  <data name="SaharaNak_TimeoutTx" xml:space="preserve">
+    <value>发送数据超时</value>
+  </data>
+  <data name="SaharaNak_InvalidHostMode" xml:space="preserve">
+    <value>收到无效的主机模式</value>
+  </data>
+  <data name="SaharaNak_InvalidMemoryRead" xml:space="preserve">
+    <value>无效的内存读取访问</value>
+  </data>
+  <data name="SaharaNak_InvalidDataSizeRequest" xml:space="preserve">
+    <value>主机无法处理请求的读取数据大小</value>
+  </data>
+  <data name="SaharaNak_MemoryDebugNotSupported" xml:space="preserve">
+    <value>不支持内存调试</value>
+  </data>
+  <data name="SaharaNak_InvalidModeSwitch" xml:space="preserve">
+    <value>无效的模式切换</value>
+  </data>
+  <data name="SaharaNak_CmdExecFailure" xml:space="preserve">
+    <value>命令执行失败</value>
+  </data>
+  <data name="SaharaNak_ExecCmdInvalidParam" xml:space="preserve">
+    <value>命令执行参数无效</value>
+  </data>
+  <data name="SaharaNak_ExecCmdUnsupported" xml:space="preserve">
+    <value>收到不支持的命令</value>
+  </data>
+  <data name="SaharaNak_ExecDataInvalidClientCmd" xml:space="preserve">
+    <value>数据响应收到无效的命令</value>
+  </data>
+  <data name="SaharaNak_HashTableAuthFailure" xml:space="preserve">
+    <value>哈希表验证失败</value>
+  </data>
+  <data name="SaharaNak_HashVerificationFailure" xml:space="preserve">
+    <value>ELF段哈希验证失败</value>
+  </data>
+  <data name="SaharaNak_HashTableNotFound" xml:space="preserve">
+    <value>在ELF镜像中未找到哈希表</value>
+  </data>
+  <data name="Common_ConnectingToMode" xml:space="preserve">
+    <value>正在连接模式 '{0}'</value>
+  </data>
+  <data name="Common_ReadingTargetInfo" xml:space="preserve">
+    <value>正在读取目标信息</value>
+  </data>
+  <data name="Common_Success" xml:space="preserve">
+    <value>成功</value>
+  </data>
+  <data name="Common_Failed" xml:space="preserve">
+    <value>失败</value>
+  </data>
+  <data name="Qcom_ProtocolCreated" xml:space="preserve">
+    <value>已创建 Qcom 协议会话。</value>
+  </data>
+  <data name="Qcom_MissingSaharaProgrammer" xml:space="preserve">
+    <value>未提供 Sahara 引导镜像。</value>
+  </data>
+  <data name="Qcom_SaharaStreamDisposeFailed" xml:space="preserve">
+    <value>释放 Sahara 镜像流失败。</value>
+  </data>
+  <data name="Qcom_TargetSectorSizeMismatch" xml:space="preserve"><value>目标扇区大小 {0} 与协商的扇区大小 {1} 不匹配。</value></data>
+  <data name="Qcom_OffsetTargetNotAligned" xml:space="preserve"><value>偏移目标必须与协商的扇区大小对齐。</value></data>
+  <data name="Qcom_PartitionAmbiguousAcrossLuns" xml:space="preserve"><value>GPT 分区“{0}”存在于多个 LUN；请指定 PhysicalPartitionNumber。</value></data>
+  <data name="Qcom_PartitionNotFound" xml:space="preserve"><value>找不到 GPT 分区“{0}”。</value></data>
+  <data name="Qcom_UnsupportedStorageTarget" xml:space="preserve"><value>不支持 Qcom 存储目标类型 {0}。</value></data>
+  <data name="Qcom_UnsupportedProgrammerMedium" xml:space="preserve"><value>不支持 programmer 数据介质类型 {0}。</value></data>
+  <data name="Qcom_ProgrammerFileNotFound" xml:space="preserve"><value>找不到 programmer 文件。</value></data>
+</root>

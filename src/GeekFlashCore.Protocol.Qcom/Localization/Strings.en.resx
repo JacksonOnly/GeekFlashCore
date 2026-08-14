@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SaharaNak_UnsupportedNumPhdrs" xml:space="preserve">
+    <value>Unable to receive the specified number of program headers</value>
+  </data>
+  <data name="SaharaNak_InvalidImageType" xml:space="preserve">
+    <value>Received invalid image type</value>
+  </data>
+  <data name="SaharaNak_InvalidDataSize" xml:space="preserve">
+    <value>Received invalid image data size</value>
+  </data>
+  <data name="SaharaNak_InvalidHeaderSize" xml:space="preserve">
+    <value>Received invalid image header size</value>
+  </data>
+  <data name="SaharaNak_UnexpectedImageId" xml:space="preserve">
+    <value>Received unexpected image ID</value>
+  </data>
+  <data name="SaharaNak_ReadDataError" xml:space="preserve">
+    <value>Error sending READ_DATA packet</value>
+  </data>
+  <data name="Sahara_TargetAlreadyInFirehose" xml:space="preserve">
+    <value>The device is already in Firehose mode</value>
+  </data>
+  <data name="Common_TransportIsClosed" xml:space="preserve">
+    <value>Transport is closed</value>
+  </data>
+  <data name="Sahara_CantReceivePacket" xml:space="preserve">
+    <value>Cannot read package '{0}'</value>
+  </data>
+  <data name="Sahara_InvalidPacketLength" xml:space="preserve">
+    <value>Packet length invalid '{0}'</value>
+  </data>
+  <data name="Sahara_InvalidMode" xml:space="preserve">
+    <value>Wrong Sahara mode.
+Current {0}, expected {1}</value>
+  </data>
+  <data name="Sahara_InvalidResponse" xml:space="preserve">
+    <value>Unable to get '{0}' package</value>
+  </data>
+  <data name="Sahara_ImageNotFound" xml:space="preserve">
+    <value>Unable to find image with image Id '{0}'</value>
+  </data>
+  <data name="Sahara_UnexpectedCommand" xml:space="preserve">
+    <value>Unexpected Sahara command '{0}'</value>
+  </data>
+  <data name="Sahara_UnexpectedStatus" xml:space="preserve">
+    <value>Unexpected Sahara status '{0}'</value>
+  </data>
+  <data name="SaharaStatus_Success" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="SaharaNak_InvalidCmd" xml:space="preserve">
+    <value>Current state received invalid command</value>
+  </data>
+  <data name="SaharaNak_ProtocolMismatch" xml:space="preserve">
+    <value>Host and target machine protocol mismatch</value>
+  </data>
+  <data name="SaharaNak_InvalidTargetProtocol" xml:space="preserve">
+    <value>Invalid target machine protocol version</value>
+  </data>
+  <data name="SaharaNak_InvalidHostProtocol" xml:space="preserve">
+    <value>Invalid host protocol version</value>
+  </data>
+  <data name="SaharaNak_InvalidPacketSize" xml:space="preserve">
+    <value>Received invalid packet size</value>
+  </data>
+  <data name="SaharaNak_InvalidTxLength" xml:space="preserve">
+    <value>Invalid send length</value>
+  </data>
+  <data name="SaharaNak_InvalidRxLength" xml:space="preserve">
+    <value>invalid receive length</value>
+  </data>
+  <data name="SaharaNak_GeneralTxRxError" xml:space="preserve">
+    <value>General send or receive error</value>
+  </data>
+  <data name="SaharaNak_InvalidPdhrSize" xml:space="preserve">
+    <value>Invalid program header data length</value>
+  </data>
+  <data name="SaharaNak_MultipleSharedSeg" xml:space="preserve">
+    <value>Multiple shared segments found in ELF image</value>
+  </data>
+  <data name="SaharaNak_UninitPhdrLoc" xml:space="preserve">
+    <value>Program header position not initialized</value>
+  </data>
+  <data name="SaharaNak_InvalidDestAddr" xml:space="preserve">
+    <value>invalid target address</value>
+  </data>
+  <data name="SaharaNak_InvalidImgHdrDataSize" xml:space="preserve">
+    <value>The data size in the image header is invalid</value>
+  </data>
+  <data name="SaharaNak_InvalidElfHdr" xml:space="preserve">
+    <value>Received invalid ELF header</value>
+  </data>
+  <data name="SaharaNak_UnknownHostError" xml:space="preserve">
+    <value>Received unknown host error in HELLO_RESP</value>
+  </data>
+  <data name="SaharaNak_TimeoutRx" xml:space="preserve">
+    <value>Data reception timeout</value>
+  </data>
+  <data name="SaharaNak_TimeoutTx" xml:space="preserve">
+    <value>Data send timeout</value>
+  </data>
+  <data name="SaharaNak_InvalidHostMode" xml:space="preserve">
+    <value>Invalid host mode received</value>
+  </data>
+  <data name="SaharaNak_InvalidMemoryRead" xml:space="preserve">
+    <value>Invalid memory read access</value>
+  </data>
+  <data name="SaharaNak_InvalidDataSizeRequest" xml:space="preserve">
+    <value>The host cannot handle the requested read data size</value>
+  </data>
+  <data name="SaharaNak_MemoryDebugNotSupported" xml:space="preserve">
+    <value>Memory debugging not supported</value>
+  </data>
+  <data name="SaharaNak_InvalidModeSwitch" xml:space="preserve">
+    <value>Invalid mode switch</value>
+  </data>
+  <data name="SaharaNak_CmdExecFailure" xml:space="preserve">
+    <value>command execution failed</value>
+  </data>
+  <data name="SaharaNak_ExecCmdInvalidParam" xml:space="preserve">
+    <value>Invalid command execution parameter</value>
+  </data>
+  <data name="SaharaNak_ExecCmdUnsupported" xml:space="preserve">
+    <value>Received unsupported command</value>
+  </data>
+  <data name="SaharaNak_ExecDataInvalidClientCmd" xml:space="preserve">
+    <value>Invalid command received in data response</value>
+  </data>
+  <data name="SaharaNak_HashTableAuthFailure" xml:space="preserve">
+    <value>Hash table verification failed</value>
+  </data>
+  <data name="SaharaNak_HashVerificationFailure" xml:space="preserve">
+    <value>ELF segment hash verification failed</value>
+  </data>
+  <data name="SaharaNak_HashTableNotFound" xml:space="preserve">
+    <value>Hash table not found in ELF image</value>
+  </data>
+  <data name="Common_ConnectingToMode" xml:space="preserve">
+    <value>Connecting to mode '{0}'</value>
+  </data>
+  <data name="Common_ReadingTargetInfo" xml:space="preserve">
+    <value>Reading target info</value>
+  </data>
+  <data name="Common_Success" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="Common_Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Qcom_ProtocolCreated" xml:space="preserve">
+    <value>The Qcom protocol session was created.</value>
+  </data>
+  <data name="Qcom_MissingSaharaProgrammer" xml:space="preserve">
+    <value>No Sahara programmer image was supplied.</value>
+  </data>
+  <data name="Qcom_SaharaStreamDisposeFailed" xml:space="preserve">
+    <value>Failed to dispose a Sahara image stream.</value>
+  </data>
+  <data name="Qcom_TargetSectorSizeMismatch" xml:space="preserve"><value>Target sector size {0} does not match the negotiated sector size {1}.</value></data>
+  <data name="Qcom_OffsetTargetNotAligned" xml:space="preserve"><value>Offset targets must be aligned to the negotiated sector size.</value></data>
+  <data name="Qcom_PartitionAmbiguousAcrossLuns" xml:space="preserve"><value>GPT partition '{0}' exists on multiple LUNs; specify PhysicalPartitionNumber.</value></data>
+  <data name="Qcom_PartitionNotFound" xml:space="preserve"><value>GPT partition '{0}' was not found.</value></data>
+  <data name="Qcom_UnsupportedStorageTarget" xml:space="preserve"><value>Qcom storage target type {0} is not supported.</value></data>
+  <data name="Qcom_UnsupportedProgrammerMedium" xml:space="preserve"><value>Programmer data medium type {0} is not supported.</value></data>
+  <data name="Qcom_ProgrammerFileNotFound" xml:space="preserve"><value>The programmer file was not found.</value></data>
+</root>

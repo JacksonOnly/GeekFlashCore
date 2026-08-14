@@ -2,4 +2,4 @@
 
 namespace GeekFlashCore.Protocol.Qcom.Abstractions;
 
-public record SaharaImageEntry(int Id,long Length,DataMedium DataMedium);
+public record SaharaImageEntry(int Id,long Length,IDataSource DataSource);

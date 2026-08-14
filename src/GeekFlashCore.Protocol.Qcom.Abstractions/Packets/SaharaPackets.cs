@@ -1,4 +1,4 @@
-﻿namespace GeekFlashCore.Protocol.Qcom.Abstractions;
+namespace GeekFlashCore.Protocol.Qcom.Abstractions;
 
 public ref struct SaharaHelloRequest()
 {
@@ -119,8 +119,8 @@ public ref struct SaharaReadData32BitRequest()
 
 public ref struct SaharaReadData64BitRequest()
 {
-    public const SaharaCommand Command = SaharaCommand.ReadData32Bit;
-    public const int Length = SaharaPacketConstants.ReadData32BitSize;
+    public const SaharaCommand Command = SaharaCommand.ReadData64Bit;
+    public const int Length = SaharaPacketConstants.ReadData64BitSize;
     public ulong ImageId;
     public ulong DataOffset;
     public ulong DataLength;

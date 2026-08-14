@@ -281,4 +281,34 @@ Current {0}, expected {1}</value>
   <data name="Qcom_UnsupportedStorageTarget" xml:space="preserve"><value>Qcom storage target type {0} is not supported.</value></data>
   <data name="Qcom_UnsupportedProgrammerMedium" xml:space="preserve"><value>Programmer data medium type {0} is not supported.</value></data>
   <data name="Qcom_ProgrammerFileNotFound" xml:space="preserve"><value>The programmer file was not found.</value></data>
+  <data name="Sahara_NotConnected" xml:space="preserve">
+    <value>Sahara protocol is not connected</value>
+  </data>
+  <data name="Sahara_InvalidMemoryTable" xml:space="preserve">
+    <value>Invalid memory table, length {0}</value>
+  </data>
+  <data name="Sahara_EmptyImageList" xml:space="preserve">
+    <value>The image list is empty</value>
+  </data>
+  <data name="Progress_Connecting" xml:space="preserve">
+    <value>Connecting to device</value>
+  </data>
+  <data name="Progress_HelloReceived" xml:space="preserve">
+    <value>HELLO packet received</value>
+  </data>
+  <data name="Progress_ReadingTargetInfo" xml:space="preserve">
+    <value>Reading target info</value>
+  </data>
+  <data name="Progress_Connected" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="Progress_UploadingImage" xml:space="preserve">
+    <value>Uploading image {0}</value>
+  </data>
+  <data name="Progress_UploadComplete" xml:space="preserve">
+    <value>Image upload complete</value>
+  </data>
+  <data name="Progress_MemoryDump" xml:space="preserve">
+    <value>Target entered memory dump mode</value>
+  </data>
 </root>

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:element name="root" msdata:IsDataSet="true"></xsd:element>
@@ -178,4 +178,34 @@
   <data name="Qcom_UnsupportedStorageTarget" xml:space="preserve"><value>不支持 Qcom 存储目标类型 {0}。</value></data>
   <data name="Qcom_UnsupportedProgrammerMedium" xml:space="preserve"><value>不支持 programmer 数据介质类型 {0}。</value></data>
   <data name="Qcom_ProgrammerFileNotFound" xml:space="preserve"><value>找不到 programmer 文件。</value></data>
+  <data name="Sahara_NotConnected" xml:space="preserve">
+    <value>Sahara 协议未连接</value>
+  </data>
+  <data name="Sahara_InvalidMemoryTable" xml:space="preserve">
+    <value>无效的内存表，长度 {0}</value>
+  </data>
+  <data name="Sahara_EmptyImageList" xml:space="preserve">
+    <value>镜像列表为空</value>
+  </data>
+  <data name="Progress_Connecting" xml:space="preserve">
+    <value>正在连接设备</value>
+  </data>
+  <data name="Progress_HelloReceived" xml:space="preserve">
+    <value>已接收 HELLO 数据包</value>
+  </data>
+  <data name="Progress_ReadingTargetInfo" xml:space="preserve">
+    <value>正在读取目标信息</value>
+  </data>
+  <data name="Progress_Connected" xml:space="preserve">
+    <value>连接完成</value>
+  </data>
+  <data name="Progress_UploadingImage" xml:space="preserve">
+    <value>正在传输镜像 {0}</value>
+  </data>
+  <data name="Progress_UploadComplete" xml:space="preserve">
+    <value>镜像传输完成</value>
+  </data>
+  <data name="Progress_MemoryDump" xml:space="preserve">
+    <value>目标进入内存转储模式</value>
+  </data>
 </root>

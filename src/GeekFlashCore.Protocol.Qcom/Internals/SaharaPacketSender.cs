@@ -193,4 +193,110 @@ internal readonly struct SaharaPacketSender
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[8..], (uint)mode);
         _transport.Write(buffer);
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SendHelloResponse(uint version, uint versionSupported, SaharaStatus status, SaharaMode mode,
+        uint reserved0, uint reserved1, uint reserved2, uint reserved3, uint reserved4, uint reserved5)
+    {
+        _logger.Debug("Send HelloResponse" +
+                      " {Version}" +
+                      " {VersionSupported}" +
+                      " {Status}" +
+                      " {Mode}" +
+                      " {Reserved0}" +
+                      " {Reserved1}" +
+                      " {Reserved2}" +
+                      " {Reserved3}" +
+                      " {Reserved4}" +
+                      " {Reserved5}"
+            , version, versionSupported,
+            status.ToName(), mode.ToName(), reserved0, reserved1, reserved2, reserved3, reserved4, reserved5
+        );
+        Span<byte> buffer = stackalloc byte[SaharaHelloResponse.Length];
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaHelloResponse.Command);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaHelloResponse.Length);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[8..], version);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[12..], versionSupported);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[16..], (uint)status);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[20..], (uint)mode);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[24..], reserved0);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[28..], reserved1);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[32..], reserved2);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[36..], reserved3);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[40..], reserved4);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[44..], reserved5);
+        _transport.Write(buffer);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SendExecuteResponse(SaharaExecuteCommand clientCommand, uint dataLength)
+    {
+        _logger.Debug("Send ExecuteResponse" +
+                      " {ClientCommand}" +
+                      " {DataLength}", clientCommand.ToName(), dataLength);
+        Span<byte> buffer = stackalloc byte[SaharaExecuteResponse.Length];
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaExecuteResponse.Command);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaExecuteResponse.Length);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[8..], (uint)clientCommand);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[12..], dataLength);
+        _transport.Write(buffer);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SendExecuteDataResponse(SaharaExecuteCommand clientCommand)
+    {
+        _logger.Debug("Send ExecuteDataResponse" +
+                      " {ClientCommand}", clientCommand.ToName());
+        Span<byte> buffer = stackalloc byte[SaharaExecuteDataResponse.Length];
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaExecuteDataResponse.Command);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaExecuteDataResponse.Length);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[8..], (uint)clientCommand);
+        _transport.Write(buffer);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SendEndImageTxResponse(uint imageId, SaharaStatus status)
+    {
+        _logger.Debug("Send EndImageTxResponse" +
+                      " {ImageId}" +
+                      " {Status}", imageId, status.ToName());
+        Span<byte> buffer = stackalloc byte[SaharaEndImageTxResponse.Length];
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaEndImageTxResponse.Command);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaEndImageTxResponse.Length);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[8..], imageId);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[12..], (uint)status);
+        _transport.Write(buffer);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SendDoneResponse(SaharaMode imageTxStatus)
+    {
+        _logger.Debug("Send DoneResponse" +
+                      " {ImageTxStatus}", imageTxStatus.ToName());
+        Span<byte> buffer = stackalloc byte[SaharaDoneResponse.Length];
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaDoneResponse.Command);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaDoneResponse.Length);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[8..], (uint)imageTxStatus);
+        _transport.Write(buffer);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SendResetResponse()
+    {
+        _logger.Debug("Send ResetResponse");
+        Span<byte> buffer = stackalloc byte[SaharaResetResponse.Length];
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaResetResponse.Command);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaResetResponse.Length);
+        _transport.Write(buffer);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SendReadyResponse()
+    {
+        _logger.Debug("Send ReadyResponse");
+        Span<byte> buffer = stackalloc byte[SaharaReadyResponse.Length];
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaReadyResponse.Command);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaReadyResponse.Length);
+        _transport.Write(buffer);
+    }
 }

@@ -311,4 +311,34 @@ Current {0}, expected {1}</value>
   <data name="Progress_MemoryDump" xml:space="preserve">
     <value>Target entered memory dump mode</value>
   </data>
+  <data name="Firehose_RawPayloadEndedEarly" xml:space="preserve">
+    <value>Firehose raw payload ended early</value>
+  </data>
+  <data name="Firehose_DestinationStreamNotWritable" xml:space="preserve">
+    <value>Destination stream is not writable</value>
+  </data>
+  <data name="Firehose_SourceStreamNotReadable" xml:space="preserve">
+    <value>Source stream is not readable</value>
+  </data>
+  <data name="Firehose_SourceEndedBeforeDeclaredLength" xml:space="preserve">
+    <value>Source stream ended before the declared length</value>
+  </data>
+  <data name="Firehose_StartupDataNotXml" xml:space="preserve">
+    <value>Firehose startup data is not XML</value>
+  </data>
+  <data name="Firehose_XmlPacketTooLarge" xml:space="preserve">
+    <value>Firehose XML packet exceeds {0} bytes</value>
+  </data>
+  <data name="Firehose_TransportClosedReadingXml" xml:space="preserve">
+    <value>Transport closed while reading Firehose XML</value>
+  </data>
+  <data name="Firehose_ReadTimedOut" xml:space="preserve">
+    <value>Timed out reading Firehose data</value>
+  </data>
+  <data name="Firehose_CommandTagMissing" xml:space="preserve">
+    <value>Command type '{0}' is missing the FirehoseCmdTag attribute</value>
+  </data>
+  <data name="Firehose_UnsupportedPropertyType" xml:space="preserve">
+    <value>Command property type '{0}' is not supported</value>
+  </data>
 </root>

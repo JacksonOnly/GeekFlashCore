@@ -208,4 +208,34 @@
   <data name="Progress_MemoryDump" xml:space="preserve">
     <value>目标进入内存转储模式</value>
   </data>
+  <data name="Firehose_RawPayloadEndedEarly" xml:space="preserve">
+    <value>Firehose 原始载荷提前结束</value>
+  </data>
+  <data name="Firehose_DestinationStreamNotWritable" xml:space="preserve">
+    <value>目标流不可写</value>
+  </data>
+  <data name="Firehose_SourceStreamNotReadable" xml:space="preserve">
+    <value>源流不可读</value>
+  </data>
+  <data name="Firehose_SourceEndedBeforeDeclaredLength" xml:space="preserve">
+    <value>源流在达到声明长度前结束</value>
+  </data>
+  <data name="Firehose_StartupDataNotXml" xml:space="preserve">
+    <value>Firehose 启动数据不是 XML</value>
+  </data>
+  <data name="Firehose_XmlPacketTooLarge" xml:space="preserve">
+    <value>Firehose XML 数据包超过 {0} 字节</value>
+  </data>
+  <data name="Firehose_TransportClosedReadingXml" xml:space="preserve">
+    <value>读取 Firehose XML 时传输已关闭</value>
+  </data>
+  <data name="Firehose_ReadTimedOut" xml:space="preserve">
+    <value>读取 Firehose 数据超时</value>
+  </data>
+  <data name="Firehose_CommandTagMissing" xml:space="preserve">
+    <value>命令类型 '{0}' 缺少 FirehoseCmdTag 特性</value>
+  </data>
+  <data name="Firehose_UnsupportedPropertyType" xml:space="preserve">
+    <value>命令属性类型 '{0}' 不受支持</value>
+  </data>
 </root>

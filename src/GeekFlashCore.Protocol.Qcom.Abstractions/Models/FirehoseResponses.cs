@@ -55,6 +55,7 @@ public record FirehoseBasicDevInfo
     public uint? ChipId { get; set; }
     public string? ChipName { get; set; }
     public IReadOnlyList<string> SupportedFunctions { get; set; } = [];
+    public IReadOnlyList<FirehoseResponseLog> OriginLogs { get; init; } = [];
 }
 
 public record FirehoseStorageInfo

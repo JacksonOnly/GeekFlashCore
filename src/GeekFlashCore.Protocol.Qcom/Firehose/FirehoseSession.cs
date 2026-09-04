@@ -1,5 +1,6 @@
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Internals;
+using GeekFlashCore.Protocol.Qcom.Vendors;
 using GeekFlashCore.Transport.Abstractions;
 using Serilog;
 
@@ -104,6 +105,15 @@ public sealed class FirehoseSession : IDisposable
             SetState(FirehoseSessionState.Faulted);
             throw;
         }
+    }
+
+    public FirehoseCommandResult ExecuteCustomXml(
+        string xml,
+        IVendorFirehoseStrategy strategy,
+        bool expectedRawMode = false)
+    {
+        ValidatedCustomCommand command = CustomCommandValidator.Validate(xml, strategy);
+        return ExecuteXml(command.Xml, expectedRawMode);
     }
 
     public FirehoseCommandResult SendRaw(

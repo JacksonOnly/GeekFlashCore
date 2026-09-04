@@ -1,4 +1,5 @@
 using GeekFlashCore.Protocol.Qcom.Abstractions;
+using GeekFlashCore.Protocol.Qcom.Vendors;
 
 namespace GeekFlashCore.Protocol.Qcom.Firehose.Configuration;
 
@@ -32,6 +33,7 @@ public sealed class ConfigureNegotiator
     {
         ArgumentNullException.ThrowIfNull(configuration);
         configuration.Validate();
+        IVendorFirehoseStrategy strategy = VendorStrategyResolver.ForVendor(vendor);
 
         ConfigureState state = ConfigureState.Create(configuration);
         var attemptedStorage = new HashSet<FirehoseStorage>();
@@ -46,7 +48,7 @@ public sealed class ConfigureNegotiator
 
             try
             {
-                FirehoseCommandResult result = _session.Execute(state.CreateCommand(vendor));
+                FirehoseCommandResult result = _session.Execute(strategy.PrepareConfigure(state.CreateCommand()));
                 state = state.Apply(ConfigureEvidenceParser.Parse(result));
                 return new FirehoseConfigureResult(result, state.ToResponse(attempt, result));
             }
@@ -54,7 +56,7 @@ public sealed class ConfigureNegotiator
             {
                 lastNak = exception;
 
-                if (vendor == QcomVendorKind.Xiaomi && !state.AuthenticationCompleted)
+                if (strategy.Vendor == QcomVendorKind.Xiaomi && !state.AuthenticationCompleted)
                 {
                     if (xiaomiAuthentication is null || !xiaomiAuthentication(exception))
                         throw Failure("Xiaomi authentication is required for Configure.", exception);

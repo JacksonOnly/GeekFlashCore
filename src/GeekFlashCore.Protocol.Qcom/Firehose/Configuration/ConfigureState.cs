@@ -44,7 +44,7 @@ internal sealed record ConfigureState
         AuthenticationCompleted = false
     };
 
-    public ConfigureCommand CreateCommand(QcomVendorKind vendor) => new()
+    public ConfigureCommand CreateCommand() => new()
     {
         MemoryName = Storage,
         Verbose = Verbose ? (byte)1 : (byte)0,
@@ -53,8 +53,7 @@ internal sealed record ConfigureState
         MaxPayloadSizeToTargetInBytes = MaxPayloadSizeToTargetInBytes,
         ZlpAwareHost = ZlpAwareHost ? (byte)1 : (byte)0,
         SkipWrite = SkipWrite ? (byte)1 : null,
-        SkipStorageInit = SkipStorageInit ? (byte)1 : (byte)0,
-        Oem = vendor == QcomVendorKind.Zte ? "ZTE" : null
+        SkipStorageInit = SkipStorageInit ? (byte)1 : (byte)0
     };
 
     public ConfigureState Apply(ConfigureEvidence evidence)

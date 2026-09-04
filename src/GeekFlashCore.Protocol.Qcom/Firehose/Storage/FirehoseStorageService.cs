@@ -155,6 +155,61 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
             ? _session.Execute(new SetBootableStorageDriveCommand { Value = value })
             : throw new ArgumentOutOfRangeException(nameof(value));
 
+    public FirehoseCommandResult FixGpt(
+        uint physicalPartitionNumber,
+        string lun = "all",
+        bool growLastPartition = true)
+    {
+        if (physicalPartitionNumber >= FirehoseConstants.MaximumPhysicalPartitionCount)
+            throw new ArgumentOutOfRangeException(nameof(physicalPartitionNumber));
+        ArgumentException.ThrowIfNullOrWhiteSpace(lun);
+        return _session.Execute(new FixGptCommand
+        {
+            PhysicalPartitionNumber = physicalPartitionNumber,
+            Lun = lun,
+            GrowLastPartition = growLastPartition ? (byte)1 : (byte)0
+        });
+    }
+
+    public FirehoseCommandResult Benchmark(
+        uint physicalPartitionNumber,
+        uint trials = 1,
+        bool testDigestPerformance = true,
+        bool testWritePerformance = true,
+        bool testReadPerformance = true)
+    {
+        if (physicalPartitionNumber >= FirehoseConstants.MaximumPhysicalPartitionCount)
+            throw new ArgumentOutOfRangeException(nameof(physicalPartitionNumber));
+        if (trials == 0)
+            throw new ArgumentOutOfRangeException(nameof(trials));
+        return _session.Execute(new BenchmarkCommand
+        {
+            PhysicalPartitionNumber = physicalPartitionNumber,
+            Trials = trials,
+            TestDigestPerformance = testDigestPerformance ? 1u : 0u,
+            TestWritePerformance = testWritePerformance ? 1u : 0u,
+            TestReadPerformance = testReadPerformance ? 1u : 0u
+        });
+    }
+
+    public FirehoseCommandResult FirmwareWrite(
+        uint physicalPartitionNumber,
+        ReadOnlySpan<byte> firmware,
+        CancellationToken cancellationToken = default)
+    {
+        if (physicalPartitionNumber >= FirehoseConstants.MaximumPhysicalPartitionCount)
+            throw new ArgumentOutOfRangeException(nameof(physicalPartitionNumber));
+        if (firmware.IsEmpty)
+            throw new ArgumentException("The firmware payload cannot be empty.", nameof(firmware));
+        _session.Execute(new FirmwareWriteCommand
+        {
+            PhysicalPartitionNumber = physicalPartitionNumber,
+            SectorSizeInBytes = 1,
+            NumPartitionSectors = checked((ulong)firmware.Length)
+        }, expectedRawMode: true);
+        return _session.SendRaw(firmware, GetTransferBufferSize(), cancellationToken);
+    }
+
     public FirehoseCommandResult Patch(
         uint physicalPartitionNumber,
         long startSector,

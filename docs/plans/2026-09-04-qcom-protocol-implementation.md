@@ -374,7 +374,7 @@
 - [x] Task 5：同步 Firehose 会话（2026-09-04；有界池化线路缓冲、强类型命令构建、Raw 状态与并发保护）。
 - [x] Task 6：Configure 状态机（2026-09-04；保留厂商回退顺序，新增状态指纹、重试上限与结构化证据解析）。
 - [x] Task 7：存储命令与块设备（2026-09-04；同步流式 I/O、集中范围校验、存储证据解析与读写权限适配）。
-- [ ] Task 8：Raw/Sparse 写入。
+- [x] Task 8：Raw/Sparse 写入（2026-09-04；复用 Android.Sparse 合并区域，窗口化来源、空洞跳过、流式 Fill 与 Payload 分包）。
 - [ ] Task 9：厂商策略与自定义命令。
 - [ ] Task 10：Xiaomi/ZTE/Nothing/OnePlus。
 - [ ] Task 11：Oplus Digest 解析与映射。

@@ -52,7 +52,7 @@ public sealed record FirehoseProgramRequest
         if (sourceLength > Source.Length - SourceOffset)
             throw new ArgumentOutOfRangeException(nameof(SourceLength));
         long wireLength = checked(SectorCount * SectorSizeInBytes);
-        if (sourceLength > wireLength)
+        if (Format != FirehoseProgramFormat.AndroidSparse && sourceLength > wireLength)
             throw new ArgumentException("The source is larger than the target range.", nameof(SourceLength));
     }
 }

@@ -1,6 +1,7 @@
 using System.Globalization;
 using GeekFlashCore.BlockDevice.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
+using GeekFlashCore.Protocol.Qcom.Firehose.Programming;
 
 namespace GeekFlashCore.Protocol.Qcom.Firehose.Storage;
 
@@ -8,6 +9,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
 {
     private readonly Dictionary<BlockDeviceId, BlockDeviceDescriptor> _descriptors = [];
     private readonly FirehoseConfigureResponse _configuration;
+    private readonly FirehoseProgramExecutor _programExecutor;
     private readonly FirehoseSession _session;
 
     public FirehoseStorageService(FirehoseSession session, FirehoseConfigureResponse configuration)
@@ -30,7 +32,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
             MemoryName = storage.ToWireString(),
             SectorSizeInBytes = sectorSize
         };
-        _ = GetTransferBufferSize();
+        _programExecutor = new FirehoseProgramExecutor(_session, GetTransferBufferSize());
     }
 
     public FirehoseConfigureResponse Configuration => _configuration;
@@ -89,28 +91,13 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
             request.StartSector,
             request.SectorCount,
             request.SectorSizeInBytes);
-        if (request.Format == FirehoseProgramFormat.AndroidSparse)
-            throw new NotSupportedException("Sparse images must be executed through the sparse program planner.");
-
-        long sourceLength = request.GetSourceLength();
-        if (sourceLength == 0)
-            throw new ArgumentException("The Firehose program source cannot be empty.", nameof(request));
-        long wireLength = request.GetWireLength();
         using Stream source = request.Source.OpenStream() ??
                               throw new InvalidDataException("The Firehose program source returned no stream.");
-        if (!source.CanRead)
-            throw new InvalidDataException("The Firehose program source is not readable.");
-        PositionSource(source, request.SourceOffset, cancellationToken);
-
-        _session.Execute(CreateProgramCommand(request), expectedRawMode: true);
-        return _session.SendRaw(
+        return _programExecutor.Execute(
+            request,
             source,
-            sourceLength,
-            wireLength,
-            GetTransferBufferSize(),
-            request.PaddingByte,
             progress,
-            cancellationToken).BytesTransferred;
+            cancellationToken);
     }
 
     public long Program(
@@ -339,52 +326,6 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
         GetSpare = ToByte(request.IoOptions.GetSpare),
         EccDisabled = ToByte(request.IoOptions.EccDisabled)
     };
-
-    private static ProgramCommand CreateProgramCommand(FirehoseProgramRequest request) => new()
-    {
-        Storage = request.Storage,
-        Slot = request.Slot,
-        PhysicalPartitionNumber = request.PhysicalPartitionNumber,
-        SectorSizeInBytes = request.SectorSizeInBytes,
-        NumPartitionSectors = Format(request.SectorCount),
-        StartSector = Format(request.StartSector),
-        Label = request.Label,
-        FileName = request.FileName,
-        LastSector = request.IoOptions.LastSector,
-        SkipBadBlock = ToByte(request.IoOptions.SkipBadBlock),
-        GetSpare = ToByte(request.IoOptions.GetSpare),
-        EccDisabled = ToByte(request.IoOptions.EccDisabled)
-    };
-
-    private static void PositionSource(Stream source, long offset, CancellationToken cancellationToken)
-    {
-        if (offset == 0)
-            return;
-        if (source.CanSeek)
-        {
-            if (source.Seek(offset, SeekOrigin.Begin) != offset)
-                throw new EndOfStreamException("Unable to seek to the Firehose source offset.");
-            return;
-        }
-
-        byte[] buffer = System.Buffers.ArrayPool<byte>.Shared.Rent(64 * 1024);
-        try
-        {
-            long remaining = offset;
-            while (remaining > 0)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                int read = source.Read(buffer, 0, (int)Math.Min(buffer.Length, remaining));
-                if (read == 0)
-                    throw new EndOfStreamException("The Firehose source ended before its requested offset.");
-                remaining -= read;
-            }
-        }
-        finally
-        {
-            System.Buffers.ArrayPool<byte>.Shared.Return(buffer);
-        }
-    }
 
     private static byte? ToByte(bool? value) => value is null ? null : value.Value ? (byte)1 : (byte)0;
     private static string Format(long value) => value.ToString(CultureInfo.InvariantCulture);

@@ -369,7 +369,7 @@
 - [x] 固化设计文档。
 - [x] Task 1：测试护栏与会话缺陷（2026-09-04；同时修复损坏长度触发的可变 stackalloc 栈溢出）。
 - [x] Task 2：公共契约（2026-09-04；配置、读写请求、目标证据、异常与同步精确 API）。
-- [ ] Task 3：运行时资源和 MessagePipe 适配。
+- [x] Task 3：运行时资源和 MessagePipe 适配（2026-09-04；Core 保持无 MessagePipe 依赖）。
 - [ ] Task 4：Loader 分析与 Secure Boot。
 - [ ] Task 5：同步 Firehose 会话。
 - [ ] Task 6：Configure 状态机。

@@ -21,6 +21,9 @@
     <Project Path="src/GeekFlashCore.FileSystem.Erofs/GeekFlashCore.FileSystem.Erofs.csproj" />
     <Project Path="src/GeekFlashCore.FileSystem.Ext/GeekFlashCore.FileSystem.Ext.csproj" />
   </Folder>
+  <Folder Name="/Integration/">
+    <Project Path="src/GeekFlashCore.Protocol.Qcom.MessagePipe/GeekFlashCore.Protocol.Qcom.MessagePipe.csproj" />
+  </Folder>
   <Folder Name="/Protocol/">
     <Project Path="src/GeekFlashCore.Protocol.Qcom/GeekFlashCore.Protocol.Qcom.csproj" />
   </Folder>

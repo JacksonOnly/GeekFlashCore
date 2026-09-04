@@ -377,7 +377,7 @@
 - [x] Task 8：Raw/Sparse 写入（2026-09-04；复用 Android.Sparse 合并区域，窗口化来源、空洞跳过、流式 Fill 与 Payload 分包）。
 - [x] Task 9：厂商策略与自定义命令（2026-09-04；三层厂商证据、策略化 Configure、命令允许列表与敏感属性脱敏）。
 - [x] Task 10：Xiaomi/ZTE/Nothing/OnePlus（2026-09-04；同步签名交换、Nothing 本地 Token、OnePlus 两代 Project Verify 原语与 ZTE Configure 策略）。
-- [ ] Task 11：Oplus Digest 解析与映射。
+- [x] Task 11：Oplus Digest 解析与映射（2026-09-04；固定兼容包版本、内部类型适配、重叠/权限校验与连续范围拆分）。
 - [ ] Task 12：OplusDigestPt。
 - [ ] Task 13：OplusDigestLegacy。
 - [ ] Task 14：QcomProtocol 工作流。

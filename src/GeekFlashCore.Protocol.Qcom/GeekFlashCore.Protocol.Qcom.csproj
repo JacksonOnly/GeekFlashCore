@@ -14,7 +14,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="QcomImageUtils" Version="2026.8.15-g0fbde41" />
+      <PackageReference Include="OplusDigestUtils" Version="2026.8.11-g6c670d9" />
+      <PackageReference Include="QcomImageUtils" Version="2026.8.11-g30ff56d" />
     </ItemGroup>
 
 </Project>

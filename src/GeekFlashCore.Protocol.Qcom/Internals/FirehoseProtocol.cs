@@ -1,6 +1,7 @@
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Firehose;
+using GeekFlashCore.Protocol.Qcom.Firehose.Configuration;
 using GeekFlashCore.Transport.Abstractions;
 using Serilog;
 
@@ -23,6 +24,8 @@ internal sealed class FirehoseProtocol : IDisposable
     public bool IsConnected => _session.State is FirehoseSessionState.Started
         or FirehoseSessionState.Configured
         or FirehoseSessionState.RawTransfer;
+
+    public FirehoseTargetInfo TargetInfo => _targetInfo;
 
     public FirehoseResponse Start(int? startupTimeoutMilliseconds = null)
     {
@@ -48,6 +51,22 @@ internal sealed class FirehoseProtocol : IDisposable
         ThrowIfDisposed();
         ThrowIfNotConnected();
         return _session.ExecuteXml(xml, expectedRawMode);
+    }
+
+    public FirehoseConfigureResult Configure(
+        FirehoseConfiguration configuration,
+        QcomVendorKind vendor = QcomVendorKind.Generic,
+        Func<FirehoseNakException, bool>? xiaomiAuthentication = null)
+    {
+        ThrowIfDisposed();
+        ThrowIfNotConnected();
+        FirehoseConfigureResult result = new ConfigureNegotiator(_session).Negotiate(
+            configuration,
+            vendor,
+            xiaomiAuthentication);
+        _targetInfo.Configuration = result.Configuration;
+        _targetInfo.TargetName = result.Configuration.TargetName;
+        return result;
     }
 
     private void LogThroughput(string operation, long bytes, TimeSpan elapsed)

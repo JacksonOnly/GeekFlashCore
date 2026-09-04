@@ -121,6 +121,8 @@ public record ConfigureCommand : BaseCommand
 
     [FirehoseCmdAttribute("ZlpAwareHost")] public byte? ZlpAwareHost { get; set; }
     [FirehoseCmdAttribute("SkipWrite")] public byte? SkipWrite { get; set; }
+    [FirehoseCmdAttribute("SkipStorageInit")] public byte? SkipStorageInit { get; set; }
+    [FirehoseCmdAttribute("Oem")] public string? Oem { get; set; }
 }
 
 [FirehoseCmdTag("setbootablestoragedrive")]

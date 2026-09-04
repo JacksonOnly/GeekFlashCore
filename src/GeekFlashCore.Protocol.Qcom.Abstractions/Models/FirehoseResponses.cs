@@ -77,14 +77,19 @@ public record FirehoseStorageInfo
 
 public record FirehoseConfigureResponse
 {
-    public string MemoryName { get; set; } = string.Empty;
-    public string TargetName { get; set; } = string.Empty;
-    public ulong MinVersionSupported { get; set; }
-    public ulong Version { get; set; }
-    public ulong MaxPayloadSizeToTargetInBytes { get; set; }
-    public ulong MaxPayloadSizeToTargetInBytesSupported { get; set; }
-    public ulong MaxPayloadSizeFromTargetInBytes { get; set; }
-    public ulong MaxXmlSizeInBytes { get; set; }
-    public ulong MaxDigestTableSizeInBytes { get; set; }
-    public DateTime DateTime { get; set; }
+    public FirehoseStorage Storage { get; init; }
+    public uint SectorSizeInBytes { get; init; }
+    public int Attempts { get; init; }
+    public string MemoryName { get; init; } = string.Empty;
+    public string TargetName { get; init; } = string.Empty;
+    public ulong MinVersionSupported { get; init; }
+    public ulong Version { get; init; }
+    public ulong MaxPayloadSizeToTargetInBytes { get; init; }
+    public ulong MaxPayloadSizeToTargetInBytesSupported { get; init; }
+    public ulong MaxPayloadSizeFromTargetInBytes { get; init; }
+    public ulong MaxXmlSizeInBytes { get; init; }
+    public ulong MaxDigestTableSizeInBytes { get; init; }
+    public DateTime DateTime { get; init; }
+    public IReadOnlyDictionary<string, string> Attributes { get; init; } =
+        new Dictionary<string, string>();
 }

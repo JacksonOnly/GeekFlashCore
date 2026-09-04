@@ -171,13 +171,27 @@
   <data name="Qcom_SaharaStreamDisposeFailed" xml:space="preserve">
     <value>释放 Sahara 镜像流失败。</value>
   </data>
-  <data name="Qcom_TargetSectorSizeMismatch" xml:space="preserve"><value>目标扇区大小 {0} 与协商的扇区大小 {1} 不匹配。</value></data>
-  <data name="Qcom_OffsetTargetNotAligned" xml:space="preserve"><value>偏移目标必须与协商的扇区大小对齐。</value></data>
-  <data name="Qcom_PartitionAmbiguousAcrossLuns" xml:space="preserve"><value>GPT 分区“{0}”存在于多个 LUN；请指定 PhysicalPartitionNumber。</value></data>
-  <data name="Qcom_PartitionNotFound" xml:space="preserve"><value>找不到 GPT 分区“{0}”。</value></data>
-  <data name="Qcom_UnsupportedStorageTarget" xml:space="preserve"><value>不支持 Qcom 存储目标类型 {0}。</value></data>
-  <data name="Qcom_UnsupportedProgrammerMedium" xml:space="preserve"><value>不支持 programmer 数据介质类型 {0}。</value></data>
-  <data name="Qcom_ProgrammerFileNotFound" xml:space="preserve"><value>找不到 programmer 文件。</value></data>
+  <data name="Qcom_TargetSectorSizeMismatch" xml:space="preserve">
+    <value>目标扇区大小 {0} 与协商的扇区大小 {1} 不匹配。</value>
+  </data>
+  <data name="Qcom_OffsetTargetNotAligned" xml:space="preserve">
+    <value>偏移目标必须与协商的扇区大小对齐。</value>
+  </data>
+  <data name="Qcom_PartitionAmbiguousAcrossLuns" xml:space="preserve">
+    <value>GPT 分区“{0}”存在于多个 LUN；请指定 PhysicalPartitionNumber。</value>
+  </data>
+  <data name="Qcom_PartitionNotFound" xml:space="preserve">
+    <value>找不到 GPT 分区“{0}”。</value>
+  </data>
+  <data name="Qcom_UnsupportedStorageTarget" xml:space="preserve">
+    <value>不支持 Qcom 存储目标类型 {0}。</value>
+  </data>
+  <data name="Qcom_UnsupportedProgrammerMedium" xml:space="preserve">
+    <value>不支持 programmer 数据介质类型 {0}。</value>
+  </data>
+  <data name="Qcom_ProgrammerFileNotFound" xml:space="preserve">
+    <value>找不到 programmer 文件。</value>
+  </data>
   <data name="Sahara_NotConnected" xml:space="preserve">
     <value>Sahara 协议未连接</value>
   </data>
@@ -237,5 +251,8 @@
   </data>
   <data name="Firehose_UnsupportedPropertyType" xml:space="preserve">
     <value>命令属性类型 '{0}' 不受支持</value>
+  </data>
+  <data name="Firehose_NotConnected" xml:space="preserve">
+    <value>Firehose 协议未连接</value>
   </data>
 </root>

@@ -435,3 +435,4 @@ riderModule.iml
 
 # Temp
 temp/
+/.tests/

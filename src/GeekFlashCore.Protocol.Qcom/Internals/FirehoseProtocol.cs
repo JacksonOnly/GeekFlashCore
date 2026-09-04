@@ -20,6 +20,7 @@ internal class FirehoseProtocol : IDisposable
         _config = config;
         _receiver = new FirehoseCmdReceiver(_logger, transport, config.ReadTimeoutMs);
         _sender = new FirehoseCmdSender(_logger, transport);
+        _targetInfo = new FirehoseTargetInfo();
     }
     private void LogThroughput(string operation, long bytes, TimeSpan elapsed)
     {
@@ -37,14 +38,14 @@ internal class FirehoseProtocol : IDisposable
     private void ThrowIfDisposed()
     {
         if (_disposed)
-            throw new ObjectDisposedException(nameof(SaharaProtocol));
+            throw new ObjectDisposedException(nameof(FirehoseProtocol));
     }
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
         IsConnected = false;
-        _logger.Verbose("Disposing SaharaProtocol");
+        _logger.Verbose("Disposing FirehoseProtocol");
         _targetInfo = new FirehoseTargetInfo();
         GC.SuppressFinalize(this);
     }

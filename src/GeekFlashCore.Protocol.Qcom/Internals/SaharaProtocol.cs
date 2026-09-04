@@ -66,153 +66,208 @@ internal class SaharaProtocol : IDisposable
         ArgumentNullException.ThrowIfNull(saharaImages);
         if (saharaImages.Count == 0)
             throw new ArgumentException(Strings.Sahara_EmptyImageList, nameof(saharaImages));
+
+        var imageDict = new Dictionary<int, SaharaImageEntry>(saharaImages.Count);
+        long totalImageBytes = 0;
+        foreach (SaharaImageEntry image in saharaImages)
+        {
+            ArgumentNullException.ThrowIfNull(image);
+            if (image.Id < 0)
+                throw new ArgumentOutOfRangeException(nameof(saharaImages), image.Id, null);
+            if (image.Length < 0 || image.Length != image.DataSource.Length)
+                throw new ArgumentException(Strings.Sahara_InvalidImageLength, nameof(saharaImages));
+            if (!imageDict.TryAdd(image.Id, image))
+                throw new ArgumentException(Strings.Sahara_DuplicateImageId, nameof(saharaImages));
+            totalImageBytes = checked(totalImageBytes + image.Length);
+        }
+
         if (_targetInfo.Mode != SaharaMode.ImageTxPending)
             SwitchModeTo(SaharaMode.ImageTxPending);
 
-        var imageDict = saharaImages.ToDictionary(static image => image.Id);
-        long totalImageBytes = saharaImages.Sum(static image => image.Length);
         long lastReportedBytes = 0;
         int currentImageId = -1;
         Stream? stream = null;
         long totalBytes = 0;
         var stopwatch = Stopwatch.StartNew();
-        while (true)
+        try
         {
-            var bodyLength = _receiver.ReceivePacketHeader(out var cmd);
-
-            switch (cmd)
+            while (true)
             {
-                case SaharaCommand.ReadData32Bit:
-                case SaharaCommand.ReadData64Bit:
+                var bodyLength = _receiver.ReceivePacketHeader(out var cmd);
+
+                switch (cmd)
                 {
-                    long dataOffset;
-                    int dataLength;
-                    int imageId;
-
-                    if (cmd == SaharaCommand.ReadData32Bit)
+                    case SaharaCommand.ReadData32Bit:
+                    case SaharaCommand.ReadData64Bit:
                     {
-                        _receiver.ReadReadData32BitRequest(out var rd, bodyLength);
-                        dataOffset = rd.DataOffset;
-                        dataLength = (int)rd.DataLength;
-                        imageId = (int)rd.ImageId;
-                    }
-                    else
-                    {
-                        _receiver.ReadReadData64BitRequest(out var rd, bodyLength);
-                        dataOffset = (long)rd.DataOffset;
-                        dataLength = (int)rd.DataLength;
-                        imageId = (int)rd.ImageId;
-                    }
+                        long dataOffset;
+                        int dataLength;
+                        int imageId;
 
-                    if (!imageDict.TryGetValue(imageId, out var image))
-                        throw new FileNotFoundException(Strings.FormatSahara_ImageNotFound(nameof(imageId)));
-                    currentImageId = imageId;
-                    stream ??= image.DataSource.OpenStream();
-
-                    _logger.Debug("Transfer image {ImageId} offset {Offset} length {Length}",
-                        imageId, dataOffset, dataLength);
-                    byte[] rented = ArrayPool<byte>.Shared.Rent(dataLength);
-                    try
-                    {
-                        if (dataOffset >= image.Length)
+                        if (cmd == SaharaCommand.ReadData32Bit)
                         {
-                            Array.Fill(rented, (byte)0xFF, 0, dataLength);
+                            _receiver.ReadReadData32BitRequest(out var rd, bodyLength);
+                            dataOffset = rd.DataOffset;
+                            dataLength = CheckedRequestValue(rd.DataLength, nameof(rd.DataLength));
+                            imageId = CheckedRequestValue(rd.ImageId, nameof(rd.ImageId));
                         }
                         else
                         {
-                            stream.Seek(dataOffset, SeekOrigin.Begin);
-                            int read = 0;
-                            while (read < dataLength)
-                            {
-                                int current = stream.Read(rented, read, dataLength - read);
-                                if (current == 0) break;
-                                read += current;
-                            }
-
-                            if (read < dataLength)
-                                Array.Fill(rented, (byte)0xFF, read, dataLength - read);
+                            _receiver.ReadReadData64BitRequest(out var rd, bodyLength);
+                            dataOffset = CheckedRequestOffset(rd.DataOffset);
+                            dataLength = CheckedRequestValue(rd.DataLength, nameof(rd.DataLength));
+                            imageId = CheckedRequestValue(rd.ImageId, nameof(rd.ImageId));
                         }
 
-                        _transport.Write(rented, 0, dataLength);
-                        totalBytes += dataLength;
-                        if (progress != null && totalBytes - lastReportedBytes >= ProgressReportInterval)
+                        if (dataLength == 0)
+                            throw new SaharaProtocolException(Strings.FormatSahara_InvalidPacketLength(dataLength));
+                        if (!imageDict.TryGetValue(imageId, out var image))
+                            throw new FileNotFoundException(Strings.FormatSahara_ImageNotFound(imageId));
+                        if (currentImageId != imageId)
+                        {
+                            stream?.Dispose();
+                            stream = image.DataSource.OpenStream() ??
+                                     throw new InvalidDataException(Strings.Sahara_ImageStreamMustBeReadableAndSeekable);
+                            if (!stream.CanRead || !stream.CanSeek)
+                            {
+                                stream.Dispose();
+                                stream = null;
+                                throw new InvalidDataException(Strings.Sahara_ImageStreamMustBeReadableAndSeekable);
+                            }
+
+                            currentImageId = imageId;
+                        }
+
+                        Stream activeStream = stream ?? throw new InvalidOperationException(
+                            Strings.Sahara_ImageStreamMustBeReadableAndSeekable);
+                        _logger.Debug("Transfer image {ImageId} offset {Offset} length {Length}",
+                            imageId, dataOffset, dataLength);
+                        byte[] rented = ArrayPool<byte>.Shared.Rent(dataLength);
+                        try
+                        {
+                            if (dataOffset >= image.Length)
+                            {
+                                rented.AsSpan(0, dataLength).Fill(0xFF);
+                            }
+                            else
+                            {
+                                activeStream.Seek(dataOffset, SeekOrigin.Begin);
+                                int available = checked((int)Math.Min(dataLength, image.Length - dataOffset));
+                                int read = 0;
+                                while (read < available)
+                                {
+                                    int current = activeStream.Read(rented, read, available - read);
+                                    if (current == 0)
+                                        break;
+                                    read += current;
+                                }
+
+                                if (read < dataLength)
+                                    rented.AsSpan(read, dataLength - read).Fill(0xFF);
+                            }
+
+                            _transport.Write(rented, 0, dataLength);
+                            totalBytes = checked(totalBytes + dataLength);
+                            if (progress != null && totalBytes - lastReportedBytes >= ProgressReportInterval)
+                            {
+                                lastReportedBytes = totalBytes;
+                                progress.Report(new ProgressRecord(totalImageBytes, totalBytes,
+                                    Strings.FormatProgress_UploadingImage(currentImageId)));
+                            }
+                        }
+                        finally
+                        {
+                            ArrayPool<byte>.Shared.Return(rented);
+                        }
+
+                        break;
+                    }
+                    case SaharaCommand.MemoryDebug32Bit:
+                    case SaharaCommand.MemoryDebug64Bit:
+                    {
+                        _logger.Warning("Target entered memory debug mode, dumping memory");
+                        progress?.Report(new ProgressRecord(totalImageBytes, totalBytes, Strings.Progress_MemoryDump));
+                        bool is64Bit = cmd == SaharaCommand.MemoryDebug64Bit;
+                        if (is64Bit)
+                        {
+                            _receiver.ReadMemoryDebug64BitRequest(out var memoryDebug, bodyLength);
+                            DumpMemoryCore(memoryDebug.MemoryTableAddress, memoryDebug.MemoryTableLength,
+                                true, onMemoryData);
+                        }
+                        else
+                        {
+                            _receiver.ReadMemoryDebug32BitRequest(out var memoryDebug, bodyLength);
+                            DumpMemoryCore(memoryDebug.MemoryTableAddress, memoryDebug.MemoryTableLength,
+                                false, onMemoryData);
+                        }
+
+                        stream?.Dispose();
+                        stream = null;
+                        currentImageId = -1;
+                        break;
+                    }
+                    case SaharaCommand.EndImageTransmit:
+                    {
+                        ThrowIfGetEndImageTxError(cmd, bodyLength);
+                        _sender.SendDoneRequest();
+                        var doneResponseLength = _receiver.ReceivePacketHeader(out var doneCmd);
+                        ThrowIfGetInvalidResponse(doneCmd, SaharaCommand.DoneResponse, doneResponseLength);
+                        _receiver.ReadDoneResponse(out var done, doneResponseLength);
+                        if (done.ImageTxStatus == SaharaMode.ImageTxComplete)
+                        {
+                            _targetInfo.Mode = SaharaMode.ImageTxComplete;
+                            LogThroughput("UploadImage", totalBytes, stopwatch.Elapsed);
+                            progress?.Report(new ProgressRecord(totalImageBytes, totalBytes,
+                                Strings.Progress_UploadComplete));
+                            return;
+                        }
+
+                        if (done.ImageTxStatus != SaharaMode.ImageTxPending)
+                        {
+                            throw new SaharaProtocolException(
+                                Strings.FormatSahara_UnexpectedStatus(done.ImageTxStatus.ToName()));
+                        }
+
+                        stream?.Dispose();
+                        stream = null;
+                        if (progress != null && totalBytes != lastReportedBytes)
                         {
                             lastReportedBytes = totalBytes;
                             progress.Report(new ProgressRecord(totalImageBytes, totalBytes,
                                 Strings.FormatProgress_UploadingImage(currentImageId)));
                         }
-                    }
-                    finally
-                    {
-                        ArrayPool<byte>.Shared.Return(rented);
+
+                        currentImageId = -1;
+
+                        ReceiveHello(out var hello, false);
+                        SetTargetInfoFromHelloRequest(in hello);
+                        SendHelloResponse(SaharaMode.ImageTxPending);
+                        break;
                     }
 
-                    break;
+                    default:
+                        throw new SaharaProtocolException(Strings.FormatSahara_UnexpectedCommand(cmd));
                 }
-                case SaharaCommand.MemoryDebug32Bit:
-                case SaharaCommand.MemoryDebug64Bit:
-                {
-                    _logger.Warning("Target entered memory debug mode, dumping memory");
-                    progress?.Report(new ProgressRecord(totalImageBytes, totalBytes, Strings.Progress_MemoryDump));
-                    bool is64Bit = cmd == SaharaCommand.MemoryDebug64Bit;
-                    if (is64Bit)
-                    {
-                        _receiver.ReadMemoryDebug64BitRequest(out var memoryDebug, bodyLength);
-                        DumpMemoryCore(memoryDebug.MemoryTableAddress, memoryDebug.MemoryTableLength,
-                            true, onMemoryData);
-                    }
-                    else
-                    {
-                        _receiver.ReadMemoryDebug32BitRequest(out var memoryDebug, bodyLength);
-                        DumpMemoryCore(memoryDebug.MemoryTableAddress, memoryDebug.MemoryTableLength,
-                            false, onMemoryData);
-                    }
-
-                    stream?.Dispose();
-                    stream = null;
-                    break;
-                }
-                case SaharaCommand.EndImageTransmit:
-                {
-                    ThrowIfGetEndImageTxError(cmd, bodyLength);
-                    _sender.SendDoneRequest();
-                    var doneResponseLength = _receiver.ReceivePacketHeader(out var doneCmd);
-                    ThrowIfGetInvalidResponse(doneCmd, SaharaCommand.DoneResponse, doneResponseLength);
-                    _receiver.ReadDoneResponse(out var done, doneResponseLength);
-                    if (done.ImageTxStatus == SaharaMode.ImageTxComplete)
-                    {
-                        _targetInfo.Mode = SaharaMode.ImageTxComplete;
-                        LogThroughput("UploadImage", totalBytes, stopwatch.Elapsed);
-                        progress?.Report(new ProgressRecord(totalImageBytes, totalBytes,
-                            Strings.Progress_UploadComplete));
-                        return;
-                    }
-
-                    if (done.ImageTxStatus != SaharaMode.ImageTxPending)
-                    {
-                        throw new SaharaProtocolException(
-                            Strings.FormatSahara_UnexpectedStatus(done.ImageTxStatus.ToName()));
-                    }
-
-                    stream?.Dispose();
-                    stream = null;
-                    if (progress != null && totalBytes != lastReportedBytes)
-                    {
-                        lastReportedBytes = totalBytes;
-                        progress.Report(new ProgressRecord(totalImageBytes, totalBytes,
-                            Strings.FormatProgress_UploadingImage(currentImageId)));
-                    }
-
-                    ReceiveHello(out var hello, false);
-                    SetTargetInfoFromHelloRequest(in hello);
-                    SendHelloResponse(SaharaMode.ImageTxPending);
-                    break;
-                }
-
-                default:
-                    throw new SaharaProtocolException(Strings.FormatSahara_UnexpectedCommand(cmd));
             }
         }
+        finally
+        {
+            stream?.Dispose();
+        }
+    }
+
+    private static int CheckedRequestValue(ulong value, string name)
+    {
+        if (value > int.MaxValue)
+            throw new SaharaProtocolException(Strings.FormatSahara_InvalidPacketLength($"{name}={value}"));
+        return (int)value;
+    }
+
+    private static long CheckedRequestOffset(ulong value)
+    {
+        if (value > long.MaxValue)
+            throw new SaharaProtocolException(Strings.FormatSahara_InvalidPacketLength($"offset={value}"));
+        return (long)value;
     }
 
     public ReadOnlyMemory<byte> ExecuteCommand(SaharaExecuteCommand command)

@@ -147,6 +147,15 @@
   <data name="Sahara_InvalidPacketLength" xml:space="preserve">
     <value>Packet length invalid '{0}'</value>
   </data>
+  <data name="Sahara_InvalidImageLength" xml:space="preserve">
+    <value>The declared Sahara image length is invalid or does not match its data source.</value>
+  </data>
+  <data name="Sahara_DuplicateImageId" xml:space="preserve">
+    <value>Sahara image IDs must be unique.</value>
+  </data>
+  <data name="Sahara_ImageStreamMustBeReadableAndSeekable" xml:space="preserve">
+    <value>The Sahara image stream must be readable and seekable.</value>
+  </data>
   <data name="Sahara_InvalidMode" xml:space="preserve">
     <value>Wrong Sahara mode.
 Current {0}, expected {1}</value>

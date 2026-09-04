@@ -27,6 +27,15 @@
   <data name="Sahara_InvalidPacketLength" xml:space="preserve">
     <value>包长度无效 '{0}'</value>
   </data>
+  <data name="Sahara_InvalidImageLength" xml:space="preserve">
+    <value>Sahara 镜像声明长度无效或与数据源不一致。</value>
+  </data>
+  <data name="Sahara_DuplicateImageId" xml:space="preserve">
+    <value>Sahara 镜像 ID 不能重复。</value>
+  </data>
+  <data name="Sahara_ImageStreamMustBeReadableAndSeekable" xml:space="preserve">
+    <value>Sahara 镜像数据流必须可读且可定位。</value>
+  </data>
   <data name="Sahara_InvalidMode" xml:space="preserve">
     <value>错误的Sahara模式.\r\n当前 {0}, 预期 {1}</value>
   </data>

@@ -13,4 +13,8 @@
       <ProjectReference Include="..\GeekFlashCore.Shared\GeekFlashCore.Shared.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="QcomImageUtils" Version="2026.8.15-g0fbde41" />
+    </ItemGroup>
+
 </Project>

@@ -85,6 +85,14 @@ public record ReadCommand : BaseCommand, IFirehoseDevData, IFirehoseIoData, IFir
 [FirehoseCmdTag("nop")]
 public record NopCommand : BaseCommand;
 
+[FirehoseCmdTag("sig")]
+public record XiaomiSigCommand : BaseCommand
+{
+    [FirehoseCmdAttribute("TargetName")] public string TargetName { get; set; } = string.Empty;
+    [FirehoseCmdAttribute("size_in_bytes")] public uint? SizeInBytes { get; set; }
+    [FirehoseCmdAttribute("verbose")] public byte? Verbose { get; set; }
+}
+
 [FirehoseCmdTag("patch")]
 public record PatchCommand : BaseCommand, IFirehoseDevData
 {

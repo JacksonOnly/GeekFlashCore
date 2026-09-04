@@ -1,13 +1,11 @@
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Loaders;
+using GeekFlashCore.Protocol.Qcom.Vendors.Xiaomi;
 
 namespace GeekFlashCore.Protocol.Qcom.Vendors;
 
 public static class VendorStrategyResolver
 {
-    private static readonly IVendorFirehoseStrategy Xiaomi = new KnownVendorStrategy(
-        QcomVendorKind.Xiaomi,
-        GenericVendorStrategy.Extend("sig"));
     private static readonly IVendorFirehoseStrategy Oplus = new KnownVendorStrategy(
         QcomVendorKind.Oplus,
         GenericVendorStrategy.Extend("digest", "getsigndata", "sha256init", "verify"));
@@ -69,7 +67,7 @@ public static class VendorStrategyResolver
 
     public static IVendorFirehoseStrategy ForVendor(QcomVendorKind vendor) => vendor switch
     {
-        QcomVendorKind.Xiaomi => Xiaomi,
+        QcomVendorKind.Xiaomi => XiaomiFirehoseStrategy.Instance,
         QcomVendorKind.Oplus => Oplus,
         QcomVendorKind.OnePlus => OnePlus,
         QcomVendorKind.Nothing => Nothing,

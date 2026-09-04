@@ -1,6 +1,7 @@
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Loaders;
 using GeekFlashCore.Protocol.Qcom.Vendors.Xiaomi;
+using GeekFlashCore.Protocol.Qcom.Vendors.Nothing;
 
 namespace GeekFlashCore.Protocol.Qcom.Vendors;
 
@@ -12,9 +13,6 @@ public static class VendorStrategyResolver
     private static readonly IVendorFirehoseStrategy OnePlus = new KnownVendorStrategy(
         QcomVendorKind.OnePlus,
         GenericVendorStrategy.Extend("demacia", "setprocstart", "setprocend", "setprojmodel", "setswprojmodel"));
-    private static readonly IVendorFirehoseStrategy Nothing = new KnownVendorStrategy(
-        QcomVendorKind.Nothing,
-        GenericVendorStrategy.Extend("checkntfeature", "ntprojectverify"));
     private static readonly IVendorFirehoseStrategy Zte = new KnownVendorStrategy(
         QcomVendorKind.Zte,
         GenericVendorStrategy.Extend(),
@@ -70,7 +68,7 @@ public static class VendorStrategyResolver
         QcomVendorKind.Xiaomi => XiaomiFirehoseStrategy.Instance,
         QcomVendorKind.Oplus => Oplus,
         QcomVendorKind.OnePlus => OnePlus,
-        QcomVendorKind.Nothing => Nothing,
+        QcomVendorKind.Nothing => NothingFirehoseStrategy.Instance,
         QcomVendorKind.Zte => Zte,
         QcomVendorKind.Auto or QcomVendorKind.Generic => GenericVendorStrategy.Instance,
         _ => new KnownVendorStrategy(vendor, GenericVendorStrategy.Extend())

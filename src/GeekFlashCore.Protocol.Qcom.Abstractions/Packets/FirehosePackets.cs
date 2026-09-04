@@ -93,6 +93,17 @@ public record XiaomiSigCommand : BaseCommand
     [FirehoseCmdAttribute("verbose")] public byte? Verbose { get; set; }
 }
 
+[FirehoseCmdTag("checkntfeature")]
+public record CheckNothingFeatureCommand : BaseCommand;
+
+[FirehoseCmdTag("ntprojectverify")]
+public record NothingProjectVerifyCommand : BaseCommand
+{
+    [FirehoseCmdAttribute("token1")] public string Token1 { get; set; } = string.Empty;
+    [FirehoseCmdAttribute("token2")] public string Token2 { get; set; } = string.Empty;
+    [FirehoseCmdAttribute("token3")] public string Token3 { get; set; } = string.Empty;
+}
+
 [FirehoseCmdTag("patch")]
 public record PatchCommand : BaseCommand, IFirehoseDevData
 {

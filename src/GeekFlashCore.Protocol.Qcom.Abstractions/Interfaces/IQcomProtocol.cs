@@ -5,5 +5,29 @@ namespace GeekFlashCore.Protocol.Qcom.Abstractions;
 
 public interface IQcomProtocol : IProtocol,IBlockDeviceProvider
 {
-    // 待加入一些方法，比如啊 Program Read 等等
+    QcomTargetInfo? TargetInfo { get; }
+
+    SaharaTargetInfo ProbeSahara(IProgress<ProgressRecord>? progress = null);
+
+    void UploadSaharaImages(
+        IReadOnlyList<SaharaImageEntry> images,
+        IProgress<ProgressRecord>? progress = null,
+        CancellationToken cancellationToken = default);
+
+    FirehoseCommandResult ConfigureFirehose(IProgress<ProgressRecord>? progress = null);
+
+    long Program(
+        FirehoseProgramRequest request,
+        IProgress<ProgressRecord>? progress = null,
+        CancellationToken cancellationToken = default);
+
+    long Read(
+        FirehoseReadRequest request,
+        Stream destination,
+        IProgress<ProgressRecord>? progress = null,
+        CancellationToken cancellationToken = default);
+
+    FirehoseCommandResult ExecuteFirehoseCommand(BaseCommand command);
+
+    FirehoseCommandResult ExecuteFirehoseXml(string xml);
 }

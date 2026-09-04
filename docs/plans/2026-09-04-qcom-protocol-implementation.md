@@ -368,7 +368,7 @@
 - [x] 完成并批准总体设计。
 - [x] 固化设计文档。
 - [x] Task 1：测试护栏与会话缺陷（2026-09-04；同时修复损坏长度触发的可变 stackalloc 栈溢出）。
-- [ ] Task 2：公共契约。
+- [x] Task 2：公共契约（2026-09-04；配置、读写请求、目标证据、异常与同步精确 API）。
 - [ ] Task 3：运行时资源和 MessagePipe 适配。
 - [ ] Task 4：Loader 分析与 Secure Boot。
 - [ ] Task 5：同步 Firehose 会话。

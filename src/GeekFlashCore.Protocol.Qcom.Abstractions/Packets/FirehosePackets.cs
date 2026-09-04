@@ -104,6 +104,36 @@ public record NothingProjectVerifyCommand : BaseCommand
     [FirehoseCmdAttribute("token3")] public string Token3 { get; set; } = string.Empty;
 }
 
+[FirehoseCmdTag("demacia")]
+public record OnePlusDemaciaCommand : BaseCommand
+{
+    [FirehoseCmdAttribute("token")] public string Token { get; set; } = string.Empty;
+    [FirehoseCmdAttribute("pk")] public string PublicKey { get; set; } = string.Empty;
+}
+
+[FirehoseCmdTag("setprojmodel")]
+public record OnePlusSetProjectModelCommand : BaseCommand
+{
+    [FirehoseCmdAttribute("token")] public string Token { get; set; } = string.Empty;
+    [FirehoseCmdAttribute("pk")] public string PublicKey { get; set; } = string.Empty;
+}
+
+[FirehoseCmdTag("setprocstart")]
+public record OnePlusSetProcessStartCommand : BaseCommand;
+
+[FirehoseCmdTag("setswprojmodel")]
+public record OnePlusSetSoftwareProjectModelCommand : BaseCommand
+{
+    [FirehoseCmdAttribute("token")] public string Token { get; set; } = string.Empty;
+    [FirehoseCmdAttribute("pk")] public string PublicKey { get; set; } = string.Empty;
+}
+
+[FirehoseCmdTag("setprocend")]
+public record OnePlusSetProcessEndCommand : BaseCommand;
+
+[FirehoseCmdTag("SetNetType")]
+public record OnePlusSetNetTypeCommand : BaseCommand;
+
 [FirehoseCmdTag("patch")]
 public record PatchCommand : BaseCommand, IFirehoseDevData
 {

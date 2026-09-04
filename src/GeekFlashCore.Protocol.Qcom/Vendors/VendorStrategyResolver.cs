@@ -2,6 +2,8 @@ using GeekFlashCore.Protocol.Qcom.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Loaders;
 using GeekFlashCore.Protocol.Qcom.Vendors.Xiaomi;
 using GeekFlashCore.Protocol.Qcom.Vendors.Nothing;
+using GeekFlashCore.Protocol.Qcom.Vendors.OnePlus;
+using GeekFlashCore.Protocol.Qcom.Vendors.Zte;
 
 namespace GeekFlashCore.Protocol.Qcom.Vendors;
 
@@ -10,13 +12,6 @@ public static class VendorStrategyResolver
     private static readonly IVendorFirehoseStrategy Oplus = new KnownVendorStrategy(
         QcomVendorKind.Oplus,
         GenericVendorStrategy.Extend("digest", "getsigndata", "sha256init", "verify"));
-    private static readonly IVendorFirehoseStrategy OnePlus = new KnownVendorStrategy(
-        QcomVendorKind.OnePlus,
-        GenericVendorStrategy.Extend("demacia", "setprocstart", "setprocend", "setprojmodel", "setswprojmodel"));
-    private static readonly IVendorFirehoseStrategy Zte = new KnownVendorStrategy(
-        QcomVendorKind.Zte,
-        GenericVendorStrategy.Extend(),
-        configureOem: "ZTE");
 
     public static IVendorFirehoseStrategy Resolve(
         QcomVendorKind explicitOverride,
@@ -67,9 +62,9 @@ public static class VendorStrategyResolver
     {
         QcomVendorKind.Xiaomi => XiaomiFirehoseStrategy.Instance,
         QcomVendorKind.Oplus => Oplus,
-        QcomVendorKind.OnePlus => OnePlus,
+        QcomVendorKind.OnePlus => OnePlusFirehoseStrategy.Instance,
         QcomVendorKind.Nothing => NothingFirehoseStrategy.Instance,
-        QcomVendorKind.Zte => Zte,
+        QcomVendorKind.Zte => ZteFirehoseStrategy.Instance,
         QcomVendorKind.Auto or QcomVendorKind.Generic => GenericVendorStrategy.Instance,
         _ => new KnownVendorStrategy(vendor, GenericVendorStrategy.Extend())
     };
@@ -79,8 +74,7 @@ public static class VendorStrategyResolver
 
     private sealed class KnownVendorStrategy(
         QcomVendorKind vendor,
-        IReadOnlySet<string> commands,
-        string? configureOem = null) : IVendorFirehoseStrategy
+        IReadOnlySet<string> commands) : IVendorFirehoseStrategy
     {
         public QcomVendorKind Vendor { get; } = vendor;
         public IReadOnlySet<string> AllowedCustomCommands { get; } = commands;
@@ -88,7 +82,7 @@ public static class VendorStrategyResolver
         public ConfigureCommand PrepareConfigure(ConfigureCommand command)
         {
             ArgumentNullException.ThrowIfNull(command);
-            return configureOem is null ? command : command with { Oem = configureOem };
+            return command;
         }
     }
 }

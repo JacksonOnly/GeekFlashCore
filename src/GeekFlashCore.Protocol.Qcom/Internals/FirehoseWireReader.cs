@@ -6,22 +6,24 @@ using GeekFlashCore.Transport.Abstractions;
 
 namespace GeekFlashCore.Protocol.Qcom.Internals;
 
-internal sealed class FirehoseWireReader
+internal sealed class FirehoseWireReader : IDisposable
 {
     private static ReadOnlySpan<byte> XmlPrefix => "<?xml"u8;
     private static ReadOnlySpan<byte> DataEnd => "</data>"u8;
 
     private readonly ITransport _transport;
     private readonly ArrayBufferWriter<byte> _xmlBuffer = new(FirehoseConstants.InitialXmlBufferSize);
-    private byte[] _carry = [];
+    private byte[]? _carry;
     private int _carryOffset;
     private int _carryCount;
+    private bool _disposed;
 
     public FirehoseWireReader(ITransport transport) =>
         _transport = transport ?? throw new ArgumentNullException(nameof(transport));
 
     public FirehoseResponse ReadResponse(int timeoutMilliseconds)
     {
+        ThrowIfDisposed();
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
         var logs = new List<FirehoseResponseLog>(4);
 
@@ -53,6 +55,7 @@ internal sealed class FirehoseWireReader
 
     public FirehoseResponse ReadStartupLogs(int timeoutMilliseconds)
     {
+        ThrowIfDisposed();
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
         var logs = new List<FirehoseResponseLog>(16);
 
@@ -75,6 +78,7 @@ internal sealed class FirehoseWireReader
 
     public int ReadRaw(Span<byte> destination, int timeoutMilliseconds)
     {
+        ThrowIfDisposed();
         int copied = CopyCarryTo(destination);
         if (copied > 0)
             return copied;
@@ -114,7 +118,11 @@ internal sealed class FirehoseWireReader
                 throw new InvalidDataException(
                     Strings.FormatFirehose_XmlPacketTooLarge(FirehoseConstants.MaximumXmlPacketSize));
 
-            Span<byte> destination = _xmlBuffer.GetSpan(FirehoseConstants.InitialXmlBufferSize);
+            int remainingCapacity = FirehoseConstants.MaximumXmlPacketSize - _xmlBuffer.WrittenCount;
+            Span<byte> destination = _xmlBuffer.GetSpan(
+                Math.Min(FirehoseConstants.InitialXmlBufferSize, remainingCapacity))[..Math.Min(
+                    FirehoseConstants.InitialXmlBufferSize,
+                    remainingCapacity)];
             int read = ReadSome(destination, GetRemainingMilliseconds(deadline));
             if (read <= 0)
                 throw new EndOfStreamException(Strings.Firehose_TransportClosedReadingXml);
@@ -141,7 +149,7 @@ internal sealed class FirehoseWireReader
         if (count == 0)
             return 0;
 
-        _carry.AsSpan(_carryOffset, count).CopyTo(destination);
+        _carry!.AsSpan(_carryOffset, count).CopyTo(destination);
         _carryOffset += count;
         _carryCount -= count;
         if (_carryCount == 0)
@@ -151,13 +159,19 @@ internal sealed class FirehoseWireReader
 
     private void PrependCarry(ReadOnlySpan<byte> data)
     {
-        byte[] combined = new byte[data.Length + _carryCount];
-        data.CopyTo(combined);
+        int combinedLength = checked(data.Length + _carryCount);
+        if (combinedLength > FirehoseConstants.MaximumXmlPacketSize)
+            throw new InvalidDataException(
+                Strings.FormatFirehose_XmlPacketTooLarge(FirehoseConstants.MaximumXmlPacketSize));
+
+        byte[] combined = ArrayPool<byte>.Shared.Rent(Math.Max(1, combinedLength));
+        data.CopyTo(combined.AsSpan(0, data.Length));
         if (_carryCount > 0)
-            _carry.AsSpan(_carryOffset, _carryCount).CopyTo(combined.AsSpan(data.Length));
+            _carry!.AsSpan(_carryOffset, _carryCount).CopyTo(combined.AsSpan(data.Length));
+        ReturnCarry();
         _carry = combined;
         _carryOffset = 0;
-        _carryCount = combined.Length;
+        _carryCount = combinedLength;
     }
 
     private static long MillisecondsToTimestamp(int milliseconds)
@@ -173,5 +187,28 @@ internal sealed class FirehoseWireReader
         if (ticks <= 0)
             throw new TimeoutException(Strings.Firehose_ReadTimedOut);
         return Math.Max(1, (int)Math.Ceiling(ticks * 1000d / Stopwatch.Frequency));
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+        _disposed = true;
+        ReturnCarry();
+    }
+
+    private void ReturnCarry()
+    {
+        if (_carry is not null)
+            ArrayPool<byte>.Shared.Return(_carry);
+        _carry = null;
+        _carryOffset = 0;
+        _carryCount = 0;
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(FirehoseWireReader));
     }
 }

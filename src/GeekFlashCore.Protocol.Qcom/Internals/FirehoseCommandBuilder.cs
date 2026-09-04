@@ -30,12 +30,12 @@ internal static class FirehoseCommandBuilder
     private sealed class CommandSchema
     {
         private readonly string _tag;
-        private readonly PropertySerializer[] _serializers;
+        private readonly Action<StringBuilder, object>[] _appenders;
 
-        private CommandSchema(string tag, PropertySerializer[] serializers)
+        private CommandSchema(string tag, Action<StringBuilder, object>[] appenders)
         {
             _tag = tag;
-            _serializers = serializers;
+            _appenders = appenders;
         }
 
         public static CommandSchema Create(Type type)
@@ -44,18 +44,18 @@ internal static class FirehoseCommandBuilder
             if (string.IsNullOrEmpty(tag))
                 throw new InvalidOperationException(Strings.FormatFirehose_CommandTagMissing(type.Name));
 
-            PropertySerializer[] serializers = type
+            Action<StringBuilder, object>[] appenders = type
                 .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                 .Where(static property => property.GetCustomAttribute<FirehoseCmdAttributeAttribute>() is not null)
                 .OrderBy(static property => property.MetadataToken)
                 .Select(static property =>
                 {
                     string attributeName = property.GetCustomAttribute<FirehoseCmdAttributeAttribute>()!.AttributeName;
-                    return new PropertySerializer(attributeName, GetValueKind(property.PropertyType), CreateGetter(property));
+                    return CreateAppender(property, attributeName, GetValueKind(property.PropertyType));
                 })
                 .ToArray();
 
-            return new CommandSchema(tag, serializers);
+            return new CommandSchema(tag, appenders);
         }
 
         public string Build(object command)
@@ -63,15 +63,8 @@ internal static class FirehoseCommandBuilder
             var builder = new StringBuilder(InitialCapacity);
             builder.Append(FirehoseConstants.XmlDeclaration);
             builder.Append('<').Append(_tag);
-            foreach (PropertySerializer serializer in _serializers)
-            {
-                object? value = serializer.Getter(command);
-                if (value is null)
-                    continue;
-                builder.Append(' ').Append(serializer.AttributeName).Append("=\"");
-                serializer.AppendValue(builder, value);
-                builder.Append('"');
-            }
+            foreach (Action<StringBuilder, object> append in _appenders)
+                append(builder, command);
             builder.Append(" />").Append(FirehoseConstants.XmlDataEnd);
             return builder.ToString();
         }
@@ -97,50 +90,97 @@ internal static class FirehoseCommandBuilder
             _ => false
         };
 
-        private static Func<object, object?> CreateGetter(PropertyInfo property)
+        private static Action<StringBuilder, object> CreateAppender(
+            PropertyInfo property,
+            string attributeName,
+            ValueKind kind)
         {
+            ParameterExpression builder = Expression.Parameter(typeof(StringBuilder), "builder");
             ParameterExpression instance = Expression.Parameter(typeof(object), "instance");
-            UnaryExpression body = Expression.Convert(
-                Expression.Property(Expression.Convert(instance, property.DeclaringType!), property),
-                typeof(object));
-            return Expression.Lambda<Func<object, object?>>(body, instance).Compile();
-        }
-    }
+            MemberExpression value = Expression.Property(
+                Expression.Convert(instance, property.DeclaringType!),
+                property);
+            Type? nullableType = Nullable.GetUnderlyingType(property.PropertyType);
+            Type valueType = nullableType ?? property.PropertyType;
+            MethodInfo appendMethod = GetAppendMethod(valueType, kind);
+            Expression callValue = nullableType is null ? value : Expression.Property(value, "Value");
+            MethodCallExpression append = Expression.Call(
+                appendMethod,
+                builder,
+                Expression.Constant(attributeName),
+                callValue);
 
-    private sealed class PropertySerializer
-    {
-        public string AttributeName { get; }
-        public Func<object, object?> Getter { get; }
-
-        private readonly ValueKind _kind;
-
-        public PropertySerializer(string attributeName, ValueKind kind, Func<object, object?> getter)
-        {
-            AttributeName = attributeName;
-            _kind = kind;
-            Getter = getter;
-        }
-
-        public void AppendValue(StringBuilder builder, object value)
-        {
-            switch (_kind)
+            Expression body;
+            if (nullableType is not null)
             {
-                case ValueKind.String:
-                    AppendXmlEscaped(builder, (string)value);
-                    break;
-                case ValueKind.Enum:
-                    builder.Append(value switch
-                    {
-                        FirehoseStorage storage => storage.ToWireString(),
-                        FirehosePowerValue power => power.ToWireString(),
-                        _ => value.ToString() ?? string.Empty
-                    });
-                    break;
-                default:
-                    builder.Append(((IFormattable)value).ToString(null, CultureInfo.InvariantCulture));
-                    break;
+                body = Expression.IfThen(Expression.Property(value, "HasValue"), append);
             }
+            else if (valueType == typeof(string))
+            {
+                body = Expression.IfThen(
+                    Expression.NotEqual(value, Expression.Constant(null, typeof(string))),
+                    append);
+            }
+            else
+            {
+                body = append;
+            }
+
+            return Expression.Lambda<Action<StringBuilder, object>>(body, builder, instance).Compile();
         }
+
+        private static MethodInfo GetAppendMethod(Type type, ValueKind kind)
+        {
+            const BindingFlags flags = BindingFlags.Static | BindingFlags.NonPublic;
+            if (type == typeof(string))
+                return typeof(CommandSchema).GetMethod(nameof(AppendString), flags)!;
+            if (type == typeof(FirehoseStorage))
+                return typeof(CommandSchema).GetMethod(nameof(AppendStorage), flags)!;
+            if (type == typeof(FirehosePowerValue))
+                return typeof(CommandSchema).GetMethod(nameof(AppendPower), flags)!;
+
+            string methodName = kind == ValueKind.Enum ? nameof(AppendEnum) : nameof(AppendNumber);
+            return typeof(CommandSchema).GetMethod(methodName, flags)!.MakeGenericMethod(type);
+        }
+
+        private static void AppendString(StringBuilder builder, string name, string value)
+        {
+            AppendPrefix(builder, name);
+            AppendXmlEscaped(builder, value);
+            builder.Append('"');
+        }
+
+        private static void AppendStorage(StringBuilder builder, string name, FirehoseStorage value)
+        {
+            AppendPrefix(builder, name);
+            builder.Append(value.ToWireString()).Append('"');
+        }
+
+        private static void AppendPower(StringBuilder builder, string name, FirehosePowerValue value)
+        {
+            AppendPrefix(builder, name);
+            builder.Append(value.ToWireString()).Append('"');
+        }
+
+        private static void AppendEnum<T>(StringBuilder builder, string name, T value)
+            where T : struct, Enum
+        {
+            AppendPrefix(builder, name);
+            builder.Append(value.ToString()).Append('"');
+        }
+
+        private static void AppendNumber<T>(StringBuilder builder, string name, T value)
+            where T : struct, ISpanFormattable
+        {
+            AppendPrefix(builder, name);
+            Span<char> buffer = stackalloc char[64];
+            if (!value.TryFormat(buffer, out int written, default, CultureInfo.InvariantCulture))
+                throw new InvalidOperationException($"Unable to format Firehose attribute {name}.");
+            builder.Append(buffer[..written]).Append('"');
+        }
+
+        private static void AppendPrefix(StringBuilder builder, string name) =>
+            builder.Append(' ').Append(name).Append("=\"");
 
         private static void AppendXmlEscaped(StringBuilder builder, string value)
         {

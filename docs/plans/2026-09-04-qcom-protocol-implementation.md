@@ -371,7 +371,7 @@
 - [x] Task 2：公共契约（2026-09-04；配置、读写请求、目标证据、异常与同步精确 API）。
 - [x] Task 3：运行时资源和 MessagePipe 适配（2026-09-04；Core 保持无 MessagePipe 依赖）。
 - [x] Task 4：Loader 分析与 Secure Boot（2026-09-04；固定 QcomImageUtils 版本并隔离第三方类型）。
-- [ ] Task 5：同步 Firehose 会话。
+- [x] Task 5：同步 Firehose 会话（2026-09-04；有界池化线路缓冲、强类型命令构建、Raw 状态与并发保护）。
 - [ ] Task 6：Configure 状态机。
 - [ ] Task 7：存储命令与块设备。
 - [ ] Task 8：Raw/Sparse 写入。

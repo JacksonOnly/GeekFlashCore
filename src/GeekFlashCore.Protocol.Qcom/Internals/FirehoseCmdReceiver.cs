@@ -6,7 +6,7 @@ using Serilog.Events;
 
 namespace GeekFlashCore.Protocol.Qcom.Internals;
 
-internal readonly struct FirehoseCmdReceiver
+internal sealed class FirehoseCmdReceiver : IDisposable
 {
     private readonly FirehoseWireReader _reader;
     private readonly int _readTimeoutMilliseconds;
@@ -147,4 +147,6 @@ internal readonly struct FirehoseCmdReceiver
         }
         return false;
     }
+
+    public void Dispose() => _reader.Dispose();
 }

@@ -32,6 +32,10 @@ internal readonly struct FirehoseCmdSender
         ArgumentNullException.ThrowIfNull(xml);
 
         int byteCount = Encoding.UTF8.GetByteCount(xml);
+        if (byteCount > FirehoseConstants.MaximumXmlPacketSize)
+            throw new ArgumentException(
+                $"The Firehose XML document exceeds {FirehoseConstants.MaximumXmlPacketSize} bytes.",
+                nameof(xml));
         byte[]? rented = null;
         Span<byte> buffer = byteCount <= 1024
             ? stackalloc byte[byteCount]
@@ -40,6 +44,7 @@ internal readonly struct FirehoseCmdSender
         {
             int bytesWritten = Encoding.UTF8.GetBytes(xml, buffer);
             _transport.Write(buffer[..bytesWritten]);
+            _logger.Debug("Send XML {XmlLength} bytes", bytesWritten);
         }
         finally
         {

@@ -373,7 +373,7 @@
 - [x] Task 4：Loader 分析与 Secure Boot（2026-09-04；固定 QcomImageUtils 版本并隔离第三方类型）。
 - [x] Task 5：同步 Firehose 会话（2026-09-04；有界池化线路缓冲、强类型命令构建、Raw 状态与并发保护）。
 - [x] Task 6：Configure 状态机（2026-09-04；保留厂商回退顺序，新增状态指纹、重试上限与结构化证据解析）。
-- [ ] Task 7：存储命令与块设备。
+- [x] Task 7：存储命令与块设备（2026-09-04；同步流式 I/O、集中范围校验、存储证据解析与读写权限适配）。
 - [ ] Task 8：Raw/Sparse 写入。
 - [ ] Task 9：厂商策略与自定义命令。
 - [ ] Task 10：Xiaomi/ZTE/Nothing/OnePlus。

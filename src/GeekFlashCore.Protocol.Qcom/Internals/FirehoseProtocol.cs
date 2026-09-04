@@ -2,6 +2,7 @@ using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Firehose;
 using GeekFlashCore.Protocol.Qcom.Firehose.Configuration;
+using GeekFlashCore.Protocol.Qcom.Firehose.Storage;
 using GeekFlashCore.Transport.Abstractions;
 using Serilog;
 
@@ -11,6 +12,7 @@ internal sealed class FirehoseProtocol : IDisposable
 {
     private readonly ILogger _logger = Log.ForContext<FirehoseProtocol>();
     private readonly FirehoseSession _session;
+    private FirehoseStorageService? _storageService;
     private FirehoseTargetInfo _targetInfo;
     private bool _disposed;
 
@@ -66,7 +68,35 @@ internal sealed class FirehoseProtocol : IDisposable
             xiaomiAuthentication);
         _targetInfo.Configuration = result.Configuration;
         _targetInfo.TargetName = result.Configuration.TargetName;
+        _storageService = new FirehoseStorageService(_session, result.Configuration);
         return result;
+    }
+
+    public FirehoseStorageInfo GetStorageInfo(uint physicalPartitionNumber)
+    {
+        ThrowIfDisposed();
+        FirehoseStorageInfo info = GetStorageService().GetStorageInfo(physicalPartitionNumber);
+        _targetInfo.StorageInfos =
+        [
+            .. _targetInfo.StorageInfos.Where(item =>
+                item.PhysicalPartitionNumber != physicalPartitionNumber),
+            info
+        ];
+        return info;
+    }
+
+    public FirehoseBasicDevInfo GetBasicDeviceInfo()
+    {
+        ThrowIfDisposed();
+        FirehoseBasicDevInfo info = GetStorageService().GetBasicDeviceInfo();
+        _targetInfo.BasicDevCharacteristics = info;
+        return info;
+    }
+
+    public FirehoseStorageService GetStorageService()
+    {
+        ThrowIfDisposed();
+        return _storageService ?? throw new InvalidOperationException("Firehose is not configured.");
     }
 
     private void LogThroughput(string operation, long bytes, TimeSpan elapsed)
@@ -101,6 +131,7 @@ internal sealed class FirehoseProtocol : IDisposable
         _disposed = true;
         _logger.Verbose("Disposing FirehoseProtocol");
         _session.Dispose();
+        _storageService = null;
         _targetInfo = new FirehoseTargetInfo();
         GC.SuppressFinalize(this);
     }

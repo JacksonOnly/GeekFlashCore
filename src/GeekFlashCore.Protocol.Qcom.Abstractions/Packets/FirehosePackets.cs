@@ -44,6 +44,8 @@ public record ProgramCommand : BaseCommand, IFirehoseDevData, IFirehoseIoData, I
     public string NumPartitionSectors { get; set; } = string.Empty;
 
     [FirehoseCmdAttribute("start_sector")] public string StartSector { get; set; } = string.Empty;
+    [FirehoseCmdAttribute("label")] public string? Label { get; set; }
+    [FirehoseCmdAttribute("filename")] public string? FileName { get; set; }
 
     [FirehoseCmdAttribute("skip_bad_block")]
     public byte? SkipBadBlock { get; set; }
@@ -69,6 +71,8 @@ public record ReadCommand : BaseCommand, IFirehoseDevData, IFirehoseIoData, IFir
     public string NumPartitionSectors { get; set; } = string.Empty;
 
     [FirehoseCmdAttribute("start_sector")] public string StartSector { get; set; } = string.Empty;
+    [FirehoseCmdAttribute("label")] public string? Label { get; set; }
+    [FirehoseCmdAttribute("filename")] public string? FileName { get; set; }
 
     [FirehoseCmdAttribute("skip_bad_block")]
     public byte? SkipBadBlock { get; set; }

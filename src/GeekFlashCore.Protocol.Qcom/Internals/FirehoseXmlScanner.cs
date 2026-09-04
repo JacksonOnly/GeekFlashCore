@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 
 namespace GeekFlashCore.Protocol.Qcom.Internals;
@@ -130,8 +131,9 @@ internal static class FirehoseXmlScanner
             if (position >= section.Length)
                 break;
 
+            string value = Encoding.UTF8.GetString(section[valueStart..position]);
             attributes[Encoding.UTF8.GetString(section[nameStart..nameEnd])] =
-                Encoding.UTF8.GetString(section[valueStart..position]);
+                value.Contains('&', StringComparison.Ordinal) ? WebUtility.HtmlDecode(value) : value;
             position++;
         }
     }

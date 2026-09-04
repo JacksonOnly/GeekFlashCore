@@ -65,8 +65,10 @@ public record FirehoseStorageInfo
     public uint? BlockSizeInBytes { get; init; }
     public ulong? BlockCount { get; init; }
 
-    public ulong? CapacityInBytes => BlockSizeInBytes is { } blockSize && BlockCount is { } blockCount
-        ? checked(blockSize * blockCount)
+    public ulong? CapacityInBytes => BlockSizeInBytes is { } blockSize &&
+                                    BlockCount is { } blockCount &&
+                                    blockCount <= ulong.MaxValue / blockSize
+        ? blockSize * blockCount
         : null;
 
     public IReadOnlyDictionary<string, string> Properties { get; init; } =

@@ -393,6 +393,7 @@
 - [x] Task 13：OplusDigestLegacy（2026-09-05；固定扇区窗口、共享成功计数、NOP/Digest 刷新、签名 NAK 单次重放与恢复失败熔断；11 项线路测试通过）。
 - [x] Task 14：QcomProtocol 工作流（2026-09-05；连接门面、资源超时与清理、Digest provider 接入、块设备租约失效、失败重连和厂商认证工作流；163 项测试通过）。
 - [x] Task 15：最终审查（2026-09-05；本地代码、回归测试、Release 构建和差异检查完成，保留真实设备验证风险）。
+- [x] Task CLI-01：GeekFlashCore.CLI 首批宿主（2026-09-05；.NET 10、自动 Qualcomm EDL 识别、串口/USB 热插拔、通用与 Qcom 命令、交互式 Provider、Serilog 和进度输出）。
   - 2026-09-05 已完成第一批异常和阶段日志资源化：Qcom 核心、Qcom.Abstractions、MessagePipe 的固定用户可见文本已迁移到中英文 `Strings` 资源；修复 SessionBlockDevice 捕获设备导致的生命周期警告。
   - 2026-09-05 同步 `ConfigureFirehose()` 已补齐配置 Provider、普通 Digest、VIP、Oplus Digest、Xiaomi 身份验证和 OnePlus/Nothing 校验顺序；新增无 XML 声明 Firehose 首包兼容和普通 Digest 通用 raw 长度上限。
 - 2026-09-05 `FirehoseProgramExecutor` 改为两阶段映射校验，执行前仍拒绝未映射范围，但不再保留整份 Sparse Digest 映射数组；新增 4 MiB 以上普通 Digest、同步资源/VIP 和无声明首包线路测试。
@@ -403,6 +404,18 @@
 - 2026-09-05 深审修复 `ProbeSahara()` 的超时探测副作用；补齐 Sahara 内存区域和 Firehose 响应属性日志资源键，回归测试增至 164 项并通过。
 
 ## 未决风险
+
+### CLI-01（2026-09-05）
+
+- 行为结论：CLI 作为宿主层组合现有 `IProtocol`/`IQcomProtocol`、Transport 和 UsbWatcher；不复制核心协议线路。当前只注册已实现的 Qualcomm EDL，其他 `ProtocolType` 保留为不可用提示。
+- 验证证据：已检查 `QcomProtocol` 构造函数、Provider 契约、`IProtocol` 通用方法、串口/USB 工厂和 USB 监视器接口。
+- 风险：USB 热插拔为 Windows WMI 实现；真实设备上的交互式 Provider 和终端宽度尚需现场验证。
+
+### CLI-02（2026-09-05）
+
+- 行为结论：已新增 .NET 10 `GeekFlashCore.CLI`，提供 `devices`、通用 IProtocol 操作、`qcom probe-sahara/configure/xml` 和无命令交互会话。显式文件选项优先，缺失资源由控制台 Provider 提问；未对核心协议做改动。
+- 验证证据：CLI Release 构建通过；`--help`、未知协议退出路径和 `devices` 已运行；本机 WMI 枚举发现 `05C6:9008` Qualcomm EDL（COM73）。
+- 风险：尚未对真实设备执行连接、认证、读写或重启；CLI 的 Provider 输入与终端进度显示仍需脱敏设备验证。
 
 - OplusDigestLegacy 的阈值刷新与签名 NAK 恢复顺序、以及 XML 发送后计数（包括普通 NAK）已由本地 QnQcLIB 源码确认；真实设备仍可能存在 Loader 变体，需用硬件或脱敏抓包复核兼容性。
 - `FirehoseProgramExecutor` 已采用两阶段映射校验和执行时映射；Sparse segment 计划本身仍按输入结构建立列表，超大镜像需要在目标环境继续观察计划列表和第三方 Sparse 解析器的稳态分配。

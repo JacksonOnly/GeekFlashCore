@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <AssemblyName>geekflash</AssemblyName>
+    <RootNamespace>GeekFlashCore.CLI</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GeekFlashCore.Protocol.Abstractions\GeekFlashCore.Protocol.Abstractions.csproj" />
+    <ProjectReference Include="..\GeekFlashCore.Protocol.Qcom\GeekFlashCore.Protocol.Qcom.csproj" />
+    <ProjectReference Include="..\GeekFlashCore.Protocol.Qcom.Abstractions\GeekFlashCore.Protocol.Qcom.Abstractions.csproj" />
+    <ProjectReference Include="..\GeekFlashCore.Transport.SerialPort\GeekFlashCore.Transport.SerialPort.csproj" />
+    <ProjectReference Include="..\GeekFlashCore.Transport.LibUsb\GeekFlashCore.Transport.LibUsb.csproj" />
+    <ProjectReference Include="..\GeekFlashCore.UsbWatcher\GeekFlashCore.UsbWatcher.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Serilog" Version="4.4.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+  </ItemGroup>
+</Project>

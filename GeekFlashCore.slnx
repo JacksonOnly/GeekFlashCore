@@ -34,5 +34,8 @@
   <Folder Name="/Utility/">
     <Project Path="src/GeekFlashCore.UsbWatcher/GeekFlashCore.UsbWatcher.csproj" />
   </Folder>
+  <Folder Name="/Apps/">
+    <Project Path="src/GeekFlashCore.CLI/GeekFlashCore.CLI.csproj" />
+  </Folder>
   <Project Path="src/GeekFlashCore.Shared/GeekFlashCore.Shared.csproj" />
 </Solution>

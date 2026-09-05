@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
+using GeekFlashCore.Protocol.Qcom.Firehose.Configuration;
 
 namespace GeekFlashCore.Protocol.Qcom.Firehose.Storage;
 
@@ -63,6 +64,11 @@ internal static class FirehoseStorageInfoParser
             if (line.Contains("chip serial num", StringComparison.OrdinalIgnoreCase))
                 serialNumber = ParseSerialNumber(line) ?? serialNumber;
 
+            if (line.Contains("End of supported functions", StringComparison.OrdinalIgnoreCase))
+            {
+                readingFunctions = false;
+                continue;
+            }
             int functionsIndex = line.IndexOf("Supported Functions", StringComparison.OrdinalIgnoreCase);
             if (functionsIndex >= 0)
             {
@@ -75,11 +81,6 @@ internal static class FirehoseStorageInfoParser
                 }
                 continue;
             }
-            if (line.Contains("End of supported functions", StringComparison.OrdinalIgnoreCase))
-            {
-                readingFunctions = false;
-                continue;
-            }
             if (readingFunctions && !string.IsNullOrWhiteSpace(line))
                 AddFunctions(line, supported);
         }
@@ -88,6 +89,7 @@ internal static class FirehoseStorageInfoParser
             supported.AddRange(DefaultSupportedFunctions);
         return new FirehoseBasicDevInfo
         {
+            BuildDate = ConfigureEvidenceParser.Parse(result).BuildDate ?? default,
             SerialNumber = serialNumber,
             SupportedFunctions = supported.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
             OriginLogs = result.Logs

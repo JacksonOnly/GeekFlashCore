@@ -69,8 +69,9 @@ public sealed class FirehoseSession : IDisposable
     }
 
     /// <summary>Probes an already running Firehose session with a bounded NOP exchange.</summary>
-    internal bool TryProbe(int timeoutMilliseconds)
+    internal bool TryProbe(int timeoutMilliseconds, out FirehoseResponse? response)
     {
+        response = null;
         using OperationLease _ = Enter(FirehoseSessionState.Created);
         _receiver.SetReadTimeout(timeoutMilliseconds);
         try
@@ -78,6 +79,8 @@ public sealed class FirehoseSession : IDisposable
             FirehoseCommandResult result = _executor.Execute(new NopCommand(), expectedRawMode: false);
             if (!result.IsSuccess)
                 return false;
+            response = new FirehoseResponse(result.Logs, result.Attributes, result.Status, result.RawMode,
+                result.PayloadElements);
             SetState(FirehoseSessionState.Started);
             return true;
         }

@@ -412,6 +412,12 @@
 
 ## 未决风险
 
+### CLI-10：联机信息与重连（2026-09-05）
+
+- 行为结论：保留两条 NOP 探测入口的响应，启动日志与 NOP 响应均解析 `Binary build date`（兼容 `@` 分隔符）；configure 的 Build Time/DateTime 仍可回填。UFS `prod_name` 映射到 UfsName，configure TargetName 写回目标信息。函数列表优先识别结束标记，避免将后续诊断当作命令。
+- 验证证据：新增本地回归测试先复现日期为默认值和 NOP 信息丢失，再验证同步/异步 `nop → configure → getstorageinfo` 顺序，以及存储初始化失败时不宣告连接成功。当前完整 Qcom 测试 186 项通过，Release 解决方案构建 0 警告/0 错误。
+- 风险：以上为模拟传输证据，真实设备未复测；设备没有提供日期时只能保留未知状态。详细修复方案见 `2026-09-05-cli-recovery-fixes.md`。
+
 ### CLI-01（2026-09-05）
 
 - 行为结论：CLI 作为宿主层组合现有 `IProtocol`/`IQcomProtocol`、Transport 和 UsbWatcher；不复制核心协议线路。当前只注册已实现的 Qualcomm EDL，其他 `ProtocolType` 保留为不可用提示。

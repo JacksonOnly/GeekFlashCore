@@ -71,15 +71,15 @@ internal static class ConfigureEvidenceParser
             MaxDigestTableSizeInBytes = TryUInt64(attributes, "MaxDigestTableSizeInBytes") ?? digestFromLog,
             TargetName = TryString(attributes, "TargetName"),
             Version = TryUInt64(attributes, "Version"),
-            MinVersionSupported = TryUInt64(attributes, "MinVersionSupported")
-            ,BuildDate = buildDate ?? TryBuildDate(attributes)
+            MinVersionSupported = TryUInt64(attributes, "MinVersionSupported"),
+            BuildDate = buildDate ?? TryBuildDate(attributes)
         };
     }
 
     private static DateTime? TryBuildDate(IReadOnlyDictionary<string, string> values)
     {
         foreach (string key in new[] { "BuildDate", "build_date", "BuildTime", "build_time", "DateTime" })
-            if (values.TryGetValue(key, out string? value) && DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out DateTime parsed))
+            if (values.TryGetValue(key, out string? value) && TryParseBuildDate(value, out DateTime parsed))
                 return parsed;
         return null;
     }
@@ -94,10 +94,14 @@ internal static class ConfigureEvidenceParser
             while (!value.IsEmpty && (value[0] is ' ' or '\t' or ':' or '=')) value = value[1..];
             int end = value.IndexOfAny(',', ';', ')');
             if (end >= 0) value = value[..end];
-            if (DateTime.TryParse(value.Trim(), CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out DateTime parsed)) return parsed;
+            if (TryParseBuildDate(value.Trim().ToString(), out DateTime parsed)) return parsed;
         }
         return null;
     }
+
+    private static bool TryParseBuildDate(string value, out DateTime parsed) =>
+        DateTime.TryParse(value.Replace('@', ' '), CultureInfo.InvariantCulture,
+            DateTimeStyles.AllowWhiteSpaces, out parsed);
 
     private static IReadOnlyDictionary<string, string> MergeAttributes(FirehoseCommandResult result)
     {

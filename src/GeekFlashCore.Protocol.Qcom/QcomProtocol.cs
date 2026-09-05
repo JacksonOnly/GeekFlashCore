@@ -329,7 +329,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         {
             _wire = new QcomSessionTransport(Transport, [], _options.ReadTimeoutMilliseconds);
             _firehose = new FirehoseSession(_wire, _options.ReadTimeoutMilliseconds);
-            if (_firehose.TryProbe(GetProtocolProbeTimeout()))
+            if (_firehose.TryProbe(GetProtocolProbeTimeout(), out _startup))
                 return true;
         }
         catch (Exception exception) when (exception is TimeoutException or FirehoseProtocolException or InvalidOperationException)
@@ -418,10 +418,8 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
                 // A programmer that is already in Firehose mode may not replay startup logs.
                 _firehose.Dispose();
                 _firehose = new FirehoseSession(_wire!, _options.ReadTimeoutMilliseconds);
-                if (!_firehose.TryProbe(GetProtocolProbeTimeout()))
+                if (!_firehose.TryProbe(GetProtocolProbeTimeout(), out _startup))
                     throw;
-                _startup = new FirehoseResponse([], new Dictionary<string, string>(),
-                    FirehoseResponseStatus.Ack, false);
             }
         }
         var vendor = VendorStrategyResolver.Resolve(_options.VendorOverride, _startup?.Logs.Select(x => x.Message), _programmer?.Vendor ?? QcomVendorKind.Generic);
@@ -431,7 +429,11 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             SecureBoot = SecureBootEvaluator.Evaluate((_targetInfo?.Sahara?.CaHash ?? ReadOnlyMemory<byte>.Empty).Span, (_programmer?.RootCaHash ?? ReadOnlyMemory<byte>.Empty).Span, _programmer is not null),
             Firehose = new FirehoseTargetInfo
             {
-                BasicDevCharacteristics = FirehoseStorageInfoParser.ParseBasicInfo(new FirehoseCommandResult { Logs = _startup?.Logs ?? [] })
+                BasicDevCharacteristics = FirehoseStorageInfoParser.ParseBasicInfo(new FirehoseCommandResult
+                {
+                    Logs = _startup?.Logs ?? [],
+                    Attributes = _startup?.Attributes ?? new Dictionary<string, string>()
+                })
             }
         };
     }
@@ -513,7 +515,20 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
                 build = result.Configuration.DateTime;
             basic = basic with { SerialNumber = serial, BuildDate = build };
         }
-        _targetInfo = _targetInfo! with { Firehose = _targetInfo.Firehose! with { Configuration = _storage.Configuration, StorageInfos = [info], BasicDevCharacteristics = basic } };
+        string? ufsName = _targetInfo?.Firehose?.UfsName;
+        if (_storage.Configuration.Storage == FirehoseStorage.Ufs &&
+            info.Properties.TryGetValue("prod_name", out string? product) && !string.IsNullOrWhiteSpace(product))
+            ufsName = product.Trim();
+        _targetInfo = _targetInfo! with
+        {
+            Firehose = _targetInfo.Firehose! with
+            {
+                Configuration = _storage.Configuration, StorageInfos = [info], BasicDevCharacteristics = basic,
+                UfsName = ufsName,
+                TargetName = string.IsNullOrWhiteSpace(result.Configuration.TargetName)
+                    ? _targetInfo.Firehose.TargetName : result.Configuration.TargetName
+            }
+        };
     }
 
     private async ValueTask InitializeStorageAsync(FirehoseConfigureResult result, CancellationToken ct)

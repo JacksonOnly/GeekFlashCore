@@ -60,17 +60,18 @@ internal static class QcomProtocolHostAdapter
             {
                 case "probe-sahara":
                     var target = qcom.ProbeSahara(progress);
-                    Console.WriteLine($"Sahara v{target.Version}, mode={target.Mode}, packet={target.MaximumPacketSizeSupported}");
+                    ui.WriteLine($"Sahara v{target.Version}, mode={target.Mode}, packet={target.MaximumPacketSizeSupported}");
                     return Task.FromResult(0);
                 case "configure":
                     var configured = qcom.ConfigureFirehose(progress);
-                    Console.WriteLine($"Firehose configured: {configured.Status}, bytes={configured.BytesTransferred}");
+                    ui.WriteLine($"Firehose configured: {configured.Status}, bytes={configured.BytesTransferred}");
                     return Task.FromResult(configured.IsSuccess ? 0 : 1);
                 case "xml":
-                    string path = arguments.Count > 1 ? arguments[1] : ui.Ask("XML 文件路径");
+                    string path = ConsolePath.Normalize(arguments.Count > 1 ? arguments[1] : ui.Ask("XML 文件路径"))
+                        ?? throw new ArgumentException("XML 文件路径不能为空");
                     string xml = File.ReadAllText(path);
                     var response = qcom.ExecuteFirehoseXml(xml);
-                    Console.WriteLine($"XML result: {response.Status}");
+                    ui.WriteLine($"XML result: {response.Status}");
                     return Task.FromResult(response.IsSuccess ? 0 : 1);
                 default: throw new ArgumentException("qcom 子命令必须是 probe-sahara、configure 或 xml");
             }

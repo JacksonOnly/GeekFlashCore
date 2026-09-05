@@ -54,3 +54,11 @@ Console entry point
 - 文件 Provider 的取消、路径校验和流所有权。
 - 进度渲染不改变协议字节；模拟协议连接、通用命令和 Qualcomm 命令分派。
 - .NET 10 Release 构建、`git diff --check`；核心 Qcom 回归测试保持通过。
+
+## CLI-06 修复记录（2026-09-05）
+
+- Provider、XML 命令和资源文件参数统一执行 `Trim` 与外围单/双引号剥离，避免交互输入路径被当作实际文件名。
+- ConsoleUi 使用共享锁清理进度行后输出日志和结果，日志级别显示为短名称；Serilog 字符串属性不再显示多余外围引号。
+- Qcom 探测保留首轮 qdl HELLO 探测，并在未知或后续超时首包时执行有界的 Flush + Sahara `ResetStateMachine`；最多 4 次尝试，最终保留明确异常。
+- Sahara 资源或连接失败清理前发送一次状态机复位，再关闭传输，使设备可以重新进入 Sahara 并被下一次连接识别。
+- 本地模拟传输新增未知前缀恢复测试；真实设备重连与后端 Flush 行为仍是待验证风险。

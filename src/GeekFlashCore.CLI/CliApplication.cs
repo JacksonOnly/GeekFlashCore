@@ -44,7 +44,7 @@ internal sealed class CliApplication
             await protocol.ConnectAsync(progress, ct).ConfigureAwait(false);
             return await ExecuteCommandAsync(protocol, connection.Registration, options, progress, ct).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) { Console.WriteLine("操作已取消。"); return 130; }
+        catch (OperationCanceledException) { _ui.WriteLine("操作已取消。"); return 130; }
         catch (Exception exception) { _ui.LogException(exception); return 1; }
         finally { transport.Dispose(); }
     }
@@ -57,10 +57,10 @@ internal sealed class CliApplication
         try
         {
             await protocol.ConnectAsync(_progress, ct).ConfigureAwait(false);
-            Console.WriteLine($"已联机到 {connection.Registration.DisplayName}。通用功能: info, partitions, read, write, erase, reboot。协议功能: {string.Join("; ", connection.Registration.CommandHandlers.Select(handler => handler.HelpText))}");
+            _ui.WriteLine($"已联机到 {connection.Registration.DisplayName}。通用功能: info, partitions, read, write, erase, reboot。协议功能: {string.Join("; ", connection.Registration.CommandHandlers.Select(handler => handler.HelpText))}");
             while (!ct.IsCancellationRequested)
             {
-                Console.Write("geekflash> ");
+                _ui.Write("geekflash> ");
                 string line = Console.ReadLine() ?? "exit";
                 if (line.Equals("exit", StringComparison.OrdinalIgnoreCase) || line.Equals("quit", StringComparison.OrdinalIgnoreCase)) break;
                 if (line.Equals("help", StringComparison.OrdinalIgnoreCase)) { CommandLine.PrintHelp(); continue; }
@@ -87,13 +87,13 @@ internal sealed class CliApplication
 
         switch (options.Command.ToLowerInvariant())
         {
-            case "connect": Console.WriteLine($"已连接: {registration.DisplayName}"); return 0;
+            case "connect": _ui.WriteLine($"已连接: {registration.DisplayName}"); return 0;
             case "info":
-                Console.WriteLine($"Protocol: {protocol.Type}");
+                _ui.WriteLine($"Protocol: {protocol.Type}");
                 registration.InfoPresenter?.Invoke(protocol, _ui);
                 return 0;
             case "partitions":
-                foreach (var item in await protocol.GetPartitionsAsync(progress, ct).ConfigureAwait(false)) Console.WriteLine($"{item.Name,-32} offset={item.Offset} length={item.Length} address={item.Address}");
+                foreach (var item in await protocol.GetPartitionsAsync(progress, ct).ConfigureAwait(false)) _ui.WriteLine($"{item.Name,-32} offset={item.Offset} length={item.Length} address={item.Address}");
                 return 0;
             case "read": await ReadAsync(protocol, options.Arguments, progress, ct).ConfigureAwait(false); return 0;
             case "write": await WriteAsync(protocol, options.Arguments, progress, ct).ConfigureAwait(false); return 0;
@@ -119,7 +119,7 @@ internal sealed class CliApplication
         try
         {
             foreach (var device in UsbEnumeratorFactory.Create().GetDevices())
-                Console.WriteLine($"{device.VendorId?.ToString("X4") ?? "????"}:{device.ProductId?.ToString("X4") ?? "????"} {device.FriendlyName ?? device.Description ?? "USB device"}");
+                _ui.WriteLine($"{device.VendorId?.ToString("X4") ?? "????"}:{device.ProductId?.ToString("X4") ?? "????"} {device.FriendlyName ?? device.Description ?? "USB device"}");
             return 0;
         }
         catch (Exception exception) { _ui.LogException(exception); return 1; }

@@ -21,6 +21,7 @@ namespace GeekFlashCore.Protocol.Qcom;
 /// <summary>A serialized Qualcomm session. Resource providers are asynchronous; all wire I/O is synchronous.</summary>
 public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, IDisposable
 {
+    private const int MaxProtocolDetectionAttempts = 4;
     private readonly QcomProtocolOptions _options;
     private readonly ISaharaImageProvider? _imageProvider;
     private readonly IOplusDigestProvider? _digestProvider;
@@ -228,26 +229,65 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private void DetectProtocol(bool probeFirehoseOnTimeout = true)
     {
         if (!Transport.IsOpen) Transport.Open();
-        byte[] prefix = new byte[8];
-        try
+        bool allowRecovery = probeFirehoseOnTimeout && _options.ProbeFirehoseOnSaharaTimeout;
+        Exception? lastException = null;
+        for (int attempt = 0; attempt < MaxProtocolDetectionAttempts; attempt++)
         {
-            Transport.ReadExact(prefix, _options.ConnectTimeoutMilliseconds);
+            byte[] prefix = new byte[8];
+            try
+            {
+                Transport.ReadExact(prefix, _options.ConnectTimeoutMilliseconds);
+            }
+            catch (TimeoutException exception)
+            {
+                lastException = exception;
+                if (!allowRecovery) throw;
+                if (attempt == 0)
+                    SendSaharaHelloProbe();
+                else
+                    ResetSaharaStateMachine();
+                continue;
+            }
+            catch (EndOfStreamException exception)
+            {
+                lastException = exception;
+                if (!allowRecovery) throw;
+                ResetSaharaStateMachine();
+                continue;
+            }
+
+            if (LooksLikeXml(prefix))
+            {
+                _wire = new QcomSessionTransport(Transport, prefix, _options.ReadTimeoutMilliseconds);
+                _firehose = new FirehoseSession(_wire, _options.ReadTimeoutMilliseconds);
+                break;
+            }
+
+            if (BinaryPrimitives.ReadUInt32LittleEndian(prefix) == (uint)SaharaCommand.Hello)
+            {
+                _wire = new QcomSessionTransport(Transport, prefix, _options.ReadTimeoutMilliseconds);
+                _sahara = new SaharaProtocol(_wire);
+                break;
+            }
+
+            lastException = new QcomProtocolException(Strings.Qcom_UnknownProtocol);
+            if (!allowRecovery || attempt == MaxProtocolDetectionAttempts - 1)
+                break;
+            ResetSaharaStateMachine();
         }
-        catch (TimeoutException) when (probeFirehoseOnTimeout && _options.ProbeFirehoseOnSaharaTimeout)
-        {
-            // QUD can consume the target HELLO before the host sees it. qdl
-            // recovers by sending an unsolicited HELLO response and reading
-            // the next packet, which also lets an existing Firehose report XML.
-            SendSaharaHelloProbe();
-            Transport.ReadExact(prefix, _options.ConnectTimeoutMilliseconds);
-        }
-        _wire = new QcomSessionTransport(Transport, prefix, _options.ReadTimeoutMilliseconds);
-        if (LooksLikeXml(prefix))
-            _firehose = new FirehoseSession(_wire, _options.ReadTimeoutMilliseconds);
-        else if (BinaryPrimitives.ReadUInt32LittleEndian(prefix) == (uint)SaharaCommand.Hello)
-            _sahara = new SaharaProtocol(_wire);
-        else throw new QcomProtocolException(Strings.Qcom_UnknownProtocol);
+
+        if (_wire is null)
+            throw lastException ?? new QcomProtocolException(Strings.Qcom_UnknownProtocol);
         _targetInfo = new QcomTargetInfo { Vendor = QcomEvidenceMerger.ResolveVendor(_options.VendorOverride, null, QcomVendorKind.Generic) };
+    }
+
+    private void ResetSaharaStateMachine()
+    {
+        try { Transport.Flush(); } catch { }
+        Span<byte> reset = stackalloc byte[SaharaResetStateMachineRequest.Length];
+        BinaryPrimitives.WriteUInt32LittleEndian(reset, (uint)SaharaResetStateMachineRequest.Command);
+        BinaryPrimitives.WriteUInt32LittleEndian(reset[4..], SaharaResetStateMachineRequest.Length);
+        Transport.Write(reset);
     }
 
     private void SendSaharaHelloProbe()
@@ -651,6 +691,10 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         Interlocked.Increment(ref _generation);
         _storage = null;
         bool hadFirehose = _firehose is not null;
+        if (!hadFirehose && _sahara is not null && Transport.IsOpen)
+        {
+            try { _sahara.ResetStateMachine(); } catch { }
+        }
         _firehose?.Dispose(); _firehose = null;
         _sahara?.Dispose(); _sahara = null;
         _startup = null; _programmer = null; _targetInfo = null;

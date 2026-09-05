@@ -11,7 +11,25 @@ internal sealed class ConsoleUi
     private readonly object _gate = new();
     private int _progressWidth;
 
-    public void WriteBanner() => Console.WriteLine("GeekFlashCore CLI 0.1");
+    public void WriteBanner() => WriteLine("GeekFlashCore CLI 0.1");
+
+    public void WriteLine(string value)
+    {
+        lock (_gate)
+        {
+            ClearProgressUnsafe();
+            Console.WriteLine(value);
+        }
+    }
+
+    public void Write(string value)
+    {
+        lock (_gate)
+        {
+            ClearProgressUnsafe();
+            Console.Write(value);
+        }
+    }
 
     public string Ask(string prompt, string? defaultValue = null, bool secret = false)
     {
@@ -104,10 +122,32 @@ internal sealed class ConsoleUi
         lock (_gate)
         {
             ClearProgressUnsafe();
-            string line = $"[{logEvent.Timestamp.LocalDateTime:HH:mm:ss} {logEvent.Level.ToString().ToUpperInvariant()}] {logEvent.RenderMessage()}";
+            string line = $"[{logEvent.Timestamp.LocalDateTime:HH:mm:ss} {FormatLevel(logEvent.Level)}] {RenderMessage(logEvent)}";
             if (logEvent.Exception is not null)
                 line += Environment.NewLine + logEvent.Exception;
             Console.Error.WriteLine(line);
         }
+    }
+
+    private static string FormatLevel(LogEventLevel level) => level switch
+    {
+        LogEventLevel.Verbose => "VRB",
+        LogEventLevel.Debug => "DBG",
+        LogEventLevel.Information => "INF",
+        LogEventLevel.Warning => "WRN",
+        LogEventLevel.Error => "ERR",
+        LogEventLevel.Fatal => "FTL",
+        _ => level.ToString().ToUpperInvariant()
+    };
+
+    private static string RenderMessage(LogEvent logEvent)
+    {
+        string message = logEvent.RenderMessage();
+        int separator = Math.Max(message.LastIndexOf(':'), message.LastIndexOf('\uFF1A'));
+        if (separator < 0) return message;
+        int quoteStart = message.IndexOf('\"', separator + 1);
+        if (quoteStart >= 0 && message.EndsWith('\"'))
+            return message[..quoteStart] + message[(quoteStart + 1)..^1];
+        return message;
     }
 }

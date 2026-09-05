@@ -32,6 +32,13 @@ internal class SaharaProtocol : IDisposable
 
     public bool IsConnected { get; private set; }
 
+    internal void ResetStateMachine()
+    {
+        if (_disposed) return;
+        _sender.SendResetStateMachineRequest();
+        IsConnected = false;
+    }
+
     public SaharaProtocol(ITransport transport)
     {
         ArgumentNullException.ThrowIfNull(transport);

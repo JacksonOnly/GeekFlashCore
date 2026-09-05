@@ -404,6 +404,7 @@
 - 2026-09-05 深审修复 `ProbeSahara()` 的超时探测副作用；补齐 Sahara 内存区域和 Firehose 响应属性日志资源键，回归测试增至 164 项并通过。
 - 2026-09-05 CLI-05 修复真实设备联机问题：Xiaomi 认证改为由 `QcomProtocolOptions.AuthenticationKind` 显式启用，且按参考项目先发送 `sig` 命令再发送 256 字节签名；未指定认证时不发送 `sig req`，直接返回需要显式认证的 Configure 错误。
 - 2026-09-05 CLI-05 修复 CLI 进度和目标信息输出：进度行使用 ANSI 清行并与 Serilog 通过共享控制台锁协调，日志输出到 stderr；Protocol/Vendor 分开显示，Sahara CA Hash 只显示长度，目标硬件字段结构化展示。
+- 2026-09-05 CLI-06 修复 Sahara 失败后的恢复和 CLI 输出：文件 Provider 与 `qcom xml` 统一剥离用户输入的外围引号；ConsoleUi 将 Serilog 级别映射为 `INF/WRN/ERR/DBG/VRB/FTL` 并去除结构化消息属性的外围引号，所有运行期输出通过共享控制台锁清理进度行；Qcom 协议探测在启用 qdl 兼容探测时最多重试 4 次，未知/超时首包执行有限的 Flush + `ResetStateMachine`，Sahara 清理前主动复位状态机以支持资源失败后的再次联机。
 
 ## 未决风险
 
@@ -441,6 +442,7 @@
 - `FirehoseProgramExecutor` 已采用两阶段映射校验和执行时映射；Sparse segment 计划本身仍按输入结构建立列表，超大镜像需要在目标环境继续观察计划列表和第三方 Sparse 解析器的稳态分配。
 - 当前 Qcom 核心仍有两类审查债务：Sahara/Firehose 包级收发日志数量较多，需要确认默认日志级别不会造成生产日志噪声；阶段日志与底层 NAK 日志存在重复风险，需要按事件归属层去重。
 - Sahara 收发包模板已资源化；仍需在宿主集成环境确认包级日志数量和阶段日志归属不会造成重复噪声。
+- CLI-06 的路径规范化、日志格式和探测恢复已用本地模拟传输验证；真实串口设备在 Loader 资源失败后是否始终接受 `ResetStateMachine`，以及不同 USB 后端的 Flush 语义，仍需硬件复核。
 
 - 不同 Loader 对同名厂商命令的响应文本和大小写可能不同，解析应基于捕获样本保持宽容，但状态机必须有界。
 - Sahara 获取 TargetInfo 后设备可等待时间没有统一保证；资源提供器应缓存候选 Loader，超时策略需由宿主配置。

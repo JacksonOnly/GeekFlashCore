@@ -369,6 +369,8 @@
   <data name="Qcom_LogDeviceMessage" xml:space="preserve"><value>{0}</value></data>
   <data name="Qcom_LogHelloRetry" xml:space="preserve"><value>接收 HELLO 请求，剩余重试次数 {0}。</value></data>
   <data name="Qcom_LogTargetInfoFromHello" xml:space="preserve"><value>根据 HELLO 请求设置目标信息：{0}</value></data>
+  <data name="Qcom_LogMemoryRegion" xml:space="preserve"><value>内存区域：基址 0x{0:X}，长度 0x{1:X}，文件名“{2}”，描述“{3}”。</value></data>
+  <data name="Qcom_LogFirehoseResponseAttributes" xml:space="preserve"><value>Firehose 响应属性：状态={0}，数量={1}，键={2}</value></data>
   <data name="Qcom_ConfigureNegotiationRepeated" xml:space="preserve"><value>Configure 协商重复了未变化的状态。</value></data>
   <data name="Qcom_XiaomiAuthenticationRequiredForConfigure" xml:space="preserve"><value>Configure 需要 Xiaomi 身份验证。</value></data>
   <data name="Qcom_ExplicitStorageRejected" xml:space="preserve"><value>Firehose 拒绝了明确选择的存储配置。</value></data>

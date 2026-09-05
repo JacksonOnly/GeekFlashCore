@@ -472,6 +472,8 @@ Current {0}, expected {1}</value>
   <data name="Qcom_LogDeviceMessage" xml:space="preserve"><value>{0}</value></data>
   <data name="Qcom_LogHelloRetry" xml:space="preserve"><value>Receiving HELLO request; {0} retries remaining.</value></data>
   <data name="Qcom_LogTargetInfoFromHello" xml:space="preserve"><value>Set target info from HELLO request: {0}</value></data>
+  <data name="Qcom_LogMemoryRegion" xml:space="preserve"><value>Memory region: base 0x{0:X}, length 0x{1:X}, filename '{2}', description '{3}'</value></data>
+  <data name="Qcom_LogFirehoseResponseAttributes" xml:space="preserve"><value>Firehose response attributes: status={0}, count={1}, keys={2}</value></data>
   <data name="Qcom_ConfigureNegotiationRepeated" xml:space="preserve"><value>Configure negotiation repeated an unchanged state.</value></data>
   <data name="Qcom_XiaomiAuthenticationRequiredForConfigure" xml:space="preserve"><value>Xiaomi authentication is required for Configure.</value></data>
   <data name="Qcom_ExplicitStorageRejected" xml:space="preserve"><value>Firehose rejected the explicitly selected storage configuration.</value></data>

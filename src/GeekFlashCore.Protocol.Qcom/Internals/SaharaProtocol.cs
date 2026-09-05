@@ -378,8 +378,7 @@ internal class SaharaProtocol : IDisposable
 
         foreach (var region in regions)
         {
-            _logger.Information(
-                "Memory region: base 0x{Base:X}, length 0x{Length:X}, filename '{FileName}', description '{Description}'",
+            _logger.Information(Strings.Qcom_LogMemoryRegion,
                 region.BaseAddress, region.Length, region.FileName, region.Description);
         }
 

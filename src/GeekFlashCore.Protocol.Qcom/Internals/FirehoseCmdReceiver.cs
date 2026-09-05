@@ -36,8 +36,7 @@ internal sealed class FirehoseCmdReceiver : IDisposable
         PublishLogs(response);
         if (HasDiagnosticAttributes(response) && _logger.IsEnabled(LogEventLevel.Debug))
         {
-            _logger.Debug(
-                "Firehose Response Attributes status={Status} count={Count} keys={Keys}",
+            _logger.Debug(Strings.Qcom_LogFirehoseResponseAttributes,
                 response.Status,
                 response.Attributes.Count,
                 string.Join(", ", response.Attributes.Keys.Order(StringComparer.OrdinalIgnoreCase)));

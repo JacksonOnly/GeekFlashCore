@@ -11,6 +11,8 @@ public sealed record QcomProtocolOptions
     public int ReadTimeoutMilliseconds { get; init; } = DefaultReadTimeoutMilliseconds;
     public int WriteTimeoutMilliseconds { get; init; } = DefaultWriteTimeoutMilliseconds;
     public int ResourceRequestTimeoutMilliseconds { get; init; } = DefaultResourceRequestTimeoutMilliseconds;
+    /// <summary>Send qdl-compatible Sahara HELLO response when the first protocol read times out.</summary>
+    public bool ProbeFirehoseOnSaharaTimeout { get; init; } = true;
     public QcomVendorKind VendorOverride { get; init; } = QcomVendorKind.Auto;
     public FirehoseConfiguration Firehose { get; init; } = new();
     public FirehoseDigestConfiguration FirehoseDigest { get; init; } = new();

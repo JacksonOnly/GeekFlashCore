@@ -229,7 +229,18 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     {
         if (!Transport.IsOpen) Transport.Open();
         byte[] prefix = new byte[8];
-        Transport.ReadExact(prefix, _options.ConnectTimeoutMilliseconds);
+        try
+        {
+            Transport.ReadExact(prefix, _options.ConnectTimeoutMilliseconds);
+        }
+        catch (TimeoutException) when (_options.ProbeFirehoseOnSaharaTimeout)
+        {
+            // QUD can consume the target HELLO before the host sees it. qdl
+            // recovers by sending an unsolicited HELLO response and reading
+            // the next packet, which also lets an existing Firehose report XML.
+            SendSaharaHelloProbe();
+            Transport.ReadExact(prefix, _options.ConnectTimeoutMilliseconds);
+        }
         _wire = new QcomSessionTransport(Transport, prefix, _options.ReadTimeoutMilliseconds);
         if (LooksLikeXml(prefix))
             _firehose = new FirehoseSession(_wire, _options.ReadTimeoutMilliseconds);
@@ -237,6 +248,18 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             _sahara = new SaharaProtocol(_wire);
         else throw new QcomProtocolException(Strings.Qcom_UnknownProtocol);
         _targetInfo = new QcomTargetInfo { Vendor = QcomEvidenceMerger.ResolveVendor(_options.VendorOverride, null, QcomVendorKind.Generic) };
+    }
+
+    private void SendSaharaHelloProbe()
+    {
+        Span<byte> response = stackalloc byte[SaharaHelloResponse.Length];
+        BinaryPrimitives.WriteUInt32LittleEndian(response, (uint)SaharaHelloResponse.Command);
+        BinaryPrimitives.WriteUInt32LittleEndian(response[4..], SaharaHelloResponse.Length);
+        BinaryPrimitives.WriteUInt32LittleEndian(response[8..], 2); // Sahara protocol version used by qdl.
+        BinaryPrimitives.WriteUInt32LittleEndian(response[12..], 1); // Compatible version.
+        BinaryPrimitives.WriteUInt32LittleEndian(response[16..], (uint)SaharaStatus.StatusSuccess);
+        BinaryPrimitives.WriteUInt32LittleEndian(response[20..], (uint)SaharaMode.ImageTxPending);
+        Transport.Write(response);
     }
 
     private static bool LooksLikeXml(ReadOnlySpan<byte> prefix)

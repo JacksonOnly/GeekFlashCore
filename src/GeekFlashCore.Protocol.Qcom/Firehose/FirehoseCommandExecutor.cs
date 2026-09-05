@@ -23,7 +23,8 @@ internal sealed class FirehoseCommandExecutor
     {
         ArgumentNullException.ThrowIfNull(command);
         _sender.SendCommand(command);
-        return ValidateResponse(_receiver.Receive(), expectedRawMode);
+        bool publishDeviceText = command is not (PeekCommand or PokeCommand or GetSha256DigestCommand);
+        return ValidateResponse(_receiver.Receive(publishDeviceText), expectedRawMode, publishDeviceText);
     }
 
     public FirehoseCommandResult ExecuteXml(string xml, bool expectedRawMode)
@@ -91,9 +92,11 @@ internal sealed class FirehoseCommandExecutor
             _receiver.ReceiveRaw(bufferSize, length, destination, progress, cancellationToken),
             length);
 
-    private static FirehoseCommandResult ValidateResponse(FirehoseResponse response, bool expectedRawMode)
+    private static FirehoseCommandResult ValidateResponse(FirehoseResponse response, bool expectedRawMode, bool publishDeviceText = true)
     {
         FirehoseCommandResult result = ToResult(response);
+        if (!publishDeviceText && !result.IsSuccess)
+            throw new FirehoseNakException(Strings.Qcom_FirehoseCommandRejected, result);
         ThrowIfNak(result);
         if (result.RawMode != expectedRawMode)
         {

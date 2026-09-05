@@ -290,6 +290,20 @@ public record PeekCommand : BaseCommand
     [FirehoseCmdAttribute("address64")] public string Address64 { get; set; } = string.Empty;
 }
 
+[FirehoseCmdTag("poke")]
+public record PokeCommand : BaseCommand
+{
+    [FirehoseCmdAttribute("address64")] public ulong Address64 { get; init; }
+    [FirehoseCmdAttribute("size_in_bytes")] public uint SizeInBytes { get; init; }
+    [FirehoseCmdAttribute("value64")] public string Value64 { get; init; } = string.Empty;
+}
+
+[FirehoseCmdTag("xblgpt")]
+public record XblGptCommand : BaseCommand
+{
+    [FirehoseCmdAttribute("lun")] public uint Lun { get; init; }
+}
+
 [FirehoseCmdTag("emmc")]
 public record EmmcCommand : BaseCommand, IFirehoseDevData
 {

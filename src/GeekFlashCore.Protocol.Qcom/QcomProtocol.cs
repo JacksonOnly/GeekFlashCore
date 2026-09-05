@@ -513,7 +513,11 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             DateTime build = basic.BuildDate;
             if (build == default && result.Configuration.DateTime != default)
                 build = result.Configuration.DateTime;
-            basic = basic with { SerialNumber = serial, BuildDate = build };
+            uint? chipId = basic.ChipId ?? _targetInfo?.Sahara?.MsmHwInfo?.MsmId;
+            string? chipName = basic.ChipName;
+            if (string.IsNullOrWhiteSpace(chipName))
+                chipName = _targetInfo?.SocName ?? (chipId is { } id ? $"MSM 0x{id:X8}" : null);
+            basic = basic with { SerialNumber = serial, BuildDate = build, ChipId = chipId, ChipName = chipName };
         }
         string? ufsName = _targetInfo?.Firehose?.UfsName;
         if (_storage.Configuration.Storage == FirehoseStorage.Ufs &&

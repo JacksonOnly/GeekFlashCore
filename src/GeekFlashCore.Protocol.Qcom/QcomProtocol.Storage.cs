@@ -33,8 +33,11 @@ public sealed partial class QcomProtocol
         ct.ThrowIfCancellationRequested();
         var range = ResolveTarget(source.Target, ct);
         var request = new FirehoseProgramRequest { Source = source.Source, PhysicalPartitionNumber = range.Partition,
-            StartSector = range.Start, SectorCount = range.Count, SectorSizeInBytes = range.SectorSize, Label = range.Label };
-        return Task.FromResult(_storage!.Program(request, Adapt(progress, request.GetWireLength()), ct));
+            StartSector = range.Start, SectorCount = range.Count, SectorSizeInBytes = range.SectorSize, Label = range.Label,
+            PadToSectorCount = source.Target is not PartitionTarget };
+        long written = _storage!.Program(request, Adapt(progress, request.GetWireLength()), ct);
+        Adapt(progress, written)?.Report(written);
+        return Task.FromResult(written);
     }
 
     public Task<ReadDestination> ReadAsync(ReadDestination destination, IProgress<ProgressRecord>? progress = null, CancellationToken ct = default)
@@ -61,10 +64,71 @@ public sealed partial class QcomProtocol
     public Task<IReadOnlyList<PartitionInfo>> GetPartitionsAsync(IProgress<ProgressRecord>? progress = null, CancellationToken ct = default)
     {
         using var operation = EnterConnected();
-        return Task.FromResult<IReadOnlyList<PartitionInfo>>(ReadPartitions(ct).Select(item => new PartitionInfo(
+        return Task.FromResult(ToPartitionInfos(ReadPartitions(ct)));
+    }
+
+    public Task<IReadOnlyList<PartitionInfo>> GetPartitionsAsync(uint physicalPartitionNumber,
+        IProgress<ProgressRecord>? progress = null, CancellationToken ct = default)
+    {
+        using var operation = EnterConnected();
+        ValidateLun(physicalPartitionNumber);
+        return Task.FromResult(ToPartitionInfos(ReadPartitions(ct, physicalPartitionNumber)));
+    }
+
+    private static IReadOnlyList<PartitionInfo> ToPartitionInfos(List<(string Name, TargetRange Range)> entries) =>
+        entries.Select(item => new PartitionInfo(
             item.Name, checked(item.Range.Start * item.Range.SectorSize), item.Range.Start,
             checked(item.Range.Count * item.Range.SectorSize), new Dictionary<string, string>
-            { ["PhysicalPartitionNumber"] = item.Range.Partition.ToString(System.Globalization.CultureInfo.InvariantCulture) })).ToArray());
+            { ["PhysicalPartitionNumber"] = item.Range.Partition.ToString(System.Globalization.CultureInfo.InvariantCulture) })).ToArray();
+
+    public IReadOnlyList<uint> GetPhysicalPartitions()
+    {
+        using var operation = EnterConnected();
+        return KnownLuns();
+    }
+
+    private uint[] KnownLuns()
+    {
+        var infos = _targetInfo!.Firehose!.StorageInfos;
+        if (infos.FirstOrDefault(x => x.PhysicalPartitionNumber == 0)?.Properties.TryGetValue("num_physical", out string? value) == true)
+        {
+            if (!uint.TryParse(value, out uint count) || count is 0 or > FirehoseConstants.MaximumPhysicalPartitionCount)
+                throw new QcomProtocolException(Strings.Qcom_InvalidLunCount);
+            return Enumerable.Range(0, checked((int)count)).Select(x => (uint)x).ToArray();
+        }
+        return infos.Select(x => x.PhysicalPartitionNumber).Distinct().Order().ToArray();
+    }
+
+    private void ValidateLun(uint lun)
+    {
+        if (lun >= FirehoseConstants.MaximumPhysicalPartitionCount || !KnownLuns().Contains(lun))
+            throw new ArgumentOutOfRangeException(nameof(lun), Strings.Qcom_UnknownLun);
+    }
+
+    public FirehoseStorageInfo GetStorageInfo(uint physicalPartitionNumber)
+    {
+        using var operation = EnterConnected();
+        ValidateLun(physicalPartitionNumber);
+        return QueryStorageInfo(physicalPartitionNumber);
+    }
+
+    private FirehoseStorageInfo QueryStorageInfo(uint lun)
+    {
+        var info = _storage!.GetStorageInfo(lun);
+        // Some loaders only report the LUN count during the first storage query.
+        var previous = _targetInfo!.Firehose!.StorageInfos.FirstOrDefault(x => x.PhysicalPartitionNumber == lun);
+        if (!info.Properties.ContainsKey("num_physical") && previous?.Properties.TryGetValue("num_physical", out string? count) == true)
+        {
+            var properties = new Dictionary<string, string>(info.Properties, StringComparer.OrdinalIgnoreCase)
+                { ["num_physical"] = count };
+            info = info with { Properties = properties };
+        }
+        _targetInfo = _targetInfo! with { Firehose = _targetInfo.Firehose! with
+        {
+            StorageInfos = _targetInfo.Firehose.StorageInfos.Where(x => x.PhysicalPartitionNumber != lun)
+                .Append(info).OrderBy(x => x.PhysicalPartitionNumber).ToArray()
+        } };
+        return info;
     }
 
     private TargetRange ResolveTarget(StorageTarget target, CancellationToken ct)
@@ -85,7 +149,7 @@ public sealed partial class QcomProtocol
                 range = new(partition, bytes.StartOffset / size, bytes.Length / size, size);
                 break;
             case PartitionTarget named:
-                var matches = ReadPartitions(ct).Where(x => x.Name == named.Name &&
+                var matches = ReadPartitions(ct, target.PhysicalPartitionNumber).Where(x => x.Name == named.Name &&
                     (target.PhysicalPartitionNumber is null || x.Range.Partition == partition)).ToArray();
                 if (matches.Length == 0) throw new ArgumentException(string.Format(Strings.Qcom_PartitionNotFound, named.Name), nameof(target));
                 if (matches.Length > 1) throw new ArgumentException(string.Format(Strings.Qcom_PartitionAmbiguousAcrossLuns, named.Name), nameof(target));
@@ -97,14 +161,22 @@ public sealed partial class QcomProtocol
         return range;
     }
 
-    private List<(string Name, TargetRange Range)> ReadPartitions(CancellationToken ct)
+    private List<(string Name, TargetRange Range)> ReadPartitions(CancellationToken ct, uint? selectedLun = null)
     {
         var partitions = new List<(string, TargetRange)>();
-        foreach (var descriptor in _storage!.GetBlockDevices())
+        if (selectedLun is { } selected) ValidateLun(selected);
+        foreach (uint lun in selectedLun is { } value ? [value] : KnownLuns())
         {
             ct.ThrowIfCancellationRequested();
+            if (!_targetInfo!.Firehose!.StorageInfos.Any(x => x.PhysicalPartitionNumber == lun))
+                QueryStorageInfo(lun);
+            var descriptor = _storage!.GetBlockDevices().FirstOrDefault(x => x.PhysicalPartitionNumber == lun);
+            if (descriptor is null)
+            {
+                Log.ForContext<QcomProtocol>().Warning(Strings.Qcom_LogGptSkipped, lun, Strings.Qcom_StorageCapacityMissing);
+                continue;
+            }
             int sectorSize = descriptor.LogicalBlockSize;
-            uint lun = checked((uint)descriptor.PhysicalPartitionNumber!.Value);
             try
             {
                 if (descriptor.Length < checked(sectorSize * 2L))

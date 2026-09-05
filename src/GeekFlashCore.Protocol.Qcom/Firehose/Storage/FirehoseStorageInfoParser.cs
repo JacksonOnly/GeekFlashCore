@@ -7,13 +7,6 @@ namespace GeekFlashCore.Protocol.Qcom.Firehose.Storage;
 
 internal static class FirehoseStorageInfoParser
 {
-    private static readonly string[] DefaultSupportedFunctions =
-    [
-        "configure", "program", "firmwarewrite", "patch", "setbootablestoragedrive",
-        "ufs", "emmc", "power", "benchmark", "read", "getstorageinfo",
-        "getcrc16digest", "getsha256digest", "erase", "peek", "poke", "nop", "xml"
-    ];
-
     public static FirehoseStorageInfo ParseStorageInfo(
         FirehoseCommandResult result,
         uint physicalPartitionNumber)
@@ -55,6 +48,7 @@ internal static class FirehoseStorageInfoParser
     public static FirehoseBasicDevInfo ParseBasicInfo(FirehoseCommandResult result)
     {
         var supported = new List<string>();
+        var bareCommands = new List<string>();
         bool readingFunctions = false;
         uint serialNumber = 0;
 
@@ -66,6 +60,8 @@ internal static class FirehoseStorageInfoParser
 
             if (line.Contains("End of supported functions", StringComparison.OrdinalIgnoreCase))
             {
+                if (supported.Count == 0) supported.AddRange(bareCommands);
+                bareCommands.Clear();
                 readingFunctions = false;
                 continue;
             }
@@ -77,16 +73,18 @@ internal static class FirehoseStorageInfoParser
                 if (separator >= 0)
                 {
                     AddFunctions(line[(separator + 1)..], supported);
-                    readingFunctions = false;
+                    readingFunctions = string.IsNullOrWhiteSpace(line[(separator + 1)..]);
                 }
                 continue;
             }
             if (readingFunctions && !string.IsNullOrWhiteSpace(line))
                 AddFunctions(line, supported);
+            else if (line.Length is > 0 and <= 64 && line.All(static ch => char.IsAsciiLetterOrDigit(ch) || ch == '_'))
+                bareCommands.Add(line);
+            else
+                bareCommands.Clear();
         }
 
-        if (supported.Count == 0)
-            supported.AddRange(DefaultSupportedFunctions);
         return new FirehoseBasicDevInfo
         {
             BuildDate = ConfigureEvidenceParser.Parse(result).BuildDate ?? default,

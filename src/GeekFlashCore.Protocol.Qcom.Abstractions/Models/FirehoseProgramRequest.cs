@@ -17,6 +17,8 @@ public sealed record FirehoseProgramRequest
     public string? Label { get; init; }
     public string? FileName { get; init; }
     public byte PaddingByte { get; init; }
+    /// <summary>Pad Raw input to SectorCount. When false, SectorCount is a capacity limit and only the final image sector is padded. Sparse input is unaffected.</summary>
+    public bool PadToSectorCount { get; init; } = true;
     public FirehoseIoOptions IoOptions { get; init; } = new();
 
     public long GetWireLength()

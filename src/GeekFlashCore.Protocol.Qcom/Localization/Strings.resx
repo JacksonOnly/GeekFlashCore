@@ -387,4 +387,8 @@
   <data name="Qcom_GptSignatureMissing" xml:space="preserve"><value>LBA 1 未找到 EFI PART 签名。</value></data>
   <data name="Qcom_GptInvalidGeometry" xml:space="preserve"><value>GPT 头或条目范围无效，超出设备容量或 16 MiB 元数据限制。</value></data>
   <data name="Qcom_GptHeaderCrcInvalid" xml:space="preserve"><value>GPT 头 CRC 校验失败。</value></data>
+  <data name="Qcom_InvalidLunCount" xml:space="preserve"><value>设备返回的物理分区数量无效。</value></data>
+  <data name="Qcom_UnknownLun" xml:space="preserve"><value>指定 LUN 不在设备报告的物理分区范围内。</value></data>
+  <data name="Qcom_StorageCapacityMissing" xml:space="preserve"><value>该 LUN 未提供可用的存储容量。</value></data>
+  <data name="Qcom_PeekLengthMismatch" xml:space="preserve"><value>Peek 返回的十六进制数据长度与请求不符。</value></data>
 </root>

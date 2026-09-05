@@ -490,4 +490,8 @@ Current {0}, expected {1}</value>
   <data name="Qcom_GptSignatureMissing" xml:space="preserve"><value>No EFI PART signature was found at LBA 1.</value></data>
   <data name="Qcom_GptInvalidGeometry" xml:space="preserve"><value>Invalid GPT header or entry range; exceeds device capacity or the 16 MiB metadata limit.</value></data>
   <data name="Qcom_GptHeaderCrcInvalid" xml:space="preserve"><value>GPT header CRC validation failed.</value></data>
+  <data name="Qcom_InvalidLunCount" xml:space="preserve"><value>The device reported an invalid physical partition count.</value></data>
+  <data name="Qcom_UnknownLun" xml:space="preserve"><value>The LUN is outside the physical partitions reported by the device.</value></data>
+  <data name="Qcom_StorageCapacityMissing" xml:space="preserve"><value>No usable storage capacity was reported for this LUN.</value></data>
+  <data name="Qcom_PeekLengthMismatch" xml:space="preserve"><value>The hexadecimal Peek data length does not match the request.</value></data>
 </root>

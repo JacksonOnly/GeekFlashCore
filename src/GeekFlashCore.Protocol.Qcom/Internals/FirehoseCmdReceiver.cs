@@ -30,10 +30,10 @@ internal sealed class FirehoseCmdReceiver : IDisposable
         return response;
     }
 
-    public FirehoseResponse Receive()
+    public FirehoseResponse Receive(bool publishLogs = true)
     {
         FirehoseResponse response = _reader.ReadResponse(_readTimeoutMilliseconds);
-        PublishLogs(response);
+        if (publishLogs) PublishLogs(response);
         if (HasDiagnosticAttributes(response) && _logger.IsEnabled(LogEventLevel.Debug))
         {
             _logger.Debug(Strings.Qcom_LogFirehoseResponseAttributes,

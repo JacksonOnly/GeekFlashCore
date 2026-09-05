@@ -30,4 +30,13 @@ public interface IQcomProtocol : IProtocol,IBlockDeviceProvider
     FirehoseCommandResult ExecuteFirehoseCommand(BaseCommand command);
 
     FirehoseCommandResult ExecuteFirehoseXml(string xml);
+
+    IReadOnlyList<uint> GetPhysicalPartitions() => throw new NotSupportedException();
+    FirehoseStorageInfo GetStorageInfo(uint physicalPartitionNumber) => throw new NotSupportedException();
+    Task<IReadOnlyList<PartitionInfo>> GetPartitionsAsync(uint physicalPartitionNumber,
+        IProgress<ProgressRecord>? progress = null, CancellationToken ct = default) => throw new NotSupportedException();
+    long Peek(ulong address, long length, Stream destination, CancellationToken ct = default) => throw new NotSupportedException();
+    long Poke(ulong address, IDataSource source, CancellationToken ct = default) => throw new NotSupportedException();
+    FirehoseCommandResult FirmwareWrite(uint physicalPartitionNumber, IDataSource source,
+        CancellationToken ct = default) => throw new NotSupportedException();
 }

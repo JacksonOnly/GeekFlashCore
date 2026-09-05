@@ -48,9 +48,11 @@ internal static class FirehoseProgramPlanner
             long wireLength = request.GetWireLength();
             if (sourceLength > wireLength)
             throw new ArgumentException(Strings.Qcom_SourceLargerThanTarget, nameof(request));
+            long sectorCount = request.PadToSectorCount ? request.SectorCount :
+                checked(sourceLength / request.SectorSizeInBytes + (sourceLength % request.SectorSizeInBytes == 0 ? 0 : 1));
             return new FirehoseProgramPlan(
                 source,
-                [FirehoseProgramSegment.Raw(request.StartSector, request.SectorCount, sourceLength)],
+                [FirehoseProgramSegment.Raw(request.StartSector, sectorCount, sourceLength)],
                 sourceView is not null);
         }
         catch

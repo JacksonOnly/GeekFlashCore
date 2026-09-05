@@ -107,7 +107,18 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             await SendGenericDigestAsync(ct).ConfigureAwait(false);
             FirehoseConfigureResult configured = await new ConfigureNegotiator(_firehose!).NegotiateAsync(
                 configuration, _targetInfo!.Vendor, GetXiaomiAuthenticationAsync(), ct).ConfigureAwait(false);
-            await InitializeStorageAsync(configured, ct).ConfigureAwait(false);
+            try
+            {
+                await InitializeStorageAsync(configured, ct).ConfigureAwait(false);
+            }
+            catch (FirehoseNakException exception) when (ShouldRetryStorageAsUfs(configured, exception))
+            {
+                configuration = CreateUfsFallbackConfiguration(configuration);
+                configured = await new ConfigureNegotiator(_firehose!).NegotiateAsync(
+                    LimitConfiguration(configuration), _targetInfo!.Vendor, GetXiaomiAuthenticationAsync(), ct)
+                    .ConfigureAwait(false);
+                await InitializeStorageAsync(configured, ct).ConfigureAwait(false);
+            }
             await VerifyVendorAsync(ct).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
             _connected = true;
@@ -164,7 +175,17 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             SendGenericDigest();
             var result = new ConfigureNegotiator(_firehose!).Negotiate(
                 configuration, _targetInfo!.Vendor, GetXiaomiAuthentication());
-            InitializeStorage(result);
+            try
+            {
+                InitializeStorage(result);
+            }
+            catch (FirehoseNakException exception) when (ShouldRetryStorageAsUfs(result, exception))
+            {
+                configuration = CreateUfsFallbackConfiguration(configuration);
+                result = new ConfigureNegotiator(_firehose!).Negotiate(
+                    LimitConfiguration(configuration), _targetInfo!.Vendor, GetXiaomiAuthentication());
+                InitializeStorage(result);
+            }
             VerifyVendor();
             _connected = true;
             progress?.Report(new ProgressRecord(1, 1, Strings.Progress_Connected));
@@ -363,6 +384,23 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         configuration.Validate();
         return configuration with { MaxPayloadSizeToTargetInBytes = QcomEvidenceMerger.ResolveMaxPayload(
             Math.Min(configuration.MaxPayloadSizeToTargetInBytes, _options.Firehose.MaxPayloadSizeToTargetInBytes), null, _programmer?.MaxPayloadSizeToTargetInBytesSupported) };
+    }
+
+    private static FirehoseConfiguration CreateUfsFallbackConfiguration(FirehoseConfiguration configuration) =>
+        configuration with { MemoryName = FirehoseStorage.Ufs, SectorSizeInBytes = 4096 };
+
+    private static bool ShouldRetryStorageAsUfs(
+        FirehoseConfigureResult configured,
+        FirehoseNakException exception)
+    {
+        if (configured.Configuration.Storage != FirehoseStorage.Emmc)
+            return false;
+
+        if (exception.Message.Contains("Failed to open the SDCC Device", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return exception.Result.Logs.Any(log =>
+            log.Message.Contains("Failed to open the SDCC Device", StringComparison.OrdinalIgnoreCase));
     }
 
     private void SetStorage(FirehoseConfigureResult result, IFirehoseStoragePolicy? policy = null)

@@ -7,4 +7,34 @@
   <data name="Cli_NoPartitions" xml:space="preserve"><value>未读取到任何分区，请检查上方各 LUN 的 GPT 诊断日志。</value></data>
   <data name="Cli_CommandUnsuccessful" xml:space="preserve"><value>命令 {0} 未成功完成。</value></data>
   <data name="Cli_LogCommandFailed" xml:space="preserve"><value>命令执行失败：{Message}</value></data>
+  <data name="Cli_Usage" xml:space="preserve"><value>用法：{0}</value></data>
+  <data name="Cli_UnknownLun" xml:space="preserve"><value>设备未报告 LUN {0}。</value></data>
+  <data name="Cli_RangeOutsideStorage" xml:space="preserve"><value>扇区或字节范围超出设备容量。</value></data>
+  <data name="Cli_PartitionNotUnique" xml:space="preserve"><value>无法唯一确定分区 {0}，请检查名称并指定 LUN。</value></data>
+  <data name="Cli_CommandCompleted" xml:space="preserve"><value>命令 {0} 已完成。</value></data>
+  <data name="Cli_StorageNotConfigured" xml:space="preserve"><value>存储尚未配置。</value></data>
+  <data name="Cli_CommandsMapped" xml:space="preserve"><value>Firehose 命令映射成功，共 {0} 项：</value></data>
+  <data name="Cli_NoCommandEvidence" xml:space="preserve"><value>设备没有报告可映射的命令。</value></data>
+  <data name="Cli_CommandNotSupported" xml:space="preserve"><value>设备未声明支持命令 {0}。</value></data>
+  <data name="Cli_DigestMissing" xml:space="preserve"><value>响应没有包含 SHA256 摘要。</value></data>
+  <data name="Cli_ConnectedHelp" xml:space="preserve"><value>已联机到 {0}。输入 help 查看通用用法，exit 退出。</value></data>
+  <data name="Cli_QcomRequired" xml:space="preserve"><value>该命令需要 Qualcomm Firehose 协议。</value></data>
+  <data name="Cli_XmlTooLarge" xml:space="preserve"><value>XML 文件超过协议允许的大小。</value></data>
+  <data name="Cli_FirehoseUsage" xml:space="preserve"><value>Firehose 命令可直接输入，或加 qcom 前缀；数字支持十进制和 0x。start/count 为扇区，address/byte-count 为字节。</value></data>
+  <data name="Cli_ProgramDescription" xml:space="preserve"><value>将文件写入分区或指定扇区范围；write 为通用入口。</value></data>
+  <data name="Cli_ReadDescription" xml:space="preserve"><value>读取分区或指定扇区范围到文件。</value></data>
+  <data name="Cli_EraseDescription" xml:space="preserve"><value>擦除分区或指定扇区范围。</value></data>
+  <data name="Cli_NopDescription" xml:space="preserve"><value>检查 Firehose 通讯。</value></data>
+  <data name="Cli_ConfigureDescription" xml:space="preserve"><value>重新协商配置并查询存储信息。</value></data>
+  <data name="Cli_PowerDescription" xml:space="preserve"><value>重启系统、进入 EDL 或关机。</value></data>
+  <data name="Cli_StorageDescription" xml:space="preserve"><value>查询全部或指定 LUN 的存储信息。</value></data>
+  <data name="Cli_PatchDescription" xml:space="preserve"><value>在指定扇区内按字节偏移写入数值。</value></data>
+  <data name="Cli_BootableDescription" xml:space="preserve"><value>设置启动存储 LUN。</value></data>
+  <data name="Cli_BenchmarkDescription" xml:space="preserve"><value>运行指定模式的性能测试；write 模式会写入设备。</value></data>
+  <data name="Cli_PeekDescription" xml:space="preserve"><value>读取设备内存到文件。</value></data>
+  <data name="Cli_PokeDescription" xml:space="preserve"><value>将文件内容写入设备内存。</value></data>
+  <data name="Cli_Sha256Description" xml:space="preserve"><value>计算指定扇区范围的 SHA256 并显示结果。</value></data>
+  <data name="Cli_FirmwareDescription" xml:space="preserve"><value>通过 firmwarewrite 流式写入固件文件。</value></data>
+  <data name="Cli_XblGptDescription" xml:space="preserve"><value>执行指定 LUN 的 xblgpt 命令。</value></data>
+  <data name="Cli_FixGptDescription" xml:space="preserve"><value>修复指定 LUN 的 GPT；grow=1 扩展最后分区。</value></data>
 </root>

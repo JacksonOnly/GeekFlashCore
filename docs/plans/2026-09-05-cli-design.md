@@ -76,3 +76,24 @@ Console entry point
 - `info` 保留启动/NOP/configure 的构建时间证据，兼容 `Binary build date: ... @ ...`；无证据显示 unknown。UFS 产品名来自 getstorageinfo 的 prod_name，TargetName 来自 configure。
 - 同步、异步 Firehose 重连均验证 NOP 后继续 configure 和 getstorageinfo，失败时清理连接。当前仍只查询 LUN 0，未加入多 LUN 自动发现或备份 GPT 回退。
 - 验证：Qcom 186 项、CLI 4 项测试通过，Release 解决方案构建 0 警告/0 错误，CLI `--help`、`git diff --check` 和中英文资源键检查通过。测试全部位于 ignored `.tests`；真实硬件仍待复测。
+
+## CLI-11 命令契约更新（2026-09-05）
+
+当前语法以 [命令设计](2026-09-05-cli-commands-design.md) 和 [实施及审查记录](2026-09-05-cli-commands-implementation.md) 为准，替代旧的 `partition:name`、`sector:start:count` 参数形式。
+
+```text
+partitions all
+partitions 1
+read boot_a boot_a.img 1
+write boot_a boot_a.img 1
+erase boot_a 1
+read sector 1 0x40 64 boot_a.img
+write sector 1 0x40 64 boot_a.img
+erase sector 1 0x40 64
+```
+
+名称后的 LUN 可省略；跨 LUN 同名时要求明确指定。read/write 的文件参数在名称后，erase 不需要文件。分区 offset/length 输出 Bytes 和可读单位。命名 Raw 写入只补齐末扇区，显式 sector 写入按指定范围补齐。
+
+`CommandSyntax` 只提供通用语法；Firehose 命令在连接后和联机 help 中显示设备与 Core 支持交集的说明/语法，不输出 ufs/emmc 等尚未实现处理器的命令。新增注册命令集，主流程仍只依赖 IProtocol。交互 connect 调用真正的连接流程，保持已有 NOP/configure/getstorageinfo 重连顺序。多 LUN 信息按需查询，Chip 采用 Firehose 优先、Sahara 回填。
+
+验证：Qcom 203 项、CLI 25 项通过，完整 Release 构建无警告/错误；离线 help 和缺参退出码通过。未执行本轮硬件操作。

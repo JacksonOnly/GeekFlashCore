@@ -103,7 +103,7 @@ internal sealed class ConsoleUi
                 if (firehose.BasicDevCharacteristics is { } basic)
                     Console.WriteLine($"  chip={basic.ChipName ?? "unknown"}, serial={basic.SerialNumber}, build={(basic.BuildDate == default ? "unknown" : basic.BuildDate.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture))}, functions={basic.SupportedFunctions.Count}");
                 foreach (var storage in firehose.StorageInfos)
-                    Console.WriteLine($"  {storage.Storage} lun={storage.PhysicalPartitionNumber} blocks={storage.BlockCount} size={storage.BlockSizeInBytes} capacity={storage.CapacityInBytes}");
+                    Console.WriteLine($"  {storage.Storage} lun={storage.PhysicalPartitionNumber} blocks={storage.BlockCount} size={storage.BlockSizeInBytes} capacity={(storage.CapacityInBytes is { } capacity ? FormatBytes(capacity) : "unknown")}");
             }
         }
     }
@@ -113,6 +113,15 @@ internal sealed class ConsoleUi
         if (_progressWidth == 0) return;
         Console.Write("\r\u001b[2K");
         _progressWidth = 0;
+    }
+
+    internal static string FormatBytes(decimal bytes)
+    {
+        string[] units = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB"];
+        decimal value = bytes;
+        int unit = 0;
+        while (value >= 1024 && unit < units.Length - 1) { value /= 1024; unit++; }
+        return $"{bytes.ToString("0", System.Globalization.CultureInfo.InvariantCulture)} Bytes ({value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} {units[unit]})";
     }
 
     public static string ReadLine(string? fallback = null) => Console.ReadLine() is { } value && value.Length > 0 ? value : fallback ?? string.Empty;
@@ -143,12 +152,8 @@ internal sealed class ConsoleUi
 
     private static string RenderMessage(LogEvent logEvent)
     {
-        string message = logEvent.RenderMessage();
-        int separator = Math.Max(message.LastIndexOf(':'), message.LastIndexOf('\uFF1A'));
-        if (separator < 0) return message;
-        int quoteStart = message.IndexOf('\"', separator + 1);
-        if (quoteStart >= 0 && message.EndsWith('\"'))
-            return message[..quoteStart] + message[(quoteStart + 1)..^1];
-        return message;
+        using var writer = new StringWriter(System.Globalization.CultureInfo.InvariantCulture);
+        new Serilog.Formatting.Display.MessageTemplateTextFormatter("{Message:lj}", System.Globalization.CultureInfo.InvariantCulture).Format(logEvent, writer);
+        return writer.ToString();
     }
 }

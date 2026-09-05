@@ -1,4 +1,5 @@
 using GeekFlashCore.Protocol.Abstractions;
+using GeekFlashCore.CLI.Localization;
 using GeekFlashCore.Protocol.Qcom;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using GeekFlashCore.Transport.Abstractions;
@@ -14,8 +15,9 @@ internal static class QcomProtocolHostAdapter
         "等待 Qualcomm EDL USB 设备热插拔...",
         new QcomDeviceIdentify(),
         Create,
-        [new QcomCommandHandler()],
-        static (protocol, ui) => ui.PrintTargetInfo(((IQcomProtocol)protocol).TargetInfo));
+        [],
+        static (protocol, ui) => ui.PrintTargetInfo(((IQcomProtocol)protocol).TargetInfo),
+        new CommandSet());
 
     private static IProtocol Create(ProtocolHostContext context, ITransport transport)
     {
@@ -45,35 +47,39 @@ internal static class QcomProtocolHostAdapter
         };
     }
 
-    private sealed class QcomCommandHandler : IProtocolCommandHandler
+    private sealed class CommandSet : IProtocolCommandSet
     {
-        public string Name => "qcom";
-        public string HelpText => "qcom probe-sahara | configure | xml <file>";
-        public bool Handles(IReadOnlyList<string> arguments) => arguments.Count > 0;
-        public bool RequiresConnection(IReadOnlyList<string> arguments) => !arguments[0].Equals("probe-sahara", StringComparison.OrdinalIgnoreCase) && !arguments[0].Equals("configure", StringComparison.OrdinalIgnoreCase);
-
-        public Task<int> ExecuteAsync(IProtocol protocol, IReadOnlyList<string> arguments, ConsoleUi ui, IProgress<ProgressRecord> progress, CancellationToken cancellationToken)
+        public bool Handles(string command) => command.Equals("qcom", StringComparison.OrdinalIgnoreCase) || FirehoseCommands.Usages.ContainsKey(command);
+        public CliOptions Normalize(CliOptions options) => FirehoseCommands.Normalize(options);
+        public void Validate(CliOptions options) => FirehoseCommands.Validate(options);
+        public bool RequiresConnection(string command) => command is not ("configure" or "probe-sahara");
+        public void PrintHelp(IProtocol protocol, ConsoleUi ui) => FirehoseCommands.PrintMapping(protocol, ui);
+        public void ValidateAvailability(IProtocol protocol, string command)
         {
-            if (protocol is not IQcomProtocol qcom) throw new ArgumentException("当前协议不支持 Qualcomm 命令");
-            string command = arguments[0].ToLowerInvariant();
-            switch (command)
+            if (protocol is IQcomProtocol qcom && command == "reboot") FirehoseCommands.Require(qcom, "power");
+        }
+        public async Task<int> ExecuteAsync(IProtocol protocol, CliOptions options, ConsoleUi ui, IProgress<ProgressRecord> progress, CancellationToken ct)
+        {
+            if (protocol is not IQcomProtocol qcom) throw new NotSupportedException(Strings.Cli_QcomRequired);
+            switch (options.Command)
             {
+                case "program":
+                    await StorageCommands.ExecuteAsync(protocol, "write", options.Arguments, ui, progress, ct);
+                    return 0;
                 case "probe-sahara":
                     var target = qcom.ProbeSahara(progress);
                     ui.WriteLine($"Sahara v{target.Version}, mode={target.Mode}, packet={target.MaximumPacketSizeSupported}");
-                    return Task.FromResult(0);
-                case "configure":
-                    var configured = qcom.ConfigureFirehose(progress);
-                    ui.WriteLine($"Firehose configured: {configured.Status}, bytes={configured.BytesTransferred}");
-                    return Task.FromResult(configured.IsSuccess ? 0 : 1);
+                    return 0;
                 case "xml":
-                    string path = ConsolePath.Normalize(arguments.Count > 1 ? arguments[1] : ui.Ask("XML 文件路径"))
-                        ?? throw new ArgumentException("XML 文件路径不能为空");
-                    string xml = File.ReadAllText(path);
-                    var response = qcom.ExecuteFirehoseXml(xml);
-                    ui.WriteLine($"XML result: {response.Status}");
-                    return Task.FromResult(response.IsSuccess ? 0 : 1);
-                default: throw new ArgumentException("qcom 子命令必须是 probe-sahara、configure 或 xml");
+                    string path = ConsolePath.Normalize(options.Arguments[0])!;
+                    if (new FileInfo(path).Length > FirehoseConstants.MaximumXmlPacketSize) throw new ArgumentException(Strings.Cli_XmlTooLarge);
+                    var result = qcom.ExecuteFirehoseXml(File.ReadAllText(path));
+                    if (!result.IsSuccess) throw new InvalidOperationException(Strings.FormatCli_CommandUnsuccessful("xml"));
+                    ui.WriteLine($"XML: {result.Status}");
+                    return 0;
+                default:
+                    await FirehoseCommands.ExecuteAsync(qcom, options.Command, options.Arguments, ui, ct);
+                    return 0;
             }
         }
     }

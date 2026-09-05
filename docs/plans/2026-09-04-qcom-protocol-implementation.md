@@ -466,3 +466,10 @@
 - Sahara 获取 TargetInfo 后设备可等待时间没有统一保证；资源提供器应缓存候选 Loader，超时策略需由宿主配置。
 - NuGet 包 API 在更新时可能变化；实现使用固定版本并通过内部适配器隔离。
 - 某些厂商认证依赖外部服务或用户凭据；Core 只定义资源契约和线路行为，不保存账号凭据。
+
+### CLI-11（2026-09-05）
+
+- 行为结论：按实际 SupportedFunctions 映射已实现 Firehose 命令，去除虚构 18 项；按需查询 num_physical 范围内所有/指定 LUN，Chip 缺失时回填 Sahara。新增同步 Peek/Poke 与流式 FirmwareWrite、Poke/XblGpt 包；命名 Raw 写入只补齐末扇区，显式 Program/sector 范围保持兼容。
+- CLI 通用命令缺参显示具体语法，支持 `partitions <all|lun>`、`read/write <partition> <file> [lun]`、`erase <partition> [lun]` 和三种 sector 形式；Bytes/可读单位，设备和 Core 命令交集说明，真实交互重连。通用主流程通过注册命令集扩展，不固定依赖 Qualcomm。
+- 验证证据：Qcom 203 项、CLI 25 项，Release 构建 0 警告/0 错误；64 MiB 流式窗口测试、离线 help/缺参退出码、资源键和 diff 检查通过。完整审查及风险见 `2026-09-05-cli-commands-implementation.md`。
+- 风险：本轮未操作真实设备；多 LUN 行为、厂商 Peek/Poke 方言和 FirmwareWrite 仍需硬件验证；ufs/emmc provisioning 尚不映射。

@@ -5,6 +5,17 @@ namespace GeekFlashCore.CLI;
 
 internal sealed record ProtocolHostContext(ConsoleUi Ui, CliOptions Options);
 
+internal interface IProtocolCommandSet
+{
+    bool Handles(string command);
+    CliOptions Normalize(CliOptions options);
+    void Validate(CliOptions options);
+    bool RequiresConnection(string command);
+    void ValidateAvailability(IProtocol protocol, string command);
+    void PrintHelp(IProtocol protocol, ConsoleUi ui);
+    Task<int> ExecuteAsync(IProtocol protocol, CliOptions options, ConsoleUi ui, IProgress<ProgressRecord> progress, CancellationToken ct);
+}
+
 internal interface IProtocolCommandHandler
 {
     string Name { get; }
@@ -22,7 +33,8 @@ internal sealed record ProtocolRegistration(
     IDeviceIdentify? DeviceIdentifier,
     Func<ProtocolHostContext, GeekFlashCore.Transport.Abstractions.ITransport, IProtocol> Factory,
     IReadOnlyList<IProtocolCommandHandler> CommandHandlers,
-    Action<IProtocol, ConsoleUi>? InfoPresenter = null);
+    Action<IProtocol, ConsoleUi>? InfoPresenter = null,
+    IProtocolCommandSet? CommandSet = null);
 
 internal static class ProtocolRegistry
 {
@@ -60,7 +72,8 @@ internal static class ProtocolRegistry
 
     public static bool TryResolveCommand(string command, out ProtocolRegistration registration)
     {
-        registration = Registrations.FirstOrDefault(item => item.CommandHandlers.Any(handler => handler.Name.Equals(command, StringComparison.OrdinalIgnoreCase)))!;
+        registration = Registrations.FirstOrDefault(item => item.CommandSet?.Handles(command) == true ||
+            item.CommandHandlers.Any(handler => handler.Name.Equals(command, StringComparison.OrdinalIgnoreCase)))!;
         return registration is not null;
     }
 

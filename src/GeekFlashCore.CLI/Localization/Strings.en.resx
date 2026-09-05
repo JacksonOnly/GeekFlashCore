@@ -7,4 +7,34 @@
   <data name="Cli_NoPartitions" xml:space="preserve"><value>No partitions were read. Check the GPT diagnostic logs for each LUN above.</value></data>
   <data name="Cli_CommandUnsuccessful" xml:space="preserve"><value>Command {0} did not complete successfully.</value></data>
   <data name="Cli_LogCommandFailed" xml:space="preserve"><value>Command failed: {Message}</value></data>
+  <data name="Cli_Usage" xml:space="preserve"><value>Usage: {0}</value></data>
+  <data name="Cli_UnknownLun" xml:space="preserve"><value>The device did not report LUN {0}.</value></data>
+  <data name="Cli_RangeOutsideStorage" xml:space="preserve"><value>The sector or byte range exceeds storage capacity.</value></data>
+  <data name="Cli_PartitionNotUnique" xml:space="preserve"><value>Partition {0} is missing or ambiguous; check its name and specify a LUN.</value></data>
+  <data name="Cli_CommandCompleted" xml:space="preserve"><value>Command {0} completed.</value></data>
+  <data name="Cli_StorageNotConfigured" xml:space="preserve"><value>Storage is not configured.</value></data>
+  <data name="Cli_CommandsMapped" xml:space="preserve"><value>Mapped {0} Firehose commands:</value></data>
+  <data name="Cli_NoCommandEvidence" xml:space="preserve"><value>The device did not report any mappable commands.</value></data>
+  <data name="Cli_CommandNotSupported" xml:space="preserve"><value>The device did not declare support for command {0}.</value></data>
+  <data name="Cli_DigestMissing" xml:space="preserve"><value>The response does not contain a SHA256 digest.</value></data>
+  <data name="Cli_ConnectedHelp" xml:space="preserve"><value>Connected to {0}. Type help for common usage or exit to quit.</value></data>
+  <data name="Cli_QcomRequired" xml:space="preserve"><value>This command requires the Qualcomm Firehose protocol.</value></data>
+  <data name="Cli_XmlTooLarge" xml:space="preserve"><value>The XML file exceeds the protocol size limit.</value></data>
+  <data name="Cli_FirehoseUsage" xml:space="preserve"><value>Enter Firehose commands directly or with the qcom prefix. Numbers accept decimal and 0x. start/count use sectors; address/byte-count use bytes.</value></data>
+  <data name="Cli_ProgramDescription" xml:space="preserve"><value>Write a file to a partition or sector range; write is the common entry point.</value></data>
+  <data name="Cli_ReadDescription" xml:space="preserve"><value>Read a partition or sector range into a file.</value></data>
+  <data name="Cli_EraseDescription" xml:space="preserve"><value>Erase a partition or sector range.</value></data>
+  <data name="Cli_NopDescription" xml:space="preserve"><value>Check Firehose communication.</value></data>
+  <data name="Cli_ConfigureDescription" xml:space="preserve"><value>Renegotiate configuration and query storage information.</value></data>
+  <data name="Cli_PowerDescription" xml:space="preserve"><value>Reboot to the system or EDL, or power off.</value></data>
+  <data name="Cli_StorageDescription" xml:space="preserve"><value>Query storage information for all LUNs or a selected LUN.</value></data>
+  <data name="Cli_PatchDescription" xml:space="preserve"><value>Write a numeric value at a byte offset within a sector.</value></data>
+  <data name="Cli_BootableDescription" xml:space="preserve"><value>Set the bootable storage LUN.</value></data>
+  <data name="Cli_BenchmarkDescription" xml:space="preserve"><value>Run the selected benchmark; write mode writes to the device.</value></data>
+  <data name="Cli_PeekDescription" xml:space="preserve"><value>Read device memory into a file.</value></data>
+  <data name="Cli_PokeDescription" xml:space="preserve"><value>Write file contents into device memory.</value></data>
+  <data name="Cli_Sha256Description" xml:space="preserve"><value>Calculate and display SHA256 for a sector range.</value></data>
+  <data name="Cli_FirmwareDescription" xml:space="preserve"><value>Stream a firmware file using firmwarewrite.</value></data>
+  <data name="Cli_XblGptDescription" xml:space="preserve"><value>Execute xblgpt for the selected LUN.</value></data>
+  <data name="Cli_FixGptDescription" xml:space="preserve"><value>Fix GPT on a LUN; grow=1 expands the last partition.</value></data>
 </root>

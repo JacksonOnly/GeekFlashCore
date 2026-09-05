@@ -37,9 +37,12 @@ internal sealed class TransportResolver
         var enumerator = UsbEnumeratorFactory.Create();
         foreach (var device in enumerator.GetDevices())
         {
-            if (device.ExtractPortName() is not { } port || !ProtocolRegistry.TryIdentify(device, out var identified)) continue;
-            if (selected is not null && selected.Type != identified.Type) continue;
-            return new TransportResolution(SerialPortTransportFactory.Create(port, options.ReadTimeout, options.WriteTimeout), selected ?? identified);
+            if (device.ExtractPortName() is not { } port) continue;
+            if (ProtocolRegistry.TryIdentify(device, out var identified))
+            {
+                if (selected is not null && selected.Type != identified.Type) continue;
+                return new TransportResolution(SerialPortTransportFactory.Create(port, options.ReadTimeout, options.WriteTimeout), selected ?? identified);
+            }
         }
         if (OperatingSystem.IsWindows())
         {
@@ -47,7 +50,9 @@ internal sealed class TransportResolver
             var monitor = UsbDeviceMonitorFactory.Create();
             try
             {
-                var device = await monitor.WaitForDeviceAsync(d => ProtocolRegistry.TryIdentify(d, out var identified) && (selected is null || identified.Type == selected.Type), ct).ConfigureAwait(false);
+                var device = await monitor.WaitForDeviceAsync(d => selected is not null
+                    ? d.ExtractPortName() is not null
+                    : ProtocolRegistry.TryIdentify(d, out _), ct).ConfigureAwait(false);
                 var port = device?.ExtractPortName() ?? throw new InvalidOperationException("USB 设备未提供 COM 端口，请使用 --usb VID:PID");
                 ProtocolRegistry.TryIdentify(device!, out var identifiedRegistration);
                 return new TransportResolution(SerialPortTransportFactory.Create(port, options.ReadTimeout, options.WriteTimeout), selected ?? identifiedRegistration);

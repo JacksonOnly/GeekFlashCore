@@ -96,7 +96,7 @@ internal sealed class FirehoseProtocol : IDisposable
     public FirehoseStorageService GetStorageService()
     {
         ThrowIfDisposed();
-        return _storageService ?? throw new InvalidOperationException("Firehose is not configured.");
+        return _storageService ?? throw new InvalidOperationException(Strings.Qcom_FirehoseNotConfigured);
     }
 
     private void LogThroughput(string operation, long bytes, TimeSpan elapsed)
@@ -105,7 +105,7 @@ internal sealed class FirehoseProtocol : IDisposable
             ? bytes / elapsed.TotalSeconds / (1024.0 * 1024.0)
             : 0;
         _logger.Information(
-            "{Operation} complete: {Bytes:N0} bytes in {Elapsed} ({Throughput:F2} MB/s)",
+            Strings.Qcom_LogOperationComplete,
             operation,
             bytes,
             elapsed,
@@ -129,7 +129,7 @@ internal sealed class FirehoseProtocol : IDisposable
         if (_disposed)
             return;
         _disposed = true;
-        _logger.Verbose("Disposing FirehoseProtocol");
+        _logger.Verbose(Strings.Qcom_LogDisposeFirehose);
         _session.Dispose();
         _storageService = null;
         _targetInfo = new FirehoseTargetInfo();

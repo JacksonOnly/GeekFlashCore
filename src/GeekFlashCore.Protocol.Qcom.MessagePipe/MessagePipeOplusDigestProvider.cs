@@ -21,7 +21,7 @@ public sealed class MessagePipeOplusDigestProvider : IOplusDigestProvider
     private static OplusDigestResourceResponse Validate(OplusDigestResourceResponse response)
     {
         if (response?.Digest is null || response.Digest.Length <= 0)
-            throw new QcomResourceException("The Oplus digest provider returned an empty resource.");
+            throw new QcomResourceException(Strings.OplusDigestEmpty);
         return response;
     }
 }

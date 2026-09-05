@@ -14,12 +14,12 @@ internal static class FirehoseProgramPlanner
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(source);
         if (!source.CanRead)
-            throw new InvalidDataException("The Firehose program source is not readable.");
+            throw new InvalidDataException(Strings.Qcom_ProgramSourceNotReadable);
         cancellationToken.ThrowIfCancellationRequested();
 
         long sourceLength = request.GetSourceLength();
         if (sourceLength == 0)
-            throw new ArgumentException("The Firehose program source cannot be empty.", nameof(request));
+            throw new ArgumentException(Strings.Qcom_ProgramSourceEmpty, nameof(request));
 
         SourceWindowStream? sourceView = null;
         if (source.CanSeek)
@@ -39,15 +39,15 @@ internal static class FirehoseProgramPlanner
             if (isSparse)
             {
                 if (!source.CanSeek)
-                    throw new NotSupportedException("Android sparse programming requires a seekable source stream.");
-                IReadOnlyList<FirehoseProgramSegment> segments = SparseProgramPlanner.Create(source, request);
+            throw new NotSupportedException(Strings.Qcom_SparseRequiresSeekable);
+                IReadOnlyList<FirehoseProgramSegment> segments = SparseProgramPlanner.Create(source, request, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
                 return new FirehoseProgramPlan(source, segments, sourceView is not null);
             }
 
             long wireLength = request.GetWireLength();
             if (sourceLength > wireLength)
-                throw new ArgumentException("The source is larger than the target range.", nameof(request));
+            throw new ArgumentException(Strings.Qcom_SourceLargerThanTarget, nameof(request));
             return new FirehoseProgramPlan(
                 source,
                 [FirehoseProgramSegment.Raw(request.StartSector, request.SectorCount, sourceLength)],
@@ -74,7 +74,7 @@ internal static class FirehoseProgramPlanner
                 cancellationToken.ThrowIfCancellationRequested();
                 int read = source.Read(buffer, 0, (int)Math.Min(buffer.Length, remaining));
                 if (read == 0)
-                    throw new EndOfStreamException("The Firehose source ended before its requested offset.");
+            throw new EndOfStreamException(Strings.Qcom_SourceEndedBeforeOffset);
                 remaining -= read;
             }
         }

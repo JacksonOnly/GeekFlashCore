@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="AuthenticationPayloadEmpty" xml:space="preserve"><value>认证资源提供器返回了空载荷。</value></data>
+  <data name="SaharaImagesMissing" xml:space="preserve"><value>Sahara 镜像资源提供器未返回镜像。</value></data>
+  <data name="SaharaImageInvalid" xml:space="preserve"><value>Sahara 镜像资源提供器返回了无效条目。</value></data>
+  <data name="ResourceResolveFailed" xml:space="preserve"><value>无法解析 {0} 资源。</value></data>
+  <data name="OplusDigestEmpty" xml:space="preserve"><value>Oplus Digest 提供器返回了空资源。</value></data>
+  <data name="FirehoseConfigurationMissing" xml:space="preserve"><value>Firehose 配置提供器未返回配置。</value></data>
+</root>

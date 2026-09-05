@@ -45,6 +45,8 @@ internal sealed class FirehoseCmdReceiver : IDisposable
         return response;
     }
 
+    public FirehoseResponse? PollResponse() => _reader.PollResponse();
+
     public FirehoseResponse ReceiveRaw(
         Span<byte> destination,
         IProgress<long>? progress = null,
@@ -110,23 +112,23 @@ internal sealed class FirehoseCmdReceiver : IDisposable
             if (log.Level == FirehoseLogLevel.Info &&
                 log.Message.StartsWith("Calling handler for ", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.Debug("{Message}", log.Message);
+                _logger.Debug(Strings.Qcom_LogDeviceMessage, log.Message);
                 continue;
             }
 
             switch (log.Level)
             {
                 case FirehoseLogLevel.Error:
-                    _logger.Error("{Message}", log.Message);
+                _logger.Error(Strings.Qcom_LogDeviceMessage, log.Message);
                     break;
                 case FirehoseLogLevel.Warn:
-                    _logger.Warning("{Message}", log.Message);
+                _logger.Warning(Strings.Qcom_LogDeviceMessage, log.Message);
                     break;
                 case FirehoseLogLevel.Debug:
-                    _logger.Debug("{Message}", log.Message);
+                _logger.Debug(Strings.Qcom_LogDeviceMessage, log.Message);
                     break;
                 default:
-                    _logger.Information("{Message}", log.Message);
+                _logger.Information(Strings.Qcom_LogDeviceMessage, log.Message);
                     break;
             }
         }

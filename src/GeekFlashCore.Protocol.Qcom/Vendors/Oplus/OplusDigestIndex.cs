@@ -16,14 +16,14 @@ public sealed class OplusDigestIndex
             OplusDigestEntry entry = _entries[index];
             if (string.IsNullOrWhiteSpace(entry.Label) || string.IsNullOrWhiteSpace(entry.FileName) ||
                 entry.StartSector < 0 || entry.SectorCount <= 0)
-                throw new OplusDigestException("The Oplus Digest contains an invalid partition entry.");
+            throw new OplusDigestException(Strings.Qcom_OplusDigestEntryInvalid);
             _ = entry.EndSectorExclusive;
             if (index > 0)
             {
                 OplusDigestEntry previous = _entries[index - 1];
                 if (previous.PhysicalPartitionNumber == entry.PhysicalPartitionNumber &&
                     previous.EndSectorExclusive > entry.StartSector)
-                    throw new OplusDigestException("The Oplus Digest contains overlapping partition entries.");
+            throw new OplusDigestException(Strings.Qcom_OplusDigestOverlap);
             }
         }
     }

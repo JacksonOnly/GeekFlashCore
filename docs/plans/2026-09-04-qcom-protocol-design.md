@@ -36,7 +36,7 @@
   └─ 资源提供器或 MessagePipe 适配器
                     │
                     ▼
-QcomProtocol（公共门面与异步编排）
+QcomProtocol（公共门面、异步编排与 IBlockDeviceProvider）
   ├─ 连接生命周期与取消边界
   ├─ Loader 静态分析和运行时证据合并
   ├─ 厂商策略选择
@@ -63,12 +63,22 @@ SaharaSession（同步）   FirehoseSession（同步）
 - 不允许在同步协议层使用 `.GetAwaiter().GetResult()` 等方式等待异步资源；
 - 取消只在命令或数据块边界检查；若取消发生在无法安全恢复的原始数据阶段，会话标记为需要重新连接。
 
+`QcomProtocol` 必须直接实现 `IBlockDeviceProvider`。连接并完成 Firehose 存储初始化后，
+`GetBlockDevices` 和 `OpenBlockDevice` 提供可复用的块设备视图；打开的设备通过会话代数校验，
+断开、重连或原始传输取消后旧设备必须失效。
+
 `QcomProtocol` 可实现异步公共接口，但只负责：
 
 - 获取 Loader、Digest、认证材料和运行时配置；
 - 编排同步 Sahara/Firehose 步骤；
 - 将同步结果转换为公共异步接口结果；
 - 管理会话串行化、取消和生命周期。
+
+参考 qdl 的 VIP 逻辑需要单独建模。VIP 不是 Oplus Digest 的别名：它传输
+`DigestsToSign.mbn` 以及可选的 `ChainedTableOfDigests*.bin`，按已发送 Firehose
+帧数推进表状态，并根据启动日志中的 `VIP is enabled, receiving the signed table`
+判断设备是否要求 VIP。只有调用方提供对应 VIP 资源且设备宣布启用时才发送，不能把
+普通 Digest 或 Oplus 分区索引直接当作 VIP 表。
 
 ## 4. 运行时资源请求
 
@@ -209,7 +219,23 @@ Digest 原始数据、ACK 和 NOP 的顺序必须与参考实现一致，但会�
 - 所有扇区、字节偏移和长度运算使用 checked 算术；
 - 设备 NAK 尽早终止数据发送并保留完整错误上下文。
 
+普通设备、OplusDigestPt 和 OplusDigestLegacy 必须复用同一套 Raw/Sparse 计划与执行器；
+Digest 策略只负责范围映射、固定窗口和刷新计数，不得绕过 Sparse 的 Raw、Fill、Don't Care
+或 CRC 校验路径。
+
+普通设备的 Digest 由独立的 `FirehoseDigestConfiguration` 和
+`IFirehoseDigestProvider` 提供，可在连接阶段按选项发送；该模式与 Oplus Digest 模式互斥。
+VIP 已作为独立的签名表传输策略建模：首张签名表最多覆盖 54 个 Firehose XML 帧，
+链式表每张最多覆盖 256 个帧；表在 XML 命令前发送并等待 ACK，不能将 VIP 表当作普通
+Digest 或 Oplus 分区索引。VIP 资源缺失、表耗尽或设备未宣布支持时必须快速失败。
+
 现有 `GeekFlashCore.Android.Sparse` 的健壮边界检查和块设备模型优先保留；只移植 QnQcLIB 中能证明改善设备行为的语义，不复制其高分配和不安全实现。
+
+qdl 还允许连接层在首读超时或首包为 Firehose XML 时跳过 Sahara，并对 QUD/Auto 后端
+发送一次 Hello 响应后重试。当前实现已支持带 XML 声明和无声明的 `<data>` 首包；后端能力
+标记和超时后的 Sahara Hello 回推仍需真实 QUD/Auto 线路样本。同步 `ConfigureFirehose()`
+与异步连接共享配置资源、普通 Digest、VIP、厂商认证和存储初始化顺序；同步资源 Provider
+通过有界超时等待完成。
 
 ## 10. 公共模型与错误
 
@@ -237,6 +263,10 @@ Digest 原始数据、ACK 和 NOP 的顺序必须与参考实现一致，但会�
 - 会话因中途取消而失效。
 
 日志不得包含 Token、签名原文、完整 Digest、私密 Hash 材料或认证 Challenge 响应。
+
+日志分层约定：协议帧、包头、原始长度和逐块进度属于 Debug/Verbose；连接、Configure、认证、Digest/VIP 刷新和读写完成属于 Information；兼容回退、资源变更和一次性重试属于 Warning；会话失效、协议错误、数据损坏和最终失败属于 Error。拥有完整上下文的上层负责记录阶段失败，底层只记录其独有的线路细节，避免同一事件重复输出。
+
+用户可见的异常消息和日志模板必须来自模块 Localization 资源（`Strings.resx`/`Strings.en.resx`），参数通过资源格式化方法传入。协议命令名、类型名、参数名以及设备返回的原始文本是结构化数据，不要求为每个动态值创建资源键；原始设备文本必须限制长度并按敏感字段规则脱敏。
 
 ## 11. 性能与可靠性
 

@@ -23,14 +23,14 @@ public sealed class XiaomiAuthentication
     {
         FirehoseCommandResult result = _session.Execute(new XiaomiSigCommand { TargetName = "req" });
         if (!TryGetChallenge(result, out string challenge))
-            throw new InvalidDataException("Xiaomi Firehose returned no signature challenge.");
+            throw new InvalidDataException(Strings.Qcom_XiaomiChallengeMissing);
         return SensitiveDataOwner.CopyFrom(Encoding.UTF8.GetBytes(challenge));
     }
 
     public FirehoseCommandResult Authenticate(ReadOnlySpan<byte> signature)
     {
         if (signature.Length != SignatureLength)
-            throw new ArgumentException($"The Xiaomi signature must be {SignatureLength} bytes.", nameof(signature));
+            throw new ArgumentException(Strings.FormatQcom_XiaomiSignatureLength(SignatureLength), nameof(signature));
         _session.Execute(new XiaomiSigCommand
         {
             TargetName = "sig",

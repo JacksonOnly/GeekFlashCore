@@ -25,6 +25,7 @@ public sealed class FirehoseSession : IDisposable
     private int _disposed;
     private int _state = (int)FirehoseSessionState.Created;
     private FirehoseSessionState _stateBeforeRaw;
+    private Action<FirehoseSession, CancellationToken>? _beforeCommand;
 
     public FirehoseSession(ITransport transport, int readTimeoutMilliseconds)
     {
@@ -38,6 +39,9 @@ public sealed class FirehoseSession : IDisposable
     }
 
     public FirehoseSessionState State => (FirehoseSessionState)Volatile.Read(ref _state);
+
+    internal void SetBeforeCommand(Action<FirehoseSession, CancellationToken>? callback) =>
+        _beforeCommand = callback;
 
     public FirehoseResponse Start(int? startupTimeoutMilliseconds = null)
     {
@@ -61,13 +65,16 @@ public sealed class FirehoseSession : IDisposable
         SetState(FirehoseSessionState.Started);
     }
 
-    public FirehoseCommandResult Execute(BaseCommand command, bool expectedRawMode = false)
+    public FirehoseCommandResult Execute(BaseCommand command, bool expectedRawMode = false,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
         using OperationLease _ = EnterCommand();
         FirehoseSessionState initialState = State;
         try
         {
+            _beforeCommand?.Invoke(this, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             FirehoseCommandResult result = _executor.Execute(command, expectedRawMode);
             CompleteCommand(command is ConfigureCommand, result, initialState);
             return result;
@@ -84,12 +91,15 @@ public sealed class FirehoseSession : IDisposable
         }
     }
 
-    public FirehoseCommandResult ExecuteXml(string xml, bool expectedRawMode = false)
+    public FirehoseCommandResult ExecuteXml(string xml, bool expectedRawMode = false,
+        CancellationToken cancellationToken = default)
     {
         using OperationLease _ = EnterCommand();
         FirehoseSessionState initialState = State;
         try
         {
+            _beforeCommand?.Invoke(this, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             FirehoseCommandResult result = _executor.ExecuteXml(xml, expectedRawMode);
             CompleteCommand(configured: false, result, initialState);
             return result;
@@ -203,13 +213,13 @@ public sealed class FirehoseSession : IDisposable
         return CompleteRaw(() => _executor.ReceiveRaw(destination, length, bufferSize, progress, cancellationToken));
     }
 
-    /// <summary>Sends an Oplus digest directly, without an XML or raw-mode preamble.</summary>
+    /// <summary>Sends a digest directly, without an XML or raw-mode preamble.</summary>
     public FirehoseCommandResult SendDigest(Stream source, long length, int bufferSize,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(source);
-        if (!source.CanRead) throw new ArgumentException("The Digest source is not readable.", nameof(source));
-        if (length is <= 0 or > Vendors.Oplus.OplusDigestParser.MaximumDigestLength)
+        if (!source.CanRead) throw new ArgumentException(Strings.Qcom_DigestSourceNotReadable, nameof(source));
+        if (length is <= 0 or > FirehoseConstants.MaximumRawTransferLength)
             throw new ArgumentOutOfRangeException(nameof(length));
         if (bufferSize <= 0) throw new ArgumentOutOfRangeException(nameof(bufferSize));
         cancellationToken.ThrowIfCancellationRequested();
@@ -286,7 +296,7 @@ public sealed class FirehoseSession : IDisposable
             ThrowIfDisposed();
             FirehoseSessionState state = State;
             if (state is not (FirehoseSessionState.Started or FirehoseSessionState.Configured))
-                throw new InvalidOperationException($"Firehose command is not valid while the session is {state}.");
+                throw new InvalidOperationException(Strings.FormatQcom_FirehoseOperationStateInvalid(state));
             return EnterBusy();
         }
     }
@@ -307,7 +317,7 @@ public sealed class FirehoseSession : IDisposable
     private OperationLease EnterBusy()
     {
         if (_busy != 0)
-            throw new InvalidOperationException("Another Firehose operation is already in progress.");
+            throw new InvalidOperationException(Strings.Qcom_FirehoseOperationInProgress);
         _busy = 1;
         return new OperationLease(this);
     }
@@ -334,6 +344,25 @@ public sealed class FirehoseSession : IDisposable
         {
             if (_disposed == 0 && State != FirehoseSessionState.Faulted)
                 Volatile.Write(ref _state, (int)state);
+        }
+    }
+
+    internal FirehoseCommandResult SendAuxiliaryRaw(
+        Stream source,
+        long length,
+        int bufferSize,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            return _executor.SendRaw(source, length, length, bufferSize, 0, null, cancellationToken, false, null);
+        }
+        catch
+        {
+            SetState(FirehoseSessionState.Faulted);
+            throw;
         }
     }
 

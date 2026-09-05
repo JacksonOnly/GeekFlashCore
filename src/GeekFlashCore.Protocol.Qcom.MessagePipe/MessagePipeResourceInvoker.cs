@@ -29,7 +29,7 @@ internal static class MessagePipeResourceInvoker
         }
         catch (Exception exception)
         {
-            throw new QcomResourceException($"Unable to resolve the {resourceName} resource.", exception);
+            throw new QcomResourceException(Strings.FormatResourceResolveFailed(resourceName), exception);
         }
     }
 }

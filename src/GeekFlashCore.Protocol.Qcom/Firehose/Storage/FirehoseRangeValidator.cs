@@ -43,9 +43,9 @@ public static class FirehoseRangeValidator
         if (deviceLength < 0)
             throw new ArgumentOutOfRangeException(nameof(deviceLength));
         if (offset % logicalBlockSize != 0 || length % logicalBlockSize != 0)
-            throw new ArgumentException("The Firehose byte range must be aligned to the logical block size.");
+            throw new ArgumentException(Strings.Qcom_ByteRangeUnaligned);
         long end = checked(offset + length);
         if (end > deviceLength)
-            throw new ArgumentOutOfRangeException(nameof(length), "The Firehose byte range exceeds the device.");
+            throw new ArgumentOutOfRangeException(nameof(length), Strings.Qcom_ByteRangeExceedsDevice);
     }
 }

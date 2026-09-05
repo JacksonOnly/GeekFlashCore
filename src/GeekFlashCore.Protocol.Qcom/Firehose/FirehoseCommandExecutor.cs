@@ -39,7 +39,7 @@ internal sealed class FirehoseCommandExecutor
         CancellationToken cancellationToken,
         Action? packetSent)
     {
-        _sender.SendRaw(bufferSize, source, cancellationToken, packetSent);
+        _sender.SendRaw(bufferSize, source, cancellationToken, () => CheckRawResponse(packetSent));
         return CompleteRawTransfer(_receiver.Receive(), source.Length);
     }
 
@@ -63,8 +63,16 @@ internal sealed class FirehoseCommandExecutor
             progress,
             cancellationToken,
             computeDigest,
-            packetSent);
+            () => CheckRawResponse(packetSent));
         return CompleteRawTransfer(_receiver.Receive(), wireLength) with { Sha256Digest = digest };
+    }
+
+    private void CheckRawResponse(Action? packetSent)
+    {
+        packetSent?.Invoke();
+        FirehoseResponse? available = _receiver.PollResponse();
+        if (available is not null && available.Status != FirehoseResponseStatus.Ack)
+            ThrowIfNak(ToResult(_receiver.Receive()));
     }
 
     public FirehoseCommandResult ReceiveRaw(
@@ -90,7 +98,7 @@ internal sealed class FirehoseCommandExecutor
         if (result.RawMode != expectedRawMode)
         {
             throw new FirehoseProtocolException(
-                $"Firehose returned rawmode={result.RawMode}, expected rawmode={expectedRawMode}.");
+                Strings.FormatQcom_FirehoseRawmodeMismatch(result.RawMode, expectedRawMode));
         }
         return result;
     }
@@ -100,7 +108,7 @@ internal sealed class FirehoseCommandExecutor
         FirehoseCommandResult result = ToResult(response) with { BytesTransferred = bytesTransferred };
         ThrowIfNak(result);
         if (result.RawMode)
-            throw new FirehoseProtocolException("Firehose remained in raw mode after the transfer.");
+            throw new FirehoseProtocolException(Strings.Qcom_FirehoseRawModeUnexpected);
         return result;
     }
 
@@ -121,7 +129,7 @@ internal sealed class FirehoseCommandExecutor
         string message = result.Logs.LastOrDefault(static log => log.Level == FirehoseLogLevel.Error)?.Message
                          ?? result.Logs.LastOrDefault()?.Message
                          ?? (result.Attributes.TryGetValue("reason", out string? reason) ? reason : null)
-                         ?? "Firehose rejected the command.";
+                         ?? Strings.Qcom_FirehoseCommandRejected;
         throw new FirehoseNakException(message, result);
     }
 
@@ -129,7 +137,7 @@ internal sealed class FirehoseCommandExecutor
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(xml);
         if (Encoding.UTF8.GetByteCount(xml) > FirehoseConstants.MaximumXmlPacketSize)
-            throw new ArgumentException("The Firehose XML document exceeds the configured size limit.", nameof(xml));
+            throw new ArgumentException(Strings.Qcom_FirehoseXmlTooLargeConfigured, nameof(xml));
 
         try
         {
@@ -149,7 +157,7 @@ internal sealed class FirehoseCommandExecutor
             if (reader.NodeType != XmlNodeType.Element || reader.Depth != 0 ||
                 !reader.Name.Equals("data", StringComparison.Ordinal) || reader.IsEmptyElement)
             {
-                throw new XmlException("The Firehose XML root element must be data.");
+            throw new XmlException(Strings.Qcom_FirehoseXmlRootInvalid);
             }
 
             int commandCount = 0;
@@ -159,11 +167,11 @@ internal sealed class FirehoseCommandExecutor
                     commandCount++;
             }
             if (commandCount != 1)
-                throw new XmlException("The Firehose XML document must contain exactly one command element.");
+            throw new XmlException(Strings.Qcom_FirehoseXmlCommandCountInvalid);
         }
         catch (XmlException exception)
         {
-            throw new ArgumentException("The Firehose XML document is invalid or unsafe.", nameof(xml), exception);
+            throw new ArgumentException(Strings.Qcom_FirehoseXmlInvalidUnsafe, nameof(xml), exception);
         }
     }
 }

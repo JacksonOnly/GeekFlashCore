@@ -18,11 +18,11 @@ public static class NothingTokenCodec
             throw new ArgumentOutOfRangeException(nameof(projectId));
         token1 ??= CreateRandomToken();
         if (token1.Length != 32 || !IsLowerHex(token1))
-            throw new ArgumentException("Nothing token1 must contain 32 lowercase hexadecimal characters.", nameof(token1));
+            throw new ArgumentException(Strings.Qcom_NothingTokenInvalid, nameof(token1));
 
         Span<char> serialChars = stackalloc char[16];
         if (!serial.TryFormat(serialChars, out int serialLength, "x", CultureInfo.InvariantCulture))
-            throw new InvalidOperationException("Unable to format the Nothing device serial.");
+            throw new InvalidOperationException(Strings.Qcom_NothingSerialInvalid);
         int charCount = checked(token1.Length + projectId.Length + serialLength + DefaultVerificationHash.Length);
         char[]? rentedChars = null;
         Span<char> input = charCount <= 256

@@ -16,15 +16,16 @@ public sealed class OplusDigestParser
     {
         ArgumentNullException.ThrowIfNull(source);
         if (source.Length is <= 0 or > MaximumDigestLength || source.Length > int.MaxValue)
-            throw new OplusDigestException("The Oplus Digest length is invalid or exceeds the safety limit.");
+            throw new OplusDigestException(Strings.Qcom_OplusDigestLengthInvalid);
         int length = checked((int)source.Length);
         byte[] buffer = ArrayPool<byte>.Shared.Rent(length);
         try
         {
-            using Stream stream = source.OpenStream() ?? throw new OplusDigestException("The Oplus Digest source returned no stream.");
+        using Stream stream = source.OpenStream() ?? throw new OplusDigestException(Strings.Qcom_OplusDigestStreamMissing);
             stream.ReadExactly(buffer.AsSpan(0, length));
             if (!_parser.TryParse(buffer.AsSpan(0, length), out OplusDigestParseResult result) || !result.IsSuccess)
-                throw new OplusDigestException(result.ErrorMessage ?? "The Oplus Digest could not be parsed.");
+                throw new OplusDigestException(Strings.FormatQcom_OplusDigestParseFailed(
+                    result.ErrorMessage ?? Strings.Qcom_OplusDigestInvalid));
             OplusDigestEntry[] entries = result.Digest.Partitions.Select(partition => new OplusDigestEntry(
                 physicalPartitionNumber,
                 partition.Label,
@@ -42,7 +43,7 @@ public sealed class OplusDigestParser
         }
         catch (Exception exception) when (exception is IOException or OverflowException)
         {
-            throw new OplusDigestException("The Oplus Digest is truncated or contains unsupported ranges.", exception);
+            throw new OplusDigestException(Strings.Qcom_OplusDigestInvalid, exception);
         }
         finally
         {

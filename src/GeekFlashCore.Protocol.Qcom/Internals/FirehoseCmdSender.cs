@@ -23,7 +23,7 @@ internal readonly struct FirehoseCmdSender
     {
         ArgumentNullException.ThrowIfNull(command);
         string xml = command.Build();
-        _logger.Debug("Send Command {CommandType} {XmlLength} bytes", typeof(T).Name, xml.Length);
+        _logger.Debug(Strings.Qcom_LogSendCommand, typeof(T).Name, xml.Length);
         SendXml(xml);
     }
 
@@ -34,8 +34,7 @@ internal readonly struct FirehoseCmdSender
         int byteCount = Encoding.UTF8.GetByteCount(xml);
         if (byteCount > FirehoseConstants.MaximumXmlPacketSize)
             throw new ArgumentException(
-                $"The Firehose XML document exceeds {FirehoseConstants.MaximumXmlPacketSize} bytes.",
-                nameof(xml));
+                Strings.FormatFirehose_XmlPacketTooLarge(FirehoseConstants.MaximumXmlPacketSize), nameof(xml));
         byte[]? rented = null;
         Span<byte> buffer = byteCount <= 1024
             ? stackalloc byte[byteCount]
@@ -44,7 +43,7 @@ internal readonly struct FirehoseCmdSender
         {
             int bytesWritten = Encoding.UTF8.GetBytes(xml, buffer);
             _transport.Write(buffer[..bytesWritten]);
-            _logger.Debug("Send XML {XmlLength} bytes", bytesWritten);
+            _logger.Debug(Strings.Qcom_LogSendXml, bytesWritten);
         }
         finally
         {
@@ -75,7 +74,7 @@ internal readonly struct FirehoseCmdSender
             source = source[length..];
         }
 
-        _logger.Debug("Send Raw {TotalLength} bytes in {PacketCount} packets", totalLength, packetCount);
+        _logger.Debug(Strings.Qcom_LogSendRaw, totalLength, packetCount);
     }
 
     public byte[] SendRaw(
@@ -134,7 +133,7 @@ internal readonly struct FirehoseCmdSender
                 progress?.Report(sourceCompleted);
             }
 
-            _logger.Debug("Send Raw {SourceLength} bytes (wire {WireLength} bytes)", sourceCompleted, wireCompleted);
+            _logger.Debug(Strings.Qcom_LogSendRawCompleted, sourceCompleted, wireCompleted);
             return hash?.GetHashAndReset() ?? [];
         }
         finally

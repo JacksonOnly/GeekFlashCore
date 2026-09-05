@@ -27,7 +27,7 @@ public sealed class MessagePipeVendorAuthenticationProvider : IVendorAuthenticat
     private static VendorAuthenticationResourceResponse Validate(VendorAuthenticationResourceResponse response)
     {
         if (response?.Payload is null || response.Payload.IsDisposed || response.Payload.Length == 0)
-            throw new QcomResourceException("The authentication provider returned an empty payload.");
+            throw new QcomResourceException(Strings.AuthenticationPayloadEmpty);
         return response;
     }
 }

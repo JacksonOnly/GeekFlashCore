@@ -6,6 +6,10 @@ public static class FirehoseConstants
     public const string XmlDataEnd = "</data>";
     public const int InitialXmlBufferSize = 4096;
     public const int MaximumXmlPacketSize = 1024 * 1024;
+    // Raw Firehose payloads are streamed, so this bound protects declared
+    // lengths without coupling generic Digest transfers to Oplus' 4 MiB table
+    // format limit.
+    public const long MaximumRawTransferLength = int.MaxValue;
     
     public const int DefaultPayloadSize = 1024 * 1024;
     public const ulong DefaultMaxDigestTableSize = 8192;

@@ -37,7 +37,7 @@ internal static class FirehoseXmlScanner
                 continue;
             }
             if (xml[nameStart] == (byte)'!')
-                throw new InvalidDataException("DTD and XML declarations are not permitted in Firehose responses.");
+            throw new InvalidDataException(Strings.Qcom_DtdNotAllowed);
             if (xml[nameStart] == (byte)'?')
             {
                 searchStart = SkipDelimited(xml, nameStart + 1, "?>"u8);
@@ -123,7 +123,7 @@ internal static class FirehoseXmlScanner
     {
         int end = xml[start..].IndexOf(terminator);
         if (end < 0)
-            throw new InvalidDataException("Unterminated XML markup in a Firehose response.");
+            throw new InvalidDataException(Strings.Qcom_UnterminatedXml);
         return start + end + terminator.Length;
     }
 

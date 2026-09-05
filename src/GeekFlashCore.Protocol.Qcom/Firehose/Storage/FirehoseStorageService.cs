@@ -49,7 +49,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(destination);
         if (!destination.CanWrite)
-            throw new ArgumentException("The Firehose read destination is not writable.", nameof(destination));
+            throw new ArgumentException(Strings.Qcom_FirehoseReadDestinationNotWritable, nameof(destination));
         request.Validate();
         FirehoseRangeValidator.ValidateSectorRange(
             request.PhysicalPartitionNumber,
@@ -87,7 +87,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
             request.SectorSizeInBytes);
         long length = request.GetByteLength();
         if (length != destination.Length)
-            throw new ArgumentException("The destination length must equal the Firehose read range.", nameof(destination));
+            throw new ArgumentException(Strings.Qcom_FirehoseDestinationLengthMismatch, nameof(destination));
         IReadOnlyList<FirehoseStorageRange> ranges = Map(request.PhysicalPartitionNumber, request.StartSector,
             request.SectorCount, false, request.Label, request.FileName);
         int completed = 0;
@@ -116,7 +116,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
             request.SectorCount,
             request.SectorSizeInBytes);
         using Stream source = request.Source.OpenStream() ??
-                              throw new InvalidDataException("The Firehose program source returned no stream.");
+            throw new InvalidDataException(Strings.Qcom_FirehoseProgramStreamMissing);
         return _programExecutor.Execute(
             request,
             source,
@@ -132,7 +132,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
     {
         uint sectorSize = _configuration.SectorSizeInBytes;
         if (source.IsEmpty || source.Length % sectorSize != 0)
-            throw new ArgumentException("The Firehose program buffer must contain aligned sectors.", nameof(source));
+            throw new ArgumentException(Strings.Qcom_FirehoseProgramBufferUnaligned, nameof(source));
         long sectors = source.Length / sectorSize;
         FirehoseRangeValidator.ValidateSectorRange(
             physicalPartitionNumber,
@@ -235,7 +235,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
         if (physicalPartitionNumber >= FirehoseConstants.MaximumPhysicalPartitionCount)
             throw new ArgumentOutOfRangeException(nameof(physicalPartitionNumber));
         if (firmware.IsEmpty)
-            throw new ArgumentException("The firmware payload cannot be empty.", nameof(firmware));
+            throw new ArgumentException(Strings.Qcom_FirmwarePayloadEmpty, nameof(firmware));
         _session.Execute(new FirmwareWriteCommand
         {
             PhysicalPartitionNumber = physicalPartitionNumber,
@@ -286,7 +286,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
         CancellationToken cancellationToken = default)
     {
         if (destination.IsEmpty)
-            throw new ArgumentException("The Firehose peek destination cannot be empty.", nameof(destination));
+            throw new ArgumentException(Strings.Qcom_FirehosePeekDestinationEmpty, nameof(destination));
         _session.Execute(new PeekCommand
         {
             Address64 = address.ToString(CultureInfo.InvariantCulture),
@@ -320,7 +320,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
         });
         if (FirehoseStorageInfoParser.TryFindSha256(result, out byte[] digest))
             return digest;
-        throw new InvalidDataException("Firehose acknowledged getsha256digest without a SHA-256 value.");
+            throw new InvalidDataException(Strings.Qcom_FirehoseDigestMissing);
     }
 
     public FirehoseStorageInfo GetStorageInfo(uint physicalPartitionNumber)
@@ -363,12 +363,12 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
         lock (_descriptors)
         {
             if (!_descriptors.TryGetValue(id, out descriptor!))
-                throw new BlockDeviceException($"Unknown Qualcomm block device '{id}'.");
+            throw new BlockDeviceException(Strings.FormatQcom_BlockDeviceUnknown(id));
         }
         options ??= new BlockDeviceOpenOptions();
         options.Limits.Validate();
         if (options.Writable && !descriptor.CanWrite)
-            throw new BlockDeviceException($"Qualcomm block device '{id}' is read-only.");
+            throw new BlockDeviceException(Strings.FormatQcom_BlockDeviceReadOnly(id));
         return new FirehoseBlockDevice(this, descriptor, options.Writable);
     }
 

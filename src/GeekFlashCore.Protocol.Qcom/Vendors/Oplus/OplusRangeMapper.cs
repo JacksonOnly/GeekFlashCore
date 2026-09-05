@@ -24,9 +24,9 @@ public static class OplusRangeMapper
         while (current < end)
         {
             OplusDigestEntry entry = index.Find(physicalPartitionNumber, current, label, fileName) ??
-                                     throw new OplusDigestException("The requested range is not mapped by the verified Oplus Digest.");
+            throw new OplusDigestException(Strings.Qcom_OplusRangeUnmapped);
             if (write ? !entry.AllowWrite : !entry.AllowRead)
-                throw new OplusDigestException("The verified Oplus Digest does not permit the requested operation.");
+            throw new OplusDigestException(Strings.Qcom_OplusOperationDenied);
             long count = Math.Min(end, entry.EndSectorExclusive) - current;
             ranges.Add(new OplusMappedRange(entry, current, count));
             current = checked(current + count);

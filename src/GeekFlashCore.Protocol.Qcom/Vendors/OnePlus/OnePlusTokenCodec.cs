@@ -14,10 +14,10 @@ public static class OnePlusTokenCodec
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(publicKey);
         if (publicKey.Length != PublicKeyLength || !IsAsciiAlphaNumeric(publicKey))
-            throw new ArgumentException("The OnePlus public key must contain 16 ASCII alphanumeric characters.", nameof(publicKey));
+            throw new ArgumentException(Strings.Qcom_OnePlusPublicKeyInvalid, nameof(publicKey));
         int expectedLength = softwareGeneration ? SoftwareTokenLength : LegacyTokenLength;
         if (token.Length != expectedLength || !IsHex(token))
-            throw new ArgumentException($"The OnePlus token must contain {expectedLength} ASCII hexadecimal characters.", nameof(token));
+            throw new ArgumentException(Strings.FormatQcom_OnePlusTokenInvalid(expectedLength), nameof(token));
         return new OnePlusToken(publicKey, Encoding.ASCII.GetString(token));
     }
 
@@ -26,10 +26,10 @@ public static class OnePlusTokenCodec
         ArgumentNullException.ThrowIfNull(token);
         ArgumentException.ThrowIfNullOrWhiteSpace(publicKey);
         if (publicKey.Length != PublicKeyLength || !IsAsciiAlphaNumeric(publicKey))
-            throw new ArgumentException("The OnePlus public key must contain 16 ASCII alphanumeric characters.", nameof(publicKey));
+            throw new ArgumentException(Strings.Qcom_OnePlusPublicKeyInvalid, nameof(publicKey));
         int expectedLength = softwareGeneration ? SoftwareTokenLength : LegacyTokenLength;
         if (token.Length != expectedLength || !IsHex(token))
-            throw new ArgumentException($"The OnePlus token must contain {expectedLength} ASCII hexadecimal characters.", nameof(token));
+            throw new ArgumentException(Strings.FormatQcom_OnePlusTokenInvalid(expectedLength), nameof(token));
         return new OnePlusToken(publicKey, token);
     }
 

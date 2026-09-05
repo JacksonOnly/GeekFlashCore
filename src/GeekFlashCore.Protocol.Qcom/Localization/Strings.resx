@@ -264,4 +264,121 @@
   <data name="Firehose_NotConnected" xml:space="preserve">
     <value>Firehose 协议未连接</value>
   </data>
+  <data name="Qcom_UnknownProtocol" xml:space="preserve"><value>无法识别设备协议。</value></data>
+  <data name="Qcom_InvalidAuthentication" xml:space="preserve"><value>认证材料无效。</value></data>
+  <data name="Qcom_UseDedicatedCommand" xml:space="preserve"><value>请使用对应的专用协议方法。</value></data>
+  <data name="Qcom_DigestProviderRequired" xml:space="preserve"><value>需要提供 Oplus Digest 资源提供器。</value></data>
+  <data name="Qcom_InvalidResource" xml:space="preserve"><value>资源无效或资源提供器失败。</value></data>
+  <data name="Qcom_LoaderProviderRequired" xml:space="preserve"><value>需要提供 Sahara 引导镜像资源提供器。</value></data>
+  <data name="Qcom_InvalidSessionState" xml:space="preserve"><value>会话状态无效，请重新连接。</value></data>
+  <data name="Qcom_OperationInProgress" xml:space="preserve"><value>另一个会话操作正在进行。</value></data>
+  <data name="Qcom_AuthenticationProviderRequired" xml:space="preserve"><value>需要提供厂商认证资源提供器。</value></data>
+  <data name="Qcom_GptEntryArrayExceedsRange" xml:space="preserve"><value>GPT 条目数组超出有界读取范围。</value></data>
+  <data name="Qcom_FirehoseVipTablesRequired" xml:space="preserve"><value>当前 Firehose programmer 要求 VIP 表。</value></data>
+  <data name="Qcom_FirehoseVipProviderRequired" xml:space="preserve"><value>需要提供 Firehose VIP 资源提供器。</value></data>
+  <data name="Qcom_FirehoseVipNotAnnounced" xml:space="preserve"><value>Firehose programmer 未宣布支持 VIP。</value></data>
+  <data name="Qcom_UnsupportedFirehoseCommand" xml:space="preserve"><value>不支持的 Firehose 命令。</value></data>
+  <data name="Qcom_DigestSourceNotReadable" xml:space="preserve"><value>Digest 源不可读。</value></data>
+  <data name="Qcom_FirehoseNotConfigured" xml:space="preserve"><value>Firehose 尚未完成配置。</value></data>
+  <data name="Qcom_FirehoseRawModeUnexpected" xml:space="preserve"><value>原始传输完成后 Firehose 仍处于原始模式。</value></data>
+  <data name="Qcom_FirehoseXmlTooLargeConfigured" xml:space="preserve"><value>Firehose XML 文档超过配置的大小限制。</value></data>
+  <data name="Qcom_FirehoseXmlRootInvalid" xml:space="preserve"><value>Firehose XML 根元素必须为 data。</value></data>
+  <data name="Qcom_FirehoseXmlCommandCountInvalid" xml:space="preserve"><value>Firehose XML 文档必须包含且只能包含一个命令元素。</value></data>
+  <data name="Qcom_FirehoseXmlInvalidUnsafe" xml:space="preserve"><value>Firehose XML 文档无效或不安全。</value></data>
+  <data name="Qcom_FirehoseAttributeFormatFailed" xml:space="preserve"><value>无法格式化 Firehose 属性 {0}。</value></data>
+  <data name="Qcom_FirehoseOperationStateInvalid" xml:space="preserve"><value>Firehose 会话处于 {0} 状态时不能执行该命令。</value></data>
+  <data name="Qcom_FirehoseOperationInProgress" xml:space="preserve"><value>另一个 Firehose 操作正在进行。</value></data>
+  <data name="Qcom_VipSignedTableRequired" xml:space="preserve"><value>必须提供 VIP 签名表。</value></data>
+  <data name="Qcom_VipChainedTablesExhausted" xml:space="preserve"><value>VIP 链式表序列已耗尽。</value></data>
+  <data name="Qcom_VipTableStreamMissing" xml:space="preserve"><value>VIP 表源未返回数据流。</value></data>
+  <data name="Qcom_VipTableNotReadable" xml:space="preserve"><value>VIP 表源不可读。</value></data>
+  <data name="Qcom_VipTableNotAcknowledged" xml:space="preserve"><value>Firehose 未确认 VIP 表。</value></data>
+  <data name="Qcom_VipTableLengthInvalid" xml:space="preserve"><value>VIP 表长度无效。</value></data>
+  <data name="Qcom_FirehoseReadDestinationNotWritable" xml:space="preserve"><value>Firehose 读取目标不可写。</value></data>
+  <data name="Qcom_FirehoseDestinationLengthMismatch" xml:space="preserve"><value>目标长度必须等于 Firehose 读取范围。</value></data>
+  <data name="Qcom_FirehoseProgramStreamMissing" xml:space="preserve"><value>Firehose 编程源未返回数据流。</value></data>
+  <data name="Qcom_FirehoseProgramBufferUnaligned" xml:space="preserve"><value>Firehose 编程缓冲区必须包含对齐的扇区。</value></data>
+  <data name="Qcom_FirmwarePayloadEmpty" xml:space="preserve"><value>固件载荷不能为空。</value></data>
+  <data name="Qcom_FirehosePeekDestinationEmpty" xml:space="preserve"><value>Firehose peek 目标不能为空。</value></data>
+  <data name="Qcom_FirehoseDigestMissing" xml:space="preserve"><value>Firehose 确认 getsha256digest 成功，但未返回 SHA-256 值。</value></data>
+  <data name="Qcom_BlockDeviceUnknown" xml:space="preserve"><value>未知的 Qualcomm 块设备“{0}”。</value></data>
+  <data name="Qcom_BlockDeviceReadOnly" xml:space="preserve"><value>Qualcomm 块设备“{0}”为只读。</value></data>
+  <data name="Qcom_ByteRangeUnaligned" xml:space="preserve"><value>Firehose 字节范围必须按逻辑块大小对齐。</value></data>
+  <data name="Qcom_BlockDevicePartitionRequired" xml:space="preserve"><value>Qualcomm 块设备必须指定物理分区号。</value></data>
+  <data name="Qcom_BlockDeviceOpenedReadOnly" xml:space="preserve"><value>Qualcomm 块设备“{0}”以只读方式打开。</value></data>
+  <data name="Qcom_ProgramSourceNotReadable" xml:space="preserve"><value>Firehose 编程源不可读。</value></data>
+  <data name="Qcom_ProgramSourceEmpty" xml:space="preserve"><value>Firehose 编程源不能为空。</value></data>
+  <data name="Qcom_SparseRequiresSeekable" xml:space="preserve"><value>Android Sparse 编程要求源数据流可定位。</value></data>
+  <data name="Qcom_SourceLargerThanTarget" xml:space="preserve"><value>源数据大于目标范围。</value></data>
+  <data name="Qcom_SourceEndedBeforeOffset" xml:space="preserve"><value>Firehose 源流在到达请求偏移前结束。</value></data>
+  <data name="Qcom_SparseRegionUnaligned" xml:space="preserve"><value>Android Sparse 区域未按扇区对齐。</value></data>
+  <data name="Qcom_SparseRegionExceedsTarget" xml:space="preserve"><value>Android Sparse 区域超出目标范围。</value></data>
+  <data name="Qcom_SourceWindowRequiresSeekable" xml:space="preserve"><value>源窗口要求数据流可读且可定位。</value></data>
+  <data name="Qcom_SourceWindowSeekOutside" xml:space="preserve"><value>尝试定位到源窗口之外。</value></data>
+  <data name="Qcom_CustomXmlSizeExceeded" xml:space="preserve"><value>Firehose XML 文档超过大小限制。</value></data>
+  <data name="Qcom_CustomXmlRootInvalid" xml:space="preserve"><value>Firehose XML 根元素必须为 data。</value></data>
+  <data name="Qcom_CustomXmlCommandInvalid" xml:space="preserve"><value>Firehose XML 必须包含一个扁平命令元素。</value></data>
+  <data name="Qcom_CustomXmlCommandNotAllowed" xml:space="preserve"><value>命令“{0}”不允许用于 {1} 策略。</value></data>
+  <data name="Qcom_CustomXmlTextNotAllowed" xml:space="preserve"><value>Firehose 命令不允许文本内容。</value></data>
+  <data name="Qcom_CustomXmlCommandMissing" xml:space="preserve"><value>Firehose XML 不包含命令。</value></data>
+  <data name="Qcom_CustomXmlInvalid" xml:space="preserve"><value>Firehose 自定义 XML 无效或不被允许。</value></data>
+  <data name="Qcom_CustomXmlAttributesExceeded" xml:space="preserve"><value>Firehose 命令属性超过安全限制。</value></data>
+  <data name="Qcom_DtdNotAllowed" xml:space="preserve"><value>Firehose 响应不允许 DTD 和 XML 声明。</value></data>
+  <data name="Qcom_UnterminatedXml" xml:space="preserve"><value>Firehose 响应中的 XML 标记未结束。</value></data>
+  <data name="Qcom_XiaomiChallengeMissing" xml:space="preserve"><value>Xiaomi Firehose 未返回签名挑战。</value></data>
+  <data name="Qcom_XiaomiSignatureLength" xml:space="preserve"><value>Xiaomi 签名必须为 {0} 字节。</value></data>
+  <data name="Qcom_OplusRangeUnmapped" xml:space="preserve"><value>请求范围未被已验证的 Oplus Digest 映射。</value></data>
+  <data name="Qcom_OplusOperationDenied" xml:space="preserve"><value>已验证的 Oplus Digest 不允许请求的操作。</value></data>
+  <data name="Qcom_OplusDigestLengthInvalid" xml:space="preserve"><value>Oplus Digest 长度无效或超过安全限制。</value></data>
+  <data name="Qcom_OplusDigestStreamMissing" xml:space="preserve"><value>Oplus Digest 源未返回数据流。</value></data>
+  <data name="Qcom_OplusDigestInvalid" xml:space="preserve"><value>Oplus Digest 已截断或包含不支持的范围。</value></data>
+  <data name="Qcom_OplusLegacyModeRequired" xml:space="preserve"><value>该策略要求 Legacy Digest 模式。</value></data>
+  <data name="Qcom_OplusLegacyLengthInvalid" xml:space="preserve"><value>Legacy Digest 源长度无效。</value></data>
+  <data name="Qcom_OplusLegacyStreamMissing" xml:space="preserve"><value>Legacy Digest 源未返回数据流。</value></data>
+  <data name="Qcom_OplusLegacySourceChanged" xml:space="preserve"><value>Legacy Digest 源已变化或不可读。</value></data>
+  <data name="Qcom_OplusLegacyCommandCountExceeded" xml:space="preserve"><value>Legacy 操作超过支持的命令数量。</value></data>
+  <data name="Qcom_OplusDigestEntryInvalid" xml:space="preserve"><value>Oplus Digest 包含无效分区条目。</value></data>
+  <data name="Qcom_OplusDigestOverlap" xml:space="preserve"><value>Oplus Digest 包含重叠的分区条目。</value></data>
+  <data name="Qcom_OnePlusTimestampMissing" xml:space="preserve"><value>OnePlus setprocstart 未返回有效的设备时间戳。</value></data>
+  <data name="Qcom_NothingTokenInvalid" xml:space="preserve"><value>Nothing token1 必须包含 32 个小写十六进制字符。</value></data>
+  <data name="Qcom_NothingSerialInvalid" xml:space="preserve"><value>无法格式化 Nothing 设备序列号。</value></data>
+  <data name="Qcom_OnePlusPublicKeyInvalid" xml:space="preserve"><value>OnePlus 公钥必须包含 16 个 ASCII 字母数字字符。</value></data>
+  <data name="Qcom_OnePlusTokenInvalid" xml:space="preserve"><value>OnePlus token 必须包含 {0} 个 ASCII 十六进制字符。</value></data>
+  <data name="Qcom_LogTargetInfo" xml:space="preserve"><value>目标信息：{0}</value></data>
+  <data name="Qcom_LogTransferImage" xml:space="preserve"><value>传输镜像 {0}，偏移 {1}，长度 {2}</value></data>
+  <data name="Qcom_LogMemoryDebugWarning" xml:space="preserve"><value>目标进入内存调试模式，开始转储内存。</value></data>
+  <data name="Qcom_LogExecuteCommand" xml:space="preserve"><value>执行命令 {0}</value></data>
+  <data name="Qcom_LogSendingReset" xml:space="preserve"><value>正在发送复位请求。</value></data>
+  <data name="Qcom_LogResetAcknowledged" xml:space="preserve"><value>复位请求已确认。</value></data>
+  <data name="Qcom_LogEnteringMemoryDebug" xml:space="preserve"><value>正在进入内存调试模式。</value></data>
+  <data name="Qcom_LogMemoryDebugInfo" xml:space="preserve"><value>{0} 位内存调试，表地址 0x{1:X}，长度 {2}</value></data>
+  <data name="Qcom_LogMemoryTableInvalid" xml:space="preserve"><value>内存表长度 {0} 无效，条目大小为 {1} 字节。</value></data>
+  <data name="Qcom_LogDumpedRegion" xml:space="preserve"><value>已转储区域“{0}”（{1} 字节）。</value></data>
+  <data name="Qcom_LogSwitchingMode" xml:space="preserve"><value>正在切换到 {0} 模式。</value></data>
+  <data name="Qcom_LogHelloReceiveFailed" xml:space="preserve"><value>接收 HELLO 请求失败。</value></data>
+  <data name="Qcom_LogOperationComplete" xml:space="preserve"><value>{0} 完成：{1:N0} 字节，耗时 {2}（{3:F2} MB/s）。</value></data>
+  <data name="Qcom_LogFirehoseConfigured" xml:space="preserve"><value>Firehose 已配置，存储类型为 {0}。</value></data>
+  <data name="Qcom_LogDisposeSahara" xml:space="preserve"><value>正在释放 Sahara 协议。</value></data>
+  <data name="Qcom_LogDisposeFirehose" xml:space="preserve"><value>正在释放 Firehose 协议。</value></data>
+  <data name="Qcom_LogSendCommand" xml:space="preserve"><value>发送命令 {0}（XML {1} 字节）。</value></data>
+  <data name="Qcom_LogSendXml" xml:space="preserve"><value>发送 XML（{0} 字节）。</value></data>
+  <data name="Qcom_LogSendRaw" xml:space="preserve"><value>发送原始数据（{0} 字节，{1} 个数据包）。</value></data>
+  <data name="Qcom_LogSendRawCompleted" xml:space="preserve"><value>原始数据发送完成（源 {0} 字节，线路 {1} 字节）。</value></data>
+  <data name="Qcom_LogSaharaSendPacket" xml:space="preserve"><value>Sahara 发送 {0}</value></data>
+  <data name="Qcom_LogSaharaReceivePacket" xml:space="preserve"><value>Sahara 接收 {0}</value></data>
+  <data name="Qcom_LogDeviceMessage" xml:space="preserve"><value>{0}</value></data>
+  <data name="Qcom_LogHelloRetry" xml:space="preserve"><value>接收 HELLO 请求，剩余重试次数 {0}。</value></data>
+  <data name="Qcom_LogTargetInfoFromHello" xml:space="preserve"><value>根据 HELLO 请求设置目标信息：{0}</value></data>
+  <data name="Qcom_ConfigureNegotiationRepeated" xml:space="preserve"><value>Configure 协商重复了未变化的状态。</value></data>
+  <data name="Qcom_XiaomiAuthenticationRequiredForConfigure" xml:space="preserve"><value>Configure 需要 Xiaomi 身份验证。</value></data>
+  <data name="Qcom_ExplicitStorageRejected" xml:space="preserve"><value>Firehose 拒绝了明确选择的存储配置。</value></data>
+  <data name="Qcom_AllStorageRejected" xml:space="preserve"><value>Firehose 拒绝了所有支持的存储配置。</value></data>
+  <data name="Qcom_ConfigureNoActionableEvidence" xml:space="preserve"><value>Firehose Configure 未返回可处理的协商证据。</value></data>
+  <data name="Qcom_ConfigureAttemptsExceeded" xml:space="preserve"><value>Firehose Configure 超过了 {0} 次尝试。</value></data>
+  <data name="Qcom_FirehoseRawmodeMismatch" xml:space="preserve"><value>Firehose 返回 rawmode={0}，但预期为 {1}。</value></data>
+  <data name="Qcom_FirehoseCommandRejected" xml:space="preserve"><value>Firehose 拒绝了命令。</value></data>
+  <data name="Qcom_ByteRangeExceedsDevice" xml:space="preserve"><value>Firehose 字节范围超出设备容量。</value></data>
+  <data name="Qcom_SparseBlockSizeUnaligned" xml:space="preserve"><value>Android Sparse 块大小必须是 Firehose 扇区大小的整数倍。</value></data>
+  <data name="Qcom_SparseExpandedRangeTooLarge" xml:space="preserve"><value>展开后的 Android Sparse 镜像大于目标范围。</value></data>
+  <data name="Qcom_OplusDigestParseFailed" xml:space="preserve"><value>无法解析 Oplus Digest：{0}</value></data>
 </root>

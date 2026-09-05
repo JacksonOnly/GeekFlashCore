@@ -219,10 +219,11 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
             UsbEndpointReader reader = GetReader();
             if (data.IsEmpty)
                 return 0;
-            Error error = reader.Read(data, 0, out int transferLength);
+            // libusb timeout 0 means an unlimited wait, including available-data probes.
+            Error error = reader.Read(data, 1, out int transferLength);
             if (error == Error.Timeout)
-                return 0;
-            ThrowTransferError(error, "USB available-data read", 0);
+                return transferLength;
+            ThrowTransferError(error, "USB available-data read", 1);
             return transferLength;
         }
     }

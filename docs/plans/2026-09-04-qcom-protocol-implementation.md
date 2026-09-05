@@ -339,7 +339,7 @@
 1. 写完整模拟流程：识别 Sahara、请求 Loader、分析、上传、Firehose Configure、厂商认证、存储操作、重启和释放。
 2. 门面公开同步精确 API，并用最薄的 `Task`/`ValueTask` 编排实现通用 `IProtocol`；不使用 `Task.Run` 包裹底层 I/O。
 3. 实现会话级互斥和状态检查；重复 Connect/Disconnect、失败重连、资源取消和中途 Raw 取消行为可预测。
-4. 将 Firehose 存储 Lease 接入 GPT/文件系统上层所需的块设备抽象。
+4. 将 Firehose 存储 Lease 接入 GPT/文件系统上层所需的块设备抽象，并确保 `QcomProtocol` 直接实现 `IBlockDeviceProvider`。
 5. 中英文资源补齐，不在异常中暴露敏感认证内容。
 6. 提交：`✨ feat(qcom): complete protocol workflow`
 
@@ -355,12 +355,23 @@
 **步骤：**
 
 1. 建立 GeekFlashTool 与 QnQcLIB 行为矩阵，逐项核对 Configure 顺序、命令 XML、厂商认证、GPT Digest 和 Legacy Digest。
-2. 对关键类审查：整数溢出、负长度、数组/池化泄漏、无限重试、XML 注入、敏感日志、并发重入、Stream 所有权和取消后复用。
-3. 使用模拟大镜像验证 Raw/Sparse 稳态内存；确认没有按镜像大小分配和无界 carry buffer。
-4. 执行全部 `.tests`、Release 构建和必要的格式化检查；记录命令与结果。
-5. 检查 `git status --short --ignored`，确保 `.tests`、fixture、日志、benchmark 输出均未跟踪。
-6. 对全部提交进行最终 diff 审查并更新本文进度与未决风险。
-7. 提交：`📝 docs: finalize qcom implementation`
+2. 验证普通设备分区写入：Raw 请求必须支持完整范围、短源自动填充和分段；Android Sparse 请求必须支持 Raw、Fill、Don't Care、CRC 以及跨 Payload 分段。
+3. 验证 OplusDigestPt 分区写入：Sparse 产生的每个实际 Raw/Fill 命令均经过 Digest 映射，保留 Label/FileName 并使用调用方实际扇区范围；跨连续 Digest 条目和 GPT sector 6/34 兼容规则必须覆盖读写测试。
+4. 验证 OplusDigestLegacy 分区写入：Sparse Raw、Fill 和普通 Raw 的每个实际命令共用成功计数器，固定扇区拆分、阈值前 `NOP, NOP, Digest, NOP`、签名失败单次重放和恢复失败熔断均有线路测试。
+5. 审查连接自动识别：连接时应同时支持 Sahara 和 Firehose；已处于 Firehose 且首包为启动日志时直接进入 Configure，不要求先执行 Sahara，也不得因 `_sahara` 为空抛出状态异常；覆盖 XML 声明、无声明 XML、分片首读和未知前缀边界。
+6. 对比 `D:\Code\CPlusPlus\qdl` 的 VIP/连接逻辑并做兼容决策：VIP 是带签名表和链式表的逐命令传输状态机，不等同于 Oplus Digest；需决定是否新增通用 `IVipTransferPolicy`，以及是否在启动日志检测到 `VIP is enabled, receiving the signed table` 后才启用，缺少表时必须快速失败。
+   - 2026-09-05 已新增通用 `IFirehoseDigestProvider`/`FirehoseDigestConfiguration`，普通设备可按连接选项发送 Digest；通用 Digest 与 Oplus Digest 互斥，避免两套线路同时生效。
+   - 2026-09-05 已新增 `IFirehoseVipProvider`、VIP 签名表/链式表资源模型和统一命令前钩子；首张表按 54 个 Firehose XML 帧、链式表按 256 个帧轮换，启动日志未宣布 VIP 或资源缺失时在 Configure 前失败。
+7. 对比 qdl 的连接容错：首次读取超时时对 QUD/Auto 后端发送 Sahara Hello 响应并重试，普通后端可将超时视为已在 Firehose；首包为 `<?xml` 时跳过 Sahara。需决定是否将当前严格的 8 字节前缀探测扩展为可回推的首包探测和后端能力标记。
+8. 对关键类审查：整数溢出、负长度、数组/池化泄漏、无限重试、XML 注入、敏感日志、并发重入、Stream 所有权和取消后复用；删除同一逻辑的重复实现和不可达分支。
+9. 审查日志等级和数量：协议帧、包头、原始长度和逐块进度只允许在 Debug/Verbose；连接、Configure、认证、Digest/VIP 刷新、读写完成等阶段状态使用 Information；可恢复的兼容回退、资源变更和一次性重试使用 Warning；会话失效、协议错误、数据损坏和最终失败使用 Error。相同事件只能由一个拥有该上下文的层记录，底层不得与门面重复记录同一异常。
+10. 审查日志安全性和可观测性：禁止输出 Token、签名原文、完整 Digest、私密 Hash、认证 Challenge/响应和完整自定义 XML；设备返回的 Firehose/Sahara 文本作为结构化数据记录，必要时截断并标记来源，不把同一原始日志重复拼接到异常和日志。
+11. 审查异常和日志资源化：`GeekFlashCore.Protocol.Qcom`、`GeekFlashCore.Protocol.Qcom.MessagePipe` 及 Task 15 涉及的存储/Sparse/Vendor 类中，所有用户可见异常消息和日志模板必须使用 `Localization/Strings.resx` 与 `Strings.en.resx` 的资源键；参数通过资源格式化方法传入。参数名、类型名、协议命令名和设备原始返回文本属于结构化数据，不单独伪造资源键。检查中发现的硬编码文本至少覆盖 `Oplus*Policy/Parser/Mapper`、`FirehoseVipTransferPolicy`、`FirehoseSession`、`FirehoseStorage*`、`SparseProgramPlanner`、`CustomCommandValidator`、`MessagePipe*Provider` 和 `QcomProtocolOptions`。
+12. 使用模拟大镜像验证 Raw/Sparse/Oplus/VIP 稳态内存和吞吐；确认不按镜像大小展开数据、不产生大对象堆分配，carry buffer 有上限，热路径不重复解析或复制源数据。
+13. 执行全部 `.tests`、Release 构建和必要的格式化检查；记录命令与结果。
+14. 检查 `git status --short --ignored`，确保 `.tests`、fixture、日志、benchmark 输出均未跟踪。
+15. 对全部提交进行最终 diff 审查并更新本文进度与未决风险。
+16. 提交：`📝 docs: finalize qcom implementation`
 
 ## 进度
 
@@ -379,11 +390,21 @@
 - [x] Task 10：Xiaomi/ZTE/Nothing/OnePlus（2026-09-04；同步签名交换、Nothing 本地 Token、OnePlus 两代 Project Verify 原语与 ZTE Configure 策略）。
 - [x] Task 11：Oplus Digest 解析与映射（2026-09-04；固定兼容包版本、内部类型适配、重叠/权限校验与连续范围拆分）。
 - [x] Task 12：OplusDigestPt（2026-09-05；统一预先映射、跨条目读写及 GPT sector 6/34 分段；11 项线路测试通过）。
-- [ ] Task 13：OplusDigestLegacy。
-- [ ] Task 14：QcomProtocol 工作流。
+- [x] Task 13：OplusDigestLegacy（2026-09-05；固定扇区窗口、共享成功计数、NOP/Digest 刷新、签名 NAK 单次重放与恢复失败熔断；11 项线路测试通过）。
+- [x] Task 14：QcomProtocol 工作流（2026-09-05；连接门面、资源超时与清理、Digest provider 接入、块设备租约失效、失败重连和厂商认证工作流；163 项测试通过）。
 - [ ] Task 15：最终审查。
+  - 2026-09-05 已完成第一批异常和阶段日志资源化：Qcom 核心、Qcom.Abstractions、MessagePipe 的固定用户可见文本已迁移到中英文 `Strings` 资源；修复 SessionBlockDevice 捕获设备导致的生命周期警告。
+  - 2026-09-05 同步 `ConfigureFirehose()` 已补齐配置 Provider、普通 Digest、VIP、Oplus Digest、Xiaomi 身份验证和 OnePlus/Nothing 校验顺序；新增无 XML 声明 Firehose 首包兼容和普通 Digest 通用 raw 长度上限。
+  - 2026-09-05 `FirehoseProgramExecutor` 改为两阶段映射校验，执行前仍拒绝未映射范围，但不再保留整份 Sparse Digest 映射数组；新增 4 MiB 以上普通 Digest、同步资源/VIP 和无声明首包线路测试。
+  - 2026-09-05 日志审查确认 Sahara/Firehose 包级收发日志均为 Debug，连接、配置、认证、转储和吞吐阶段为 Information/Warning/Error；Sahara 包级详细模板仍待逐条资源化，但不在默认生产日志级别输出。
 
 ## 未决风险
+
+- OplusDigestLegacy 对比 QnQcLIB 的初步审查发现：QnQcLIB 在签名 NAK 恢复时执行 `Digest -> NOP`，当前策略执行 `NOP -> NOP -> Digest -> NOP`；当前连接初始化还会预先发送一次 Digest，而参考实现仅缓存 Digest 并在读写命令阈值或签名失败时发送。仓库内没有可用的真实 Legacy 线路样本，顺序仍需硬件或脱敏抓包确认。
+- QnQcLIB 在 XML 命令发送后立即增加读写计数，当前实现只在 Raw 数据和最终 ACK 成功后增加计数；这属于更严格的成功计数语义，但与参考实现不同，需用 NAK/重放样本确认阈值是否应统计已发送命令。
+- `FirehoseProgramExecutor` 已采用两阶段映射校验和执行时映射；Sparse segment 计划本身仍按输入结构建立列表，超大镜像需要在目标环境继续观察计划列表和第三方 Sparse 解析器的稳态分配。
+- 当前 Qcom 核心仍有两类审查债务：Sahara/Firehose 包级收发日志数量较多，需要确认默认日志级别不会造成生产日志噪声；阶段日志与底层 NAK 日志存在重复风险，需要按事件归属层去重。
+- 当前 Sahara 收发包详细 Debug 模板仍有硬编码，需逐条迁移到资源；其余本轮涉及的 Configure、Firehose、Sparse、Oplus Digest 用户可见异常已补齐中英文资源键。
 
 - 不同 Loader 对同名厂商命令的响应文本和大小写可能不同，解析应基于捕获样本保持宽容，但状态机必须有界。
 - Sahara 获取 TargetInfo 后设备可等待时间没有统一保证；资源提供器应缓存候选 Loader，超时策略需由宿主配置。

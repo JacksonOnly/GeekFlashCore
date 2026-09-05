@@ -13,6 +13,8 @@ public sealed record QcomProtocolOptions
     public int ResourceRequestTimeoutMilliseconds { get; init; } = DefaultResourceRequestTimeoutMilliseconds;
     public QcomVendorKind VendorOverride { get; init; } = QcomVendorKind.Auto;
     public FirehoseConfiguration Firehose { get; init; } = new();
+    public FirehoseDigestConfiguration FirehoseDigest { get; init; } = new();
+    public FirehoseVipConfiguration FirehoseVip { get; init; } = new();
     public OplusDigestConfiguration OplusDigest { get; init; } = new();
 
     public void Validate()
@@ -22,14 +24,56 @@ public sealed record QcomProtocolOptions
         ValidateTimeout(WriteTimeoutMilliseconds, nameof(WriteTimeoutMilliseconds));
         ValidateTimeout(ResourceRequestTimeoutMilliseconds, nameof(ResourceRequestTimeoutMilliseconds));
         ArgumentNullException.ThrowIfNull(Firehose);
+        ArgumentNullException.ThrowIfNull(FirehoseDigest);
+        ArgumentNullException.ThrowIfNull(FirehoseVip);
         ArgumentNullException.ThrowIfNull(OplusDigest);
         Firehose.Validate();
+        FirehoseDigest.Validate();
+        FirehoseVip.Validate();
         OplusDigest.Validate();
+        if (FirehoseDigest.Enabled && OplusDigest.Mode != OplusDigestMode.None)
+            throw new ArgumentException(Strings.GenericDigestAndOplusConflict);
+        if (FirehoseDigest.Enabled && FirehoseVip.Enabled)
+            throw new ArgumentException(Strings.GenericDigestAndVipConflict);
     }
 
     private static void ValidateTimeout(int value, string name)
     {
         if (value <= 0)
             throw new ArgumentOutOfRangeException(name, value, "Timeout must be positive.");
+    }
+}
+
+public sealed record FirehoseDigestConfiguration
+{
+    /// <summary>Enables the generic digest exchange during connection.</summary>
+    public bool Enabled { get; init; }
+
+    /// <summary>When enabled, send the table after Firehose startup and before Configure.</summary>
+    public bool SendOnConnect { get; init; } = true;
+
+    public void Validate()
+    {
+        // The resource provider performs the source length validation. Keep this
+        // object intentionally small so it can be extended without coupling it
+        // to vendor-specific digest modes.
+    }
+}
+
+public sealed record FirehoseVipConfiguration
+{
+    public const int SignedTableFrameCapacity = 54;
+    public const int ChainedTableFrameCapacity = 256;
+
+    /// <summary>Enables qdl-compatible VIP table transfer.</summary>
+    public bool Enabled { get; init; }
+
+    /// <summary>Require the programmer startup marker before sending VIP tables.</summary>
+    public bool RequireStartupMarker { get; init; } = true;
+
+    public void Validate()
+    {
+        if (SignedTableFrameCapacity <= 0 || ChainedTableFrameCapacity <= 0)
+            throw new InvalidOperationException(Strings.VipFrameCapacitiesPositive);
     }
 }

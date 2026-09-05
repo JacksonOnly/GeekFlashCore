@@ -10,7 +10,7 @@ public static class SecureBootEvaluator
         ReadOnlySpan<byte> programmerCaHash,
         bool programmerStarted)
     {
-        if (!IsUsableHash(devicePkHash) || !IsUsableHash(programmerCaHash) ||
+        if (!programmerStarted || !IsUsableHash(devicePkHash) || !IsUsableHash(programmerCaHash) ||
             devicePkHash.Length != programmerCaHash.Length)
         {
             return SecureBootState.Unknown;

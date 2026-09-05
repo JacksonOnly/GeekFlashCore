@@ -175,7 +175,7 @@ internal static class FirehoseCommandBuilder
             AppendPrefix(builder, name);
             Span<char> buffer = stackalloc char[64];
             if (!value.TryFormat(buffer, out int written, default, CultureInfo.InvariantCulture))
-                throw new InvalidOperationException($"Unable to format Firehose attribute {name}.");
+                throw new InvalidOperationException(Strings.FormatQcom_FirehoseAttributeFormatFailed(name));
             builder.Append(buffer[..written]).Append('"');
         }
 

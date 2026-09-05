@@ -18,7 +18,7 @@ public sealed class FirehoseBlockDevice : IWritableBlockDevice
         _descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
         _writable = writable && descriptor.CanWrite;
         if (descriptor.PhysicalPartitionNumber is null)
-            throw new ArgumentException("A Qualcomm block device requires a physical partition number.", nameof(descriptor));
+            throw new ArgumentException(Strings.Qcom_BlockDevicePartitionRequired, nameof(descriptor));
     }
 
     public BlockDeviceId Id => _descriptor.Id;
@@ -45,7 +45,7 @@ public sealed class FirehoseBlockDevice : IWritableBlockDevice
     {
         FirehoseStorageService service = GetService();
         if (!_writable)
-            throw new BlockDeviceException($"Qualcomm block device '{Id}' was opened read-only.");
+            throw new BlockDeviceException(Strings.FormatQcom_BlockDeviceOpenedReadOnly(Id));
         FirehoseRangeValidator.ValidateByteRange(offset, source.Length, LogicalBlockSize, Length);
         service.Program(
             checked((uint)_descriptor.PhysicalPartitionNumber!.Value),

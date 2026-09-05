@@ -43,7 +43,7 @@ public sealed class ConfigureNegotiator
         for (int attempt = 1; attempt <= configuration.MaxConfigureAttempts; attempt++)
         {
             if (!seenStates.Add(state))
-                throw Failure("Configure negotiation repeated an unchanged state.", lastNak);
+                throw Failure(Strings.Qcom_ConfigureNegotiationRepeated, lastNak);
             attemptedStorage.Add(state.Storage);
 
             try
@@ -59,32 +59,94 @@ public sealed class ConfigureNegotiator
                 if (strategy.Vendor == QcomVendorKind.Xiaomi && !state.AuthenticationCompleted)
                 {
                     if (xiaomiAuthentication is null || !xiaomiAuthentication(exception))
-                        throw Failure("Xiaomi authentication is required for Configure.", exception);
+                        throw Failure(Strings.Qcom_XiaomiAuthenticationRequiredForConfigure, exception);
                     state = state with { AuthenticationCompleted = true };
                     continue;
                 }
 
-                if (state.ManualStorage)
-                    throw Failure("Firehose rejected the explicitly selected storage configuration.", exception);
-
-                ConfigureEvidence evidence = ConfigureEvidenceParser.Parse(exception.Result);
+                                ConfigureEvidence evidence = ConfigureEvidenceParser.Parse(exception.Result);
                 ConfigureState next = state.Apply(evidence);
+                if (state.ManualStorage && (next.Storage != state.Storage || evidence.UnsupportedStorage is not null || next == state))
+                    throw Failure(Strings.Qcom_ExplicitStorageRejected, exception);
                 if (evidence.UnsupportedStorage is not null || next == state)
                 {
                     FirehoseStorage? fallback = FindNextStorage(attemptedStorage);
                     if (fallback is null)
-                        throw Failure("Firehose rejected every supported storage configuration.", exception);
+                        throw Failure(Strings.Qcom_AllStorageRejected, exception);
                     next = next.WithStorage(fallback.Value);
                 }
 
                 if (next == state)
-                    throw Failure("Firehose Configure returned no actionable negotiation evidence.", exception);
+                    throw Failure(Strings.Qcom_ConfigureNoActionableEvidence, exception);
                 state = next;
             }
         }
 
         throw Failure(
-            $"Firehose Configure exceeded {configuration.MaxConfigureAttempts} attempts.",
+            string.Format(Strings.Qcom_ConfigureAttemptsExceeded, configuration.MaxConfigureAttempts),
+            lastNak);
+    }
+
+    public async ValueTask<FirehoseConfigureResult> NegotiateAsync(
+        FirehoseConfiguration configuration,
+        QcomVendorKind vendor = QcomVendorKind.Generic,
+        Func<FirehoseNakException, CancellationToken, ValueTask<bool>>? xiaomiAuthentication = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        configuration.Validate();
+        IVendorFirehoseStrategy strategy = VendorStrategyResolver.ForVendor(vendor);
+
+        ConfigureState state = ConfigureState.Create(configuration);
+        var attemptedStorage = new HashSet<FirehoseStorage>();
+        var seenStates = new HashSet<ConfigureState>();
+        FirehoseNakException? lastNak = null;
+
+        for (int attempt = 1; attempt <= configuration.MaxConfigureAttempts; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!seenStates.Add(state))
+                throw Failure(Strings.Qcom_ConfigureNegotiationRepeated, lastNak);
+            attemptedStorage.Add(state.Storage);
+
+            try
+            {
+                FirehoseCommandResult result = _session.Execute(strategy.PrepareConfigure(state.CreateCommand()));
+                state = state.Apply(ConfigureEvidenceParser.Parse(result));
+                return new FirehoseConfigureResult(result, state.ToResponse(attempt, result));
+            }
+            catch (FirehoseNakException exception)
+            {
+                lastNak = exception;
+
+                if (strategy.Vendor == QcomVendorKind.Xiaomi && !state.AuthenticationCompleted)
+                {
+                    if (xiaomiAuthentication is null || !await xiaomiAuthentication(exception, cancellationToken).ConfigureAwait(false))
+                        throw Failure(Strings.Qcom_XiaomiAuthenticationRequiredForConfigure, exception);
+                    state = state with { AuthenticationCompleted = true };
+                    continue;
+                }
+
+                                ConfigureEvidence evidence = ConfigureEvidenceParser.Parse(exception.Result);
+                ConfigureState next = state.Apply(evidence);
+                if (state.ManualStorage && (next.Storage != state.Storage || evidence.UnsupportedStorage is not null || next == state))
+                    throw Failure(Strings.Qcom_ExplicitStorageRejected, exception);
+                if (evidence.UnsupportedStorage is not null || next == state)
+                {
+                    FirehoseStorage? fallback = FindNextStorage(attemptedStorage);
+                    if (fallback is null)
+                        throw Failure(Strings.Qcom_AllStorageRejected, exception);
+                    next = next.WithStorage(fallback.Value);
+                }
+
+                if (next == state)
+                    throw Failure(Strings.Qcom_ConfigureNoActionableEvidence, exception);
+                state = next;
+            }
+        }
+
+        throw Failure(
+            string.Format(Strings.Qcom_ConfigureAttemptsExceeded, configuration.MaxConfigureAttempts),
             lastNak);
     }
 

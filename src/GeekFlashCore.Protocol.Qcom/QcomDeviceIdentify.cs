@@ -9,8 +9,10 @@ public class QcomDeviceIdentify : IDeviceIdentify
     {
         ProtocolType protocolType = (deviceInfo.VendorId, deviceInfo.ProductId) switch
         {
-            // 暂时就直接这样子了，之后会添加的。。。
-            (0x05c6,_) => ProtocolType.QualcommEdl,
+            // 9008 is the confirmed Qualcomm EDL product. Other Qualcomm
+            // products may expose unrelated interfaces and must be probed by
+            // their own protocol identifier.
+            (0x05c6, 0x9008) => ProtocolType.QualcommEdl,
             _ => ProtocolType.Unknown
         };
         if(protocolType!= ProtocolType.Unknown)

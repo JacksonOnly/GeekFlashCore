@@ -12,7 +12,7 @@ internal sealed class SourceWindowStream : Stream
     {
         ArgumentNullException.ThrowIfNull(source);
         if (!source.CanRead || !source.CanSeek)
-            throw new ArgumentException("The source window requires a readable, seekable stream.", nameof(source));
+            throw new ArgumentException(Strings.Qcom_SourceWindowRequiresSeekable, nameof(source));
         if (origin < 0 || length < 0 || origin > source.Length - length)
             throw new ArgumentOutOfRangeException(nameof(origin));
 
@@ -58,7 +58,7 @@ internal sealed class SourceWindowStream : Stream
             _ => throw new ArgumentOutOfRangeException(nameof(origin))
         };
         if ((ulong)position > (ulong)_length)
-            throw new IOException("An attempt was made to seek outside the source window.");
+            throw new IOException(Strings.Qcom_SourceWindowSeekOutside);
         _position = position;
         return position;
     }

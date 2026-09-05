@@ -56,7 +56,7 @@ internal class SaharaProtocol : IDisposable
         ReadTargetInfo();
         IsConnected = true;
         progress?.Report(new ProgressRecord(3, 3, Strings.Progress_Connected));
-        _logger.Information("TargetInfo: {TargetInfo}", TargetInfo);
+        _logger.Information(Strings.Qcom_LogTargetInfo, TargetInfo);
     }
 
     public void UploadImage(
@@ -151,7 +151,7 @@ internal class SaharaProtocol : IDisposable
 
                         Stream activeStream = stream ?? throw new InvalidOperationException(
                             Strings.Sahara_ImageStreamMustBeReadableAndSeekable);
-                        _logger.Debug("Transfer image {ImageId} offset {Offset} length {Length}",
+                        _logger.Debug(Strings.Qcom_LogTransferImage,
                             imageId, dataOffset, dataLength);
                         byte[] rented = ArrayPool<byte>.Shared.Rent(Math.Min(dataLength, UploadBufferSize));
                         try
@@ -189,7 +189,7 @@ internal class SaharaProtocol : IDisposable
                     case SaharaCommand.MemoryDebug32Bit:
                     case SaharaCommand.MemoryDebug64Bit:
                     {
-                        _logger.Warning("Target entered memory debug mode, dumping memory");
+                        _logger.Warning(Strings.Qcom_LogMemoryDebugWarning);
                         progress?.Report(new ProgressRecord(totalImageBytes, totalBytes, Strings.Progress_MemoryDump));
                         bool is64Bit = cmd == SaharaCommand.MemoryDebug64Bit;
                         if (is64Bit)
@@ -278,7 +278,7 @@ internal class SaharaProtocol : IDisposable
     {
         ThrowIfDisposed();
         ThrowIfNotConnected();
-        _logger.Information("Execute command {Command}", command.ToName());
+        _logger.Information(Strings.Qcom_LogExecuteCommand, command.ToName());
         return ExecuteData(command, static data => data.ToArray());
     }
 
@@ -292,13 +292,13 @@ internal class SaharaProtocol : IDisposable
     public void Reset()
     {
         ThrowIfDisposed();
-        _logger.Information("Sending reset request");
+        _logger.Information(Strings.Qcom_LogSendingReset);
         _sender.SendResetRequest();
         var bodyLength = _receiver.ReceivePacketHeader(out var command);
         ThrowIfGetInvalidResponse(command, SaharaCommand.ResetResponse, bodyLength);
         _receiver.ReadResetResponse(out _, bodyLength);
         IsConnected = false;
-        _logger.Information("Reset acknowledged");
+        _logger.Information(Strings.Qcom_LogResetAcknowledged);
     }
 
     public IReadOnlyList<SaharaMemoryRegion> DumpMemory(
@@ -306,7 +306,7 @@ internal class SaharaProtocol : IDisposable
         bool resetAfterDump = false)
     {
         ThrowIfDisposed();
-        _logger.Information("Entering memory debug mode");
+        _logger.Information(Strings.Qcom_LogEnteringMemoryDebug);
         ReceiveHello(out var hello);
         SetTargetInfoFromHelloRequest(in hello);
         _sender.SendHelloResponse(hello.Version, hello.Version, SaharaStatus.StatusSuccess,
@@ -348,12 +348,12 @@ internal class SaharaProtocol : IDisposable
         Action<SaharaMemoryRegion, ReadOnlyMemory<byte>>? onData)
     {
         int entrySize = is64Bit ? MemoryTableEntrySize64Bit : MemoryTableEntrySize32Bit;
-        _logger.Information("Memory debug {Width}-bit, table address 0x{Address:X}, length {Length}",
+        _logger.Information(Strings.Qcom_LogMemoryDebugInfo,
             is64Bit ? 64 : 32, tableAddress, tableLength);
 
         if (tableLength % (ulong)entrySize != 0 || tableLength > MaxRamDumpRead)
         {
-            _logger.Error("Invalid memory table length {TableLength} for {EntrySize}-byte entries",
+            _logger.Error(Strings.Qcom_LogMemoryTableInvalid,
                 tableLength, entrySize);
             Reset();
             throw new SaharaProtocolException(Strings.FormatSahara_InvalidMemoryTable(tableLength));
@@ -410,7 +410,7 @@ internal class SaharaProtocol : IDisposable
                 totalBytes += chunkLength;
             }
 
-            _logger.Information("Dumped region '{FileName}' ({Length} bytes)", region.FileName, region.Length);
+            _logger.Information(Strings.Qcom_LogDumpedRegion, region.FileName, region.Length);
         }
 
         LogThroughput("MemoryDump", totalBytes, stopwatch.Elapsed);
@@ -573,7 +573,7 @@ internal class SaharaProtocol : IDisposable
 
     private void SwitchModeTo(SaharaMode mode)
     {
-        _logger.Information("Switching mode to {Mode}", mode.ToName());
+        _logger.Information(Strings.Qcom_LogSwitchingMode, mode.ToName());
         _sender.SendSwitchModeRequest(mode);
         ReceiveHello(out _, false);
         _sender.SendHelloResponse(_targetInfo.Version, _targetInfo.Version,
@@ -620,7 +620,7 @@ internal class SaharaProtocol : IDisposable
         request = new SaharaHelloRequest();
         do
         {
-            _logger.Debug("Receive HelloRequest {RemainingRetryCount}", retryCount);
+            _logger.Debug(Strings.Qcom_LogHelloRetry, retryCount);
             try
             {
                 var bodyLength = _receiver.ReceivePacketHeader(out var command);
@@ -634,7 +634,7 @@ internal class SaharaProtocol : IDisposable
             }
             catch (Exception e) when (e is TimeoutException or InvalidDataException or ArgumentException)
             {
-                _logger.Error(e, "Receive HelloRequest failed");
+                _logger.Error(e, Strings.Qcom_LogHelloReceiveFailed);
                 _transport.Flush();
                 if (isReset)
                     _sender.SendResetStateMachineRequest();
@@ -652,7 +652,7 @@ internal class SaharaProtocol : IDisposable
         _targetInfo.MaximumPacketSizeSupported = hello.CommandPacketLength;
         _targetInfo.Mode = hello.Mode;
 
-        _logger.Debug("SetTargetInfoFromHelloRequest {TargetInfo}", _targetInfo);
+        _logger.Debug(Strings.Qcom_LogTargetInfoFromHello, _targetInfo);
     }
 
     private void LogThroughput(string operation, long bytes, TimeSpan elapsed)
@@ -660,7 +660,7 @@ internal class SaharaProtocol : IDisposable
         double mbps = elapsed.TotalSeconds > 0
             ? bytes / elapsed.TotalSeconds / (1024.0 * 1024.0)
             : 0;
-        _logger.Information("{Operation} complete: {Bytes:N0} bytes in {Elapsed} ({Throughput:F2} MB/s)",
+        _logger.Information(Strings.Qcom_LogOperationComplete,
             operation, bytes, elapsed, mbps);
     }
 
@@ -681,7 +681,7 @@ internal class SaharaProtocol : IDisposable
         if (_disposed) return;
         _disposed = true;
         IsConnected = false;
-        _logger.Verbose("Disposing SaharaProtocol");
+        _logger.Verbose(Strings.Qcom_LogDisposeSahara);
         _targetInfo = new SaharaTargetInfo();
         GC.SuppressFinalize(this);
     }

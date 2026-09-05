@@ -26,18 +26,31 @@ internal sealed class FirehoseProgramExecutor
         CancellationToken cancellationToken)
     {
         using FirehoseProgramPlan plan = FirehoseProgramPlanner.Create(request, source, cancellationToken);
-        // Materialize every mapping before sending any command, including later sparse regions.
-        var mapped = plan.Segments.Select(segment => (Segment: segment, Ranges:
-            _policy?.Map(request.PhysicalPartitionNumber, segment.StartSector, segment.SectorCount,
-                true, request.Label, request.FileName) ??
-            [new FirehoseStorageRange(segment.StartSector, segment.SectorCount, request.Label, request.FileName)]))
-            .ToArray();
-        long completed = 0;
-        foreach (var item in mapped)
+        // Validate every mapping before the first command, but do not retain all
+        // mapped ranges for the lifetime of a large Sparse image.
+        if (_policy is not null)
         {
-            using Stream segmentSource = item.Segment.OpenRead(plan.Source);
-            long sourceRemaining = item.Segment.SourceLength;
-            foreach (FirehoseStorageRange range in item.Ranges)
+            foreach (FirehoseProgramSegment segment in plan.Segments)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                IReadOnlyList<FirehoseStorageRange> ranges = _policy.Map(
+                    request.PhysicalPartitionNumber, segment.StartSector, segment.SectorCount,
+                    true, request.Label, request.FileName);
+                if (ranges is null || ranges.Count == 0)
+                    throw new InvalidDataException(Strings.Qcom_InvalidResource);
+            }
+        }
+
+        long completed = 0;
+        foreach (FirehoseProgramSegment segment in plan.Segments)
+        {
+            using Stream segmentSource = segment.OpenRead(plan.Source);
+            long sourceRemaining = segment.SourceLength;
+            IReadOnlyList<FirehoseStorageRange> ranges = _policy?.Map(
+                request.PhysicalPartitionNumber, segment.StartSector, segment.SectorCount,
+                true, request.Label, request.FileName) ??
+                [new FirehoseStorageRange(segment.StartSector, segment.SectorCount, request.Label, request.FileName)];
+            foreach (FirehoseStorageRange range in ranges)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 ProgramCommand command = CreateCommand(request, range);

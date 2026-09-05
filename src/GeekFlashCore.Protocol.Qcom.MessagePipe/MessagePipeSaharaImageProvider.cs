@@ -26,7 +26,7 @@ public sealed class MessagePipeSaharaImageProvider : ISaharaImageProvider
     private static SaharaImageEntryResponse Validate(SaharaImageEntryResponse response)
     {
         if (response?.Entries is not { Count: > 0 } entries)
-            throw new QcomResourceException("The Sahara image provider returned no image entries.");
+            throw new QcomResourceException(Strings.SaharaImagesMissing);
 
         var ids = new HashSet<int>();
         foreach (SaharaImageEntry entry in entries)
@@ -34,7 +34,7 @@ public sealed class MessagePipeSaharaImageProvider : ISaharaImageProvider
             if (entry is null || entry.Id < 0 || entry.Length < 0 || entry.DataSource is null ||
                 entry.Length != entry.DataSource.Length || !ids.Add(entry.Id))
             {
-                throw new QcomResourceException("The Sahara image provider returned an invalid image entry.");
+                throw new QcomResourceException(Strings.SaharaImageInvalid);
             }
         }
 

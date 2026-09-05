@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="GenericDigestAndOplusConflict" xml:space="preserve"><value>Generic Firehose Digest and Oplus Digest modes cannot be enabled together.</value></data>
+  <data name="GenericDigestAndVipConflict" xml:space="preserve"><value>Generic Firehose Digest and Firehose VIP cannot be enabled together.</value></data>
+  <data name="VipFrameCapacitiesPositive" xml:space="preserve"><value>VIP frame capacities must be positive.</value></data>
+  <data name="ProgramSourceLargerThanTarget" xml:space="preserve"><value>The source is larger than the target range.</value></data>
+</root>

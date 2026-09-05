@@ -40,7 +40,7 @@ public sealed class OnePlusProjectVerifier(FirehoseSession session)
         {
             return parsed;
         }
-        throw new QcomAuthenticationException("OnePlus setprocstart returned no valid device timestamp.");
+            throw new QcomAuthenticationException(Strings.Qcom_OnePlusTimestampMissing);
     }
 
     public FirehoseCommandResult VerifySoftwareProject(string publicKey, string token)

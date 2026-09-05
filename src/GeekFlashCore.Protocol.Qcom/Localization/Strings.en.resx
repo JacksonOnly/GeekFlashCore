@@ -367,4 +367,121 @@ Current {0}, expected {1}</value>
   <data name="Firehose_NotConnected" xml:space="preserve">
     <value>Firehose protocol is not connected</value>
   </data>
+  <data name="Qcom_UnknownProtocol" xml:space="preserve"><value>The device protocol could not be identified.</value></data>
+  <data name="Qcom_InvalidAuthentication" xml:space="preserve"><value>The authentication material is invalid.</value></data>
+  <data name="Qcom_UseDedicatedCommand" xml:space="preserve"><value>Use the dedicated protocol method for this command.</value></data>
+  <data name="Qcom_DigestProviderRequired" xml:space="preserve"><value>An Oplus Digest provider is required.</value></data>
+  <data name="Qcom_InvalidResource" xml:space="preserve"><value>The resource is invalid or its provider failed.</value></data>
+  <data name="Qcom_LoaderProviderRequired" xml:space="preserve"><value>A Sahara image provider is required.</value></data>
+  <data name="Qcom_InvalidSessionState" xml:space="preserve"><value>The session is invalid; reconnect before continuing.</value></data>
+  <data name="Qcom_OperationInProgress" xml:space="preserve"><value>Another session operation is in progress.</value></data>
+  <data name="Qcom_AuthenticationProviderRequired" xml:space="preserve"><value>A vendor authentication provider is required.</value></data>
+  <data name="Qcom_GptEntryArrayExceedsRange" xml:space="preserve"><value>The GPT entry array exceeds the bounded read range.</value></data>
+  <data name="Qcom_FirehoseVipTablesRequired" xml:space="preserve"><value>The Firehose programmer requires VIP tables.</value></data>
+  <data name="Qcom_FirehoseVipProviderRequired" xml:space="preserve"><value>The Firehose VIP provider is required.</value></data>
+  <data name="Qcom_FirehoseVipNotAnnounced" xml:space="preserve"><value>The Firehose programmer did not announce VIP support.</value></data>
+  <data name="Qcom_UnsupportedFirehoseCommand" xml:space="preserve"><value>The Firehose command is not supported.</value></data>
+  <data name="Qcom_DigestSourceNotReadable" xml:space="preserve"><value>The Digest source is not readable.</value></data>
+  <data name="Qcom_FirehoseNotConfigured" xml:space="preserve"><value>Firehose is not configured.</value></data>
+  <data name="Qcom_FirehoseRawModeUnexpected" xml:space="preserve"><value>Firehose remained in raw mode after the transfer.</value></data>
+  <data name="Qcom_FirehoseXmlTooLargeConfigured" xml:space="preserve"><value>The Firehose XML document exceeds the configured size limit.</value></data>
+  <data name="Qcom_FirehoseXmlRootInvalid" xml:space="preserve"><value>The Firehose XML root element must be data.</value></data>
+  <data name="Qcom_FirehoseXmlCommandCountInvalid" xml:space="preserve"><value>The Firehose XML document must contain exactly one command element.</value></data>
+  <data name="Qcom_FirehoseXmlInvalidUnsafe" xml:space="preserve"><value>The Firehose XML document is invalid or unsafe.</value></data>
+  <data name="Qcom_FirehoseAttributeFormatFailed" xml:space="preserve"><value>Unable to format Firehose attribute {0}.</value></data>
+  <data name="Qcom_FirehoseOperationStateInvalid" xml:space="preserve"><value>Firehose command is not valid while the session is {0}.</value></data>
+  <data name="Qcom_FirehoseOperationInProgress" xml:space="preserve"><value>Another Firehose operation is already in progress.</value></data>
+  <data name="Qcom_VipSignedTableRequired" xml:space="preserve"><value>VIP signed table is required.</value></data>
+  <data name="Qcom_VipChainedTablesExhausted" xml:space="preserve"><value>The VIP chained table sequence is exhausted.</value></data>
+  <data name="Qcom_VipTableStreamMissing" xml:space="preserve"><value>The VIP table source returned no stream.</value></data>
+  <data name="Qcom_VipTableNotReadable" xml:space="preserve"><value>The VIP table source is not readable.</value></data>
+  <data name="Qcom_VipTableNotAcknowledged" xml:space="preserve"><value>The Firehose VIP table was not acknowledged.</value></data>
+  <data name="Qcom_VipTableLengthInvalid" xml:space="preserve"><value>The VIP table length is invalid.</value></data>
+  <data name="Qcom_FirehoseReadDestinationNotWritable" xml:space="preserve"><value>The Firehose read destination is not writable.</value></data>
+  <data name="Qcom_FirehoseDestinationLengthMismatch" xml:space="preserve"><value>The destination length must equal the Firehose read range.</value></data>
+  <data name="Qcom_FirehoseProgramStreamMissing" xml:space="preserve"><value>The Firehose program source returned no stream.</value></data>
+  <data name="Qcom_FirehoseProgramBufferUnaligned" xml:space="preserve"><value>The Firehose program buffer must contain aligned sectors.</value></data>
+  <data name="Qcom_FirmwarePayloadEmpty" xml:space="preserve"><value>The firmware payload cannot be empty.</value></data>
+  <data name="Qcom_FirehosePeekDestinationEmpty" xml:space="preserve"><value>The Firehose peek destination cannot be empty.</value></data>
+  <data name="Qcom_FirehoseDigestMissing" xml:space="preserve"><value>Firehose acknowledged getsha256digest without a SHA-256 value.</value></data>
+  <data name="Qcom_BlockDeviceUnknown" xml:space="preserve"><value>Unknown Qualcomm block device '{0}'.</value></data>
+  <data name="Qcom_BlockDeviceReadOnly" xml:space="preserve"><value>Qualcomm block device '{0}' is read-only.</value></data>
+  <data name="Qcom_ByteRangeUnaligned" xml:space="preserve"><value>The Firehose byte range must be aligned to the logical block size.</value></data>
+  <data name="Qcom_BlockDevicePartitionRequired" xml:space="preserve"><value>A Qualcomm block device requires a physical partition number.</value></data>
+  <data name="Qcom_BlockDeviceOpenedReadOnly" xml:space="preserve"><value>Qualcomm block device '{0}' was opened read-only.</value></data>
+  <data name="Qcom_ProgramSourceNotReadable" xml:space="preserve"><value>The Firehose program source is not readable.</value></data>
+  <data name="Qcom_ProgramSourceEmpty" xml:space="preserve"><value>The Firehose program source cannot be empty.</value></data>
+  <data name="Qcom_SparseRequiresSeekable" xml:space="preserve"><value>Android sparse programming requires a seekable source stream.</value></data>
+  <data name="Qcom_SourceLargerThanTarget" xml:space="preserve"><value>The source is larger than the target range.</value></data>
+  <data name="Qcom_SourceEndedBeforeOffset" xml:space="preserve"><value>The Firehose source ended before its requested offset.</value></data>
+  <data name="Qcom_SparseRegionUnaligned" xml:space="preserve"><value>An Android sparse region is not sector aligned.</value></data>
+  <data name="Qcom_SparseRegionExceedsTarget" xml:space="preserve"><value>An Android sparse region exceeds the target range.</value></data>
+  <data name="Qcom_SourceWindowRequiresSeekable" xml:space="preserve"><value>The source window requires a readable, seekable stream.</value></data>
+  <data name="Qcom_SourceWindowSeekOutside" xml:space="preserve"><value>An attempt was made to seek outside the source window.</value></data>
+  <data name="Qcom_CustomXmlSizeExceeded" xml:space="preserve"><value>The Firehose XML document exceeds the size limit.</value></data>
+  <data name="Qcom_CustomXmlRootInvalid" xml:space="preserve"><value>The Firehose XML root element must be data.</value></data>
+  <data name="Qcom_CustomXmlCommandInvalid" xml:space="preserve"><value>The Firehose XML must contain one flat command element.</value></data>
+  <data name="Qcom_CustomXmlCommandNotAllowed" xml:space="preserve"><value>Command '{0}' is not allowed for {1}.</value></data>
+  <data name="Qcom_CustomXmlTextNotAllowed" xml:space="preserve"><value>Firehose command text content is not allowed.</value></data>
+  <data name="Qcom_CustomXmlCommandMissing" xml:space="preserve"><value>The Firehose XML contains no command.</value></data>
+  <data name="Qcom_CustomXmlInvalid" xml:space="preserve"><value>The Firehose custom XML is invalid or not allowed.</value></data>
+  <data name="Qcom_CustomXmlAttributesExceeded" xml:space="preserve"><value>The Firehose command attributes exceed the safety limits.</value></data>
+  <data name="Qcom_DtdNotAllowed" xml:space="preserve"><value>DTD and XML declarations are not permitted in Firehose responses.</value></data>
+  <data name="Qcom_UnterminatedXml" xml:space="preserve"><value>Unterminated XML markup in a Firehose response.</value></data>
+  <data name="Qcom_XiaomiChallengeMissing" xml:space="preserve"><value>Xiaomi Firehose returned no signature challenge.</value></data>
+  <data name="Qcom_XiaomiSignatureLength" xml:space="preserve"><value>The Xiaomi signature must be {0} bytes.</value></data>
+  <data name="Qcom_OplusRangeUnmapped" xml:space="preserve"><value>The requested range is not mapped by the verified Oplus Digest.</value></data>
+  <data name="Qcom_OplusOperationDenied" xml:space="preserve"><value>The verified Oplus Digest does not permit the requested operation.</value></data>
+  <data name="Qcom_OplusDigestLengthInvalid" xml:space="preserve"><value>The Oplus Digest length is invalid or exceeds the safety limit.</value></data>
+  <data name="Qcom_OplusDigestStreamMissing" xml:space="preserve"><value>The Oplus Digest source returned no stream.</value></data>
+  <data name="Qcom_OplusDigestInvalid" xml:space="preserve"><value>The Oplus Digest is truncated or contains unsupported ranges.</value></data>
+  <data name="Qcom_OplusLegacyModeRequired" xml:space="preserve"><value>The policy requires Legacy Digest mode.</value></data>
+  <data name="Qcom_OplusLegacyLengthInvalid" xml:space="preserve"><value>The Legacy Digest source has an invalid length.</value></data>
+  <data name="Qcom_OplusLegacyStreamMissing" xml:space="preserve"><value>The Legacy Digest source returned no stream.</value></data>
+  <data name="Qcom_OplusLegacySourceChanged" xml:space="preserve"><value>The Legacy Digest source changed or is unreadable.</value></data>
+  <data name="Qcom_OplusLegacyCommandCountExceeded" xml:space="preserve"><value>The Legacy operation exceeds the supported command count.</value></data>
+  <data name="Qcom_OplusDigestEntryInvalid" xml:space="preserve"><value>The Oplus Digest contains an invalid partition entry.</value></data>
+  <data name="Qcom_OplusDigestOverlap" xml:space="preserve"><value>The Oplus Digest contains overlapping partition entries.</value></data>
+  <data name="Qcom_OnePlusTimestampMissing" xml:space="preserve"><value>OnePlus setprocstart returned no valid device timestamp.</value></data>
+  <data name="Qcom_NothingTokenInvalid" xml:space="preserve"><value>Nothing token1 must contain 32 lowercase hexadecimal characters.</value></data>
+  <data name="Qcom_NothingSerialInvalid" xml:space="preserve"><value>Unable to format the Nothing device serial.</value></data>
+  <data name="Qcom_OnePlusPublicKeyInvalid" xml:space="preserve"><value>The OnePlus public key must contain 16 ASCII alphanumeric characters.</value></data>
+  <data name="Qcom_OnePlusTokenInvalid" xml:space="preserve"><value>The OnePlus token must contain {0} ASCII hexadecimal characters.</value></data>
+  <data name="Qcom_LogTargetInfo" xml:space="preserve"><value>Target info: {0}</value></data>
+  <data name="Qcom_LogTransferImage" xml:space="preserve"><value>Transferring image {0}, offset {1}, length {2}</value></data>
+  <data name="Qcom_LogMemoryDebugWarning" xml:space="preserve"><value>Target entered memory debug mode; dumping memory.</value></data>
+  <data name="Qcom_LogExecuteCommand" xml:space="preserve"><value>Execute command {0}</value></data>
+  <data name="Qcom_LogSendingReset" xml:space="preserve"><value>Sending reset request.</value></data>
+  <data name="Qcom_LogResetAcknowledged" xml:space="preserve"><value>Reset request acknowledged.</value></data>
+  <data name="Qcom_LogEnteringMemoryDebug" xml:space="preserve"><value>Entering memory debug mode.</value></data>
+  <data name="Qcom_LogMemoryDebugInfo" xml:space="preserve"><value>{0}-bit memory debug, table address 0x{1:X}, length {2}</value></data>
+  <data name="Qcom_LogMemoryTableInvalid" xml:space="preserve"><value>Invalid memory table length {0}; entry size is {1} bytes.</value></data>
+  <data name="Qcom_LogDumpedRegion" xml:space="preserve"><value>Dumped region '{0}' ({1} bytes).</value></data>
+  <data name="Qcom_LogSwitchingMode" xml:space="preserve"><value>Switching to {0} mode.</value></data>
+  <data name="Qcom_LogHelloReceiveFailed" xml:space="preserve"><value>Receiving HELLO request failed.</value></data>
+  <data name="Qcom_LogOperationComplete" xml:space="preserve"><value>{0} complete: {1:N0} bytes in {2} ({3:F2} MB/s).</value></data>
+  <data name="Qcom_LogFirehoseConfigured" xml:space="preserve"><value>Firehose configured with storage type {0}.</value></data>
+  <data name="Qcom_LogDisposeSahara" xml:space="preserve"><value>Disposing Sahara protocol.</value></data>
+  <data name="Qcom_LogDisposeFirehose" xml:space="preserve"><value>Disposing Firehose protocol.</value></data>
+  <data name="Qcom_LogSendCommand" xml:space="preserve"><value>Sending command {0} (XML {1} bytes).</value></data>
+  <data name="Qcom_LogSendXml" xml:space="preserve"><value>Sending XML ({0} bytes).</value></data>
+  <data name="Qcom_LogSendRaw" xml:space="preserve"><value>Sending raw data ({0} bytes, {1} packets).</value></data>
+  <data name="Qcom_LogSendRawCompleted" xml:space="preserve"><value>Raw data send complete (source {0} bytes, wire {1} bytes).</value></data>
+  <data name="Qcom_LogSaharaSendPacket" xml:space="preserve"><value>Sahara send {0}</value></data>
+  <data name="Qcom_LogSaharaReceivePacket" xml:space="preserve"><value>Sahara receive {0}</value></data>
+  <data name="Qcom_LogDeviceMessage" xml:space="preserve"><value>{0}</value></data>
+  <data name="Qcom_LogHelloRetry" xml:space="preserve"><value>Receiving HELLO request; {0} retries remaining.</value></data>
+  <data name="Qcom_LogTargetInfoFromHello" xml:space="preserve"><value>Set target info from HELLO request: {0}</value></data>
+  <data name="Qcom_ConfigureNegotiationRepeated" xml:space="preserve"><value>Configure negotiation repeated an unchanged state.</value></data>
+  <data name="Qcom_XiaomiAuthenticationRequiredForConfigure" xml:space="preserve"><value>Xiaomi authentication is required for Configure.</value></data>
+  <data name="Qcom_ExplicitStorageRejected" xml:space="preserve"><value>Firehose rejected the explicitly selected storage configuration.</value></data>
+  <data name="Qcom_AllStorageRejected" xml:space="preserve"><value>Firehose rejected every supported storage configuration.</value></data>
+  <data name="Qcom_ConfigureNoActionableEvidence" xml:space="preserve"><value>Firehose Configure returned no actionable negotiation evidence.</value></data>
+  <data name="Qcom_ConfigureAttemptsExceeded" xml:space="preserve"><value>Firehose Configure exceeded {0} attempts.</value></data>
+  <data name="Qcom_FirehoseRawmodeMismatch" xml:space="preserve"><value>Firehose returned rawmode={0}, expected rawmode={1}.</value></data>
+  <data name="Qcom_FirehoseCommandRejected" xml:space="preserve"><value>Firehose rejected the command.</value></data>
+  <data name="Qcom_ByteRangeExceedsDevice" xml:space="preserve"><value>The Firehose byte range exceeds the device.</value></data>
+  <data name="Qcom_SparseBlockSizeUnaligned" xml:space="preserve"><value>The Android sparse block size must be a multiple of the Firehose sector size.</value></data>
+  <data name="Qcom_SparseExpandedRangeTooLarge" xml:space="preserve"><value>The expanded Android sparse image is larger than the target range.</value></data>
+  <data name="Qcom_OplusDigestParseFailed" xml:space="preserve"><value>The Oplus Digest could not be parsed: {0}</value></data>
 </root>

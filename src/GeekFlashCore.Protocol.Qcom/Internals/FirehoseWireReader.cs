@@ -8,7 +8,7 @@ namespace GeekFlashCore.Protocol.Qcom.Internals;
 
 internal sealed class FirehoseWireReader : IDisposable
 {
-    private static ReadOnlySpan<byte> XmlPrefix => "<?xml"u8;
+    private const int XmlProbeLength = 5;
     private static ReadOnlySpan<byte> DataEnd => "</data>"u8;
 
     private readonly ITransport _transport;
@@ -16,6 +16,7 @@ internal sealed class FirehoseWireReader : IDisposable
     private byte[]? _carry;
     private int _carryOffset;
     private int _carryCount;
+    private FirehoseResponse? _queuedResponse;
     private bool _disposed;
 
     public FirehoseWireReader(ITransport transport) =>
@@ -24,6 +25,11 @@ internal sealed class FirehoseWireReader : IDisposable
     public FirehoseResponse ReadResponse(int timeoutMilliseconds)
     {
         ThrowIfDisposed();
+        if (_queuedResponse is { } queued)
+        {
+            _queuedResponse = null;
+            return queued;
+        }
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
         var logs = new List<FirehoseResponseLog>(4);
 
@@ -90,11 +96,11 @@ internal sealed class FirehoseWireReader : IDisposable
         _xmlBuffer.Clear();
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
 
-        Span<byte> prefix = _xmlBuffer.GetSpan(XmlPrefix.Length)[..XmlPrefix.Length];
+        Span<byte> prefix = _xmlBuffer.GetSpan(XmlProbeLength)[..XmlProbeLength];
         ReadExact(prefix, GetRemainingMilliseconds(deadline));
         _xmlBuffer.Advance(prefix.Length);
 
-        if (!_xmlBuffer.WrittenSpan.StartsWith(XmlPrefix))
+        if (!LooksLikeXml(_xmlBuffer.WrittenSpan))
         {
             PrependCarry(_xmlBuffer.WrittenSpan);
             rawMode = true;
@@ -109,7 +115,12 @@ internal sealed class FirehoseWireReader : IDisposable
                 int packetLength = endIndex + DataEnd.Length;
                 ReadOnlySpan<byte> overflow = _xmlBuffer.WrittenSpan[packetLength..];
                 if (!overflow.IsEmpty)
-                    PrependCarry(overflow);
+                {
+                    if (_transport is QcomSessionTransport sessionTransport)
+                        sessionTransport.Prepend(overflow);
+                    else
+                        PrependCarry(overflow);
+                }
                 rawMode = false;
                 return _xmlBuffer.WrittenSpan[..packetLength];
             }
@@ -140,7 +151,18 @@ internal sealed class FirehoseWireReader : IDisposable
     private int ReadSome(Span<byte> destination, int timeoutMilliseconds)
     {
         int copied = CopyCarryTo(destination);
-        return copied > 0 ? copied : _transport.Read(destination, timeoutMilliseconds);
+        if (copied > 0)
+            return copied;
+
+        return _transport.Read(destination, timeoutMilliseconds);
+    }
+
+    private static bool LooksLikeXml(ReadOnlySpan<byte> prefix)
+    {
+        int offset = 0;
+        if (prefix.Length >= 3 && prefix[0] == 0xEF && prefix[1] == 0xBB && prefix[2] == 0xBF) offset = 3;
+        while (offset < prefix.Length && prefix[offset] is (byte)' ' or (byte)'\t' or (byte)'\r' or (byte)'\n') offset++;
+        return offset < prefix.Length && prefix[offset] == (byte)'<';
     }
 
     private int CopyCarryTo(Span<byte> destination)
@@ -187,6 +209,76 @@ internal sealed class FirehoseWireReader : IDisposable
         if (ticks <= 0)
             throw new TimeoutException(Strings.Firehose_ReadTimedOut);
         return Math.Max(1, (int)Math.Ceiling(ticks * 1000d / Stopwatch.Frequency));
+    }
+
+    // Probe only available bytes between outgoing raw blocks. Partial XML stays
+    // in the same bounded carry buffer used by the blocking response reader.
+    public FirehoseResponse? PollResponse()
+    {
+        ThrowIfDisposed();
+        if (_queuedResponse is not null)
+            return _queuedResponse;
+        if (TryQueueCarryResponse())
+            return _queuedResponse;
+
+        Span<byte> available = stackalloc byte[FirehoseConstants.InitialXmlBufferSize];
+        int read = _transport.ReadAvailable(available);
+        if (read > 0)
+        {
+            AppendCarry(available[..read]);
+            TryQueueCarryResponse();
+        }
+        return _queuedResponse;
+    }
+
+    private bool TryQueueCarryResponse()
+    {
+        if (_carryCount == 0)
+            return false;
+        ReadOnlySpan<byte> pending = _carry!.AsSpan(_carryOffset, _carryCount);
+        int consumed = 0;
+        List<FirehoseResponseLog>? logs = null;
+        while (!pending.IsEmpty)
+        {
+            int end = pending.IndexOf(DataEnd);
+            if (end < 0)
+                return false;
+            int length = end + DataEnd.Length;
+            logs ??= new List<FirehoseResponseLog>();
+            bool complete = FirehoseResponseParser.TryParsePacket(pending[..length], logs,
+                out var status, out bool rawMode, out var attributes, out var payloadElements);
+            consumed += length;
+            if (complete)
+            {
+                _queuedResponse = new FirehoseResponse(logs,
+                    attributes ?? new Dictionary<string, string>(), status, rawMode, payloadElements);
+                _carryOffset += consumed;
+                _carryCount -= consumed;
+                if (_carryCount == 0) _carryOffset = 0;
+                return true;
+            }
+            pending = pending[length..];
+        }
+        return false;
+    }
+
+    private void AppendCarry(ReadOnlySpan<byte> data)
+    {
+        int length = checked(_carryCount + data.Length);
+        if (length > FirehoseConstants.MaximumXmlPacketSize)
+            throw new InvalidDataException(Strings.FormatFirehose_XmlPacketTooLarge(FirehoseConstants.MaximumXmlPacketSize));
+        if (_carry is null || _carry.Length < length)
+        {
+            byte[] next = ArrayPool<byte>.Shared.Rent(length);
+            if (_carryCount > 0) _carry!.AsSpan(_carryOffset, _carryCount).CopyTo(next);
+            if (_carry is not null) ArrayPool<byte>.Shared.Return(_carry);
+            _carry = next;
+        }
+        else if (_carryOffset > 0)
+            _carry.AsSpan(_carryOffset, _carryCount).CopyTo(_carry);
+        data.CopyTo(_carry.AsSpan(_carryCount));
+        _carryOffset = 0;
+        _carryCount = length;
     }
 
     public void Dispose()

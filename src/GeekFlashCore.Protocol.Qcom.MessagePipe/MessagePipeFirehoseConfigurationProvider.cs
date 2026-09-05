@@ -26,7 +26,7 @@ public sealed class MessagePipeFirehoseConfigurationProvider : IFirehoseConfigur
     private static FirehoseConfigurationResponse Validate(FirehoseConfigurationResponse response)
     {
         if (response?.Configuration is null)
-            throw new QcomResourceException("The Firehose configuration provider returned no configuration.");
+            throw new QcomResourceException(Strings.FirehoseConfigurationMissing);
         response.Configuration.Validate();
         return response;
     }

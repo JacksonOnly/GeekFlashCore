@@ -16,7 +16,7 @@ public static class CustomCommandValidator
         ArgumentException.ThrowIfNullOrWhiteSpace(xml);
         ArgumentNullException.ThrowIfNull(strategy);
         if (Encoding.UTF8.GetByteCount(xml) > FirehoseConstants.MaximumXmlPacketSize)
-            throw new ArgumentException("The Firehose XML document exceeds the size limit.", nameof(xml));
+            throw new ArgumentException(Strings.Qcom_CustomXmlSizeExceeded, nameof(xml));
 
         try
         {
@@ -27,7 +27,7 @@ public static class CustomCommandValidator
                 !reader.LocalName.Equals("data", StringComparison.Ordinal) ||
                 reader.NamespaceURI.Length != 0 || reader.IsEmptyElement)
             {
-                throw new XmlException("The Firehose XML root element must be data.");
+            throw new XmlException(Strings.Qcom_CustomXmlRootInvalid);
             }
 
             string? commandName = null;
@@ -37,26 +37,26 @@ public static class CustomCommandValidator
                 if (reader.NodeType == XmlNodeType.Element)
                 {
                     if (reader.Depth != 1 || commandName is not null || reader.NamespaceURI.Length != 0)
-                        throw new XmlException("The Firehose XML must contain one flat command element.");
+            throw new XmlException(Strings.Qcom_CustomXmlCommandInvalid);
                     commandName = reader.LocalName;
                     if (!strategy.AllowedCustomCommands.Contains(commandName))
-                        throw new XmlException($"Command '{commandName}' is not allowed for {strategy.Vendor}.");
+            throw new XmlException(Strings.FormatQcom_CustomXmlCommandNotAllowed(commandName, strategy.Vendor));
                     redacted = BuildRedactedCommand(reader, commandName);
                 }
                 else if (reader.NodeType is XmlNodeType.Text or XmlNodeType.CDATA &&
                          !string.IsNullOrWhiteSpace(reader.Value))
                 {
-                    throw new XmlException("Firehose command text content is not allowed.");
+            throw new XmlException(Strings.Qcom_CustomXmlTextNotAllowed);
                 }
             }
 
             if (commandName is null || redacted is null)
-                throw new XmlException("The Firehose XML contains no command.");
+            throw new XmlException(Strings.Qcom_CustomXmlCommandMissing);
             return new ValidatedCustomCommand(commandName, xml, redacted);
         }
         catch (XmlException exception)
         {
-            throw new ArgumentException("The Firehose custom XML is invalid or not allowed.", nameof(xml), exception);
+            throw new ArgumentException(Strings.Qcom_CustomXmlInvalid, nameof(xml), exception);
         }
     }
 
@@ -83,7 +83,7 @@ public static class CustomCommandValidator
                     reader.Prefix.Equals("xmlns", StringComparison.Ordinal) ||
                     reader.Name.Equals("xmlns", StringComparison.Ordinal))
                 {
-                    throw new XmlException("The Firehose command attributes exceed the safety limits.");
+            throw new XmlException(Strings.Qcom_CustomXmlAttributesExceeded);
                 }
                 builder.Append(' ').Append(reader.Name).Append("=\"");
                 AppendEscaped(builder, IsSensitive(reader.LocalName) ? "***" : reader.Value);

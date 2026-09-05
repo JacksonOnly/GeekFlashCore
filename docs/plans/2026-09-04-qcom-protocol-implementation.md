@@ -392,13 +392,14 @@
 - [x] Task 12：OplusDigestPt（2026-09-05；统一预先映射、跨条目读写及 GPT sector 6/34 分段；11 项线路测试通过）。
 - [x] Task 13：OplusDigestLegacy（2026-09-05；固定扇区窗口、共享成功计数、NOP/Digest 刷新、签名 NAK 单次重放与恢复失败熔断；11 项线路测试通过）。
 - [x] Task 14：QcomProtocol 工作流（2026-09-05；连接门面、资源超时与清理、Digest provider 接入、块设备租约失效、失败重连和厂商认证工作流；163 项测试通过）。
-- [ ] Task 15：最终审查。
+- [x] Task 15：最终审查（2026-09-05；本地代码、回归测试、Release 构建和差异检查完成，保留真实设备验证风险）。
   - 2026-09-05 已完成第一批异常和阶段日志资源化：Qcom 核心、Qcom.Abstractions、MessagePipe 的固定用户可见文本已迁移到中英文 `Strings` 资源；修复 SessionBlockDevice 捕获设备导致的生命周期警告。
   - 2026-09-05 同步 `ConfigureFirehose()` 已补齐配置 Provider、普通 Digest、VIP、Oplus Digest、Xiaomi 身份验证和 OnePlus/Nothing 校验顺序；新增无 XML 声明 Firehose 首包兼容和普通 Digest 通用 raw 长度上限。
 - 2026-09-05 `FirehoseProgramExecutor` 改为两阶段映射校验，执行前仍拒绝未映射范围，但不再保留整份 Sparse Digest 映射数组；新增 4 MiB 以上普通 Digest、同步资源/VIP 和无声明首包线路测试。
 - 2026-09-05 日志审查确认 Sahara/Firehose 包级收发日志均为 Debug，连接、配置、认证、转储和吞吐阶段为 Information/Warning/Error；Sahara 包级详细模板仍待逐条资源化，但不在默认生产日志级别输出。
 - 2026-09-05 已根据本地 QnQcLIB 源码确认 Legacy 线路：阈值刷新为 `NOP, NOP, Digest, NOP`，签名 NAK 恢复为 `Digest, NOP` 后仅重放当前 XML 一次；读写计数在 XML 发送后立即增加，普通 NAK 也计数，恢复失败使会话进入 Faulted。
 - 2026-09-05 已将 Sahara Sender/Receiver 的包级 Debug 模板统一迁移到中英文资源键；新增首次读取超时后的 qdl 兼容 HELLO_RESP 探测，可通过 `ProbeFirehoseOnSaharaTimeout` 关闭，并以回归测试覆盖。
+- 2026-09-05 最终验证：Qcom 测试 163 项通过，`GeekFlashCore.slnx -c Release --no-restore` 构建通过且无警告/错误，`git diff --check` 通过；工作区无未提交非忽略文件。
 
 ## 未决风险
 

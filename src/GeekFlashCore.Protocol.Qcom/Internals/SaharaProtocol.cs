@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
@@ -56,7 +57,7 @@ internal class SaharaProtocol : IDisposable
         ReadTargetInfo();
         IsConnected = true;
         progress?.Report(new ProgressRecord(3, 3, Strings.Progress_Connected));
-        _logger.Information(Strings.Qcom_LogTargetInfo, TargetInfo);
+        _logger.Information(Strings.Qcom_LogTargetInfo, FormatTargetInfo(TargetInfo));
     }
 
     public void UploadImage(
@@ -651,7 +652,27 @@ internal class SaharaProtocol : IDisposable
         _targetInfo.MaximumPacketSizeSupported = hello.CommandPacketLength;
         _targetInfo.Mode = hello.Mode;
 
-        _logger.Debug(Strings.Qcom_LogTargetInfoFromHello, _targetInfo);
+        _logger.Debug(Strings.Qcom_LogTargetInfoFromHello, FormatTargetInfo(_targetInfo));
+    }
+
+    private static string FormatTargetInfo(SaharaTargetInfo info)
+    {
+        SaharaMsmHwInfo? hardware = info.MsmHwInfo;
+        static string FormatUInt(uint? value) => value?.ToString(CultureInfo.InvariantCulture) ?? "unknown";
+        static string FormatULong(ulong? value) => value?.ToString(CultureInfo.InvariantCulture) ?? "unknown";
+        return string.Join(", ",
+            $"Version={info.Version.ToString(CultureInfo.InvariantCulture)}",
+            $"MinVersion={info.MinimumVersionSupported.ToString(CultureInfo.InvariantCulture)}",
+            $"MaxPacket={info.MaximumPacketSizeSupported.ToString(CultureInfo.InvariantCulture)}",
+            $"Mode={info.Mode.ToName()}",
+            $"Serial={FormatULong(info.Serial)}",
+            $"SblVersion={FormatULong(info.SblVersion)}",
+            $"CaHashLength={info.CaHash?.Length ?? 0}",
+            $"AntiRollback={FormatUInt(hardware?.AntiRollbackVersion)}",
+            $"SocHwVersion={FormatUInt(hardware?.SocHwVersion)}",
+            $"MsmId={FormatUInt(hardware?.MsmId)}",
+            $"OemId={FormatUInt(hardware?.OemId)}",
+            $"ModelId={FormatUInt(hardware?.ModelId)}");
     }
 
     private void LogThroughput(string operation, long bytes, TimeSpan elapsed)

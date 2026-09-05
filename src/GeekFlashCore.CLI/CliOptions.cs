@@ -14,6 +14,7 @@ internal sealed record CliOptions
     public string? OplusDigest { get; init; }
     public OplusDigestMode OplusMode { get; init; }
     public QcomVendorKind Vendor { get; init; } = QcomVendorKind.Auto;
+    public QcomAuthenticationKind? AuthenticationKind { get; init; }
     public bool Verbose { get; init; }
     public int ReadTimeout { get; init; } = 1000;
     public int WriteTimeout { get; init; } = 1000;

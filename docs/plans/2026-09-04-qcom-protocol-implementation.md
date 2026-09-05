@@ -402,6 +402,8 @@
 - 2026-09-05 已将 Sahara Sender/Receiver 的包级 Debug 模板统一迁移到中英文资源键；新增首次读取超时后的 qdl 兼容 HELLO_RESP 探测，可通过 `ProbeFirehoseOnSaharaTimeout` 关闭，并以回归测试覆盖。
 - 2026-09-05 最终验证：Qcom 测试 163 项通过，`GeekFlashCore.slnx -c Release --no-restore` 构建通过且无警告/错误，`git diff --check` 通过；工作区无未提交非忽略文件。
 - 2026-09-05 深审修复 `ProbeSahara()` 的超时探测副作用；补齐 Sahara 内存区域和 Firehose 响应属性日志资源键，回归测试增至 164 项并通过。
+- 2026-09-05 CLI-05 修复真实设备联机问题：Xiaomi 认证改为由 `QcomProtocolOptions.AuthenticationKind` 显式启用，且按参考项目先发送 `sig` 命令再发送 256 字节签名；未指定认证时不发送 `sig req`，直接返回需要显式认证的 Configure 错误。
+- 2026-09-05 CLI-05 修复 CLI 进度和目标信息输出：进度行使用 ANSI 清行并与 Serilog 通过共享控制台锁协调，日志输出到 stderr；Protocol/Vendor 分开显示，Sahara CA Hash 只显示长度，目标硬件字段结构化展示。
 
 ## 未决风险
 
@@ -428,6 +430,12 @@
 - 行为结论：移除 CLI 主流程对 QualcommProtocol 的固定依赖。协议注册项现在统一提供设备识别、传输后的协议工厂、协议专用命令和信息展示；主流程仅依赖 `IProtocol`。
 - 验证证据：CLI 主流程和 TransportResolver 不再引用 Qcom 类型；Qcom 逻辑集中到 `QcomProtocolHostAdapter`，Release 构建通过。
 - 风险：当前仓库仍只有 Qualcomm 实现，新增协议需要提供对应注册项和适配器；真实设备验证风险不变。
+
+### CLI-05（2026-09-05）
+
+- 行为结论：Vendor 识别只决定 Firehose 策略，不再隐式开启 Xiaomi 认证；`--auth xiaomi` 映射为 `AuthenticationKind.XiaomiSignature`，认证 Provider 提供签名材料后执行参考项目的直接 `sig`/Raw 顺序。CLI 进度更新清理整行并和日志输出串行化，目标信息不再把 Vendor 当作 Protocol，也不记录完整 CA Hash。
+- 验证证据：Qcom 回归测试 166 项通过；CLI Release 构建通过；新增 Xiaomi 未显式认证时不发送 `sig` 请求、显式认证发送 `sig` 而不发送 `req` 的本地线路测试。
+- 风险：尚未在本地再次执行真实刷写；设备实际接受的 Xiaomi 签名材料仍需使用 `dotnet run -- --auth xiaomi` 现场验证。终端需支持 ANSI 控制序列，否则进度清行效果取决于宿主终端实现。
 
 - OplusDigestLegacy 的阈值刷新与签名 NAK 恢复顺序、以及 XML 发送后计数（包括普通 NAK）已由本地 QnQcLIB 源码确认；真实设备仍可能存在 Loader 变体，需用硬件或脱敏抓包复核兼容性。
 - `FirehoseProgramExecutor` 已采用两阶段映射校验和执行时映射；Sparse segment 计划本身仍按输入结构建立列表，超大镜像需要在目标环境继续观察计划列表和第三方 Sparse 解析器的稳态分配。

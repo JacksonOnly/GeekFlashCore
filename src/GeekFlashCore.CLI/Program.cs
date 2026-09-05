@@ -12,15 +12,16 @@ catch (Exception exception)
     CommandLine.PrintHelp();
     return 2;
 }
+var ui = new ConsoleUi();
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Is(options.Verbose ? Serilog.Events.LogEventLevel.Debug : Serilog.Events.LogEventLevel.Information)
-    .WriteTo.Console()
+    .WriteTo.Sink(new ConsoleLogSink(ui))
     .CreateLogger();
 using var cancellation = new CancellationTokenSource();
 Console.CancelKeyPress += (_, eventArgs) => { eventArgs.Cancel = true; cancellation.Cancel(); };
 try
 {
-    return await new CliApplication().RunAsync(options, cancellation.Token);
+    return await new CliApplication(ui).RunAsync(options, cancellation.Token);
 }
 catch (OperationCanceledException)
 {

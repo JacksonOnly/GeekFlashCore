@@ -105,7 +105,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             ct.ThrowIfCancellationRequested();
             await SendGenericDigestAsync(ct).ConfigureAwait(false);
             FirehoseConfigureResult configured = await new ConfigureNegotiator(_firehose!).NegotiateAsync(
-                configuration, _targetInfo!.Vendor, AuthenticateXiaomiAsync, ct).ConfigureAwait(false);
+                configuration, _targetInfo!.Vendor, GetXiaomiAuthenticationAsync(), ct).ConfigureAwait(false);
             await InitializeStorageAsync(configured, ct).ConfigureAwait(false);
             await VerifyVendorAsync(ct).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
@@ -162,7 +162,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             configuration = LimitConfiguration(configuration);
             SendGenericDigest();
             var result = new ConfigureNegotiator(_firehose!).Negotiate(
-                configuration, _targetInfo!.Vendor, AuthenticateXiaomi);
+                configuration, _targetInfo!.Vendor, GetXiaomiAuthentication());
             InitializeStorage(result);
             VerifyVendor();
             _connected = true;
@@ -464,8 +464,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private async ValueTask<bool> AuthenticateXiaomiAsync(FirehoseNakException exception, CancellationToken ct)
     {
         var authentication = new XiaomiAuthentication(_firehose!, checked((int)_options.Firehose.MaxPayloadSizeToTargetInBytes));
-        using var challenge = authentication.RequestChallenge();
-        var response = await AuthenticationResourceAsync(new VendorAuthenticationResourceRequest(QcomAuthenticationKind.XiaomiSignature, TargetInfo!, challenge), ct).ConfigureAwait(false);
+        var response = await AuthenticationResourceAsync(new VendorAuthenticationResourceRequest(QcomAuthenticationKind.XiaomiSignature, TargetInfo!), ct).ConfigureAwait(false);
         using (response.Payload)
         {
             ct.ThrowIfCancellationRequested();
@@ -474,18 +473,23 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         return true;
     }
 
+    private Func<FirehoseNakException, CancellationToken, ValueTask<bool>>? GetXiaomiAuthenticationAsync() =>
+        _options.AuthenticationKind == QcomAuthenticationKind.XiaomiSignature ? AuthenticateXiaomiAsync : null;
+
     private bool AuthenticateXiaomi(FirehoseNakException exception)
     {
         var authentication = new XiaomiAuthentication(_firehose!, checked((int)_options.Firehose.MaxPayloadSizeToTargetInBytes));
-        using var challenge = authentication.RequestChallenge();
         var response = AuthenticationResource(new VendorAuthenticationResourceRequest(
-            QcomAuthenticationKind.XiaomiSignature, TargetInfo!, challenge));
+            QcomAuthenticationKind.XiaomiSignature, TargetInfo!));
         using (response.Payload)
         {
             authentication.Authenticate(response.Payload.Memory.Span);
         }
         return true;
     }
+
+    private Func<FirehoseNakException, bool>? GetXiaomiAuthentication() =>
+        _options.AuthenticationKind == QcomAuthenticationKind.XiaomiSignature ? AuthenticateXiaomi : null;
 
     private async ValueTask VerifyVendorAsync(CancellationToken ct)
     {

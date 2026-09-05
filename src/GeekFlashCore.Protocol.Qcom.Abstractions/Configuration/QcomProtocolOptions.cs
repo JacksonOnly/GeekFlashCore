@@ -14,6 +14,8 @@ public sealed record QcomProtocolOptions
     /// <summary>Send qdl-compatible Sahara HELLO response when the first protocol read times out.</summary>
     public bool ProbeFirehoseOnSaharaTimeout { get; init; } = true;
     public QcomVendorKind VendorOverride { get; init; } = QcomVendorKind.Auto;
+    /// <summary>Explicitly enables a vendor authentication flow. Vendor detection alone never enables authentication.</summary>
+    public QcomAuthenticationKind? AuthenticationKind { get; init; }
     public FirehoseConfiguration Firehose { get; init; } = new();
     public FirehoseDigestConfiguration FirehoseDigest { get; init; } = new();
     public FirehoseVipConfiguration FirehoseVip { get; init; } = new();
@@ -29,6 +31,8 @@ public sealed record QcomProtocolOptions
         ArgumentNullException.ThrowIfNull(FirehoseDigest);
         ArgumentNullException.ThrowIfNull(FirehoseVip);
         ArgumentNullException.ThrowIfNull(OplusDigest);
+        if (AuthenticationKind is { } authentication && !Enum.IsDefined(authentication))
+            throw new ArgumentOutOfRangeException(nameof(AuthenticationKind), authentication, "Unknown authentication kind.");
         Firehose.Validate();
         FirehoseDigest.Validate();
         FirehoseVip.Validate();

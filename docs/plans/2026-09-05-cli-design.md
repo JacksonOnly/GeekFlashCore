@@ -38,6 +38,7 @@ Console entry point
 
 - 文件参数可选；未提供时 Provider 通过控制台提问路径。文件以 `FileDataSource` 流式打开，不将整个镜像载入内存。
 - 认证响应使用 `SensitiveDataOwner`，CLI 不打印 payload 和 challenge。
+- Vendor 识别与认证选择分离；Xiaomi 签名线路只有显式 `--auth xiaomi` 时启用，避免将 loader 静态 OEM 提示误当作运行时认证要求。
 - 进度使用 `ProgressRecord`，默认单行更新；Serilog 阶段日志写控制台，包级 Debug 日志只有显式 `--verbose` 才启用。
 - Ctrl+C 转换为取消令牌；退出前释放协议、传输、USB 监视器和文件流。
 

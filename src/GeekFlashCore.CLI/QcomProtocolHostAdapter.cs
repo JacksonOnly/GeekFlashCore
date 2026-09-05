@@ -36,6 +36,7 @@ internal static class QcomProtocolHostAdapter
         return new QcomProtocolOptions
         {
             VendorOverride = input.Vendor,
+            AuthenticationKind = input.AuthenticationKind,
             ReadTimeoutMilliseconds = input.ReadTimeout,
             WriteTimeoutMilliseconds = input.WriteTimeout,
             OplusDigest = new OplusDigestConfiguration { Mode = mode },

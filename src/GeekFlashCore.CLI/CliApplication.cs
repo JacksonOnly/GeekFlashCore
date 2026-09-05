@@ -7,8 +7,15 @@ namespace GeekFlashCore.CLI;
 
 internal sealed class CliApplication
 {
-    private readonly ConsoleUi _ui = new();
+    private readonly ConsoleUi _ui;
     private readonly TransportResolver _transportResolver = new();
+    private readonly IProgress<ProgressRecord> _progress;
+
+    public CliApplication(ConsoleUi? ui = null)
+    {
+        _ui = ui ?? new ConsoleUi();
+        _progress = new ImmediateProgress<ProgressRecord>(_ui.Report);
+    }
 
     public async Task<int> RunAsync(CliOptions options, CancellationToken ct)
     {
@@ -29,7 +36,7 @@ internal sealed class CliApplication
         ITransport transport = connection.Transport;
         try
         {
-            var progress = new Progress<ProgressRecord>(_ui.Report);
+            var progress = _progress;
             IProtocolCommandHandler? special = FindSpecialHandler(connection.Registration, options.Arguments);
             if (special is not null && !special.RequiresConnection(options.Arguments))
                 return await special.ExecuteAsync(protocol, options.Arguments, _ui, progress, ct).ConfigureAwait(false);
@@ -49,7 +56,7 @@ internal sealed class CliApplication
         ITransport transport = connection.Transport;
         try
         {
-            await protocol.ConnectAsync(new Progress<ProgressRecord>(_ui.Report), ct).ConfigureAwait(false);
+            await protocol.ConnectAsync(_progress, ct).ConfigureAwait(false);
             Console.WriteLine($"已联机到 {connection.Registration.DisplayName}。通用功能: info, partitions, read, write, erase, reboot。协议功能: {string.Join("; ", connection.Registration.CommandHandlers.Select(handler => handler.HelpText))}");
             while (!ct.IsCancellationRequested)
             {
@@ -61,7 +68,7 @@ internal sealed class CliApplication
                 {
                     var parsed = CommandLine.Parse(Tokenize(line));
                     if (parsed.Command.Equals("interactive", StringComparison.OrdinalIgnoreCase)) continue;
-                    await ExecuteCommandAsync(protocol, connection.Registration, parsed, new Progress<ProgressRecord>(_ui.Report), ct).ConfigureAwait(false);
+                    await ExecuteCommandAsync(protocol, connection.Registration, parsed, _progress, ct).ConfigureAwait(false);
                 }
                 catch (Exception exception) { _ui.LogException(exception); }
             }
@@ -160,4 +167,11 @@ internal sealed class CliApplication
         if (current.Length > 0) tokens.Add(current.ToString());
         return tokens.ToArray();
     }
+}
+
+internal sealed class ImmediateProgress<T>(Action<T> handler) : IProgress<T>
+{
+    private readonly Action<T> _handler = handler ?? throw new ArgumentNullException(nameof(handler));
+
+    public void Report(T value) => _handler(value);
 }

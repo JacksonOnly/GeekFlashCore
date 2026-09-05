@@ -410,6 +410,8 @@
 - 2026-09-05 CLI-08 修复 Firehose/Sahara 重连超时：参考 QnQcLIB 将首包探测与 Firehose 启动等待分离，短超时后发送一次受控 `<nop/>` 探测已运行 Firehose；Configure 兼容线路补齐存储探测失败、扇区不匹配和候选 MemoryName 的有界回退，避免重连空等约 10 秒。
 - 2026-09-05 CLI-09 修复联机信息与分区命令：`getstorageinfo` 的 `serial_num` 回填 Firehose 基本信息，Configure 响应/日志中的 build time 回填 `FirehoseConfigureResponse.DateTime` 与 CLI 展示；移除 `info` 重复 Protocol 行；GPT 头部或分区表损坏时按 LUN 跳过，避免单个异常使后续会话失效。
 
+- 2026-09-05 CLI-10：修复 NOP 重连信息丢失、启动与 configure 构建日期解析、UFS 产品名和 TargetName 回填（提交 `a678e02`）；补齐 GPT 两扇区头校验后的条目数组读取、LUN 跳过日志和 CLI 空结果/失败提示。Qcom 186 项和 CLI 4 项本地测试通过，Release 构建 0 警告/0 错误，差异与资源键检查通过。
+
 ## 未决风险
 
 ### CLI-10：联机信息与重连（2026-09-05）
@@ -417,6 +419,12 @@
 - 行为结论：保留两条 NOP 探测入口的响应，启动日志与 NOP 响应均解析 `Binary build date`（兼容 `@` 分隔符）；configure 的 Build Time/DateTime 仍可回填。UFS `prod_name` 映射到 UfsName，configure TargetName 写回目标信息。函数列表优先识别结束标记，避免将后续诊断当作命令。
 - 验证证据：新增本地回归测试先复现日期为默认值和 NOP 信息丢失，再验证同步/异步 `nop → configure → getstorageinfo` 顺序，以及存储初始化失败时不宣告连接成功。当前完整 Qcom 测试 186 项通过，Release 解决方案构建 0 警告/0 错误。
 - 风险：以上为模拟传输证据，真实设备未复测；设备没有提供日期时只能保留未知状态。详细修复方案见 `2026-09-05-cli-recovery-fixes.md`。
+
+### CLI-10：GPT 和 CLI 诊断（2026-09-05）
+
+- 行为结论：不再将两扇区头部传给要求完整条目容量的镜像解析器。先校验头字段、CRC、设备范围及 16 MiB 上限，再补读后续元数据并严格校验 GPT。元数据损坏按 LUN 记录 Warning；传输异常向 CLI 传播；Raw 短读使旧租约失效。CLI 空分区集合输出警告，erase/reboot 返回 false 按失败处理，构建时间缺失显示 unknown。
+- 验证证据：本地 512/4096 字节扇区测试均验证两次 read 的扇区范围和真实分区偏移/长度；签名缺失、CRC 错误、异常条目数量和 LBA 溢出均只读取头部并输出日志。完整 Qcom 测试 186 项、CLI 测试 4 项、Release 构建和 CLI `--help` 均通过；中英文资源键一致，`.tests`、bin/obj、temp 均未被跟踪。
+- 风险：当前仍只初始化 LUN 0，未扩展多 LUN 自动发现；仅解析主 GPT，主表损坏时报告跳过，不自动使用备份表。严格 CRC/几何校验可能拒绝厂商非标准表，需真实设备日志确认，不在本次放宽边界。
 
 ### CLI-01（2026-09-05）
 

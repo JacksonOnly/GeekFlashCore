@@ -68,3 +68,11 @@ Console entry point
 - 未指定 `AuthenticationKind` 时，Qcom 核心自动尝试内置兼容签名；签名全部失败后才调用宿主提供的 `IVendorAuthenticationProvider`，CLI 因而会在需要时询问用户。
 - 显式 `--auth xiaomi` 作为 Provider 覆盖模式，适用于设备不接受内置签名或需要外部授权材料的场景。
 - 内置签名只保存在协议程序集的私有静态表中，逐次解码后清零，不写入日志；真实设备兼容性和授权策略仍需现场验证。
+
+## CLI-10 修复记录（2026-09-05）
+
+- GPT 从两扇区头部校验中取得受限读取长度，再读取条目数组；不再因 HeaderOnly 布局检测要求完整条目而返回空列表。缺失签名或损坏 GPT 记录对应 LUN 的 Warning，传输错误保持异常传播。
+- `partitions` 空结果明确输出警告；`erase`/`reboot` 的 false 返回值转为命令失败，走现有 Error 日志和一次性命令退出码。新增消息均使用中英文资源。
+- `info` 保留启动/NOP/configure 的构建时间证据，兼容 `Binary build date: ... @ ...`；无证据显示 unknown。UFS 产品名来自 getstorageinfo 的 prod_name，TargetName 来自 configure。
+- 同步、异步 Firehose 重连均验证 NOP 后继续 configure 和 getstorageinfo，失败时清理连接。当前仍只查询 LUN 0，未加入多 LUN 自动发现或备份 GPT 回退。
+- 验证：Qcom 186 项、CLI 4 项测试通过，Release 解决方案构建 0 警告/0 错误，CLI `--help`、`git diff --check` 和中英文资源键检查通过。测试全部位于 ignored `.tests`；真实硬件仍待复测。

@@ -1,4 +1,5 @@
 using System.Text;
+using GeekFlashCore.CLI.Localization;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using Serilog;
@@ -100,7 +101,7 @@ internal sealed class ConsoleUi
                 var config = firehose.Configuration;
                 Console.WriteLine($"Firehose: target={firehose.TargetName ?? "unknown"}, ufs={firehose.UfsName ?? "unknown"}, storage={config?.Storage}, sector={config?.SectorSizeInBytes}, payload={config?.MaxPayloadSizeToTargetInBytes}");
                 if (firehose.BasicDevCharacteristics is { } basic)
-                    Console.WriteLine($"  chip={basic.ChipName ?? "unknown"}, serial={basic.SerialNumber}, build={basic.BuildDate:yyyy-MM-dd HH:mm:ss}, functions={basic.SupportedFunctions.Count}");
+                    Console.WriteLine($"  chip={basic.ChipName ?? "unknown"}, serial={basic.SerialNumber}, build={(basic.BuildDate == default ? "unknown" : basic.BuildDate.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture))}, functions={basic.SupportedFunctions.Count}");
                 foreach (var storage in firehose.StorageInfos)
                     Console.WriteLine($"  {storage.Storage} lun={storage.PhysicalPartitionNumber} blocks={storage.BlockCount} size={storage.BlockSizeInBytes} capacity={storage.CapacityInBytes}");
             }
@@ -115,7 +116,7 @@ internal sealed class ConsoleUi
     }
 
     public static string ReadLine(string? fallback = null) => Console.ReadLine() is { } value && value.Length > 0 ? value : fallback ?? string.Empty;
-    public void LogException(Exception exception) => Log.Error(exception, "Command failed: {Message}", exception.Message);
+    public void LogException(Exception exception) => Log.Error(exception, Strings.Cli_LogCommandFailed, exception.Message);
 
     internal void WriteLog(LogEvent logEvent)
     {

@@ -486,4 +486,8 @@ Current {0}, expected {1}</value>
   <data name="Qcom_SparseBlockSizeUnaligned" xml:space="preserve"><value>The Android sparse block size must be a multiple of the Firehose sector size.</value></data>
   <data name="Qcom_SparseExpandedRangeTooLarge" xml:space="preserve"><value>The expanded Android sparse image is larger than the target range.</value></data>
   <data name="Qcom_OplusDigestParseFailed" xml:space="preserve"><value>The Oplus Digest could not be parsed: {0}</value></data>
+  <data name="Qcom_LogGptSkipped" xml:space="preserve"><value>Skipping GPT on LUN {PhysicalPartitionNumber}: {Reason}</value></data>
+  <data name="Qcom_GptSignatureMissing" xml:space="preserve"><value>No EFI PART signature was found at LBA 1.</value></data>
+  <data name="Qcom_GptInvalidGeometry" xml:space="preserve"><value>Invalid GPT header or entry range; exceeds device capacity or the 16 MiB metadata limit.</value></data>
+  <data name="Qcom_GptHeaderCrcInvalid" xml:space="preserve"><value>GPT header CRC validation failed.</value></data>
 </root>

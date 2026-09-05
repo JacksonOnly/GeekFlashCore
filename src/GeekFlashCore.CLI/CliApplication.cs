@@ -1,4 +1,5 @@
 using GeekFlashCore.Protocol.Abstractions;
+using GeekFlashCore.CLI.Localization;
 using GeekFlashCore.Transport.Abstractions;
 using GeekFlashCore.UsbWatcher;
 using Serilog;
@@ -92,14 +93,18 @@ internal sealed class CliApplication
                 registration.InfoPresenter?.Invoke(protocol, _ui);
                 return 0;
             case "partitions":
-                foreach (var item in await protocol.GetPartitionsAsync(progress, ct).ConfigureAwait(false)) _ui.WriteLine($"{item.Name,-32} offset={item.Offset} length={item.Length} address={item.Address}");
+                var partitions = await protocol.GetPartitionsAsync(progress, ct).ConfigureAwait(false);
+                if (partitions.Count == 0) Log.Warning(Strings.Cli_NoPartitions);
+                foreach (var item in partitions) _ui.WriteLine($"{item.Name,-32} offset={item.Offset} length={item.Length} address={item.Address}");
                 return 0;
             case "read": await ReadAsync(protocol, options.Arguments, progress, ct).ConfigureAwait(false); return 0;
             case "write": await WriteAsync(protocol, options.Arguments, progress, ct).ConfigureAwait(false); return 0;
             case "erase": await EraseAsync(protocol, options.Arguments, progress, ct).ConfigureAwait(false); return 0;
             case "reboot":
                 var mode = Enum.Parse<ProtocolRebootMode>(options.Arguments.FirstOrDefault() ?? "system", true);
-                await protocol.RebootAsync(mode, progress, ct).ConfigureAwait(false); return 0;
+                if (!await protocol.RebootAsync(mode, progress, ct).ConfigureAwait(false))
+                    throw new InvalidOperationException(Strings.FormatCli_CommandUnsuccessful("reboot"));
+                return 0;
             default: throw new ArgumentException($"未知命令 '{options.Command}'");
         }
     }
@@ -140,7 +145,8 @@ internal sealed class CliApplication
     private static async Task EraseAsync(IProtocol protocol, string[] args, IProgress<ProgressRecord> progress, CancellationToken ct)
     {
         if (args.Length < 1) throw new ArgumentException("erase 用法: erase <target>");
-        await protocol.EraseAsync(ParseTarget(args[0]), progress, ct).ConfigureAwait(false);
+        if (!await protocol.EraseAsync(ParseTarget(args[0]), progress, ct).ConfigureAwait(false))
+            throw new InvalidOperationException(Strings.FormatCli_CommandUnsuccessful("erase"));
     }
 
     private static StorageTarget ParseTarget(string value)

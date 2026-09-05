@@ -4,6 +4,8 @@ using GeekFlashCore.Gpt;
 using GeekFlashCore.Gpt.Abstractions;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
+using GeekFlashCore.Shared.Utilities;
+using Serilog;
 
 namespace GeekFlashCore.Protocol.Qcom;
 
@@ -101,43 +103,74 @@ public sealed partial class QcomProtocol
         foreach (var descriptor in _storage!.GetBlockDevices())
         {
             ct.ThrowIfCancellationRequested();
-            using var device = _storage.OpenBlockDevice(descriptor.Id);
             int sectorSize = descriptor.LogicalBlockSize;
-            byte[] header = new byte[checked(sectorSize * 2)];
-            device.ReadAt(0, header);
-            if (!header.AsSpan(sectorSize, 8).SequenceEqual("EFI PART"u8)) continue;
+            uint lun = checked((uint)descriptor.PhysicalPartitionNumber!.Value);
             try
             {
-                _ = new GptParser().Parse(header, new GptParseOptions { SectorSize = sectorSize, HeaderOnly = true });
-            }
-            catch (GptException)
-            {
-                continue;
-            }
-            ulong entriesLba = BinaryPrimitives.ReadUInt64LittleEndian(header.AsSpan(sectorSize + 72));
-            uint count = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(sectorSize + 80));
-            uint entrySize = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(sectorSize + 84));
-            ulong end = checked(entriesLba * (ulong)sectorSize + (ulong)count * entrySize);
-            ulong aligned = checked((end + (ulong)sectorSize - 1) / (ulong)sectorSize * (ulong)sectorSize);
-            if (aligned > 16 * 1024 * 1024 || aligned > (ulong)device.Length || aligned < (ulong)header.Length)
-                continue;
-            byte[] image = new byte[checked((int)aligned)];
-            header.CopyTo(image, 0);
-            ct.ThrowIfCancellationRequested();
-            if (image.Length > header.Length) device.ReadAt(header.Length, image.AsSpan(header.Length));
-            try
-            {
-                var table = new GptParser().Parse(image, new GptParseOptions { SectorSize = sectorSize });
+                if (descriptor.Length < checked(sectorSize * 2L))
+                    throw new GptException(Strings.Qcom_GptInvalidGeometry);
+                byte[] header = new byte[checked(sectorSize * 2)];
+                ReadGptMetadata(lun, 0, sectorSize, header, ct);
+                // HeaderOnly in the image parser still requires the declared entry array.
+                // Validate untrusted header geometry before allocating and reading that array.
+                int imageLength = GetPrimaryGptImageLength(header.AsSpan(sectorSize), sectorSize, descriptor.Length);
+                byte[] image = new byte[imageLength];
+                header.CopyTo(image, 0);
+                ReadGptMetadata(lun, 2, sectorSize, image.AsSpan(header.Length), ct);
+                var table = new GptParser().Parse(image, new GptParseOptions
+                {
+                    SectorSize = sectorSize, CrcPolicy = GptCrcPolicy.Strict,
+                    AllowUnpatchedPartitionGeometry = false, AllowEmptyPartitionTypeId = false
+                });
                 foreach (var entry in table.Entries)
-                    partitions.Add((entry.Name, new(checked((uint)descriptor.PhysicalPartitionNumber!.Value),
+                    partitions.Add((entry.Name, new(lun,
                         checked((long)entry.FirstLba), checked((long)entry.SectorCount), checked((uint)sectorSize), entry.Name)));
             }
-            catch (GptException)
+            catch (GptException exception)
             {
-                continue;
+                Log.ForContext<QcomProtocol>().Warning(Strings.Qcom_LogGptSkipped, lun, exception.Message);
             }
         }
         return partitions;
+    }
+
+    private void ReadGptMetadata(uint lun, long start, int sectorSize, Span<byte> buffer, CancellationToken ct) =>
+        _storage!.Read(new FirehoseReadRequest
+        {
+            PhysicalPartitionNumber = lun, StartSector = start,
+            SectorCount = buffer.Length / sectorSize, SectorSizeInBytes = checked((uint)sectorSize)
+        }, buffer, cancellationToken: ct);
+
+    private static int GetPrimaryGptImageLength(ReadOnlySpan<byte> header, int sectorSize, long deviceLength)
+    {
+        const ulong maximumMetadataLength = 16 * 1024 * 1024;
+        if (!header[..8].SequenceEqual("EFI PART"u8))
+            throw new GptException(Strings.Qcom_GptSignatureMissing);
+        uint headerSize = BinaryPrimitives.ReadUInt32LittleEndian(header[12..]);
+        ulong current = BinaryPrimitives.ReadUInt64LittleEndian(header[24..]);
+        ulong backup = BinaryPrimitives.ReadUInt64LittleEndian(header[32..]);
+        ulong first = BinaryPrimitives.ReadUInt64LittleEndian(header[40..]);
+        ulong last = BinaryPrimitives.ReadUInt64LittleEndian(header[48..]);
+        ulong entriesLba = BinaryPrimitives.ReadUInt64LittleEndian(header[72..]);
+        uint count = BinaryPrimitives.ReadUInt32LittleEndian(header[80..]);
+        uint entrySize = BinaryPrimitives.ReadUInt32LittleEndian(header[84..]);
+        ulong diskSectors = checked((ulong)(deviceLength / sectorSize));
+        if (headerSize < 92 || headerSize > sectorSize || current != 1 || backup <= current ||
+            backup >= diskSectors || first > last || last >= backup ||
+            count is 0 or > 16384 || entrySize < 128 || (entrySize & 7) != 0 ||
+            entriesLba < 2 || entriesLba > maximumMetadataLength / (ulong)sectorSize)
+            throw new GptException(Strings.Qcom_GptInvalidGeometry);
+        ulong end = checked(entriesLba * (ulong)sectorSize + (ulong)count * entrySize);
+        ulong sectors = checked((end + (ulong)sectorSize - 1) / (ulong)sectorSize);
+        ulong aligned = checked(sectors * (ulong)sectorSize);
+        if (aligned > maximumMetadataLength || aligned > (ulong)deviceLength || sectors > first)
+            throw new GptException(Strings.Qcom_GptInvalidGeometry);
+        byte[] crcHeader = header[..checked((int)headerSize)].ToArray();
+        uint expectedCrc = BinaryPrimitives.ReadUInt32LittleEndian(crcHeader.AsSpan(16));
+        crcHeader.AsSpan(16, 4).Clear();
+        if (Crc32Helper.Compute(crcHeader) != expectedCrc)
+            throw new GptException(Strings.Qcom_GptHeaderCrcInvalid);
+        return checked((int)aligned);
     }
 
     private readonly record struct TargetRange(uint Partition, long Start, long Count, uint SectorSize, string? Label = null);

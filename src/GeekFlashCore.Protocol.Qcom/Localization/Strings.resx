@@ -383,4 +383,8 @@
   <data name="Qcom_SparseBlockSizeUnaligned" xml:space="preserve"><value>Android Sparse 块大小必须是 Firehose 扇区大小的整数倍。</value></data>
   <data name="Qcom_SparseExpandedRangeTooLarge" xml:space="preserve"><value>展开后的 Android Sparse 镜像大于目标范围。</value></data>
   <data name="Qcom_OplusDigestParseFailed" xml:space="preserve"><value>无法解析 Oplus Digest：{0}</value></data>
+  <data name="Qcom_LogGptSkipped" xml:space="preserve"><value>跳过 LUN {PhysicalPartitionNumber} 的 GPT：{Reason}</value></data>
+  <data name="Qcom_GptSignatureMissing" xml:space="preserve"><value>LBA 1 未找到 EFI PART 签名。</value></data>
+  <data name="Qcom_GptInvalidGeometry" xml:space="preserve"><value>GPT 头或条目范围无效，超出设备容量或 16 MiB 元数据限制。</value></data>
+  <data name="Qcom_GptHeaderCrcInvalid" xml:space="preserve"><value>GPT 头 CRC 校验失败。</value></data>
 </root>

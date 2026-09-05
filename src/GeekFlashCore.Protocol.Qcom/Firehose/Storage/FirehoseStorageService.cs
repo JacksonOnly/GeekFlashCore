@@ -11,9 +11,12 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
     private readonly FirehoseConfigureResponse _configuration;
     private readonly FirehoseProgramExecutor _programExecutor;
     private readonly FirehoseSession _session;
+    private readonly IFirehoseStoragePolicy? _policy;
 
-    public FirehoseStorageService(FirehoseSession session, FirehoseConfigureResponse configuration)
+    public FirehoseStorageService(FirehoseSession session, FirehoseConfigureResponse configuration,
+        IFirehoseStoragePolicy? policy = null)
     {
+        _policy = policy;
         _session = session ?? throw new ArgumentNullException(nameof(session));
         ArgumentNullException.ThrowIfNull(configuration);
         FirehoseStorage storage = configuration.Storage != FirehoseStorage.None
@@ -32,7 +35,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
             MemoryName = storage.ToWireString(),
             SectorSizeInBytes = sectorSize
         };
-        _programExecutor = new FirehoseProgramExecutor(_session, GetTransferBufferSize());
+        _programExecutor = new FirehoseProgramExecutor(_session, GetTransferBufferSize(), policy);
     }
 
     public FirehoseConfigureResponse Configuration => _configuration;
@@ -54,9 +57,19 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
             request.SectorCount,
             request.SectorSizeInBytes);
         long length = request.GetByteLength();
-        _session.Execute(CreateReadCommand(request), expectedRawMode: true);
-        return _session.ReceiveRaw(destination, length, GetTransferBufferSize(), progress, cancellationToken)
-            .BytesTransferred;
+        IReadOnlyList<FirehoseStorageRange> ranges = Map(request.PhysicalPartitionNumber, request.StartSector,
+            request.SectorCount, false, request.Label, request.FileName);
+        long completed = 0;
+        foreach (FirehoseStorageRange range in ranges)
+        {
+            ExecuteTransfer(CreateReadCommand(request with { StartSector = range.StartSector,
+                SectorCount = range.SectorCount, Label = range.Label, FileName = range.FileName }), cancellationToken);
+            long count = checked(range.SectorCount * request.SectorSizeInBytes);
+            completed = checked(completed + _session.ReceiveRaw(destination, count, GetTransferBufferSize(),
+                Aggregate(progress, completed), cancellationToken).BytesTransferred);
+            _policy?.CommandCompleted();
+        }
+        return completed;
     }
 
     public long Read(
@@ -75,8 +88,19 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
         long length = request.GetByteLength();
         if (length != destination.Length)
             throw new ArgumentException("The destination length must equal the Firehose read range.", nameof(destination));
-        _session.Execute(CreateReadCommand(request), expectedRawMode: true);
-        return _session.ReceiveRaw(destination, progress, cancellationToken).BytesTransferred;
+        IReadOnlyList<FirehoseStorageRange> ranges = Map(request.PhysicalPartitionNumber, request.StartSector,
+            request.SectorCount, false, request.Label, request.FileName);
+        int completed = 0;
+        foreach (FirehoseStorageRange range in ranges)
+        {
+            ExecuteTransfer(CreateReadCommand(request with { StartSector = range.StartSector,
+                SectorCount = range.SectorCount, Label = range.Label, FileName = range.FileName }), cancellationToken);
+            int count = checked((int)(range.SectorCount * request.SectorSizeInBytes));
+            _session.ReceiveRaw(destination.Slice(completed, count), Aggregate(progress, completed), cancellationToken);
+            completed = checked(completed + count);
+            _policy?.CommandCompleted();
+        }
+        return completed;
     }
 
     public long Program(
@@ -115,14 +139,25 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
             startSector,
             sectors,
             sectorSize);
-        _session.Execute(new ProgramCommand
+        IReadOnlyList<FirehoseStorageRange> ranges = Map(physicalPartitionNumber, startSector, sectors, true);
+        int completed = 0;
+        foreach (FirehoseStorageRange range in ranges)
         {
-            PhysicalPartitionNumber = physicalPartitionNumber,
-            SectorSizeInBytes = sectorSize,
-            StartSector = Format(startSector),
-            NumPartitionSectors = Format(sectors)
-        }, expectedRawMode: true);
-        return _session.SendRaw(source, GetTransferBufferSize(), cancellationToken).BytesTransferred;
+            ExecuteTransfer(new ProgramCommand
+            {
+                PhysicalPartitionNumber = physicalPartitionNumber,
+                SectorSizeInBytes = sectorSize,
+                StartSector = Format(range.StartSector),
+                NumPartitionSectors = Format(range.SectorCount),
+                Label = range.Label,
+                FileName = range.FileName
+            }, cancellationToken);
+            int count = checked((int)(range.SectorCount * sectorSize));
+            _session.SendRaw(source.Slice(completed, count), GetTransferBufferSize(), cancellationToken);
+            completed = checked(completed + count);
+            _policy?.CommandCompleted();
+        }
+        return completed;
     }
 
     public FirehoseCommandResult Erase(
@@ -381,6 +416,26 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
         GetSpare = ToByte(request.IoOptions.GetSpare),
         EccDisabled = ToByte(request.IoOptions.EccDisabled)
     };
+
+    private IReadOnlyList<FirehoseStorageRange> Map(uint partition, long start, long count,
+        bool write, string? label = null, string? fileName = null) =>
+        _policy?.Map(partition, start, count, write, label, fileName) ??
+        [new FirehoseStorageRange(start, count, label, fileName)];
+
+    private void ExecuteTransfer(BaseCommand command, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_policy is null) _session.Execute(command, expectedRawMode: true);
+        else _policy.ExecuteCommand(_session, command, cancellationToken);
+    }
+
+    private static IProgress<long>? Aggregate(IProgress<long>? progress, long origin) =>
+        progress is null ? null : new AggregateProgress(progress, origin);
+
+    private sealed class AggregateProgress(IProgress<long> target, long origin) : IProgress<long>
+    {
+        public void Report(long value) => target.Report(checked(origin + value));
+    }
 
     private static byte? ToByte(bool? value) => value is null ? null : value.Value ? (byte)1 : (byte)0;
     private static string Format(long value) => value.ToString(CultureInfo.InvariantCulture);

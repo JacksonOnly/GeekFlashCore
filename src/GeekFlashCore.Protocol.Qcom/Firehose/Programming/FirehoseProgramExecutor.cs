@@ -1,4 +1,5 @@
 using System.Globalization;
+using GeekFlashCore.Protocol.Qcom.Firehose.Storage;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 
 namespace GeekFlashCore.Protocol.Qcom.Firehose.Programming;
@@ -7,13 +8,15 @@ internal sealed class FirehoseProgramExecutor
 {
     private readonly FirehoseSession _session;
     private readonly int _transferBufferSize;
+    private readonly IFirehoseStoragePolicy? _policy;
 
-    public FirehoseProgramExecutor(FirehoseSession session, int transferBufferSize)
+    public FirehoseProgramExecutor(FirehoseSession session, int transferBufferSize, IFirehoseStoragePolicy? policy = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         if (transferBufferSize <= 0)
             throw new ArgumentOutOfRangeException(nameof(transferBufferSize));
         _transferBufferSize = transferBufferSize;
+        _policy = policy;
     }
 
     public long Execute(
@@ -23,30 +26,39 @@ internal sealed class FirehoseProgramExecutor
         CancellationToken cancellationToken)
     {
         using FirehoseProgramPlan plan = FirehoseProgramPlanner.Create(request, source, cancellationToken);
+        // Materialize every mapping before sending any command, including later sparse regions.
+        var mapped = plan.Segments.Select(segment => (Segment: segment, Ranges:
+            _policy?.Map(request.PhysicalPartitionNumber, segment.StartSector, segment.SectorCount,
+                true, request.Label, request.FileName) ??
+            [new FirehoseStorageRange(segment.StartSector, segment.SectorCount, request.Label, request.FileName)]))
+            .ToArray();
         long completed = 0;
-        foreach (FirehoseProgramSegment segment in plan.Segments)
+        foreach (var item in mapped)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            _session.Execute(CreateCommand(request, segment), expectedRawMode: true);
-            using Stream segmentSource = segment.OpenRead(plan.Source);
-            long wireLength = checked(segment.SectorCount * request.SectorSizeInBytes);
-            var segmentProgress = progress is null ? null : new AggregateProgress(progress, completed);
-            FirehoseCommandResult result = _session.SendRaw(
-                segmentSource,
-                segment.SourceLength,
-                wireLength,
-                _transferBufferSize,
-                request.PaddingByte,
-                segmentProgress,
-                cancellationToken);
-            completed = checked(completed + result.BytesTransferred);
+            using Stream segmentSource = item.Segment.OpenRead(plan.Source);
+            long sourceRemaining = item.Segment.SourceLength;
+            foreach (FirehoseStorageRange range in item.Ranges)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                ProgramCommand command = CreateCommand(request, range);
+                if (_policy is null) _session.Execute(command, expectedRawMode: true);
+                else _policy.ExecuteCommand(_session, command, cancellationToken);
+                long wireLength = checked(range.SectorCount * request.SectorSizeInBytes);
+                long sourceLength = Math.Min(sourceRemaining, wireLength);
+                var segmentProgress = progress is null ? null : new AggregateProgress(progress, completed);
+                FirehoseCommandResult result = _session.SendRaw(segmentSource, sourceLength, wireLength,
+                    _transferBufferSize, request.PaddingByte, segmentProgress, cancellationToken);
+                sourceRemaining -= sourceLength;
+                completed = checked(completed + result.BytesTransferred);
+                _policy?.CommandCompleted();
+            }
         }
         return completed;
     }
 
     private static ProgramCommand CreateCommand(
         FirehoseProgramRequest request,
-        FirehoseProgramSegment segment) => new()
+        FirehoseStorageRange segment) => new()
     {
         Storage = request.Storage,
         Slot = request.Slot,
@@ -54,8 +66,8 @@ internal sealed class FirehoseProgramExecutor
         SectorSizeInBytes = request.SectorSizeInBytes,
         NumPartitionSectors = segment.SectorCount.ToString(CultureInfo.InvariantCulture),
         StartSector = segment.StartSector.ToString(CultureInfo.InvariantCulture),
-        Label = request.Label,
-        FileName = request.FileName,
+        Label = segment.Label,
+        FileName = segment.FileName,
         LastSector = request.IoOptions.LastSector,
         SkipBadBlock = ToByte(request.IoOptions.SkipBadBlock),
         GetSpare = ToByte(request.IoOptions.GetSpare),

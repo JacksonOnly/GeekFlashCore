@@ -3,7 +3,7 @@ A communication protocol and flashing development framework targeting various ch
 
 ## CLI
 
-`GeekFlashCore.CLI` is the .NET 10 command-line host for the implemented protocols. With no transport option it discovers Qualcomm EDL USB devices and waits for a matching hot-plug event on Windows; `--port COMx` and `--usb VID:PID` select a transport explicitly. The protocol is inferred by default and can be forced with `--protocol QualcommEdl`.
+`GeekFlashCore.CLI` is the .NET 10 command-line host for the implemented protocols. Protocol creation, USB identification, protocol-specific commands, and device information are registered through the CLI protocol registry, so adding MTK/Fastboot/other hosts does not require changing the generic command loop. With no transport option it discovers registered USB devices and waits for a matching hot-plug event on Windows; `--port COMx` and `--usb VID:PID` select a transport explicitly. The protocol is inferred by default and can be forced with `--protocol QualcommEdl`.
 
 ```text
 geekflash devices

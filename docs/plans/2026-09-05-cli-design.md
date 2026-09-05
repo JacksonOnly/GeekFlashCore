@@ -28,11 +28,11 @@ Console entry point
   ├─ ArgumentParser / CommandDispatcher
   ├─ ConsoleUi (prompt, progress, table, cancellation)
   ├─ TransportResolver (serial, USB watcher, explicit protocol)
-  ├─ ProtocolRegistry (IDeviceIdentify + protocol factory)
+  ├─ ProtocolRegistry (IDeviceIdentify + protocol factory + extension commands)
   └─ QcomConsoleProviders (loader/digest/VIP/config/auth)
 ```
 
-命令包括 `devices`、`connect`、`info`、`partitions`、`read`、`write`、`erase`、`reboot`、`qcom`。一次性命令在完成后断开；没有命令时进入交互式会话，展示通用和协议专用能力菜单。
+命令包括 `devices`、`connect`、`info`、`partitions`、`read`、`write`、`erase`、`reboot` 和由注册项提供的协议专用命令。一次性命令在完成后断开；没有命令时进入交互式会话，展示通用和协议专用能力菜单。
 
 ## 资源与安全
 

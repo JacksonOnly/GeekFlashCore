@@ -417,6 +417,12 @@
 - 验证证据：CLI Release 构建通过；`--help`、未知协议退出路径和 `devices` 已运行；本机 WMI 枚举发现 `05C6:9008` Qualcomm EDL（COM73）。
 - 风险：尚未对真实设备执行连接、认证、读写或重启；CLI 的 Provider 输入与终端进度显示仍需脱敏设备验证。
 
+### CLI-03（2026-09-05）
+
+- 行为结论：移除 CLI 主流程对 QualcommProtocol 的固定依赖。协议注册项现在统一提供设备识别、传输后的协议工厂、协议专用命令和信息展示；主流程仅依赖 `IProtocol`。
+- 验证证据：CLI 主流程和 TransportResolver 不再引用 Qcom 类型；Qcom 逻辑集中到 `QcomProtocolHostAdapter`，Release 构建通过。
+- 风险：当前仓库仍只有 Qualcomm 实现，新增协议需要提供对应注册项和适配器；真实设备验证风险不变。
+
 - OplusDigestLegacy 的阈值刷新与签名 NAK 恢复顺序、以及 XML 发送后计数（包括普通 NAK）已由本地 QnQcLIB 源码确认；真实设备仍可能存在 Loader 变体，需用硬件或脱敏抓包复核兼容性。
 - `FirehoseProgramExecutor` 已采用两阶段映射校验和执行时映射；Sparse segment 计划本身仍按输入结构建立列表，超大镜像需要在目标环境继续观察计划列表和第三方 Sparse 解析器的稳态分配。
 - 当前 Qcom 核心仍有两类审查债务：Sahara/Firehose 包级收发日志数量较多，需要确认默认日志级别不会造成生产日志噪声；阶段日志与底层 NAK 日志存在重复风险，需要按事件归属层去重。

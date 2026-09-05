@@ -9,7 +9,7 @@ namespace GeekFlashCore.Protocol.Qcom.Internals;
 internal sealed class FirehoseCmdReceiver : IDisposable
 {
     private readonly FirehoseWireReader _reader;
-    private readonly int _readTimeoutMilliseconds;
+    private int _readTimeoutMilliseconds;
     private readonly ILogger _logger;
 
     public FirehoseCmdReceiver(ILogger logger, ITransport transport, int readTimeoutMilliseconds)
@@ -45,6 +45,13 @@ internal sealed class FirehoseCmdReceiver : IDisposable
     }
 
     public FirehoseResponse? PollResponse() => _reader.PollResponse();
+
+    internal void SetReadTimeout(int milliseconds)
+    {
+        if (milliseconds <= 0)
+            throw new ArgumentOutOfRangeException(nameof(milliseconds));
+        _readTimeoutMilliseconds = milliseconds;
+    }
 
     public FirehoseResponse ReceiveRaw(
         Span<byte> destination,

@@ -64,11 +64,11 @@ public sealed class ConfigureNegotiator
                     continue;
                 }
 
-                                ConfigureEvidence evidence = ConfigureEvidenceParser.Parse(exception.Result);
+                ConfigureEvidence evidence = ConfigureEvidenceParser.Parse(exception.Result);
                 ConfigureState next = state.Apply(evidence);
                 if (state.ManualStorage && (next.Storage != state.Storage || evidence.UnsupportedStorage is not null || next == state))
                     throw Failure(Strings.Qcom_ExplicitStorageRejected, exception);
-                if (evidence.UnsupportedStorage is not null || next == state)
+                if (evidence.UnsupportedStorage is not null || evidence.StorageOpenFailed || next == state)
                 {
                     FirehoseStorage? fallback = FindNextStorage(attemptedStorage);
                     if (fallback is null)

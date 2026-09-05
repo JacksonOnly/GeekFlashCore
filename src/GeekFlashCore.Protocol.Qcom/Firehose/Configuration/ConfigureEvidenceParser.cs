@@ -13,6 +13,7 @@ internal static class ConfigureEvidenceParser
         ulong? payloadFromLog = null;
         ulong? digestFromLog = null;
         uint? sectorFromLog = null;
+        bool storageOpenFailed = false;
 
         foreach (FirehoseResponseLog log in result.Logs)
         {
@@ -21,6 +22,11 @@ internal static class ConfigureEvidenceParser
                 unsupportedStorage = FirehoseStorage.Emmc;
             else if (message.Contains("Not support configure MemoryName UFS", StringComparison.OrdinalIgnoreCase))
                 unsupportedStorage = FirehoseStorage.Ufs;
+
+            if (message.Contains("Failed to open the SDCC Device", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("Failed to open the SPI NOR Device", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("Failed to initialize (open whole lun)", StringComparison.OrdinalIgnoreCase))
+                storageOpenFailed = true;
 
             if (message.Contains("MaxPayloadSizeToTargetInBytes", StringComparison.OrdinalIgnoreCase) ||
                 message.Contains("Host's payload to target size is too large", StringComparison.OrdinalIgnoreCase))
@@ -35,12 +41,14 @@ internal static class ConfigureEvidenceParser
             }
 
             if (message.Contains("disk sector size 512", StringComparison.OrdinalIgnoreCase) ||
-                message.Contains("device sector size (512)", StringComparison.OrdinalIgnoreCase))
+                message.Contains("device sector size (512)", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("different from device sector size (512)", StringComparison.OrdinalIgnoreCase))
             {
                 sectorFromLog = 512;
             }
             else if (message.Contains("disk sector size 4096", StringComparison.OrdinalIgnoreCase) ||
-                     message.Contains("device sector size (4096)", StringComparison.OrdinalIgnoreCase))
+                     message.Contains("device sector size (4096)", StringComparison.OrdinalIgnoreCase) ||
+                     message.Contains("different from device sector size (4096)", StringComparison.OrdinalIgnoreCase))
             {
                 sectorFromLog = 4096;
             }
@@ -50,6 +58,7 @@ internal static class ConfigureEvidenceParser
         {
             Storage = TryStorage(attributes, "MemoryName"),
             UnsupportedStorage = unsupportedStorage,
+            StorageOpenFailed = storageOpenFailed,
             SectorSizeInBytes = TryUInt32(attributes, "SECTOR_SIZE_IN_BYTES") ?? sectorFromLog,
             MaxPayloadSizeToTargetInBytes = TryPositiveUInt64(attributes, "MaxPayloadSizeToTargetInBytes") ??
                                                 payloadFromLog,

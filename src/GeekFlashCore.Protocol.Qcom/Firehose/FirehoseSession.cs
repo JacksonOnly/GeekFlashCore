@@ -20,6 +20,7 @@ public sealed class FirehoseSession : IDisposable
 {
     private readonly FirehoseCmdReceiver _receiver;
     private readonly FirehoseCommandExecutor _executor;
+    private readonly int _defaultReadTimeoutMilliseconds;
     private readonly object _lifecycleLock = new();
     private int _busy;
     private int _disposed;
@@ -32,6 +33,8 @@ public sealed class FirehoseSession : IDisposable
         ArgumentNullException.ThrowIfNull(transport);
         if (readTimeoutMilliseconds <= 0)
             throw new ArgumentOutOfRangeException(nameof(readTimeoutMilliseconds));
+
+        _defaultReadTimeoutMilliseconds = readTimeoutMilliseconds;
 
         ILogger logger = Log.ForContext<FirehoseSession>();
         _receiver = new FirehoseCmdReceiver(logger, transport, readTimeoutMilliseconds);
@@ -63,6 +66,35 @@ public sealed class FirehoseSession : IDisposable
     {
         using OperationLease _ = Enter(FirehoseSessionState.Created);
         SetState(FirehoseSessionState.Started);
+    }
+
+    /// <summary>Probes an already running Firehose session with a bounded NOP exchange.</summary>
+    internal bool TryProbe(int timeoutMilliseconds)
+    {
+        using OperationLease _ = Enter(FirehoseSessionState.Created);
+        _receiver.SetReadTimeout(timeoutMilliseconds);
+        try
+        {
+            FirehoseCommandResult result = _executor.Execute(new NopCommand(), expectedRawMode: false);
+            if (!result.IsSuccess)
+                return false;
+            SetState(FirehoseSessionState.Started);
+            return true;
+        }
+        catch (TimeoutException)
+        {
+            SetState(FirehoseSessionState.Faulted);
+            return false;
+        }
+        catch (FirehoseProtocolException)
+        {
+            SetState(FirehoseSessionState.Faulted);
+            return false;
+        }
+        finally
+        {
+            _receiver.SetReadTimeout(_defaultReadTimeoutMilliseconds);
+        }
     }
 
     public FirehoseCommandResult Execute(BaseCommand command, bool expectedRawMode = false,

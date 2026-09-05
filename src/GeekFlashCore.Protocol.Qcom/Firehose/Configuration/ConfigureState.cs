@@ -136,6 +136,7 @@ internal sealed record ConfigureState
 
 internal sealed record ConfigureEvidence
 {
+    public bool StorageOpenFailed { get; init; }
     public FirehoseStorage? Storage { get; init; }
     public FirehoseStorage? UnsupportedStorage { get; init; }
     public uint? SectorSizeInBytes { get; init; }

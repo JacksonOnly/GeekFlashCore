@@ -2,7 +2,7 @@ namespace GeekFlashCore.Protocol.Qcom.Abstractions;
 
 public sealed record QcomProtocolOptions
 {
-    public const int DefaultConnectTimeoutMilliseconds = 10_000;
+    public const int DefaultConnectTimeoutMilliseconds = 1_500;
     public const int DefaultReadTimeoutMilliseconds = 10_000;
     public const int DefaultWriteTimeoutMilliseconds = 10_000;
     public const int DefaultResourceRequestTimeoutMilliseconds = 15_000;

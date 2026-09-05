@@ -22,6 +22,7 @@ namespace GeekFlashCore.Protocol.Qcom;
 public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, IDisposable
 {
     private const int MaxProtocolDetectionAttempts = 4;
+    private const int DefaultProtocolProbeTimeoutMilliseconds = 250;
     private readonly QcomProtocolOptions _options;
     private readonly ISaharaImageProvider? _imageProvider;
     private readonly IOplusDigestProvider? _digestProvider;
@@ -111,7 +112,15 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             {
                 await InitializeStorageAsync(configured, ct).ConfigureAwait(false);
             }
-            catch (FirehoseNakException exception) when (ShouldRetryStorageAsUfs(configured, exception))
+            catch (FirehoseNakException exception) when (TryGetStorageSectorSize(configuration, exception, out uint sectorSize))
+            {
+                configuration = configuration with { SectorSizeInBytes = sectorSize };
+                configured = await new ConfigureNegotiator(_firehose!).NegotiateAsync(
+                    LimitConfiguration(configuration), _targetInfo!.Vendor, GetXiaomiAuthenticationAsync(), ct)
+                    .ConfigureAwait(false);
+                await InitializeStorageAsync(configured, ct).ConfigureAwait(false);
+            }
+            catch (FirehoseNakException exception) when (ShouldRetryStorageAsUfs(configuration, configured, exception))
             {
                 configuration = CreateUfsFallbackConfiguration(configuration);
                 configured = await new ConfigureNegotiator(_firehose!).NegotiateAsync(
@@ -179,7 +188,14 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             {
                 InitializeStorage(result);
             }
-            catch (FirehoseNakException exception) when (ShouldRetryStorageAsUfs(result, exception))
+            catch (FirehoseNakException exception) when (TryGetStorageSectorSize(configuration, exception, out uint sectorSize))
+            {
+                configuration = configuration with { SectorSizeInBytes = sectorSize };
+                result = new ConfigureNegotiator(_firehose!).Negotiate(
+                    LimitConfiguration(configuration), _targetInfo!.Vendor, GetXiaomiAuthentication());
+                InitializeStorage(result);
+            }
+            catch (FirehoseNakException exception) when (ShouldRetryStorageAsUfs(configuration, result, exception))
             {
                 configuration = CreateUfsFallbackConfiguration(configuration);
                 result = new ConfigureNegotiator(_firehose!).Negotiate(
@@ -257,7 +273,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             byte[] prefix = new byte[8];
             try
             {
-                Transport.ReadExact(prefix, _options.ConnectTimeoutMilliseconds);
+                Transport.ReadExact(prefix, GetProtocolProbeTimeout());
             }
             catch (TimeoutException exception)
             {
@@ -265,6 +281,8 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
                 if (!allowRecovery) throw;
                 if (attempt == 0)
                     SendSaharaHelloProbe();
+                else if (attempt == 1 && TryDetectRunningFirehose())
+                    break;
                 else
                     ResetSaharaStateMachine();
                 continue;
@@ -300,6 +318,29 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         if (_wire is null)
             throw lastException ?? new QcomProtocolException(Strings.Qcom_UnknownProtocol);
         _targetInfo = new QcomTargetInfo { Vendor = QcomEvidenceMerger.ResolveVendor(_options.VendorOverride, null, QcomVendorKind.Generic) };
+    }
+
+    private int GetProtocolProbeTimeout() =>
+        Math.Min(_options.ConnectTimeoutMilliseconds, DefaultProtocolProbeTimeoutMilliseconds);
+
+    private bool TryDetectRunningFirehose()
+    {
+        try
+        {
+            _wire = new QcomSessionTransport(Transport, [], _options.ReadTimeoutMilliseconds);
+            _firehose = new FirehoseSession(_wire, _options.ReadTimeoutMilliseconds);
+            if (_firehose.TryProbe(GetProtocolProbeTimeout()))
+                return true;
+        }
+        catch (Exception exception) when (exception is TimeoutException or FirehoseProtocolException or InvalidOperationException)
+        {
+            // Continue with the bounded Sahara reset/retry path.
+        }
+
+        _firehose?.Dispose();
+        _firehose = null;
+        _wire = null;
+        return false;
     }
 
     private void ResetSaharaStateMachine()
@@ -366,7 +407,23 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private void StartFirehose()
     {
         if (_firehose is null) throw new InvalidOperationException(Strings.Qcom_InvalidSessionState);
-        if (_firehose.State == FirehoseSessionState.Created) _startup = _firehose.Start(_options.ConnectTimeoutMilliseconds);
+        if (_firehose.State == FirehoseSessionState.Created)
+        {
+            try
+            {
+                _startup = _firehose.Start(GetProtocolProbeTimeout());
+            }
+            catch (TimeoutException)
+            {
+                // A programmer that is already in Firehose mode may not replay startup logs.
+                _firehose.Dispose();
+                _firehose = new FirehoseSession(_wire!, _options.ReadTimeoutMilliseconds);
+                if (!_firehose.TryProbe(GetProtocolProbeTimeout()))
+                    throw;
+                _startup = new FirehoseResponse([], new Dictionary<string, string>(),
+                    FirehoseResponseStatus.Ack, false);
+            }
+        }
         var vendor = VendorStrategyResolver.Resolve(_options.VendorOverride, _startup?.Logs.Select(x => x.Message), _programmer?.Vendor ?? QcomVendorKind.Generic);
         _targetInfo = (_targetInfo ?? new QcomTargetInfo()) with
         {
@@ -390,9 +447,12 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         configuration with { MemoryName = FirehoseStorage.Ufs, SectorSizeInBytes = 4096 };
 
     private static bool ShouldRetryStorageAsUfs(
+        FirehoseConfiguration requested,
         FirehoseConfigureResult configured,
         FirehoseNakException exception)
     {
+        if (requested.MemoryName != FirehoseStorage.None)
+            return false;
         if (configured.Configuration.Storage != FirehoseStorage.Emmc)
             return false;
 
@@ -401,6 +461,35 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
 
         return exception.Result.Logs.Any(log =>
             log.Message.Contains("Failed to open the SDCC Device", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool TryGetStorageSectorSize(
+        FirehoseConfiguration requested,
+        FirehoseNakException exception,
+        out uint sectorSize)
+    {
+        sectorSize = 0;
+        if (requested.MemoryName != FirehoseStorage.None)
+            return false;
+
+        IEnumerable<string> messages = exception.Result.Logs.Select(static log => log.Message)
+            .Append(exception.Message);
+        foreach (string message in messages)
+        {
+            if (message.Contains("device sector size (512)", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("disk sector size 512", StringComparison.OrdinalIgnoreCase))
+            {
+                sectorSize = 512;
+                return true;
+            }
+            if (message.Contains("device sector size (4096)", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("disk sector size 4096", StringComparison.OrdinalIgnoreCase))
+            {
+                sectorSize = 4096;
+                return true;
+            }
+        }
+        return false;
     }
 
     private void SetStorage(FirehoseConfigureResult result, IFirehoseStoragePolicy? policy = null)

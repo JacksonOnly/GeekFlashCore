@@ -407,6 +407,7 @@
 - 2026-09-05 CLI-06 修复 Sahara 失败后的恢复和 CLI 输出：文件 Provider 与 `qcom xml` 统一剥离用户输入的外围引号；ConsoleUi 将 Serilog 级别映射为 `INF/WRN/ERR/DBG/VRB/FTL` 并去除结构化消息属性的外围引号，所有运行期输出通过共享控制台锁清理进度行；Qcom 协议探测在启用 qdl 兼容探测时最多重试 4 次，未知/超时首包执行有限的 Flush + `ResetStateMachine`，Sahara 清理前主动复位状态机以支持资源失败后的再次联机。
 - 2026-09-05 Xiaomi 内置认证：将 GeekFlashTool 的 5 组兼容签名迁移到 `XiaomiAuthentication`，默认在未指定认证方式时按顺序执行 `sig` XML + 256 字节 Raw，并仅在设备返回 `authenticated` 时成功；全部候选失败后回退到 `IVendorAuthenticationProvider`，显式 `XiaomiSignature` 继续直接使用 Provider。
 - 2026-09-05 CLI-07 修复 Firehose 存储初始化：Configure 成功后 `getstorageinfo` 遇到 `Failed to open the SDCC Device` 时，有界切换到 UFS/4096 并重新 Configure；同步 `ConfigureFirehose()` 与异步 `ConnectAsync()` 均覆盖，新增模拟线路顺序回归测试。
+- 2026-09-05 CLI-08 修复 Firehose/Sahara 重连超时：参考 QnQcLIB 将首包探测与 Firehose 启动等待分离，短超时后发送一次受控 `<nop/>` 探测已运行 Firehose；Configure 兼容线路补齐存储探测失败、扇区不匹配和候选 MemoryName 的有界回退，避免重连空等约 10 秒。
 
 ## 未决风险
 

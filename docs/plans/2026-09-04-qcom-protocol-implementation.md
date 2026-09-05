@@ -417,6 +417,12 @@
 - 验证证据：CLI Release 构建通过；`--help`、未知协议退出路径和 `devices` 已运行；本机 WMI 枚举发现 `05C6:9008` Qualcomm EDL（COM73）。
 - 风险：尚未对真实设备执行连接、认证、读写或重启；CLI 的 Provider 输入与终端进度显示仍需脱敏设备验证。
 
+### CLI-04（2026-09-05）
+
+- 行为结论：修复串口 Transport 工厂和内部构造函数将 `StopBits.None` 作为默认值的问题；`System.IO.Ports.SerialPort` 默认改为合法的 `StopBits.One`（8N1）。
+- 验证证据：新增本地串口默认构造回归测试，Qcom 测试 165 项通过；完整 Release 构建和 CLI `--help` 冒烟通过。
+- 风险：真实设备串口参数仍可能需要调用方显式指定；当前公共工厂尚未暴露串口参数配置入口。
+
 ### CLI-03（2026-09-05）
 
 - 行为结论：移除 CLI 主流程对 QualcommProtocol 的固定依赖。协议注册项现在统一提供设备识别、传输后的协议工厂、协议专用命令和信息展示；主流程仅依赖 `IProtocol`。

@@ -14,7 +14,7 @@ internal sealed class SerialPortTransport : ITransport
     public bool IsOpen => _serialPort.IsOpen;
 
     public SerialPortTransport(string portName, int baudRate = 115200, int dataBits = 8,
-        StopBits stopBits = StopBits.None, Parity parity = Parity.None, int bufferSize = 8192,
+        StopBits stopBits = StopBits.One, Parity parity = Parity.None, int bufferSize = 8192,
         int maximumReadBufferSize = 4 * 1024 * 1024, int readTimeout = 1000, int writeTimeout = 1000)
     {
         if (string.IsNullOrWhiteSpace(portName))

@@ -6,7 +6,7 @@ namespace GeekFlashCore.Transport.SerialPort;
 public static class SerialPortTransportFactory
 {
     private static ITransport CreateCore(string portName, int baudRate = 115200, int dataBits = 8,
-        StopBits stopBits = StopBits.None, Parity parity = Parity.None, int bufferSize = 8192,
+        StopBits stopBits = StopBits.One, Parity parity = Parity.None, int bufferSize = 8192,
         int maximumReadBufferSize = 4 * 1024 * 1024, int readTimeout = 1000, int writeTimeout = 1000)
     {
         return new SerialPortTransport(portName, baudRate, dataBits, stopBits, parity, bufferSize,

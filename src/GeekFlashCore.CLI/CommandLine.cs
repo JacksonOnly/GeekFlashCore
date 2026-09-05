@@ -48,6 +48,6 @@ internal static class CommandLine
         Console.WriteLine("用法: geekflash [选项] <命令> [参数]");
         Console.WriteLine("命令: devices | connect | info | partitions | read | write | erase | reboot | qcom");
         Console.WriteLine("选项: --port COM3 | --usb VID:PID | --protocol QualcommEdl | --loader FILE | --digest FILE | --oplus-digest FILE");
-        Console.WriteLine("      --oplus-mode OplusDigestPt|OplusDigestLegacy | --vendor NAME | --auth xiaomi | --verbose");
+        Console.WriteLine("      --oplus-mode OplusDigestPt|OplusDigestLegacy | --vendor NAME | --auth xiaomi (覆盖内置签名) | --verbose");
     }
 }

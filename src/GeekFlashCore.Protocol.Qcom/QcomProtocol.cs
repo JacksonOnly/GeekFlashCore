@@ -504,6 +504,10 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private async ValueTask<bool> AuthenticateXiaomiAsync(FirehoseNakException exception, CancellationToken ct)
     {
         var authentication = new XiaomiAuthentication(_firehose!, checked((int)_options.Firehose.MaxPayloadSizeToTargetInBytes));
+        if (_options.AuthenticationKind is null && authentication.TryAuthenticateBuiltIn(ct))
+            return true;
+        if (_authenticationProvider is null)
+            return false;
         var response = await AuthenticationResourceAsync(new VendorAuthenticationResourceRequest(QcomAuthenticationKind.XiaomiSignature, TargetInfo!), ct).ConfigureAwait(false);
         using (response.Payload)
         {
@@ -514,11 +518,15 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     }
 
     private Func<FirehoseNakException, CancellationToken, ValueTask<bool>>? GetXiaomiAuthenticationAsync() =>
-        _options.AuthenticationKind == QcomAuthenticationKind.XiaomiSignature ? AuthenticateXiaomiAsync : null;
+        _options.AuthenticationKind is null or QcomAuthenticationKind.XiaomiSignature ? AuthenticateXiaomiAsync : null;
 
     private bool AuthenticateXiaomi(FirehoseNakException exception)
     {
         var authentication = new XiaomiAuthentication(_firehose!, checked((int)_options.Firehose.MaxPayloadSizeToTargetInBytes));
+        if (_options.AuthenticationKind is null && authentication.TryAuthenticateBuiltIn())
+            return true;
+        if (_authenticationProvider is null)
+            return false;
         var response = AuthenticationResource(new VendorAuthenticationResourceRequest(
             QcomAuthenticationKind.XiaomiSignature, TargetInfo!));
         using (response.Payload)
@@ -529,7 +537,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     }
 
     private Func<FirehoseNakException, bool>? GetXiaomiAuthentication() =>
-        _options.AuthenticationKind == QcomAuthenticationKind.XiaomiSignature ? AuthenticateXiaomi : null;
+        _options.AuthenticationKind is null or QcomAuthenticationKind.XiaomiSignature ? AuthenticateXiaomi : null;
 
     private async ValueTask VerifyVendorAsync(CancellationToken ct)
     {

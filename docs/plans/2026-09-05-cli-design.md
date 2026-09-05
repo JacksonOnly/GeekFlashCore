@@ -62,3 +62,9 @@ Console entry point
 - Qcom 探测保留首轮 qdl HELLO 探测，并在未知或后续超时首包时执行有界的 Flush + Sahara `ResetStateMachine`；最多 4 次尝试，最终保留明确异常。
 - Sahara 资源或连接失败清理前发送一次状态机复位，再关闭传输，使设备可以重新进入 Sahara 并被下一次连接识别。
 - 本地模拟传输新增未知前缀恢复测试；真实设备重连与后端 Flush 行为仍是待验证风险。
+
+## Xiaomi 认证补充（2026-09-05）
+
+- 未指定 `AuthenticationKind` 时，Qcom 核心自动尝试内置兼容签名；签名全部失败后才调用宿主提供的 `IVendorAuthenticationProvider`，CLI 因而会在需要时询问用户。
+- 显式 `--auth xiaomi` 作为 Provider 覆盖模式，适用于设备不接受内置签名或需要外部授权材料的场景。
+- 内置签名只保存在协议程序集的私有静态表中，逐次解码后清零，不写入日志；真实设备兼容性和授权策略仍需现场验证。

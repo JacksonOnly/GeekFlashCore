@@ -405,6 +405,7 @@
 - 2026-09-05 CLI-05 修复真实设备联机问题：Xiaomi 认证改为由 `QcomProtocolOptions.AuthenticationKind` 显式启用，且按参考项目先发送 `sig` 命令再发送 256 字节签名；未指定认证时不发送 `sig req`，直接返回需要显式认证的 Configure 错误。
 - 2026-09-05 CLI-05 修复 CLI 进度和目标信息输出：进度行使用 ANSI 清行并与 Serilog 通过共享控制台锁协调，日志输出到 stderr；Protocol/Vendor 分开显示，Sahara CA Hash 只显示长度，目标硬件字段结构化展示。
 - 2026-09-05 CLI-06 修复 Sahara 失败后的恢复和 CLI 输出：文件 Provider 与 `qcom xml` 统一剥离用户输入的外围引号；ConsoleUi 将 Serilog 级别映射为 `INF/WRN/ERR/DBG/VRB/FTL` 并去除结构化消息属性的外围引号，所有运行期输出通过共享控制台锁清理进度行；Qcom 协议探测在启用 qdl 兼容探测时最多重试 4 次，未知/超时首包执行有限的 Flush + `ResetStateMachine`，Sahara 清理前主动复位状态机以支持资源失败后的再次联机。
+- 2026-09-05 Xiaomi 内置认证：将 GeekFlashTool 的 5 组兼容签名迁移到 `XiaomiAuthentication`，默认在未指定认证方式时按顺序执行 `sig` XML + 256 字节 Raw，并仅在设备返回 `authenticated` 时成功；全部候选失败后回退到 `IVendorAuthenticationProvider`，显式 `XiaomiSignature` 继续直接使用 Provider。
 
 ## 未决风险
 

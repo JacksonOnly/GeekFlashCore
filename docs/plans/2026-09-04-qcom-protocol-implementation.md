@@ -357,7 +357,7 @@
 1. 建立 GeekFlashTool 与 QnQcLIB 行为矩阵，逐项核对 Configure 顺序、命令 XML、厂商认证、GPT Digest 和 Legacy Digest。
 2. 验证普通设备分区写入：Raw 请求必须支持完整范围、短源自动填充和分段；Android Sparse 请求必须支持 Raw、Fill、Don't Care、CRC 以及跨 Payload 分段。
 3. 验证 OplusDigestPt 分区写入：Sparse 产生的每个实际 Raw/Fill 命令均经过 Digest 映射，保留 Label/FileName 并使用调用方实际扇区范围；跨连续 Digest 条目和 GPT sector 6/34 兼容规则必须覆盖读写测试。
-4. 验证 OplusDigestLegacy 分区写入：Sparse Raw、Fill 和普通 Raw 的每个实际命令共用成功计数器，固定扇区拆分、阈值前 `NOP, NOP, Digest, NOP`、签名失败单次重放和恢复失败熔断均有线路测试。
+4. 验证 OplusDigestLegacy 分区写入：Sparse Raw、Fill 和普通 Raw 的每个实际命令共用发送计数器，固定扇区拆分、阈值前 `NOP, NOP, Digest, NOP`、签名失败 `Digest, NOP` 后单次重放和恢复失败熔断均有线路测试；线路顺序与 XML 计数语义已和本地 QnQcLIB 源码核对。
 5. 审查连接自动识别：连接时应同时支持 Sahara 和 Firehose；已处于 Firehose 且首包为启动日志时直接进入 Configure，不要求先执行 Sahara，也不得因 `_sahara` 为空抛出状态异常；覆盖 XML 声明、无声明 XML、分片首读和未知前缀边界。
 6. 对比 `D:\Code\CPlusPlus\qdl` 的 VIP/连接逻辑并做兼容决策：VIP 是带签名表和链式表的逐命令传输状态机，不等同于 Oplus Digest；需决定是否新增通用 `IVipTransferPolicy`，以及是否在启动日志检测到 `VIP is enabled, receiving the signed table` 后才启用，缺少表时必须快速失败。
    - 2026-09-05 已新增通用 `IFirehoseDigestProvider`/`FirehoseDigestConfiguration`，普通设备可按连接选项发送 Digest；通用 Digest 与 Oplus Digest 互斥，避免两套线路同时生效。
@@ -395,13 +395,13 @@
 - [ ] Task 15：最终审查。
   - 2026-09-05 已完成第一批异常和阶段日志资源化：Qcom 核心、Qcom.Abstractions、MessagePipe 的固定用户可见文本已迁移到中英文 `Strings` 资源；修复 SessionBlockDevice 捕获设备导致的生命周期警告。
   - 2026-09-05 同步 `ConfigureFirehose()` 已补齐配置 Provider、普通 Digest、VIP、Oplus Digest、Xiaomi 身份验证和 OnePlus/Nothing 校验顺序；新增无 XML 声明 Firehose 首包兼容和普通 Digest 通用 raw 长度上限。
-  - 2026-09-05 `FirehoseProgramExecutor` 改为两阶段映射校验，执行前仍拒绝未映射范围，但不再保留整份 Sparse Digest 映射数组；新增 4 MiB 以上普通 Digest、同步资源/VIP 和无声明首包线路测试。
-  - 2026-09-05 日志审查确认 Sahara/Firehose 包级收发日志均为 Debug，连接、配置、认证、转储和吞吐阶段为 Information/Warning/Error；Sahara 包级详细模板仍待逐条资源化，但不在默认生产日志级别输出。
+- 2026-09-05 `FirehoseProgramExecutor` 改为两阶段映射校验，执行前仍拒绝未映射范围，但不再保留整份 Sparse Digest 映射数组；新增 4 MiB 以上普通 Digest、同步资源/VIP 和无声明首包线路测试。
+- 2026-09-05 日志审查确认 Sahara/Firehose 包级收发日志均为 Debug，连接、配置、认证、转储和吞吐阶段为 Information/Warning/Error；Sahara 包级详细模板仍待逐条资源化，但不在默认生产日志级别输出。
+- 2026-09-05 已根据本地 QnQcLIB 源码确认 Legacy 线路：阈值刷新为 `NOP, NOP, Digest, NOP`，签名 NAK 恢复为 `Digest, NOP` 后仅重放当前 XML 一次；读写计数在 XML 发送后立即增加，普通 NAK 也计数，恢复失败使会话进入 Faulted。
 
 ## 未决风险
 
-- OplusDigestLegacy 对比 QnQcLIB 的初步审查发现：QnQcLIB 在签名 NAK 恢复时执行 `Digest -> NOP`，当前策略执行 `NOP -> NOP -> Digest -> NOP`；当前连接初始化还会预先发送一次 Digest，而参考实现仅缓存 Digest 并在读写命令阈值或签名失败时发送。仓库内没有可用的真实 Legacy 线路样本，顺序仍需硬件或脱敏抓包确认。
-- QnQcLIB 在 XML 命令发送后立即增加读写计数，当前实现只在 Raw 数据和最终 ACK 成功后增加计数；这属于更严格的成功计数语义，但与参考实现不同，需用 NAK/重放样本确认阈值是否应统计已发送命令。
+- OplusDigestLegacy 的阈值刷新与签名 NAK 恢复顺序、以及 XML 发送后计数（包括普通 NAK）已由本地 QnQcLIB 源码确认；真实设备仍可能存在 Loader 变体，需用硬件或脱敏抓包复核兼容性。
 - `FirehoseProgramExecutor` 已采用两阶段映射校验和执行时映射；Sparse segment 计划本身仍按输入结构建立列表，超大镜像需要在目标环境继续观察计划列表和第三方 Sparse 解析器的稳态分配。
 - 当前 Qcom 核心仍有两类审查债务：Sahara/Firehose 包级收发日志数量较多，需要确认默认日志级别不会造成生产日志噪声；阶段日志与底层 NAK 日志存在重复风险，需要按事件归属层去重。
 - 当前 Sahara 收发包详细 Debug 模板仍有硬编码，需逐条迁移到资源；其余本轮涉及的 Configure、Firehose、Sparse、Oplus Digest 用户可见异常已补齐中英文资源键。

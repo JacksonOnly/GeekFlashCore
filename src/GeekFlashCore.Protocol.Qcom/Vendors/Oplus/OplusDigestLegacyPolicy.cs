@@ -50,20 +50,35 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
         if (_counter.RequiresDigest) Refresh(session, cancellationToken);
         try
         {
-            return session.Execute(command, expectedRawMode: true);
+            FirehoseCommandResult result = session.Execute(command, expectedRawMode: true);
+            _counter.CommandSent();
+            return result;
         }
         catch (FirehoseNakException exception) when (!exception.Result.RawMode && IsSignatureFailure(exception.Result))
         {
-            Refresh(session, cancellationToken);
+            // QnQcLIB counts the XML write even when the response is a NAK.
+            _counter.CommandSent();
+            Refresh(session, cancellationToken, includeNopPreamble: false);
             // Deliberately outside the try: a second NAK is returned immediately, without recovery.
         }
+        catch (FirehoseNakException)
+        {
+            _counter.CommandSent();
+            throw;
+        }
         cancellationToken.ThrowIfCancellationRequested();
-        return session.Execute(command, expectedRawMode: true);
+        FirehoseCommandResult replay = session.Execute(command, expectedRawMode: true);
+        _counter.CommandSent();
+        return replay;
     }
 
-    public void CommandCompleted() => _counter.Complete();
+    public void CommandCompleted()
+    {
+        // The counter advances when the XML command is sent, before raw data
+        // and its final ACK, matching QnQcLIB's Legacy semantics.
+    }
 
-    private void Refresh(FirehoseSession session, CancellationToken cancellationToken)
+    private void Refresh(FirehoseSession session, CancellationToken cancellationToken, bool includeNopPreamble = true)
     {
         try
         {
@@ -72,9 +87,12 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
                 throw new OplusDigestException(Strings.Qcom_OplusLegacyStreamMissing);
             if (!source.CanRead || _digest.Length != _digestLength)
                 throw new OplusDigestException(Strings.Qcom_OplusLegacySourceChanged);
-            session.Execute(new NopCommand());
-            cancellationToken.ThrowIfCancellationRequested();
-            session.Execute(new NopCommand());
+            if (includeNopPreamble)
+            {
+                session.Execute(new NopCommand());
+                cancellationToken.ThrowIfCancellationRequested();
+                session.Execute(new NopCommand());
+            }
             session.SendDigest(source, _digestLength, _transferBufferSize, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             session.Execute(new NopCommand());

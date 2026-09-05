@@ -14,10 +14,12 @@ internal static class ConfigureEvidenceParser
         ulong? digestFromLog = null;
         uint? sectorFromLog = null;
         bool storageOpenFailed = false;
+        DateTime? buildDate = null;
 
         foreach (FirehoseResponseLog log in result.Logs)
         {
             ReadOnlySpan<char> message = log.Message.AsSpan();
+            buildDate ??= TryBuildDate(message);
             if (message.Contains("Not support configure MemoryName eMMC", StringComparison.OrdinalIgnoreCase))
                 unsupportedStorage = FirehoseStorage.Emmc;
             else if (message.Contains("Not support configure MemoryName UFS", StringComparison.OrdinalIgnoreCase))
@@ -70,7 +72,31 @@ internal static class ConfigureEvidenceParser
             TargetName = TryString(attributes, "TargetName"),
             Version = TryUInt64(attributes, "Version"),
             MinVersionSupported = TryUInt64(attributes, "MinVersionSupported")
+            ,BuildDate = buildDate ?? TryBuildDate(attributes)
         };
+    }
+
+    private static DateTime? TryBuildDate(IReadOnlyDictionary<string, string> values)
+    {
+        foreach (string key in new[] { "BuildDate", "build_date", "BuildTime", "build_time", "DateTime" })
+            if (values.TryGetValue(key, out string? value) && DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out DateTime parsed))
+                return parsed;
+        return null;
+    }
+
+    private static DateTime? TryBuildDate(ReadOnlySpan<char> message)
+    {
+        foreach (string marker in new[] { "build time", "build_date", "build date", "build_time" })
+        {
+            int index = message.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (index < 0) continue;
+            ReadOnlySpan<char> value = message[(index + marker.Length)..];
+            while (!value.IsEmpty && (value[0] is ' ' or '\t' or ':' or '=')) value = value[1..];
+            int end = value.IndexOfAny(',', ';', ')');
+            if (end >= 0) value = value[..end];
+            if (DateTime.TryParse(value.Trim(), CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out DateTime parsed)) return parsed;
+        }
+        return null;
     }
 
     private static IReadOnlyDictionary<string, string> MergeAttributes(FirehoseCommandResult result)

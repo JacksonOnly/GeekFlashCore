@@ -496,7 +496,24 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     {
         _storage = new FirehoseStorageService(_firehose!, result.Configuration, policy);
         var info = _storage.GetStorageInfo(0);
-        _targetInfo = _targetInfo! with { Firehose = _targetInfo.Firehose! with { Configuration = _storage.Configuration, StorageInfos = [info] } };
+        FirehoseBasicDevInfo? basic = _targetInfo?.Firehose?.BasicDevCharacteristics;
+        if (basic is not null)
+        {
+            uint serial = basic.SerialNumber;
+            if (serial == 0 && info.Properties.TryGetValue("serial_num", out string? value))
+            {
+                string text = value.Trim();
+                NumberStyles style = text.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                    ? NumberStyles.AllowHexSpecifier : NumberStyles.Integer;
+                if (style == NumberStyles.AllowHexSpecifier) text = text[2..];
+                if (uint.TryParse(text, style, CultureInfo.InvariantCulture, out uint parsed)) serial = parsed;
+            }
+            DateTime build = basic.BuildDate;
+            if (build == default && result.Configuration.DateTime != default)
+                build = result.Configuration.DateTime;
+            basic = basic with { SerialNumber = serial, BuildDate = build };
+        }
+        _targetInfo = _targetInfo! with { Firehose = _targetInfo.Firehose! with { Configuration = _storage.Configuration, StorageInfos = [info], BasicDevCharacteristics = basic } };
     }
 
     private async ValueTask InitializeStorageAsync(FirehoseConfigureResult result, CancellationToken ct)

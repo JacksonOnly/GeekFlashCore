@@ -106,22 +106,36 @@ public sealed partial class QcomProtocol
             byte[] header = new byte[checked(sectorSize * 2)];
             device.ReadAt(0, header);
             if (!header.AsSpan(sectorSize, 8).SequenceEqual("EFI PART"u8)) continue;
-            var parsedHeader = new GptParser().Parse(header, new GptParseOptions { SectorSize = sectorSize, HeaderOnly = true });
+            try
+            {
+                _ = new GptParser().Parse(header, new GptParseOptions { SectorSize = sectorSize, HeaderOnly = true });
+            }
+            catch (GptException)
+            {
+                continue;
+            }
             ulong entriesLba = BinaryPrimitives.ReadUInt64LittleEndian(header.AsSpan(sectorSize + 72));
             uint count = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(sectorSize + 80));
             uint entrySize = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(sectorSize + 84));
             ulong end = checked(entriesLba * (ulong)sectorSize + (ulong)count * entrySize);
             ulong aligned = checked((end + (ulong)sectorSize - 1) / (ulong)sectorSize * (ulong)sectorSize);
             if (aligned > 16 * 1024 * 1024 || aligned > (ulong)device.Length || aligned < (ulong)header.Length)
-            throw new GptException(Strings.Qcom_GptEntryArrayExceedsRange);
+                continue;
             byte[] image = new byte[checked((int)aligned)];
             header.CopyTo(image, 0);
             ct.ThrowIfCancellationRequested();
             if (image.Length > header.Length) device.ReadAt(header.Length, image.AsSpan(header.Length));
-            var table = new GptParser().Parse(image, new GptParseOptions { SectorSize = sectorSize });
-            foreach (var entry in table.Entries)
-                partitions.Add((entry.Name, new(checked((uint)descriptor.PhysicalPartitionNumber!.Value),
-                    checked((long)entry.FirstLba), checked((long)entry.SectorCount), checked((uint)sectorSize), entry.Name)));
+            try
+            {
+                var table = new GptParser().Parse(image, new GptParseOptions { SectorSize = sectorSize });
+                foreach (var entry in table.Entries)
+                    partitions.Add((entry.Name, new(checked((uint)descriptor.PhysicalPartitionNumber!.Value),
+                        checked((long)entry.FirstLba), checked((long)entry.SectorCount), checked((uint)sectorSize), entry.Name)));
+            }
+            catch (GptException)
+            {
+                continue;
+            }
         }
         return partitions;
     }

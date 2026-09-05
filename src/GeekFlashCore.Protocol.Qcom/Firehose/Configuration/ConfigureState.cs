@@ -21,6 +21,7 @@ internal sealed record ConfigureState
     public string? TargetName { get; init; }
     public ulong Version { get; init; }
     public ulong MinVersionSupported { get; init; }
+    public DateTime BuildDate { get; init; }
 
     public static ConfigureState Create(FirehoseConfiguration configuration) => new()
     {
@@ -82,7 +83,8 @@ internal sealed record ConfigureState
                 : MaxDigestTableSizeInBytes,
             TargetName = NormalizeTargetName(evidence.TargetName) ?? TargetName,
             Version = evidence.Version ?? Version,
-            MinVersionSupported = evidence.MinVersionSupported ?? MinVersionSupported
+            MinVersionSupported = evidence.MinVersionSupported ?? MinVersionSupported,
+            BuildDate = evidence.BuildDate ?? BuildDate
         };
     }
 
@@ -101,6 +103,7 @@ internal sealed record ConfigureState
         TargetName = TargetName ?? "Unknown",
         MinVersionSupported = MinVersionSupported,
         Version = Version,
+        DateTime = BuildDate,
         MaxPayloadSizeToTargetInBytes = MaxPayloadSizeToTargetInBytes,
         MaxPayloadSizeToTargetInBytesSupported = MaxPayloadSizeToTargetInBytesSupported,
         MaxPayloadSizeFromTargetInBytes = MaxPayloadSizeFromTargetInBytes,
@@ -148,4 +151,5 @@ internal sealed record ConfigureEvidence
     public string? TargetName { get; init; }
     public ulong? Version { get; init; }
     public ulong? MinVersionSupported { get; init; }
+    public DateTime? BuildDate { get; init; }
 }

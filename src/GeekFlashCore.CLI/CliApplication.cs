@@ -89,7 +89,6 @@ internal sealed class CliApplication
         {
             case "connect": _ui.WriteLine($"已连接: {registration.DisplayName}"); return 0;
             case "info":
-                _ui.WriteLine($"Protocol: {protocol.Type}");
                 registration.InfoPresenter?.Invoke(protocol, _ui);
                 return 0;
             case "partitions":

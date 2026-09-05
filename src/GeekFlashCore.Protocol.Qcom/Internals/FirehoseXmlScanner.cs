@@ -26,9 +26,26 @@ internal static class FirehoseXmlScanner
             int nameStart = tagStart + 1;
             if (nameStart >= xml.Length)
                 return false;
-            if (xml[nameStart] is (byte)'/' or (byte)'?' or (byte)'!')
+            if (xml[tagStart..].StartsWith("<!--"u8))
             {
-                searchStart = nameStart + 1;
+                searchStart = SkipDelimited(xml, tagStart + 4, "-->"u8);
+                continue;
+            }
+            if (xml[tagStart..].StartsWith("<![CDATA["u8))
+            {
+                searchStart = SkipDelimited(xml, tagStart + 9, "]]>"u8);
+                continue;
+            }
+            if (xml[nameStart] == (byte)'!')
+                throw new InvalidDataException("DTD and XML declarations are not permitted in Firehose responses.");
+            if (xml[nameStart] == (byte)'?')
+            {
+                searchStart = SkipDelimited(xml, nameStart + 1, "?>"u8);
+                continue;
+            }
+            if (xml[nameStart] == (byte)'/')
+            {
+                searchStart = SkipDelimited(xml, nameStart + 1, ">"u8);
                 continue;
             }
 
@@ -100,6 +117,14 @@ internal static class FirehoseXmlScanner
                 return index;
         }
         return -1;
+    }
+
+    private static int SkipDelimited(ReadOnlySpan<byte> xml, int start, ReadOnlySpan<byte> terminator)
+    {
+        int end = xml[start..].IndexOf(terminator);
+        if (end < 0)
+            throw new InvalidDataException("Unterminated XML markup in a Firehose response.");
+        return start + end + terminator.Length;
     }
 
     private static void ParseAttributes(ReadOnlySpan<byte> section, Dictionary<string, string> attributes)

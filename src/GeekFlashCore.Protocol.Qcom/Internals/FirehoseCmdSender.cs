@@ -48,6 +48,7 @@ internal readonly struct FirehoseCmdSender
         }
         finally
         {
+            CryptographicOperations.ZeroMemory(buffer);
             if (rented is not null)
                 ArrayPool<byte>.Shared.Return(rented);
         }

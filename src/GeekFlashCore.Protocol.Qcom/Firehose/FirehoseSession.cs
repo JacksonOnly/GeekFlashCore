@@ -20,6 +20,7 @@ public sealed class FirehoseSession : IDisposable
 {
     private readonly FirehoseCmdReceiver _receiver;
     private readonly FirehoseCommandExecutor _executor;
+    private readonly object _lifecycleLock = new();
     private int _busy;
     private int _disposed;
     private int _state = (int)FirehoseSessionState.Created;
@@ -71,8 +72,9 @@ public sealed class FirehoseSession : IDisposable
             CompleteCommand(command is ConfigureCommand, result, initialState);
             return result;
         }
-        catch (FirehoseNakException)
+        catch (FirehoseNakException exception)
         {
+            CompleteNak(exception, initialState);
             throw;
         }
         catch
@@ -96,8 +98,9 @@ public sealed class FirehoseSession : IDisposable
         {
             throw;
         }
-        catch (FirehoseNakException)
+        catch (FirehoseNakException exception)
         {
+            CompleteNak(exception, initialState);
             throw;
         }
         catch
@@ -129,9 +132,9 @@ public sealed class FirehoseSession : IDisposable
             SetState(_stateBeforeRaw);
             return result;
         }
-        catch (FirehoseNakException)
+        catch (FirehoseNakException exception)
         {
-            SetState(_stateBeforeRaw);
+            CompleteNak(exception, _stateBeforeRaw);
             throw;
         }
         catch
@@ -177,9 +180,9 @@ public sealed class FirehoseSession : IDisposable
             SetState(_stateBeforeRaw);
             return result;
         }
-        catch (FirehoseNakException)
+        catch (FirehoseNakException exception)
         {
-            SetState(_stateBeforeRaw);
+            CompleteNak(exception, _stateBeforeRaw);
             throw;
         }
         catch
@@ -200,13 +203,46 @@ public sealed class FirehoseSession : IDisposable
         return CompleteRaw(() => _executor.ReceiveRaw(destination, length, bufferSize, progress, cancellationToken));
     }
 
+    /// <summary>Sends an Oplus digest directly, without an XML or raw-mode preamble.</summary>
+    public FirehoseCommandResult SendDigest(Stream source, long length, int bufferSize,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (!source.CanRead) throw new ArgumentException("The Digest source is not readable.", nameof(source));
+        if (length is <= 0 or > Vendors.Oplus.OplusDigestParser.MaximumDigestLength)
+            throw new ArgumentOutOfRangeException(nameof(length));
+        if (bufferSize <= 0) throw new ArgumentOutOfRangeException(nameof(bufferSize));
+        cancellationToken.ThrowIfCancellationRequested();
+        using OperationLease operation = EnterCommand();
+        try
+        {
+            return _executor.SendRaw(source, length, length, bufferSize, 0, null, cancellationToken, false, null);
+        }
+        catch (FirehoseNakException exception)
+        {
+            CompleteNak(exception, State);
+            throw;
+        }
+        catch
+        {
+            SetState(FirehoseSessionState.Faulted);
+            throw;
+        }
+    }
+
+    internal void Invalidate() => SetState(FirehoseSessionState.Faulted);
+
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0)
-            return;
-        Volatile.Write(ref _state, (int)FirehoseSessionState.Disposed);
-        if (Volatile.Read(ref _busy) == 0)
-            _receiver.Dispose();
+        lock (_lifecycleLock)
+        {
+            if (_disposed != 0)
+                return;
+            _disposed = 1;
+            Volatile.Write(ref _state, (int)FirehoseSessionState.Disposed);
+            if (_busy == 0)
+                _receiver.Dispose();
+        }
         GC.SuppressFinalize(this);
     }
 
@@ -218,9 +254,9 @@ public sealed class FirehoseSession : IDisposable
             SetState(_stateBeforeRaw);
             return result;
         }
-        catch (FirehoseNakException)
+        catch (FirehoseNakException exception)
         {
-            SetState(_stateBeforeRaw);
+            CompleteNak(exception, _stateBeforeRaw);
             throw;
         }
         catch
@@ -245,40 +281,45 @@ public sealed class FirehoseSession : IDisposable
 
     private OperationLease EnterCommand()
     {
-        ThrowIfDisposed();
-        FirehoseSessionState state = State;
-        if (state is not (FirehoseSessionState.Started or FirehoseSessionState.Configured))
-            throw new InvalidOperationException($"Firehose command is not valid while the session is {state}.");
-        return EnterBusy();
+        lock (_lifecycleLock)
+        {
+            ThrowIfDisposed();
+            FirehoseSessionState state = State;
+            if (state is not (FirehoseSessionState.Started or FirehoseSessionState.Configured))
+                throw new InvalidOperationException($"Firehose command is not valid while the session is {state}.");
+            return EnterBusy();
+        }
     }
 
     private OperationLease Enter(FirehoseSessionState expectedState)
     {
-        ThrowIfDisposed();
-        FirehoseSessionState state = State;
-        if (state != expectedState)
-            throw new InvalidOperationException(
-                $"Firehose operation requires state {expectedState}, but the session is {state}.");
-        return EnterBusy();
+        lock (_lifecycleLock)
+        {
+            ThrowIfDisposed();
+            FirehoseSessionState state = State;
+            if (state != expectedState)
+                throw new InvalidOperationException(
+                    $"Firehose operation requires state {expectedState}, but the session is {state}.");
+            return EnterBusy();
+        }
     }
 
     private OperationLease EnterBusy()
     {
-        if (Interlocked.CompareExchange(ref _busy, 1, 0) != 0)
+        if (_busy != 0)
             throw new InvalidOperationException("Another Firehose operation is already in progress.");
-        if (Volatile.Read(ref _disposed) != 0)
-        {
-            Volatile.Write(ref _busy, 0);
-            throw new ObjectDisposedException(nameof(FirehoseSession));
-        }
+        _busy = 1;
         return new OperationLease(this);
     }
 
     private void Exit()
     {
-        if (Volatile.Read(ref _disposed) != 0)
-            _receiver.Dispose();
-        Volatile.Write(ref _busy, 0);
+        lock (_lifecycleLock)
+        {
+            _busy = 0;
+            if (_disposed != 0)
+                _receiver.Dispose();
+        }
     }
 
     private void ThrowIfDisposed()
@@ -289,9 +330,15 @@ public sealed class FirehoseSession : IDisposable
 
     private void SetState(FirehoseSessionState state)
     {
-        if (Volatile.Read(ref _disposed) == 0)
-            Volatile.Write(ref _state, (int)state);
+        lock (_lifecycleLock)
+        {
+            if (_disposed == 0 && State != FirehoseSessionState.Faulted)
+                Volatile.Write(ref _state, (int)state);
+        }
     }
+
+    private void CompleteNak(FirehoseNakException exception, FirehoseSessionState commandState) =>
+        SetState(exception.Result.RawMode ? FirehoseSessionState.Faulted : commandState);
 
     private readonly struct OperationLease : IDisposable
     {

@@ -398,13 +398,14 @@
 - 2026-09-05 `FirehoseProgramExecutor` 改为两阶段映射校验，执行前仍拒绝未映射范围，但不再保留整份 Sparse Digest 映射数组；新增 4 MiB 以上普通 Digest、同步资源/VIP 和无声明首包线路测试。
 - 2026-09-05 日志审查确认 Sahara/Firehose 包级收发日志均为 Debug，连接、配置、认证、转储和吞吐阶段为 Information/Warning/Error；Sahara 包级详细模板仍待逐条资源化，但不在默认生产日志级别输出。
 - 2026-09-05 已根据本地 QnQcLIB 源码确认 Legacy 线路：阈值刷新为 `NOP, NOP, Digest, NOP`，签名 NAK 恢复为 `Digest, NOP` 后仅重放当前 XML 一次；读写计数在 XML 发送后立即增加，普通 NAK 也计数，恢复失败使会话进入 Faulted。
+- 2026-09-05 已将 Sahara Sender/Receiver 的包级 Debug 模板统一迁移到中英文资源键；新增首次读取超时后的 qdl 兼容 HELLO_RESP 探测，可通过 `ProbeFirehoseOnSaharaTimeout` 关闭，并以回归测试覆盖。
 
 ## 未决风险
 
 - OplusDigestLegacy 的阈值刷新与签名 NAK 恢复顺序、以及 XML 发送后计数（包括普通 NAK）已由本地 QnQcLIB 源码确认；真实设备仍可能存在 Loader 变体，需用硬件或脱敏抓包复核兼容性。
 - `FirehoseProgramExecutor` 已采用两阶段映射校验和执行时映射；Sparse segment 计划本身仍按输入结构建立列表，超大镜像需要在目标环境继续观察计划列表和第三方 Sparse 解析器的稳态分配。
 - 当前 Qcom 核心仍有两类审查债务：Sahara/Firehose 包级收发日志数量较多，需要确认默认日志级别不会造成生产日志噪声；阶段日志与底层 NAK 日志存在重复风险，需要按事件归属层去重。
-- 当前 Sahara 收发包详细 Debug 模板仍有硬编码，需逐条迁移到资源；其余本轮涉及的 Configure、Firehose、Sparse、Oplus Digest 用户可见异常已补齐中英文资源键。
+- Sahara 收发包模板已资源化；仍需在宿主集成环境确认包级日志数量和阶段日志归属不会造成重复噪声。
 
 - 不同 Loader 对同名厂商命令的响应文本和大小写可能不同，解析应基于捕获样本保持宽容，但状态机必须有界。
 - Sahara 获取 TargetInfo 后设备可等待时间没有统一保证；资源提供器应缓存候选 Loader，超时策略需由宿主配置。

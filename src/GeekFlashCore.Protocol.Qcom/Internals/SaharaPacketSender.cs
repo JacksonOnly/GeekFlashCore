@@ -22,20 +22,7 @@ internal readonly struct SaharaPacketSender
     public void SendHelloRequest(uint version, uint versionSupported, uint commandPacketLength, SaharaMode mode,
         uint reserved0, uint reserved1, uint reserved2, uint reserved3, uint reserved4, uint reserved5)
     {
-        _logger.Debug("Send HelloRequest" +
-                      " {Version}" +
-                      " {VersionSupported}" +
-                      " {CommandPacketLength}" +
-                      " {Mode}" +
-                      " {Reserved0}" +
-                      " {Reserved1}" +
-                      " {Reserved2}" +
-                      " {Reserved3}" +
-                      " {Reserved4}" +
-                      " {Reserved5}"
-            , version, versionSupported, commandPacketLength,
-            mode.ToName(), reserved0, reserved1, reserved2, reserved3, reserved4, reserved5
-        );
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaHelloRequest));
         Span<byte> buffer = stackalloc byte[SaharaHelloRequest.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaHelloRequest.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaHelloRequest.Length);
@@ -55,8 +42,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendExecuteRequest(SaharaExecuteCommand clientCommand)
     {
-        _logger.Debug("Send ExecuteRequest" +
-                      " {ClientCommand}", clientCommand.ToName());
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaExecuteRequest));
         Span<byte> buffer = stackalloc byte[SaharaExecuteRequest.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaExecuteRequest.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaExecuteRequest.Length);
@@ -67,10 +53,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendReadData32BitRequest(uint imageId, uint dataOffset, uint dataLength)
     {
-        _logger.Debug("Send ReadData32BitRequest" +
-                      " {ImageId}" +
-                      " {DataOffset}" +
-                      " {DataLength}", imageId, dataOffset, dataLength);
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaReadData32BitRequest));
         Span<byte> buffer = stackalloc byte[SaharaReadData32BitRequest.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaReadData32BitRequest.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaReadData32BitRequest.Length);
@@ -83,10 +66,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendReadData64BitRequest(ulong imageId, ulong dataOffset, ulong dataLength)
     {
-        _logger.Debug("Send ReadData64BitRequest" +
-                      " {ImageId}" +
-                      " {DataOffset}" +
-                      " {DataLength}", imageId, dataOffset, dataLength);
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaReadData64BitRequest));
         Span<byte> buffer = stackalloc byte[SaharaReadData64BitRequest.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaReadData64BitRequest.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaReadData64BitRequest.Length);
@@ -99,7 +79,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendDoneRequest()
     {
-        _logger.Debug("Send DoneRequest");
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaDoneRequest));
         Span<byte> buffer = stackalloc byte[SaharaDoneRequest.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaDoneRequest.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaDoneRequest.Length);
@@ -109,7 +89,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendResetRequest()
     {
-        _logger.Debug("Send ResetRequest");
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaResetRequest));
         Span<byte> buffer = stackalloc byte[SaharaResetRequest.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaResetRequest.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaResetRequest.Length);
@@ -119,7 +99,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendResetStateMachineRequest()
     {
-        _logger.Debug("Send ResetStateMachineRequest");
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaResetStateMachineRequest));
         Span<byte> buffer = stackalloc byte[SaharaResetStateMachineRequest.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaResetStateMachineRequest.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaResetStateMachineRequest.Length);
@@ -129,9 +109,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendMemoryDebug32BitRequest(uint memoryTableAddress, uint memoryTableLength)
     {
-        _logger.Debug("Send MemoryDebug32BitRequest" +
-                      " {MemoryTableAddress}" +
-                      " {MemoryTableLength}", memoryTableAddress, memoryTableLength);
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaMemoryDebug32BitRequest));
         Span<byte> buffer = stackalloc byte[SaharaMemoryDebug32BitRequest.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaMemoryDebug32BitRequest.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaMemoryDebug32BitRequest.Length);
@@ -143,9 +121,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendMemoryDebug64BitRequest(ulong memoryTableAddress, ulong memoryTableLength)
     {
-        _logger.Debug("Send MemoryDebug64BitRequest" +
-                      " {MemoryTableAddress}" +
-                      " {MemoryTableLength}", memoryTableAddress, memoryTableLength);
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaMemoryDebug64BitRequest));
         Span<byte> buffer = stackalloc byte[SaharaMemoryDebug64BitRequest.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaMemoryDebug64BitRequest.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaMemoryDebug64BitRequest.Length);
@@ -157,9 +133,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendMemoryRead32BitRequest(uint memoryAddress, uint memoryLength)
     {
-        _logger.Debug("Send MemoryRead32BitRequest" +
-                      " {MemoryAddress}" +
-                      " {MemoryLength}", memoryAddress, memoryLength);
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaMemoryRead32BitRequest));
         Span<byte> buffer = stackalloc byte[SaharaMemoryRead32BitRequest.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaMemoryRead32BitRequest.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaMemoryRead32BitRequest.Length);
@@ -171,9 +145,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendMemoryRead64BitRequest(ulong memoryAddress, ulong memoryLength)
     {
-        _logger.Debug("Send MemoryRead64BitRequest" +
-                      " {MemoryAddress}" +
-                      " {MemoryLength}", memoryAddress, memoryLength);
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaMemoryRead64BitRequest));
         Span<byte> buffer = stackalloc byte[SaharaMemoryRead64BitRequest.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaMemoryRead64BitRequest.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaMemoryRead64BitRequest.Length);
@@ -185,8 +157,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendSwitchModeRequest(SaharaMode mode)
     {
-        _logger.Debug("Send SwitchModeRequest" +
-                      " {Mode}", mode.ToName());
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaSwitchModeRequest));
         Span<byte> buffer = stackalloc byte[SaharaSwitchModeRequest.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaSwitchModeRequest.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaSwitchModeRequest.Length);
@@ -198,20 +169,7 @@ internal readonly struct SaharaPacketSender
     public void SendHelloResponse(uint version, uint versionSupported, SaharaStatus status, SaharaMode mode,
         uint reserved0, uint reserved1, uint reserved2, uint reserved3, uint reserved4, uint reserved5)
     {
-        _logger.Debug("Send HelloResponse" +
-                      " {Version}" +
-                      " {VersionSupported}" +
-                      " {Status}" +
-                      " {Mode}" +
-                      " {Reserved0}" +
-                      " {Reserved1}" +
-                      " {Reserved2}" +
-                      " {Reserved3}" +
-                      " {Reserved4}" +
-                      " {Reserved5}"
-            , version, versionSupported,
-            status.ToName(), mode.ToName(), reserved0, reserved1, reserved2, reserved3, reserved4, reserved5
-        );
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaHelloResponse));
         Span<byte> buffer = stackalloc byte[SaharaHelloResponse.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaHelloResponse.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaHelloResponse.Length);
@@ -231,9 +189,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendExecuteResponse(SaharaExecuteCommand clientCommand, uint dataLength)
     {
-        _logger.Debug("Send ExecuteResponse" +
-                      " {ClientCommand}" +
-                      " {DataLength}", clientCommand.ToName(), dataLength);
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaExecuteResponse));
         Span<byte> buffer = stackalloc byte[SaharaExecuteResponse.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaExecuteResponse.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaExecuteResponse.Length);
@@ -245,8 +201,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendExecuteDataResponse(SaharaExecuteCommand clientCommand)
     {
-        _logger.Debug("Send ExecuteDataResponse" +
-                      " {ClientCommand}", clientCommand.ToName());
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaExecuteDataResponse));
         Span<byte> buffer = stackalloc byte[SaharaExecuteDataResponse.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaExecuteDataResponse.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaExecuteDataResponse.Length);
@@ -257,9 +212,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendEndImageTxResponse(uint imageId, SaharaStatus status)
     {
-        _logger.Debug("Send EndImageTxResponse" +
-                      " {ImageId}" +
-                      " {Status}", imageId, status.ToName());
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaEndImageTxResponse));
         Span<byte> buffer = stackalloc byte[SaharaEndImageTxResponse.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaEndImageTxResponse.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaEndImageTxResponse.Length);
@@ -271,8 +224,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendDoneResponse(SaharaMode imageTxStatus)
     {
-        _logger.Debug("Send DoneResponse" +
-                      " {ImageTxStatus}", imageTxStatus.ToName());
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaDoneResponse));
         Span<byte> buffer = stackalloc byte[SaharaDoneResponse.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaDoneResponse.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaDoneResponse.Length);
@@ -283,7 +235,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendResetResponse()
     {
-        _logger.Debug("Send ResetResponse");
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaResetResponse));
         Span<byte> buffer = stackalloc byte[SaharaResetResponse.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaResetResponse.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaResetResponse.Length);
@@ -293,7 +245,7 @@ internal readonly struct SaharaPacketSender
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SendReadyResponse()
     {
-        _logger.Debug("Send ReadyResponse");
+        _logger.Debug(Strings.Qcom_LogSaharaSendPacket, nameof(SaharaReadyResponse));
         Span<byte> buffer = stackalloc byte[SaharaReadyResponse.Length];
         BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)SaharaReadyResponse.Command);
         BinaryPrimitives.WriteUInt32LittleEndian(buffer[4..], SaharaReadyResponse.Length);

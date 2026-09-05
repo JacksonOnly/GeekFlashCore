@@ -396,10 +396,11 @@
   - 2026-09-05 已完成第一批异常和阶段日志资源化：Qcom 核心、Qcom.Abstractions、MessagePipe 的固定用户可见文本已迁移到中英文 `Strings` 资源；修复 SessionBlockDevice 捕获设备导致的生命周期警告。
   - 2026-09-05 同步 `ConfigureFirehose()` 已补齐配置 Provider、普通 Digest、VIP、Oplus Digest、Xiaomi 身份验证和 OnePlus/Nothing 校验顺序；新增无 XML 声明 Firehose 首包兼容和普通 Digest 通用 raw 长度上限。
 - 2026-09-05 `FirehoseProgramExecutor` 改为两阶段映射校验，执行前仍拒绝未映射范围，但不再保留整份 Sparse Digest 映射数组；新增 4 MiB 以上普通 Digest、同步资源/VIP 和无声明首包线路测试。
-- 2026-09-05 日志审查确认 Sahara/Firehose 包级收发日志均为 Debug，连接、配置、认证、转储和吞吐阶段为 Information/Warning/Error；Sahara 包级详细模板仍待逐条资源化，但不在默认生产日志级别输出。
+- 2026-09-05 日志审查确认 Sahara/Firehose 包级收发日志均为 Debug，连接、配置、认证、转储和吞吐阶段为 Information/Warning/Error；Sahara 包级详细模板已统一资源化，默认生产日志级别不会输出包级细节。
 - 2026-09-05 已根据本地 QnQcLIB 源码确认 Legacy 线路：阈值刷新为 `NOP, NOP, Digest, NOP`，签名 NAK 恢复为 `Digest, NOP` 后仅重放当前 XML 一次；读写计数在 XML 发送后立即增加，普通 NAK 也计数，恢复失败使会话进入 Faulted。
 - 2026-09-05 已将 Sahara Sender/Receiver 的包级 Debug 模板统一迁移到中英文资源键；新增首次读取超时后的 qdl 兼容 HELLO_RESP 探测，可通过 `ProbeFirehoseOnSaharaTimeout` 关闭，并以回归测试覆盖。
 - 2026-09-05 最终验证：Qcom 测试 163 项通过，`GeekFlashCore.slnx -c Release --no-restore` 构建通过且无警告/错误，`git diff --check` 通过；工作区无未提交非忽略文件。
+- 2026-09-05 深审修复 `ProbeSahara()` 的超时探测副作用；补齐 Sahara 内存区域和 Firehose 响应属性日志资源键，回归测试增至 164 项并通过。
 
 ## 未决风险
 

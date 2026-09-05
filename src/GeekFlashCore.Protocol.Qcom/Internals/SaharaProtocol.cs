@@ -13,6 +13,8 @@ namespace GeekFlashCore.Protocol.Qcom.Internals;
 internal class SaharaProtocol : IDisposable
 {
     private const int MaxRamDumpRead = 0x100000;
+    private const int MaxCommandDataLength = 0x100000;
+    private const int UploadBufferSize = 64 * 1024;
     private const long ProgressReportInterval = 0x100000;
     private const int MemoryTableEntrySize32Bit = 52;
     private const int MemoryTableEntrySize64Bit = 64;
@@ -61,8 +63,16 @@ internal class SaharaProtocol : IDisposable
         IReadOnlyList<SaharaImageEntry> saharaImages,
         Action<SaharaMemoryRegion, ReadOnlyMemory<byte>>? onMemoryData = null,
         IProgress<ProgressRecord>? progress = null)
+        => UploadImageCancelable(saharaImages, onMemoryData, progress, CancellationToken.None);
+
+    public void UploadImageCancelable(
+        IReadOnlyList<SaharaImageEntry> saharaImages,
+        Action<SaharaMemoryRegion, ReadOnlyMemory<byte>>? onMemoryData,
+        IProgress<ProgressRecord>? progress,
+        CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(saharaImages);
         if (saharaImages.Count == 0)
             throw new ArgumentException(Strings.Sahara_EmptyImageList, nameof(saharaImages));
@@ -93,6 +103,7 @@ internal class SaharaProtocol : IDisposable
         {
             while (true)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var bodyLength = _receiver.ReceivePacketHeader(out var cmd);
 
                 switch (cmd)
@@ -142,31 +153,24 @@ internal class SaharaProtocol : IDisposable
                             Strings.Sahara_ImageStreamMustBeReadableAndSeekable);
                         _logger.Debug("Transfer image {ImageId} offset {Offset} length {Length}",
                             imageId, dataOffset, dataLength);
-                        byte[] rented = ArrayPool<byte>.Shared.Rent(dataLength);
+                        byte[] rented = ArrayPool<byte>.Shared.Rent(Math.Min(dataLength, UploadBufferSize));
                         try
                         {
-                            if (dataOffset >= image.Length)
-                            {
-                                rented.AsSpan(0, dataLength).Fill(0xFF);
-                            }
-                            else
-                            {
+                            if (dataOffset < image.Length)
                                 activeStream.Seek(dataOffset, SeekOrigin.Begin);
-                                int available = checked((int)Math.Min(dataLength, image.Length - dataOffset));
-                                int read = 0;
-                                while (read < available)
-                                {
-                                    int current = activeStream.Read(rented, read, available - read);
-                                    if (current == 0)
-                                        break;
-                                    read += current;
-                                }
-
-                                if (read < dataLength)
-                                    rented.AsSpan(read, dataLength - read).Fill(0xFF);
+                            int remaining = dataLength;
+                            long available = Math.Max(0, image.Length - dataOffset);
+                            while (remaining > 0)
+                            {
+                                cancellationToken.ThrowIfCancellationRequested();
+                                int count = Math.Min(remaining, UploadBufferSize);
+                                int sourceCount = (int)Math.Min(count, available);
+                                activeStream.ReadExactly(rented.AsSpan(0, sourceCount));
+                                rented.AsSpan(sourceCount, count - sourceCount).Fill(0xFF);
+                                _transport.Write(rented, 0, count);
+                                available -= sourceCount;
+                                remaining -= count;
                             }
-
-                            _transport.Write(rented, 0, dataLength);
                             totalBytes = checked(totalBytes + dataLength);
                             if (progress != null && totalBytes - lastReportedBytes >= ProgressReportInterval)
                             {
@@ -290,19 +294,11 @@ internal class SaharaProtocol : IDisposable
         ThrowIfDisposed();
         _logger.Information("Sending reset request");
         _sender.SendResetRequest();
-        while (true)
-        {
-            var bodyLength = _receiver.ReceivePacketHeader(out var command);
-            if (command == SaharaCommand.ResetResponse)
-            {
-                _receiver.ReadResetResponse(out _, bodyLength);
-                IsConnected = false;
-                _logger.Information("Reset acknowledged");
-                return;
-            }
-
-            _logger.Warning("Waiting for ResetResponse, received {Command}", command.ToName());
-        }
+        var bodyLength = _receiver.ReceivePacketHeader(out var command);
+        ThrowIfGetInvalidResponse(command, SaharaCommand.ResetResponse, bodyLength);
+        _receiver.ReadResetResponse(out _, bodyLength);
+        IsConnected = false;
+        _logger.Information("Reset acknowledged");
     }
 
     public IReadOnlyList<SaharaMemoryRegion> DumpMemory(
@@ -473,17 +469,22 @@ internal class SaharaProtocol : IDisposable
         var bodyLength = _receiver.ReceivePacketHeader(out var command);
         ThrowIfGetInvalidResponse(command, SaharaCommand.ExecuteResponse, bodyLength);
         _receiver.ReadExecuteResponse(out var executeResponse, bodyLength);
-        var dataLength = (int)executeResponse.DataLength;
+        if (executeResponse.ClientCommand != executeCommand)
+            throw new SaharaProtocolException(Strings.FormatSahara_UnexpectedCommand(executeResponse.ClientCommand));
+        if (executeResponse.DataLength is 0 or > MaxCommandDataLength)
+            throw new SaharaProtocolException(Strings.FormatSahara_InvalidPacketLength(executeResponse.DataLength));
+        int dataLength = checked((int)executeResponse.DataLength);
         _sender.SendExecuteDataResponse(executeCommand);
         byte[] rented = ArrayPool<byte>.Shared.Rent(dataLength);
         try
         {
-            _transport.ReadExact(rented.AsSpan(0, dataLength));
+            if (_transport.ReadExact(rented.AsSpan(0, dataLength)) != dataLength)
+                throw new EndOfStreamException(Strings.SaharaNak_TimeoutRx);
             return processData(new ReadOnlyMemory<byte>(rented, 0, dataLength));
         }
         finally
         {
-            ArrayPool<byte>.Shared.Return(rented);
+            ArrayPool<byte>.Shared.Return(rented, clearArray: true);
         }
     }
 

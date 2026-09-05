@@ -125,7 +125,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         if (_firehose is not null || IsConnected) throw new InvalidOperationException(Strings.Qcom_InvalidSessionState);
         try
         {
-            if (_wire is null) DetectProtocol();
+            if (_wire is null) DetectProtocol(probeFirehoseOnTimeout: false);
             if (_sahara is null) throw new InvalidOperationException(Strings.Qcom_InvalidSessionState);
             if (!_sahara.IsConnected) ProbeCore(progress);
             return TargetInfo!.Sahara!;
@@ -225,7 +225,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         return Task.FromResult(true);
     }
 
-    private void DetectProtocol()
+    private void DetectProtocol(bool probeFirehoseOnTimeout = true)
     {
         if (!Transport.IsOpen) Transport.Open();
         byte[] prefix = new byte[8];
@@ -233,7 +233,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         {
             Transport.ReadExact(prefix, _options.ConnectTimeoutMilliseconds);
         }
-        catch (TimeoutException) when (_options.ProbeFirehoseOnSaharaTimeout)
+        catch (TimeoutException) when (probeFirehoseOnTimeout && _options.ProbeFirehoseOnSaharaTimeout)
         {
             // QUD can consume the target HELLO before the host sees it. qdl
             // recovers by sending an unsolicited HELLO response and reading

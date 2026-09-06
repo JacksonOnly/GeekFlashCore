@@ -473,3 +473,10 @@
 - CLI 通用命令缺参显示具体语法，支持 `partitions <all|lun>`、`read/write <partition> <file> [lun]`、`erase <partition> [lun]` 和三种 sector 形式；Bytes/可读单位，设备和 Core 命令交集说明，真实交互重连。通用主流程通过注册命令集扩展，不固定依赖 Qualcomm。
 - 验证证据：Qcom 203 项、CLI 25 项，Release 构建 0 警告/0 错误；64 MiB 流式窗口测试、离线 help/缺参退出码、资源键和 diff 检查通过。完整审查及风险见 `2026-09-05-cli-commands-implementation.md`。
 - 风险：本轮未操作真实设备；多 LUN 行为、厂商 Peek/Poke 方言和 FirmwareWrite 仍需硬件验证；ufs/emmc provisioning 尚不映射。
+
+### CLI-12（2026-09-06）
+
+- 根据用户实机日志先记录设计（2026-09-05-cli-device-regressions-design.md），再修复 CLI 1 秒超时覆盖 Core 10 秒默认值、空类型 GUID 残留槽使整个 LUN GPT 被跳过，以及失效会话误报不支持 read。
+- GPT 新增显式跳过空类型槽选项，仅 Qcom 设备路径启用，镜像编辑默认行为和有效条目的 CRC/范围检查保持兼容；CLI 适配器先判断连接状态，断线提示 connect，恢复入口不被拦截。
+- 证据：ROM gpt_main1–5.bin 只读严格解析通过；模拟慢响应/真实超时失效、默认兼容和 CRC/几何失败路径覆盖。Qcom 213、CLI 35 项通过，Release 构建 0 警告/0 错误，资源与 diff 检查通过。细节见 2026-09-05-cli-device-regressions-implementation.md。
+- 风险：尚未执行本轮硬件复测，默认超时修复不保证排除所有设备延迟/丢包原因；用户新增 cust.img 保留在工作区，不提交。

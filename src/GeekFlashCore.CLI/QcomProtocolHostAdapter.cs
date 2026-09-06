@@ -56,6 +56,9 @@ internal static class QcomProtocolHostAdapter
         public void PrintHelp(IProtocol protocol, ConsoleUi ui) => FirehoseCommands.PrintMapping(protocol, ui);
         public void ValidateAvailability(IProtocol protocol, string command)
         {
+            if (protocol is IQcomProtocol device && !device.IsConnected &&
+                command is not ("connect" or "configure" or "probe-sahara" or "help" or "devices"))
+                throw new InvalidOperationException(Strings.Cli_ReconnectRequired);
             if (protocol is IQcomProtocol qcom && command == "reboot") FirehoseCommands.Require(qcom, "power");
         }
         public async Task<int> ExecuteAsync(IProtocol protocol, CliOptions options, ConsoleUi ui, IProgress<ProgressRecord> progress, CancellationToken ct)

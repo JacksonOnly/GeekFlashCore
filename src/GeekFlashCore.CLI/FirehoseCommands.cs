@@ -107,6 +107,7 @@ internal static class FirehoseCommands
 
     public static void Require(IQcomProtocol protocol, string command)
     {
+        if (!protocol.IsConnected) throw new InvalidOperationException(Strings.Cli_ReconnectRequired);
         string wire = command switch { "write" => "program", "reboot" => "power", _ => command };
         if (!(protocol.TargetInfo?.Firehose?.BasicDevCharacteristics?.SupportedFunctions ?? []).Contains(wire, StringComparer.OrdinalIgnoreCase))
             throw new NotSupportedException(Strings.FormatCli_CommandNotSupported(wire));

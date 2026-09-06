@@ -2,6 +2,7 @@
   <Folder Name="/Abstractions/">
     <Project Path="src/GeekFlashCore.Abstractions/GeekFlashCore.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.BlockDevice.Abstractions/GeekFlashCore.BlockDevice.Abstractions.csproj" />
+    <Project Path="src/GeekFlashCore.ImageFormats.Abstractions/GeekFlashCore.ImageFormats.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.FileSystem.Abstractions/GeekFlashCore.FileSystem.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.Gpt.Abstractions/GeekFlashCore.Gpt.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.Protocol.Abstractions/GeekFlashCore.Protocol.Abstractions.csproj" />
@@ -10,6 +11,7 @@
     <Project Path="src/GeekFlashCore.UsbWatcher.Abstractions/GeekFlashCore.UsbWatcher.Abstractions.csproj" />
   </Folder>
   <Folder Name="/Android/">
+    <Project Path="src/GeekFlashCore.Android.Lp.Abstractions/GeekFlashCore.Android.Lp.Abstractions.csproj" />
     <Project Path="src/GeekFlashCore.Android.Lp/GeekFlashCore.Android.Lp.csproj" />
     <Project Path="src/GeekFlashCore.Android.Sparse/GeekFlashCore.Android.Sparse.csproj" />
   </Folder>

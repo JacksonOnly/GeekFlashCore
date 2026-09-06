@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="CommitStarted" xml:space="preserve"><value>开始提交 LP Metadata slot {SlotNumber}。</value></data>
+  <data name="DataPhaseCompleted" xml:space="preserve"><value>LP 数据阶段完成，共写入 {ByteCount} 字节。</value></data>
+  <data name="OldCopyRepaired" xml:space="preserve"><value>已在安装新 Metadata 前修复 {CopyKind} 旧副本。</value></data>
+  <data name="MetadataCommitted" xml:space="preserve"><value>LP Metadata slot {SlotNumber} 的 primary 与 backup 已提交。</value></data>
+  <data name="VerificationIncomplete" xml:space="preserve"><value>LP 提交已成功，但验证状态为 {VerificationStatus}。</value></data>
+  <data name="CleanupIncomplete" xml:space="preserve"><value>LP 提交已成功，但清理状态为 {CleanupStatus}。</value></data>
+  <data name="FileOpened" xml:space="preserve"><value>已独占打开 super 文件，目标 LP Metadata slot 为 {SlotNumber}。</value></data>
+  <data name="RawExportCompleted" xml:space="preserve"><value>逻辑分区 {PartitionName} 的 RAW 导出已完成。</value></data>
+  <data name="LeaseDisposeFailed" xml:space="preserve"><value>释放 LP block-device 索引 {BlockDeviceIndex} 的租约失败。</value></data>
+</root>

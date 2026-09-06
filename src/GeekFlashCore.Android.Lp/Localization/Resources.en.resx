@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="InvalidName" xml:space="preserve"><value>Name '{0}' does not satisfy the LP on-disk constraints.</value></data>
+  <data name="DuplicateName" xml:space="preserve"><value>Name '{0}' is duplicated in the current LP metadata.</value></data>
+  <data name="PartitionNotFound" xml:space="preserve"><value>The specified logical partition was not found.</value></data>
+  <data name="GroupNotFound" xml:space="preserve"><value>The specified partition group was not found.</value></data>
+  <data name="DefaultGroupProtected" xml:space="preserve"><value>The default partition group does not allow this change.</value></data>
+  <data name="GroupNotEmpty" xml:space="preserve"><value>Partition group '{0}' still contains partitions.</value></data>
+  <data name="InvalidLogicalSize" xml:space="preserve"><value>A logical partition size must be non-negative.</value></data>
+  <data name="ImageTooLargeForPartition" xml:space="preserve"><value>The requested size cannot be smaller than the expanded replacement image.</value></data>
+  <data name="GeometryCopiesDiffer" xml:space="preserve"><value>The two valid LP geometry copies differ and cannot be edited safely.</value></data>
+  <data name="UnsupportedHeaderFlags" xml:space="preserve"><value>LP metadata contains header flags that cannot be rewritten safely: 0x{0}.</value></data>
+  <data name="UnsupportedPartitionAttributes" xml:space="preserve"><value>The partition attributes are not supported by this LP metadata version.</value></data>
+  <data name="UnsupportedGroupFlags" xml:space="preserve"><value>The partition group flags contain unknown bits.</value></data>
+  <data name="InvalidSourceNameEncoding" xml:space="preserve"><value>Source metadata name '{0}' cannot be rewritten using the LP ASCII rules.</value></data>
+  <data name="BlockDeviceTablesDiffer" xml:space="preserve"><value>Valid metadata copies have different block-device tables and cannot be edited safely.</value></data>
+  <data name="TargetSlotUnavailable" xml:space="preserve"><value>The target metadata slot has no valid copy.</value></data>
+  <data name="UnreadableNonTargetSlot" xml:space="preserve"><value>Non-target metadata slot {0} has no interpretable valid copy.</value></data>
+  <data name="ConcurrentSessionOperation" xml:space="preserve"><value>An LP edit session does not support concurrent mutation or commit operations.</value></data>
+  <data name="PlanDoesNotBelongToSession" xml:space="preserve"><value>The commit plan does not belong to this LP edit session.</value></data>
+  <data name="SourceChanged" xml:space="preserve"><value>The LP source changed during the edit session.</value></data>
+  <data name="ExtentConflict" xml:space="preserve"><value>The final LP layout contains overlapping physical extents.</value></data>
+  <data name="MetadataTooLarge" xml:space="preserve"><value>The encoded LP metadata exceeds MetadataMaxSize.</value></data>
+  <data name="InsufficientSpace" xml:space="preserve"><value>The fixed super capacity has insufficient allocatable space.</value></data>
+  <data name="InPlaceOverwriteRequired" xml:space="preserve"><value>Strict COW space is insufficient; in-place data overwrite must be enabled explicitly.</value></data>
+  <data name="AlignmentViolation" xml:space="preserve"><value>No free interval satisfies the LP block-device alignment constraints.</value></data>
+  <data name="InvalidSparseImage" xml:space="preserve"><value>The Android sparse image is invalid or failed checksum validation.</value></data>
+  <data name="ImageSourceDisposed" xml:space="preserve"><value>The partition image source has been disposed.</value></data>
+  <data name="ImageSourceConsumed" xml:space="preserve"><value>The non-replayable partition image source has already been consumed.</value></data>
+  <data name="InvalidVerificationOptions" xml:space="preserve"><value>VerifyPayloadHash requires VerifyAfterCommit.</value></data>
+  <data name="ResolverReturnedNull" xml:space="preserve"><value>The writable block-device resolver returned a null lease.</value></data>
+  <data name="ResolverFailed" xml:space="preserve"><value>Resolving an LP writable block device failed.</value></data>
+  <data name="DeviceIdentityMismatch" xml:space="preserve"><value>A block device resolved during commit does not match the plan snapshot.</value></data>
+  <data name="AliasedBlockDevice" xml:space="preserve"><value>Different LP block-device indices resolved to the same physical device.</value></data>
+  <data name="DataWriteFailed" xml:space="preserve"><value>Writing logical partition data failed.</value></data>
+  <data name="DataFlushFailed" xml:space="preserve"><value>Flushing logical partition data failed.</value></data>
+  <data name="MetadataReadFailed" xml:space="preserve"><value>Re-reading LP metadata failed.</value></data>
+  <data name="OldMetadataRepairFailed" xml:space="preserve"><value>Repairing the old metadata copy failed.</value></data>
+  <data name="PrimaryMetadataWriteFailed" xml:space="preserve"><value>Writing the new primary metadata failed.</value></data>
+  <data name="PrimaryMetadataFlushFailed" xml:space="preserve"><value>Flushing the new primary metadata failed.</value></data>
+  <data name="BackupMetadataWriteFailed" xml:space="preserve"><value>Writing the new backup metadata failed.</value></data>
+  <data name="BackupMetadataFlushFailed" xml:space="preserve"><value>Flushing the new backup metadata failed.</value></data>
+  <data name="MetadataVerificationFailed" xml:space="preserve"><value>Post-commit metadata readback verification failed.</value></data>
+  <data name="PayloadVerificationFailed" xml:space="preserve"><value>Post-commit partition payload hash verification failed.</value></data>
+  <data name="CleanupFailed" xml:space="preserve"><value>Metadata was committed, but cleanup of released extents failed.</value></data>
+  <data name="CancelledAfterDataWrite" xml:space="preserve"><value>The commit was cancelled after data writing began.</value></data>
+  <data name="SingleFileRequiresOneBlockDevice" xml:space="preserve"><value>The single-file super editor requires LP metadata with exactly one block device.</value></data>
+  <data name="GroupCapacityExceeded" xml:space="preserve"><value>Partition group '{0}' has a {1}-byte quota but requires {2} bytes.</value></data>
+  <data name="MultiDeviceResolverRequired" xml:space="preserve"><value>LP block-device index {0} was not resolved when the session was opened, so a committable plan cannot be created.</value></data>
+  <data name="SourceChangedBeforeWrite" xml:space="preserve"><value>The LP source changed before any write was accepted.</value></data>
+  <data name="SourceChangedAfterDataWrite" xml:space="preserve"><value>The LP source changed after data was written and before metadata was committed.</value></data>
+  <data name="VerificationCancelled" xml:space="preserve"><value>Metadata was committed successfully, but post-commit readback verification was cancelled.</value></data>
+  <data name="CleanupCancelled" xml:space="preserve"><value>Metadata was committed successfully, but released-extent cleanup was cancelled.</value></data>
+  <data name="CapacityExceedsSupportedRange" xml:space="preserve"><value>The LP capacity summary exceeds the signed 64-bit range supported by this API.</value></data>
+  <data name="RawLengthExceedsSource" xml:space="preserve"><value>The declared RAW length exceeds the remaining length of the seekable source stream.</value></data>
+  <data name="NonReplayableImageAlreadyAssigned" xml:space="preserve"><value>The same non-replayable image source cannot be assigned to multiple logical partitions.</value></data>
+  <data name="Errors_Lp_BothGeometryCopiesInvalid" xml:space="preserve"><value>Both LP geometry copies are invalid.</value></data>
+  <data name="Errors_Lp_MetadataCopiesExceedSource" xml:space="preserve"><value>LP metadata copies exceed the source block device.</value></data>
+  <data name="InvalidStreamReadResult" xml:space="preserve"><value>The source stream returned a read length outside the requested range.</value></data>
+  <data name="UnexpectedEndOfStream" xml:space="preserve"><value>The source data ended before the required read completed.</value></data>
+  <data name="Errors_Lp_SlotHasNoValidCopy" xml:space="preserve"><value>LP metadata slot {0} has no valid copy.</value></data>
+  <data name="Errors_Lp_MetadataCopyInvalid" xml:space="preserve"><value>The {1} copy of LP metadata slot {0} is invalid.</value></data>
+  <data name="Errors_Lp_DecodedReservationTooLarge" xml:space="preserve"><value>Decoded LP metadata exceeds the supported memory reservation size.</value></data>
+  <data name="Errors_Lp_DecodedBudgetExceeded" xml:space="preserve"><value>Decoded LP metadata exceeds the configured aggregate memory budget.</value></data>
+  <data name="Errors_Lp_GeometryMagicOrSizeInvalid" xml:space="preserve"><value>LP geometry magic or structure size is invalid.</value></data>
+  <data name="Errors_Lp_GeometryChecksumMismatch" xml:space="preserve"><value>LP geometry checksum does not match.</value></data>
+  <data name="Errors_Lp_GeometrySizesInvalid" xml:space="preserve"><value>LP geometry contains invalid sizes or counts.</value></data>
+  <data name="Errors_Lp_MetadataMaxSizeLimit" xml:space="preserve"><value>LP metadata_max_size exceeds the configured limit.</value></data>
+  <data name="Errors_Lp_HeaderMagicInvalid" xml:space="preserve"><value>LP metadata header magic is invalid.</value></data>
+  <data name="Errors_Lp_UnsupportedMetadataVersion" xml:space="preserve"><value>LP metadata version {0}.{1} is not supported.</value></data>
+  <data name="Errors_Lp_HeaderSizeInvalid" xml:space="preserve"><value>LP metadata header size is invalid.</value></data>
+  <data name="Errors_Lp_HeaderChecksumMismatch" xml:space="preserve"><value>LP metadata header checksum does not match.</value></data>
+  <data name="Errors_Lp_TablesExceedMetadataMaxSize" xml:space="preserve"><value>LP tables exceed metadata_max_size.</value></data>
+  <data name="Errors_Lp_TableEntryLimitExceeded" xml:space="preserve"><value>LP table entry count exceeds the configured limit.</value></data>
+  <data name="Errors_Lp_TablesChecksumMismatch" xml:space="preserve"><value>LP tables checksum does not match.</value></data>
+  <data name="Errors_Lp_TableEntrySizeInvalid" xml:space="preserve"><value>LP {0} entry size is invalid.</value></data>
+  <data name="Errors_Lp_TableOutOfRange" xml:space="preserve"><value>LP {0} table is out of range.</value></data>
+  <data name="Errors_Lp_TablesOverlap" xml:space="preserve"><value>LP tables overlap.</value></data>
+  <data name="Errors_Lp_PartitionAttributesUnknown" xml:space="preserve"><value>Partition attributes contain unknown bits.</value></data>
+  <data name="Errors_Lp_ExtentTargetTypeUnknown" xml:space="preserve"><value>The extent target type is unknown.</value></data>
+  <data name="Errors_Lp_GroupFlagsUnknown" xml:space="preserve"><value>Partition group flags contain unknown bits.</value></data>
+  <data name="Errors_Lp_BlockDeviceFlagsUnknown" xml:space="preserve"><value>Block-device flags contain unknown bits.</value></data>
+  <data name="Errors_Lp_PartitionNameNotFound" xml:space="preserve"><value>LP partition '{0}' was not found.</value></data>
+  <data name="Errors_Lp_MultipleBlockDevicesRequireResolver" xml:space="preserve"><value>This LP metadata references multiple block devices; use an ILpBlockDeviceResolver.</value></data>
+  <data name="Errors_Lp_RequiredTablesEmpty" xml:space="preserve"><value>LP groups and block_devices tables must not be empty.</value></data>
+  <data name="Errors_Lp_BlockDeviceGeometryInvalid" xml:space="preserve"><value>Block-device geometry is invalid.</value></data>
+  <data name="Errors_Lp_MetadataOverlapsAllocatableSectors" xml:space="preserve"><value>LP metadata overlaps allocatable sectors.</value></data>
+  <data name="Errors_Lp_ExtentSectorCountZero" xml:space="preserve"><value>The extent sector count must not be zero.</value></data>
+  <data name="Errors_Lp_ZeroExtentReferencesStorage" xml:space="preserve"><value>A zero extent cannot reference physical storage.</value></data>
+  <data name="Errors_Lp_ExtentTargetSourceOutOfRange" xml:space="preserve"><value>The extent target_source is out of range.</value></data>
+  <data name="Errors_Lp_LinearExtentOutOfRange" xml:space="preserve"><value>The linear extent is outside its block device.</value></data>
+  <data name="Errors_Lp_PartitionRangeInvalid" xml:space="preserve"><value>The partition extent range or group index is invalid.</value></data>
+  <data name="Errors_Lp_SourceSmallerThanBlockDevice" xml:space="preserve"><value>The supplied source is smaller than the LP block device.</value></data>
+</root>

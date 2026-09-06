@@ -5,11 +5,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\GeekFlashCore.Android.Lp.Abstractions\GeekFlashCore.Android.Lp.Abstractions.csproj" />
-    <ProjectReference Include="..\GeekFlashCore.Android.Sparse\GeekFlashCore.Android.Sparse.csproj" />
-    <ProjectReference Include="..\GeekFlashCore.BlockDevice\GeekFlashCore.BlockDevice.csproj" />
     <ProjectReference Include="..\GeekFlashCore.BlockDevice.Abstractions\GeekFlashCore.BlockDevice.Abstractions.csproj" />
     <ProjectReference Include="..\GeekFlashCore.ImageFormats.Abstractions\GeekFlashCore.ImageFormats.Abstractions.csproj" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="CommitStarted" xml:space="preserve"><value>Starting the LP commit for metadata slot {SlotNumber}.</value></data>
+  <data name="DataPhaseCompleted" xml:space="preserve"><value>The LP data phase completed after writing {ByteCount} bytes.</value></data>
+  <data name="OldCopyRepaired" xml:space="preserve"><value>The old {CopyKind} copy was repaired before installing new metadata.</value></data>
+  <data name="MetadataCommitted" xml:space="preserve"><value>The primary and backup copies for LP metadata slot {SlotNumber} were committed.</value></data>
+  <data name="VerificationIncomplete" xml:space="preserve"><value>The LP commit succeeded, but verification ended with {VerificationStatus}.</value></data>
+  <data name="CleanupIncomplete" xml:space="preserve"><value>The LP commit succeeded, but cleanup ended with {CleanupStatus}.</value></data>
+  <data name="FileOpened" xml:space="preserve"><value>The super file was opened exclusively for LP metadata slot {SlotNumber}.</value></data>
+  <data name="RawExportCompleted" xml:space="preserve"><value>The RAW export for logical partition {PartitionName} completed.</value></data>
+  <data name="LeaseDisposeFailed" xml:space="preserve"><value>Disposing the lease for LP block-device index {BlockDeviceIndex} failed.</value></data>
+</root>

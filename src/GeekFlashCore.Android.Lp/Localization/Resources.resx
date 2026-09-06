@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="InvalidName" xml:space="preserve"><value>名称“{0}”不符合 LP 磁盘格式约束。</value></data>
+  <data name="DuplicateName" xml:space="preserve"><value>名称“{0}”在当前 LP 元数据中重复。</value></data>
+  <data name="PartitionNotFound" xml:space="preserve"><value>找不到指定的逻辑分区。</value></data>
+  <data name="GroupNotFound" xml:space="preserve"><value>找不到指定的分区组。</value></data>
+  <data name="DefaultGroupProtected" xml:space="preserve"><value>默认分区组不允许执行此修改。</value></data>
+  <data name="GroupNotEmpty" xml:space="preserve"><value>分区组“{0}”仍包含分区。</value></data>
+  <data name="InvalidLogicalSize" xml:space="preserve"><value>逻辑分区大小必须为非负值。</value></data>
+  <data name="ImageTooLargeForPartition" xml:space="preserve"><value>请求大小不能小于替换镜像的展开长度。</value></data>
+  <data name="GeometryCopiesDiffer" xml:space="preserve"><value>两份有效 LP Geometry 内容不一致，无法安全编辑。</value></data>
+  <data name="UnsupportedHeaderFlags" xml:space="preserve"><value>LP Metadata 包含无法安全重写的 Header flags：0x{0}。</value></data>
+  <data name="UnsupportedPartitionAttributes" xml:space="preserve"><value>分区属性不受当前 LP Metadata 版本支持。</value></data>
+  <data name="UnsupportedGroupFlags" xml:space="preserve"><value>分区组 flags 包含未知位。</value></data>
+  <data name="InvalidSourceNameEncoding" xml:space="preserve"><value>源 Metadata 名称“{0}”无法按 LP ASCII 规则安全重写。</value></data>
+  <data name="BlockDeviceTablesDiffer" xml:space="preserve"><value>有效 Metadata 副本的 block-device 表不一致，无法安全编辑。</value></data>
+  <data name="TargetSlotUnavailable" xml:space="preserve"><value>目标 Metadata slot 没有有效副本。</value></data>
+  <data name="UnreadableNonTargetSlot" xml:space="preserve"><value>非目标 Metadata slot {0} 没有可解释的有效副本。</value></data>
+  <data name="ConcurrentSessionOperation" xml:space="preserve"><value>同一个 LP 编辑会话不支持并发修改或提交。</value></data>
+  <data name="PlanDoesNotBelongToSession" xml:space="preserve"><value>提交计划不属于当前 LP 编辑会话。</value></data>
+  <data name="SourceChanged" xml:space="preserve"><value>LP 源在编辑期间发生了变化。</value></data>
+  <data name="ExtentConflict" xml:space="preserve"><value>最终 LP 布局包含重叠的物理 extent。</value></data>
+  <data name="MetadataTooLarge" xml:space="preserve"><value>编码后的 LP Metadata 超过 MetadataMaxSize。</value></data>
+  <data name="InsufficientSpace" xml:space="preserve"><value>固定 super 容量内没有足够的可分配空间。</value></data>
+  <data name="InPlaceOverwriteRequired" xml:space="preserve"><value>严格 COW 空间不足；需要显式允许原地数据覆盖。</value></data>
+  <data name="AlignmentViolation" xml:space="preserve"><value>可用区间无法满足 LP block-device 对齐约束。</value></data>
+  <data name="InvalidSparseImage" xml:space="preserve"><value>Android Sparse 镜像无效或校验失败。</value></data>
+  <data name="ImageSourceDisposed" xml:space="preserve"><value>分区镜像源已释放。</value></data>
+  <data name="ImageSourceConsumed" xml:space="preserve"><value>不可重放的分区镜像源已被消费。</value></data>
+  <data name="InvalidVerificationOptions" xml:space="preserve"><value>VerifyPayloadHash 要求同时启用 VerifyAfterCommit。</value></data>
+  <data name="ResolverReturnedNull" xml:space="preserve"><value>可写块设备解析器返回了空租约。</value></data>
+  <data name="ResolverFailed" xml:space="preserve"><value>解析 LP 可写块设备失败。</value></data>
+  <data name="DeviceIdentityMismatch" xml:space="preserve"><value>提交时解析到的块设备与计划快照不一致。</value></data>
+  <data name="AliasedBlockDevice" xml:space="preserve"><value>不同 LP block-device 索引解析到了同一个物理设备。</value></data>
+  <data name="DataWriteFailed" xml:space="preserve"><value>写入逻辑分区数据失败。</value></data>
+  <data name="DataFlushFailed" xml:space="preserve"><value>刷新逻辑分区数据失败。</value></data>
+  <data name="MetadataReadFailed" xml:space="preserve"><value>重新读取 LP Metadata 失败。</value></data>
+  <data name="OldMetadataRepairFailed" xml:space="preserve"><value>修复旧 Metadata 副本失败。</value></data>
+  <data name="PrimaryMetadataWriteFailed" xml:space="preserve"><value>写入新 primary Metadata 失败。</value></data>
+  <data name="PrimaryMetadataFlushFailed" xml:space="preserve"><value>刷新新 primary Metadata 失败。</value></data>
+  <data name="BackupMetadataWriteFailed" xml:space="preserve"><value>写入新 backup Metadata 失败。</value></data>
+  <data name="BackupMetadataFlushFailed" xml:space="preserve"><value>刷新新 backup Metadata 失败。</value></data>
+  <data name="MetadataVerificationFailed" xml:space="preserve"><value>提交后的 Metadata 回读验证失败。</value></data>
+  <data name="PayloadVerificationFailed" xml:space="preserve"><value>提交后的分区数据哈希验证失败。</value></data>
+  <data name="CleanupFailed" xml:space="preserve"><value>Metadata 已提交，但释放 extent 的清理失败。</value></data>
+  <data name="CancelledAfterDataWrite" xml:space="preserve"><value>数据写入开始后提交被取消。</value></data>
+  <data name="SingleFileRequiresOneBlockDevice" xml:space="preserve"><value>单文件 super 编辑入口仅支持包含一个 block-device 的 LP Metadata。</value></data>
+  <data name="GroupCapacityExceeded" xml:space="preserve"><value>分区组“{0}”的配额为 {1} 字节，最终需要 {2} 字节。</value></data>
+  <data name="MultiDeviceResolverRequired" xml:space="preserve"><value>LP block-device 索引 {0} 未在打开会话时解析，无法生成可提交计划。</value></data>
+  <data name="SourceChangedBeforeWrite" xml:space="preserve"><value>LP 源在任何写入发生前已改变。</value></data>
+  <data name="SourceChangedAfterDataWrite" xml:space="preserve"><value>LP 源在数据写入后、Metadata 提交前发生了改变。</value></data>
+  <data name="VerificationCancelled" xml:space="preserve"><value>Metadata 已成功提交，但提交后回读验证被取消。</value></data>
+  <data name="CleanupCancelled" xml:space="preserve"><value>Metadata 已成功提交，但释放 extent 的清理被取消。</value></data>
+  <data name="CapacityExceedsSupportedRange" xml:space="preserve"><value>LP 容量摘要超过当前 API 可表示的 64 位有符号范围。</value></data>
+  <data name="RawLengthExceedsSource" xml:space="preserve"><value>RAW 声明长度超过可 seek 源流的剩余长度。</value></data>
+  <data name="NonReplayableImageAlreadyAssigned" xml:space="preserve"><value>同一个不可重放镜像源不能同时分配给多个逻辑分区。</value></data>
+  <data name="Errors_Lp_BothGeometryCopiesInvalid" xml:space="preserve"><value>两份 LP Geometry 副本均无效。</value></data>
+  <data name="Errors_Lp_MetadataCopiesExceedSource" xml:space="preserve"><value>LP Metadata 副本超出源块设备范围。</value></data>
+  <data name="InvalidStreamReadResult" xml:space="preserve"><value>源流返回了超出请求范围的读取长度。</value></data>
+  <data name="UnexpectedEndOfStream" xml:space="preserve"><value>源数据在完成所需读取前结束。</value></data>
+  <data name="Errors_Lp_SlotHasNoValidCopy" xml:space="preserve"><value>LP Metadata slot {0} 没有有效副本。</value></data>
+  <data name="Errors_Lp_MetadataCopyInvalid" xml:space="preserve"><value>LP Metadata slot {0} 的 {1} 副本无效。</value></data>
+  <data name="Errors_Lp_DecodedReservationTooLarge" xml:space="preserve"><value>解码后的 LP Metadata 超出支持的内存预留大小。</value></data>
+  <data name="Errors_Lp_DecodedBudgetExceeded" xml:space="preserve"><value>解码后的 LP Metadata 超出配置的总内存预算。</value></data>
+  <data name="Errors_Lp_GeometryMagicOrSizeInvalid" xml:space="preserve"><value>LP Geometry 魔数或结构大小无效。</value></data>
+  <data name="Errors_Lp_GeometryChecksumMismatch" xml:space="preserve"><value>LP Geometry 校验和不匹配。</value></data>
+  <data name="Errors_Lp_GeometrySizesInvalid" xml:space="preserve"><value>LP Geometry 包含无效的大小或数量。</value></data>
+  <data name="Errors_Lp_MetadataMaxSizeLimit" xml:space="preserve"><value>LP metadata_max_size 超出配置限制。</value></data>
+  <data name="Errors_Lp_HeaderMagicInvalid" xml:space="preserve"><value>LP Metadata Header 魔数无效。</value></data>
+  <data name="Errors_Lp_UnsupportedMetadataVersion" xml:space="preserve"><value>不支持 LP Metadata 版本 {0}.{1}。</value></data>
+  <data name="Errors_Lp_HeaderSizeInvalid" xml:space="preserve"><value>LP Metadata Header 大小无效。</value></data>
+  <data name="Errors_Lp_HeaderChecksumMismatch" xml:space="preserve"><value>LP Metadata Header 校验和不匹配。</value></data>
+  <data name="Errors_Lp_TablesExceedMetadataMaxSize" xml:space="preserve"><value>LP tables 超出 metadata_max_size。</value></data>
+  <data name="Errors_Lp_TableEntryLimitExceeded" xml:space="preserve"><value>LP 表项数量超出配置限制。</value></data>
+  <data name="Errors_Lp_TablesChecksumMismatch" xml:space="preserve"><value>LP tables 校验和不匹配。</value></data>
+  <data name="Errors_Lp_TableEntrySizeInvalid" xml:space="preserve"><value>LP {0} 表项大小无效。</value></data>
+  <data name="Errors_Lp_TableOutOfRange" xml:space="preserve"><value>LP {0} 表超出范围。</value></data>
+  <data name="Errors_Lp_TablesOverlap" xml:space="preserve"><value>LP tables 存在重叠。</value></data>
+  <data name="Errors_Lp_PartitionAttributesUnknown" xml:space="preserve"><value>分区属性包含未知位。</value></data>
+  <data name="Errors_Lp_ExtentTargetTypeUnknown" xml:space="preserve"><value>Extent 目标类型未知。</value></data>
+  <data name="Errors_Lp_GroupFlagsUnknown" xml:space="preserve"><value>分区组 flags 包含未知位。</value></data>
+  <data name="Errors_Lp_BlockDeviceFlagsUnknown" xml:space="preserve"><value>Block-device flags 包含未知位。</value></data>
+  <data name="Errors_Lp_PartitionNameNotFound" xml:space="preserve"><value>找不到 LP 分区“{0}”。</value></data>
+  <data name="Errors_Lp_MultipleBlockDevicesRequireResolver" xml:space="preserve"><value>此 LP Metadata 引用了多个块设备；必须使用 ILpBlockDeviceResolver。</value></data>
+  <data name="Errors_Lp_RequiredTablesEmpty" xml:space="preserve"><value>LP groups 和 block_devices 表不能为空。</value></data>
+  <data name="Errors_Lp_BlockDeviceGeometryInvalid" xml:space="preserve"><value>Block-device geometry 无效。</value></data>
+  <data name="Errors_Lp_MetadataOverlapsAllocatableSectors" xml:space="preserve"><value>LP Metadata 与可分配扇区重叠。</value></data>
+  <data name="Errors_Lp_ExtentSectorCountZero" xml:space="preserve"><value>Extent 扇区数量不能为零。</value></data>
+  <data name="Errors_Lp_ZeroExtentReferencesStorage" xml:space="preserve"><value>Zero extent 不能引用物理存储。</value></data>
+  <data name="Errors_Lp_ExtentTargetSourceOutOfRange" xml:space="preserve"><value>Extent target_source 超出范围。</value></data>
+  <data name="Errors_Lp_LinearExtentOutOfRange" xml:space="preserve"><value>Linear extent 超出其块设备范围。</value></data>
+  <data name="Errors_Lp_PartitionRangeInvalid" xml:space="preserve"><value>分区 extent 范围或分区组索引无效。</value></data>
+  <data name="Errors_Lp_SourceSmallerThanBlockDevice" xml:space="preserve"><value>提供的源小于 LP block-device。</value></data>
+</root>

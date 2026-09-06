@@ -66,6 +66,49 @@ public sealed class SparseDocument : IDisposable
         return new BlockDeviceStream(CreateExpandedBlockDevice(), DeviceOwnership.Transfer);
     }
 
+    /// <summary>Projects validated data chunks into streaming raw and fill regions.</summary>
+    public IReadOnlyList<SparseRegion> CreateDataRegions()
+    {
+        ThrowIfDisposed();
+        var regions = new List<SparseRegion>();
+        var rawChunks = new List<SparseDataChunk>();
+        uint rawStartBlock = 0;
+        long rawLength = 0;
+
+        foreach (SparseChunk chunk in _chunks)
+        {
+            uint startBlock = checked((uint)(chunk.OutputOffset / Header.BlockSize));
+            if (chunk.Type == SparseChunkType.Raw)
+            {
+                if (rawChunks.Count == 0)
+                    rawStartBlock = startBlock;
+                rawChunks.Add(new SparseDataChunk(
+                    SparseDataChunkType.Raw,
+                    chunk.PayloadOffset,
+                    chunk.OutputLength,
+                    0));
+                rawLength = checked(rawLength + chunk.OutputLength);
+                continue;
+            }
+
+            FlushRawRegion(regions, rawChunks, rawStartBlock, ref rawLength);
+            if (chunk.Type == SparseChunkType.Fill)
+            {
+                regions.Add(new SparseRegion(
+                    startBlock,
+                    chunk.OutputLength,
+                    [new SparseDataChunk(
+                        SparseDataChunkType.Fill,
+                        0,
+                        chunk.OutputLength,
+                        chunk.FillValue)]));
+            }
+        }
+
+        FlushRawRegion(regions, rawChunks, rawStartBlock, ref rawLength);
+        return regions;
+    }
+
     public uint VerifyChecksum(
         BudgetedArrayPool? buffers = null,
         IProgress<BlockCopyProgress>? progress = null,
@@ -210,6 +253,20 @@ public sealed class SparseDocument : IDisposable
     internal void ThrowIfDisposed()
     {
         if (_disposed) throw new ObjectDisposedException(nameof(SparseDocument));
+    }
+
+    private static void FlushRawRegion(
+        List<SparseRegion> regions,
+        List<SparseDataChunk> rawChunks,
+        uint startBlock,
+        ref long length)
+    {
+        if (rawChunks.Count == 0)
+            return;
+
+        regions.Add(new SparseRegion(startBlock, length, rawChunks.ToArray()));
+        rawChunks.Clear();
+        length = 0;
     }
 
     private SparseException ChecksumMismatch(

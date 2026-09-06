@@ -199,6 +199,8 @@ public class GptParser : IGptParser
         for (int slotIndex = 0; slotIndex < header.PartitionEntryCount; slotIndex++)
         {
             ReadOnlySpan<byte> source = sourceEntries.Slice(slotIndex * entrySize, entrySize);
+            if (options.SkipEmptyPartitionTypeId && new Guid(source[..16]) == Guid.Empty)
+                continue;
             GptEntry partition = ReadPartition(source, slotIndex, options);
             if (partition.TypeId == Guid.Empty && partition.Id == Guid.Empty) continue;
             ValidatePartitionGeometry(partition, header, options, slotIndex);

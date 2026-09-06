@@ -192,7 +192,8 @@ public sealed partial class QcomProtocol
                 var table = new GptParser().Parse(image, new GptParseOptions
                 {
                     SectorSize = sectorSize, CrcPolicy = GptCrcPolicy.Strict,
-                    AllowUnpatchedPartitionGeometry = false, AllowEmptyPartitionTypeId = false
+                    AllowUnpatchedPartitionGeometry = false, AllowEmptyPartitionTypeId = false,
+                    SkipEmptyPartitionTypeId = true
                 });
                 foreach (var entry in table.Entries)
                     partitions.Add((entry.Name, new(lun,

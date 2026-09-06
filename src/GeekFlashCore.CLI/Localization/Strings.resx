@@ -38,4 +38,8 @@
   <data name="Cli_XblGptDescription" xml:space="preserve"><value>执行指定 LUN 的 xblgpt 命令。</value></data>
   <data name="Cli_FixGptDescription" xml:space="preserve"><value>修复指定 LUN 的 GPT；grow=1 扩展最后分区。</value></data>
   <data name="Cli_ReconnectRequired" xml:space="preserve"><value>设备未连接或会话已失效，请先执行 connect 重新连接。</value></data>
+  <data name="Cli_ProgressSpeed" xml:space="preserve"><value>平均速度 {0}</value></data>
+  <data name="Cli_ProgressElapsed" xml:space="preserve"><value>已用 {0}</value></data>
+  <data name="Cli_ProgressDuration" xml:space="preserve"><value>总用时 {0}</value></data>
+  <data name="Cli_ProgressRemaining" xml:space="preserve"><value>剩余 {0}</value></data>
 </root>

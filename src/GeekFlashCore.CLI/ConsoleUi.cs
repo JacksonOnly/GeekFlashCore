@@ -10,7 +10,8 @@ namespace GeekFlashCore.CLI;
 internal sealed class ConsoleUi
 {
     private readonly object _gate = new();
-    private int _progressWidth;
+    private int _progressRows;
+    private readonly ProgressDisplay _progress = new(TimeProvider.System);
 
     public void WriteBanner() => WriteLine("GeekFlashCore CLI 0.1");
 
@@ -63,18 +64,18 @@ internal sealed class ConsoleUi
     {
         lock (_gate)
         {
-            long total = Math.Max(1, record.Total);
-            double ratio = Math.Clamp((double)record.Current / total, 0, 1);
+            bool redirected = Console.IsOutputRedirected;
             int terminalWidth;
-            try { terminalWidth = Console.WindowWidth; }
+            try { terminalWidth = Console.WindowWidth; if (terminalWidth <= 0) terminalWidth = 100; }
             catch (IOException) { terminalWidth = 100; }
-            int width = Math.Max(10, Math.Min(36, terminalWidth - 34));
-            int filled = (int)(ratio * width);
-            string bar = new string('#', filled) + new string('-', width - filled);
-            string line = $"{record.Label,-24} [{bar}] {ratio:P0}";
-            Console.Write($"\r\u001b[2K{line}");
-            _progressWidth = line.Length;
-            if (record.Current >= record.Total) { Console.WriteLine(); _progressWidth = 0; }
+            ProgressFrame? frame = _progress.TryRender(record, redirected, redirected ? 120 : terminalWidth);
+            if (frame is null) return;
+            if (redirected) { Console.WriteLine(frame.Line); return; }
+            ClearProgressUnsafe();
+            var (text, rows) = ProgressDisplay.Wrap(frame.Line, terminalWidth);
+            Console.Write(text);
+            _progressRows = rows;
+            if (frame.Completed) { Console.WriteLine(); _progressRows = 0; }
         }
     }
 
@@ -110,9 +111,10 @@ internal sealed class ConsoleUi
 
     private void ClearProgressUnsafe()
     {
-        if (_progressWidth == 0) return;
+        if (_progressRows == 0) return;
         Console.Write("\r\u001b[2K");
-        _progressWidth = 0;
+        for (int row = 1; row < _progressRows; row++) Console.Write("\u001b[1A\r\u001b[2K");
+        _progressRows = 0;
     }
 
     internal static string FormatBytes(decimal bytes)

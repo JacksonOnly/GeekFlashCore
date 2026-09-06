@@ -61,6 +61,79 @@ public sealed class OnePlusProjectVerifier(FirehoseSession session)
     public FirehoseCommandResult SetNetworkType() =>
         _session.Execute(new OnePlusSetNetTypeCommand());
 
+    internal OnePlusAuthenticationContext VerifyBuiltIn(
+        ulong serial,
+        IEnumerable<string> projectIds,
+        IReadOnlySet<string> supportedFunctions,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(projectIds);
+        ArgumentNullException.ThrowIfNull(supportedFunctions);
+        if (serial == 0)
+            throw new QcomAuthenticationException(Strings.Qcom_InvalidAuthentication);
+
+        bool software = supportedFunctions.Contains("setswprojmodel");
+        bool demacia = supportedFunctions.Contains("demacia");
+        bool setProject = supportedFunctions.Contains("setprojmodel");
+        bool setNetwork = supportedFunctions.Contains("SetNetType");
+        QcomAuthenticationException? lastFailure = null;
+        foreach (string candidate in projectIds)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!OnePlusDeviceProfiles.TryGet(candidate, out OnePlusDeviceProfile profile))
+                continue;
+            if ((software && profile.Version != 3) || (!software && profile.Version == 3))
+                continue;
+            string publicKey = OnePlusTokenGenerator.CreatePublicKey();
+            try
+            {
+                if (software)
+                {
+                    long timestamp = BeginSoftwareVerification();
+                    (string key, string token) = OnePlusTokenGenerator.CreateSoftwareToken(
+                        profile, serial, publicKey, timestamp, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                    VerifySoftwareProject(key, token);
+                    return new OnePlusAuthenticationContext(profile, serial, key, timestamp, true);
+                }
+
+                if (demacia)
+                {
+                    (string key, string token) = OnePlusTokenGenerator.CreateLegacyToken(
+                        profile, serial, publicKey, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), demacia: true);
+                    VerifyDemacia(key, token);
+                    if (setNetwork)
+                    {
+                        _session.Execute(new OnePlusSetNetTypeCommand(), cancellationToken: cancellationToken);
+                        return new OnePlusAuthenticationContext(profile, serial, key, 0, false);
+                    }
+                }
+
+                if (setProject)
+                {
+                    (string key, string token) = OnePlusTokenGenerator.CreateLegacyToken(
+                        profile, serial, publicKey, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                    VerifyProject(key, token);
+                    return new OnePlusAuthenticationContext(profile, serial, key, 0, false);
+                }
+
+                if (demacia)
+                    return new OnePlusAuthenticationContext(profile, serial, publicKey, 0, false);
+                throw new QcomAuthenticationException(Strings.Qcom_InvalidAuthentication);
+            }
+            catch (FirehoseNakException exception)
+            {
+                lastFailure = new QcomAuthenticationException(
+                    Strings.Qcom_OnePlusProjectVerificationFailed, exception);
+            }
+            catch (QcomAuthenticationException exception)
+            {
+                lastFailure = exception;
+            }
+        }
+
+        throw lastFailure ?? new QcomAuthenticationException(Strings.Qcom_OnePlusProjectVerificationFailed);
+    }
+
     private static void RequireModelVerification(FirehoseCommandResult result, string message)
     {
         RequireZero(result, "model_check", message);

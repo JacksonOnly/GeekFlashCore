@@ -12,6 +12,7 @@ internal sealed record CliOptions
     public string? VipSigned { get; init; }
     public string? VipChained { get; init; }
     public string? OplusDigest { get; init; }
+    public string? OnePlusProjectId { get; init; }
     public OplusDigestMode OplusMode { get; init; }
     public QcomVendorKind Vendor { get; init; } = QcomVendorKind.Auto;
     public QcomAuthenticationKind? AuthenticationKind { get; init; }

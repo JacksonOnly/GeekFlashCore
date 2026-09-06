@@ -14,6 +14,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
     private readonly FirehoseProgramExecutor _programExecutor;
     private readonly FirehoseSession _session;
     private readonly IFirehoseStoragePolicy? _policy;
+    private Func<(string PublicKey, string Token)>? _onePlusTokenFactory;
 
     public FirehoseStorageService(FirehoseSession session, FirehoseConfigureResponse configuration,
         IFirehoseStoragePolicy? policy = null)
@@ -37,10 +38,14 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
             MemoryName = storage.ToWireString(),
             SectorSizeInBytes = sectorSize
         };
-        _programExecutor = new FirehoseProgramExecutor(_session, GetTransferBufferSize(), policy);
+        _programExecutor = new FirehoseProgramExecutor(_session, GetTransferBufferSize(), policy,
+            () => _onePlusTokenFactory?.Invoke());
     }
 
     public FirehoseConfigureResponse Configuration => _configuration;
+
+    internal void SetOnePlusTokenFactory(Func<(string PublicKey, string Token)> factory) =>
+        _onePlusTokenFactory = factory ?? throw new ArgumentNullException(nameof(factory));
 
     public long Read(
         FirehoseReadRequest request,
@@ -145,7 +150,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
         int completed = 0;
         foreach (FirehoseStorageRange range in ranges)
         {
-            ExecuteTransfer(new ProgramCommand
+            ProgramCommand command = new()
             {
                 PhysicalPartitionNumber = physicalPartitionNumber,
                 SectorSizeInBytes = sectorSize,
@@ -153,7 +158,9 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
                 NumPartitionSectors = Format(range.SectorCount),
                 Label = range.Label,
                 FileName = range.FileName
-            }, cancellationToken);
+            };
+            ApplyOnePlusCredential(command);
+            ExecuteTransfer(command, cancellationToken);
             int count = checked((int)(range.SectorCount * sectorSize));
             _session.SendRaw(source.Slice(completed, count), GetTransferBufferSize(), cancellationToken);
             completed = checked(completed + count);
@@ -276,7 +283,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
             _configuration.SectorSizeInBytes);
         if (sizeInBytes == 0 || checked((ulong)byteOffset + sizeInBytes) > _configuration.SectorSizeInBytes)
             throw new ArgumentOutOfRangeException(nameof(sizeInBytes));
-        return _session.Execute(new PatchCommand
+        PatchCommand command = new()
         {
             PhysicalPartitionNumber = physicalPartitionNumber,
             SectorSizeInBytes = _configuration.SectorSizeInBytes,
@@ -285,7 +292,9 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
             SizeInBytes = sizeInBytes,
             Value = value,
             FileName = fileName
-        }, cancellationToken: cancellationToken);
+        };
+        ApplyOnePlusCredential(command);
+        return _session.Execute(command, cancellationToken: cancellationToken);
     }
 
     public FirehoseCommandResult Power(FirehosePowerValue value, ulong? delayInSeconds = null,
@@ -512,6 +521,22 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
         GetSpare = ToByte(request.IoOptions.GetSpare),
         EccDisabled = ToByte(request.IoOptions.EccDisabled)
     };
+
+    private void ApplyOnePlusCredential(ProgramCommand command)
+    {
+        if (_onePlusTokenFactory?.Invoke() is not { } credential)
+            return;
+        command.PublicKey = credential.PublicKey;
+        command.Token = credential.Token;
+    }
+
+    private void ApplyOnePlusCredential(PatchCommand command)
+    {
+        if (_onePlusTokenFactory?.Invoke() is not { } credential)
+            return;
+        command.PublicKey = credential.PublicKey;
+        command.Token = credential.Token;
+    }
 
     private IReadOnlyList<FirehoseStorageRange> Map(uint partition, long start, long count,
         bool write, string? label = null, string? fileName = null) =>

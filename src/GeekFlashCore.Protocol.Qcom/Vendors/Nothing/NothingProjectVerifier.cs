@@ -18,4 +18,36 @@ public sealed class NothingProjectVerifier(FirehoseSession session)
             Token3 = token.Token3
         });
     }
+
+    internal string VerifyBuiltIn(ulong serial, IEnumerable<string>? projectIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (serial == 0)
+            throw new QcomAuthenticationException(Strings.Qcom_InvalidAuthentication);
+        _session.Execute(new CheckNothingFeatureCommand(), cancellationToken: cancellationToken);
+        QcomAuthenticationException? lastFailure = null;
+        foreach (string projectId in projectIds ?? ["22111", "20111"])
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (string.IsNullOrWhiteSpace(projectId))
+                continue;
+            try
+            {
+                NothingProjectToken token = NothingTokenCodec.Create(serial, projectId);
+                FirehoseCommandResult result = _session.Execute(new NothingProjectVerifyCommand
+                {
+                    Token1 = token.Token1,
+                    Token2 = token.Token2,
+                    Token3 = token.Token3
+                }, cancellationToken: cancellationToken);
+                if (result.IsSuccess)
+                    return projectId;
+            }
+            catch (FirehoseNakException exception)
+            {
+                lastFailure = new QcomAuthenticationException(Strings.Qcom_NothingProjectVerificationFailed, exception);
+            }
+        }
+        throw lastFailure ?? new QcomAuthenticationException(Strings.Qcom_NothingProjectVerificationFailed);
+    }
 }

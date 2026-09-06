@@ -344,6 +344,12 @@
   <data name="Qcom_NothingSerialInvalid" xml:space="preserve"><value>无法格式化 Nothing 设备序列号。</value></data>
   <data name="Qcom_OnePlusPublicKeyInvalid" xml:space="preserve"><value>OnePlus 公钥必须包含 16 个 ASCII 字母数字字符。</value></data>
   <data name="Qcom_OnePlusTokenInvalid" xml:space="preserve"><value>OnePlus token 必须包含 {0} 个 ASCII 十六进制字符。</value></data>
+  <data name="Qcom_OnePlusProjectVerificationFailed" xml:space="preserve"><value>所有受支持的 OnePlus 项目 ID 均未通过验证。</value></data>
+  <data name="Qcom_NothingProjectVerificationFailed" xml:space="preserve"><value>所有受支持的 Nothing 项目 ID 均未通过验证。</value></data>
+  <data name="Qcom_LogOnePlusParamProject" xml:space="preserve"><value>从 param 分区识别到 OnePlus 项目 ID {0}。</value></data>
+  <data name="Qcom_LogOnePlusParamUnavailable" xml:space="preserve"><value>无法从 param 分区识别 OnePlus 项目 ID，将尝试内置候选。</value></data>
+  <data name="Qcom_LogOnePlusProjectVerified" xml:space="preserve"><value>OnePlus 项目 ID {0} 验证成功。</value></data>
+  <data name="Qcom_LogNothingProjectVerified" xml:space="preserve"><value>Nothing 项目 ID {0} 验证成功。</value></data>
   <data name="Qcom_LogTargetInfo" xml:space="preserve"><value>目标信息：{0}</value></data>
   <data name="Qcom_LogTransferImage" xml:space="preserve"><value>传输镜像 {0}，偏移 {1}，长度 {2}</value></data>
   <data name="Qcom_LogMemoryDebugWarning" xml:space="preserve"><value>目标进入内存调试模式，开始转储内存。</value></data>

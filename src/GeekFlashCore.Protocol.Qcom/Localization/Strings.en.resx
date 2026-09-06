@@ -447,6 +447,12 @@ Current {0}, expected {1}</value>
   <data name="Qcom_NothingSerialInvalid" xml:space="preserve"><value>Unable to format the Nothing device serial.</value></data>
   <data name="Qcom_OnePlusPublicKeyInvalid" xml:space="preserve"><value>The OnePlus public key must contain 16 ASCII alphanumeric characters.</value></data>
   <data name="Qcom_OnePlusTokenInvalid" xml:space="preserve"><value>The OnePlus token must contain {0} ASCII hexadecimal characters.</value></data>
+  <data name="Qcom_OnePlusProjectVerificationFailed" xml:space="preserve"><value>None of the supported OnePlus project IDs passed verification.</value></data>
+  <data name="Qcom_NothingProjectVerificationFailed" xml:space="preserve"><value>None of the supported Nothing project IDs passed verification.</value></data>
+  <data name="Qcom_LogOnePlusParamProject" xml:space="preserve"><value>Detected OnePlus project ID {0} from the param partition.</value></data>
+  <data name="Qcom_LogOnePlusParamUnavailable" xml:space="preserve"><value>Unable to detect a OnePlus project ID from the param partition; trying built-in candidates.</value></data>
+  <data name="Qcom_LogOnePlusProjectVerified" xml:space="preserve"><value>Verified OnePlus project ID {0}.</value></data>
+  <data name="Qcom_LogNothingProjectVerified" xml:space="preserve"><value>Verified Nothing project ID {0}.</value></data>
   <data name="Qcom_LogTargetInfo" xml:space="preserve"><value>Target info: {0}</value></data>
   <data name="Qcom_LogTransferImage" xml:space="preserve"><value>Transferring image {0}, offset {1}, length {2}</value></data>
   <data name="Qcom_LogMemoryDebugWarning" xml:space="preserve"><value>Target entered memory debug mode; dumping memory.</value></data>

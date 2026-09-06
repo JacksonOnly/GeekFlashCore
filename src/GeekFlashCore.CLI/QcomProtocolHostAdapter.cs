@@ -39,6 +39,7 @@ internal static class QcomProtocolHostAdapter
         {
             VendorOverride = input.Vendor,
             AuthenticationKind = input.AuthenticationKind,
+            OnePlusProjectId = input.OnePlusProjectId,
             ReadTimeoutMilliseconds = input.ReadTimeout,
             WriteTimeoutMilliseconds = input.WriteTimeout,
             OplusDigest = new OplusDigestConfiguration { Mode = mode },

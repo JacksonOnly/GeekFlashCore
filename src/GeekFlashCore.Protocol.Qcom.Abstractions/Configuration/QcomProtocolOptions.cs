@@ -14,8 +14,10 @@ public sealed record QcomProtocolOptions
     /// <summary>Send qdl-compatible Sahara HELLO response when the first protocol read times out.</summary>
     public bool ProbeFirehoseOnSaharaTimeout { get; init; } = true;
     public QcomVendorKind VendorOverride { get; init; } = QcomVendorKind.Auto;
-    /// <summary>Explicitly enables a vendor authentication flow. Vendor detection alone never enables authentication.</summary>
+    /// <summary>Overrides the authentication material mode for legacy/provider-backed flows. OnePlus and Nothing use Core algorithms automatically.</summary>
     public QcomAuthenticationKind? AuthenticationKind { get; init; }
+    /// <summary>Optional comma-separated OnePlus project IDs. When omitted, Core reads param and then enumerates built-in profiles.</summary>
+    public string? OnePlusProjectId { get; init; }
     public FirehoseConfiguration Firehose { get; init; } = new();
     public FirehoseDigestConfiguration FirehoseDigest { get; init; } = new();
     public FirehoseVipConfiguration FirehoseVip { get; init; } = new();
@@ -33,6 +35,8 @@ public sealed record QcomProtocolOptions
         ArgumentNullException.ThrowIfNull(OplusDigest);
         if (AuthenticationKind is { } authentication && !Enum.IsDefined(authentication))
             throw new ArgumentOutOfRangeException(nameof(AuthenticationKind), authentication, "Unknown authentication kind.");
+        if (OnePlusProjectId?.Length > 256)
+            throw new ArgumentOutOfRangeException(nameof(OnePlusProjectId));
         Firehose.Validate();
         FirehoseDigest.Validate();
         FirehoseVip.Validate();

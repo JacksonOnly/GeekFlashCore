@@ -31,6 +31,8 @@ public interface IFirehoseIoData
 [FirehoseCmdTag("program")]
 public record ProgramCommand : BaseCommand, IFirehoseDevData, IFirehoseIoData, IFirehoseIoOptions
 {
+    [FirehoseCmdAttribute("token")] public string? Token { get; set; }
+    [FirehoseCmdAttribute("pk")] public string? PublicKey { get; set; }
     [FirehoseCmdAttribute("storage_type")] public FirehoseStorage? Storage { get; set; }
     [FirehoseCmdAttribute("slot")] public uint? Slot { get; set; }
 
@@ -137,6 +139,8 @@ public record OnePlusSetNetTypeCommand : BaseCommand;
 [FirehoseCmdTag("patch")]
 public record PatchCommand : BaseCommand, IFirehoseDevData
 {
+    [FirehoseCmdAttribute("token")] public string? Token { get; set; }
+    [FirehoseCmdAttribute("pk")] public string? PublicKey { get; set; }
     [FirehoseCmdAttribute("storage_type")] public FirehoseStorage? Storage { get; set; }
     [FirehoseCmdAttribute("slot")] public uint? Slot { get; set; }
 

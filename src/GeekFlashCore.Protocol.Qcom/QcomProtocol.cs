@@ -15,6 +15,7 @@ using GeekFlashCore.Protocol.Qcom.Vendors.Xiaomi;
 using GeekFlashCore.Protocol.Qcom.Vendors.Nothing;
 using GeekFlashCore.Protocol.Qcom.Vendors.OnePlus;
 using GeekFlashCore.Transport.Abstractions;
+using Serilog;
 
 namespace GeekFlashCore.Protocol.Qcom;
 
@@ -45,6 +46,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private FirehoseResponse? _startup;
     private QcomTargetInfo? _targetInfo;
     private FirehoseVipTransferPolicy? _vipPolicy;
+    private OnePlusAuthenticationContext? _onePlusAuthentication;
 
     public QcomProtocol(ITransport transport, QcomProtocolOptions? options = null,
         ISaharaImageProvider? imageProvider = null, IOplusDigestProvider? digestProvider = null,
@@ -748,79 +750,103 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private Func<FirehoseNakException, bool>? GetXiaomiAuthentication() =>
         _options.AuthenticationKind is null or QcomAuthenticationKind.XiaomiSignature ? AuthenticateXiaomi : null;
 
-    private async ValueTask VerifyVendorAsync(CancellationToken ct)
+    private ValueTask VerifyVendorAsync(CancellationToken ct)
     {
-        if (_targetInfo!.Vendor is not (QcomVendorKind.Nothing or QcomVendorKind.OnePlus)) return;
-        QcomAuthenticationKind kind = _targetInfo.Vendor == QcomVendorKind.Nothing ? QcomAuthenticationKind.NothingProjectVerify : QcomAuthenticationKind.OnePlusProjectVerify;
-        var verifier = new OnePlusProjectVerifier(_firehose!);
-        bool software = _targetInfo.Firehose?.BasicDevCharacteristics?.SupportedFunctions.Contains("setswprojmodel", StringComparer.OrdinalIgnoreCase) == true;
-        Dictionary<string, string> properties = [];
-        if (software) properties["device_timestamp"] = verifier.BeginSoftwareVerification().ToString(CultureInfo.InvariantCulture);
-        var response = await AuthenticationResourceAsync(new VendorAuthenticationResourceRequest(kind, TargetInfo!, properties: properties), ct).ConfigureAwait(false);
-        using (response.Payload)
-        {
-            ct.ThrowIfCancellationRequested();
-            if (_targetInfo.Vendor == QcomVendorKind.Nothing)
-            {
-                string projectId = RequiredProperty(response, "projectId");
-                ulong serial = _targetInfo.Sahara?.Serial ?? _targetInfo.Firehose?.BasicDevCharacteristics?.SerialNumber ?? 0;
-                if (serial == 0) throw new QcomAuthenticationException(Strings.Qcom_InvalidAuthentication);
-                new NothingProjectVerifier(_firehose!).Verify(serial, projectId);
-            }
-            else
-            {
-                string publicKey = RequiredProperty(response, "publicKey");
-                string token = Encoding.ASCII.GetString(response.Payload.Memory.Span);
-                if (software)
-                {
-                    verifier.VerifySoftwareProject(publicKey, token);
-                    verifier.SetNetworkType();
-                    verifier.EndSoftwareVerification();
-                }
-                else if (response.Properties.TryGetValue("mode", out string? mode) && mode == "demacia") verifier.VerifyDemacia(publicKey, token);
-                else verifier.VerifyProject(publicKey, token);
-            }
-        }
+        VerifyVendorCore(ct);
+        return ValueTask.CompletedTask;
     }
 
     private void VerifyVendor()
     {
-        if (_targetInfo!.Vendor is not (QcomVendorKind.Nothing or QcomVendorKind.OnePlus)) return;
-        QcomAuthenticationKind kind = _targetInfo.Vendor == QcomVendorKind.Nothing
-            ? QcomAuthenticationKind.NothingProjectVerify
-            : QcomAuthenticationKind.OnePlusProjectVerify;
-        var verifier = new OnePlusProjectVerifier(_firehose!);
-        bool software = _targetInfo.Firehose?.BasicDevCharacteristics?.SupportedFunctions.Contains(
-            "setswprojmodel", StringComparer.OrdinalIgnoreCase) == true;
-        Dictionary<string, string> properties = [];
-        if (software)
-            properties["device_timestamp"] = verifier.BeginSoftwareVerification().ToString(CultureInfo.InvariantCulture);
-        var response = AuthenticationResource(new VendorAuthenticationResourceRequest(kind, TargetInfo!, properties: properties));
-        using (response.Payload)
+        VerifyVendorCore(CancellationToken.None);
+    }
+
+    private void VerifyVendorCore(CancellationToken cancellationToken)
+    {
+        if (_targetInfo!.Vendor is not (QcomVendorKind.Nothing or QcomVendorKind.OnePlus))
+            return;
+        ulong serial = _targetInfo.Sahara?.Serial ??
+                       _targetInfo.Firehose?.BasicDevCharacteristics?.SerialNumber ?? 0;
+        if (serial == 0)
+            throw new QcomAuthenticationException(Strings.Qcom_InvalidAuthentication);
+
+        if (_targetInfo.Vendor == QcomVendorKind.Nothing)
         {
-            if (_targetInfo.Vendor == QcomVendorKind.Nothing)
-            {
-                string projectId = RequiredProperty(response, "projectId");
-                ulong serial = _targetInfo.Sahara?.Serial ?? _targetInfo.Firehose?.BasicDevCharacteristics?.SerialNumber ?? 0;
-                if (serial == 0) throw new QcomAuthenticationException(Strings.Qcom_InvalidAuthentication);
-                new NothingProjectVerifier(_firehose!).Verify(serial, projectId);
-            }
-            else
-            {
-                string publicKey = RequiredProperty(response, "publicKey");
-                string token = Encoding.ASCII.GetString(response.Payload.Memory.Span);
-                if (software)
-                {
-                    verifier.VerifySoftwareProject(publicKey, token);
-                    verifier.SetNetworkType();
-                    verifier.EndSoftwareVerification();
-                }
-                else if (response.Properties.TryGetValue("mode", out string? mode) && mode == "demacia")
-                    verifier.VerifyDemacia(publicKey, token);
-                else
-                    verifier.VerifyProject(publicKey, token);
-            }
+            string verified = new NothingProjectVerifier(_firehose!).VerifyBuiltIn(serial,
+                cancellationToken: cancellationToken);
+            Log.ForContext<QcomProtocol>().Information(Strings.Qcom_LogNothingProjectVerified, verified);
+            return;
         }
+
+        IReadOnlyList<string> candidates = GetOnePlusProjectCandidates(cancellationToken);
+        IReadOnlySet<string> functions = GetOnePlusSupportedFunctions();
+        _onePlusAuthentication = new OnePlusProjectVerifier(_firehose!).VerifyBuiltIn(
+            serial, candidates, functions, cancellationToken);
+        if (functions.Contains("setprojmodel") || functions.Contains("setswprojmodel"))
+            _storage!.SetOnePlusTokenFactory(_onePlusAuthentication.Value.CreateProgramToken);
+        Log.ForContext<QcomProtocol>().Information(
+            Strings.Qcom_LogOnePlusProjectVerified, _onePlusAuthentication.Value.Profile.ProjectId);
+    }
+
+    private IReadOnlySet<string> GetOnePlusSupportedFunctions() =>
+        (_targetInfo!.Firehose?.BasicDevCharacteristics?.SupportedFunctions ?? [])
+        .Concat(_targetInfo.ProgrammerSupportedCommands)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    private IReadOnlyList<string> GetOnePlusProjectCandidates(CancellationToken cancellationToken)
+    {
+        IReadOnlyList<string>? configured = ParseConfiguredProjectIds(_options.OnePlusProjectId);
+        if (configured is { Count: > 0 })
+            return configured;
+
+        string? detected = TryReadOnePlusProjectId(cancellationToken);
+        if (detected is not null)
+        {
+            Log.ForContext<QcomProtocol>().Information(Strings.Qcom_LogOnePlusParamProject, detected);
+            return [detected];
+        }
+        Log.ForContext<QcomProtocol>().Warning(Strings.Qcom_LogOnePlusParamUnavailable);
+        return OnePlusDeviceProfiles.ProjectIds;
+    }
+
+    private string? TryReadOnePlusProjectId(CancellationToken cancellationToken)
+    {
+        try
+        {
+            (string Name, TargetRange Range) match = ReadPartitions(cancellationToken)
+                .FirstOrDefault(static item => item.Name.Equals("param", StringComparison.OrdinalIgnoreCase));
+            if (string.IsNullOrEmpty(match.Name))
+                return null;
+            TargetRange range = match.Range;
+            byte[] sector = new byte[range.SectorSize];
+            _storage!.Read(new FirehoseReadRequest
+            {
+                PhysicalPartitionNumber = range.Partition,
+                StartSector = range.Start,
+                SectorCount = 1,
+                SectorSizeInBytes = range.SectorSize,
+                Label = range.Label
+            }, sector, cancellationToken: cancellationToken);
+            if (sector.Length < 29)
+                return null;
+            string value = Encoding.ASCII.GetString(sector, 24, 5).Trim('\0', ' ');
+            return value.Length == 5 && value.All(char.IsAsciiLetterOrDigit) &&
+                   OnePlusDeviceProfiles.TryGet(value, out _) ? value : null;
+        }
+        catch (Exception exception) when (exception is GeekFlashCore.Gpt.Abstractions.GptException or QcomProtocolException or
+                                          EndOfStreamException or TimeoutException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private static IReadOnlyList<string>? ParseConfiguredProjectIds(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+        string[] values = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        return values.Length == 0 ? null : values;
     }
 
     private static string RequiredProperty(VendorAuthenticationResourceResponse response, string name) =>
@@ -915,7 +941,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         _firehose?.Dispose(); _firehose = null;
         _sahara?.Dispose(); _sahara = null;
         _startup = null; _programmer = null; _targetInfo = null;
-        _vipPolicy = null;
+        _vipPolicy = null; _onePlusAuthentication = null;
         if (hadFirehose && _wire is not null)
             _firehose = new FirehoseSession(_wire, _options.ReadTimeoutMilliseconds);
         else

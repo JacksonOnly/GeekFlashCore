@@ -425,6 +425,13 @@
 - 证据：Qcom 224/224、CLI 48/48 通过；Release 构建和 `git diff --check` 通过。类型化 CLI 分发测试确认所有命令不再发送通用 `BaseCommand`。
 - 风险：真实设备对 XBL GPT、Benchmark、Peek 日志/Raw 方言及特定 Firehose 响应仍需硬件复测；`ExecuteFirehoseCommand` 保留为底层扩展/诊断入口，不应作为新宿主的首选 API。
 
+### CLI-16（2026-09-06）
+
+- 行为结论：OnePlus 项目配置、v1/v2/v3 Token 算法和参考项目认证顺序已迁移到 Core。未指定 `OnePlusProjectId` 时先从已缓存 GPT 的 `param` 分区偏移 24 读取 5 字节 ID；分区不存在、读取协议失败、内容无效或项目未知时，按内置配置表有界枚举，候选收到 NAK 后继续，成功即停止。仅在 Loader 支持 `setprojmodel`/`setswprojmodel` 时，后续 program/patch 自动生成并携带当前会话 `pk/token`，不再请求调用方 Provider。
+- 行为结论：Nothing 连接认证改为 Core 内置 `checkntfeature` + `ntprojectverify`，默认按 `22111`、`20111` 候选顺序尝试；显式 `Verify` API 保留用于已有宿主直接传入项目 ID。CLI 增加可选 `--oneplus-projid ID[,ID]`。
+- 证据：OnePlus/Nothing 候选和 Token 长度测试、program/patch 认证字段测试通过；Qcom 228 项、CLI 48 项，解决方案 Release 构建 0 警告/0 错误，`git diff --check` 通过。
+- 风险：OnePlus Demacia 明文和不同 Loader 对 v3 时间戳/命令能力的兼容性仍需真实设备复测；候选表来自当前 GeekFlashTool 源码，新增机型需补配置。
+
 ## 未决风险
 
 ### CLI-10：联机信息与重连（2026-09-05）

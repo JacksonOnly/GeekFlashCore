@@ -9,14 +9,18 @@ internal sealed class FirehoseProgramExecutor
     private readonly FirehoseSession _session;
     private readonly int _transferBufferSize;
     private readonly IFirehoseStoragePolicy? _policy;
+    private readonly Func<(string PublicKey, string Token)?>? _onePlusTokenFactory;
 
-    public FirehoseProgramExecutor(FirehoseSession session, int transferBufferSize, IFirehoseStoragePolicy? policy = null)
+    public FirehoseProgramExecutor(FirehoseSession session, int transferBufferSize,
+        IFirehoseStoragePolicy? policy = null,
+        Func<(string PublicKey, string Token)?>? onePlusTokenFactory = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         if (transferBufferSize <= 0)
             throw new ArgumentOutOfRangeException(nameof(transferBufferSize));
         _transferBufferSize = transferBufferSize;
         _policy = policy;
+        _onePlusTokenFactory = onePlusTokenFactory;
     }
 
     public long Execute(
@@ -61,6 +65,11 @@ internal sealed class FirehoseProgramExecutor
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 ProgramCommand command = CreateCommand(request, range);
+                if (_onePlusTokenFactory?.Invoke() is { } credential)
+                {
+                    command.PublicKey = credential.PublicKey;
+                    command.Token = credential.Token;
+                }
                 if (_policy is null) _session.Execute(command, expectedRawMode: true);
                 else _policy.ExecuteCommand(_session, command, cancellationToken);
                 long wireLength = checked(range.SectorCount * request.SectorSizeInBytes);

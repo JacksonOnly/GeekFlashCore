@@ -261,7 +261,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
             PhysicalPartitionNumber = physicalPartitionNumber,
             SectorSizeInBytes = 1,
             NumPartitionSectors = checked((ulong)firmware.Length)
-        }, expectedRawMode: true);
+        }, expectedRawMode: true, cancellationToken: cancellationToken);
         return _session.SendRaw(firmware, GetTransferBufferSize(), cancellationToken);
     }
 

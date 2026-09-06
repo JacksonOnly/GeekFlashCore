@@ -502,6 +502,7 @@ Current {0}, expected {1}</value>
   <data name="Qcom_StorageCapacityMissing" xml:space="preserve"><value>No usable storage capacity was reported for this LUN.</value></data>
   <data name="Qcom_PeekLengthMismatch" xml:space="preserve"><value>The hexadecimal Peek data length does not match the request.</value></data>
   <data name="Qcom_StoragePolicyMappingInvalid" xml:space="preserve"><value>The storage policy returned an invalid or incomplete sector mapping.</value></data>
+  <data name="Qcom_FirehoseExpectedState" xml:space="preserve"><value>The Firehose operation requires state {0}, but the session is {1}.</value></data>
   <data name="Progress_Writing" xml:space="preserve"><value>Writing</value></data>
   <data name="Progress_Reading" xml:space="preserve"><value>Reading</value></data>
   <data name="Progress_Uploading" xml:space="preserve"><value>Uploading Loader</value></data>

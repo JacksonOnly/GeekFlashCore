@@ -14,7 +14,7 @@ public interface IFirehoseStoragePolicy
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return session.Execute(command, expectedRawMode: true);
+        return session.Execute(command, expectedRawMode: true, cancellationToken: cancellationToken);
     }
 
     void CommandCompleted() { }

@@ -111,7 +111,9 @@ public sealed class ConfigureNegotiator
 
             try
             {
-                FirehoseCommandResult result = _session.Execute(strategy.PrepareConfigure(state.CreateCommand()));
+                FirehoseCommandResult result = _session.Execute(
+                    strategy.PrepareConfigure(state.CreateCommand()),
+                    cancellationToken: cancellationToken);
                 state = state.Apply(ConfigureEvidenceParser.Parse(result));
                 return new FirehoseConfigureResult(result, state.ToResponse(attempt, result));
             }

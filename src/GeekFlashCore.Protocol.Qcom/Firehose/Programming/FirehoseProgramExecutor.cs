@@ -76,7 +76,8 @@ internal sealed class FirehoseProgramExecutor
                     command.PublicKey = credential.PublicKey;
                     command.Token = credential.Token;
                 }
-                if (_policy is null) _session.Execute(command, expectedRawMode: true);
+                if (_policy is null)
+                    _session.Execute(command, expectedRawMode: true, cancellationToken: cancellationToken);
                 else _policy.ExecuteCommand(_session, command, cancellationToken);
                 long wireLength = checked(range.SectorCount * request.SectorSizeInBytes);
                 long sourceLength = Math.Min(sourceRemaining, wireLength);

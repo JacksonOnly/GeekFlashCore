@@ -55,7 +55,7 @@ public sealed class OplusGptCompatibility
                 NumPartitionSectors = count.ToString(CultureInfo.InvariantCulture),
                 Label = label,
                 FileName = fileName
-            }, expectedRawMode: true);
+            }, expectedRawMode: true, cancellationToken: cancellationToken);
         }
         catch (FirehoseNakException)
         {

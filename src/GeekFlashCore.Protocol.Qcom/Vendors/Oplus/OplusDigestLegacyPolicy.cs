@@ -50,7 +50,10 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
         if (_counter.RequiresDigest) Refresh(session, cancellationToken);
         try
         {
-            FirehoseCommandResult result = session.Execute(command, expectedRawMode: true);
+            FirehoseCommandResult result = session.Execute(
+                command,
+                expectedRawMode: true,
+                cancellationToken: cancellationToken);
             _counter.CommandSent();
             return result;
         }
@@ -67,7 +70,10 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
             throw;
         }
         cancellationToken.ThrowIfCancellationRequested();
-        FirehoseCommandResult replay = session.Execute(command, expectedRawMode: true);
+        FirehoseCommandResult replay = session.Execute(
+            command,
+            expectedRawMode: true,
+            cancellationToken: cancellationToken);
         _counter.CommandSent();
         return replay;
     }
@@ -89,13 +95,13 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
                 throw new OplusDigestException(Strings.Qcom_OplusLegacySourceChanged);
             if (includeNopPreamble)
             {
-                session.Execute(new NopCommand());
+                session.Execute(new NopCommand(), cancellationToken: cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
-                session.Execute(new NopCommand());
+                session.Execute(new NopCommand(), cancellationToken: cancellationToken);
             }
             session.SendDigest(source, _digestLength, _transferBufferSize, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            session.Execute(new NopCommand());
+            session.Execute(new NopCommand(), cancellationToken: cancellationToken);
             _counter.Reset();
         }
         catch

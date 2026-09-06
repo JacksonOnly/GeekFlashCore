@@ -111,13 +111,21 @@ public sealed class FirehoseSession : IDisposable
         ArgumentNullException.ThrowIfNull(command);
         using OperationLease _ = EnterCommand();
         FirehoseSessionState initialState = State;
+        bool mainCommandMayHaveChangedWire = false;
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             _beforeCommand?.Invoke(this, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
+            mainCommandMayHaveChangedWire = true;
             FirehoseCommandResult result = _executor.Execute(command, expectedRawMode, _xmlDeclarationAttribute);
             CompleteCommand(command is ConfigureCommand, result, initialState);
             return result;
+        }
+        catch (OperationCanceledException) when (!mainCommandMayHaveChangedWire)
+        {
+            SetState(initialState);
+            throw;
         }
         catch (FirehoseNakException exception)
         {
@@ -136,10 +144,13 @@ public sealed class FirehoseSession : IDisposable
     {
         using OperationLease _ = EnterCommand();
         FirehoseSessionState initialState = State;
+        bool mainCommandMayHaveChangedWire = false;
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             _beforeCommand?.Invoke(this, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
+            mainCommandMayHaveChangedWire = true;
             FirehoseCommandResult result = _executor.ExecuteXml(xml, expectedRawMode, _xmlDeclarationAttribute);
             CompleteCommand(configured: false, result, initialState);
             return result;
@@ -151,6 +162,11 @@ public sealed class FirehoseSession : IDisposable
         catch (FirehoseNakException exception)
         {
             CompleteNak(exception, initialState);
+            throw;
+        }
+        catch (OperationCanceledException) when (!mainCommandMayHaveChangedWire)
+        {
+            SetState(initialState);
             throw;
         }
         catch
@@ -349,7 +365,7 @@ public sealed class FirehoseSession : IDisposable
             FirehoseSessionState state = State;
             if (state != expectedState)
                 throw new InvalidOperationException(
-                    $"Firehose operation requires state {expectedState}, but the session is {state}.");
+                    Strings.FormatQcom_FirehoseExpectedState(expectedState, state));
             return EnterBusy();
         }
     }

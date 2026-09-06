@@ -1,5 +1,6 @@
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.UsbWatcher.Abstractions;
+using GeekFlashCore.CLI.Localization;
 
 namespace GeekFlashCore.CLI;
 
@@ -49,7 +50,7 @@ internal static class ProtocolRegistry
         {
             registration = Registrations.Count == 1
                 ? Registrations[0]
-                : throw new ArgumentException("协议数量超过一个时必须使用 --protocol 指定协议");
+                : throw new ArgumentException(Strings.Cli_ProtocolSelectionRequired);
             return true;
         }
         registration = Registrations.FirstOrDefault(item => item.Names.Contains(name))!;

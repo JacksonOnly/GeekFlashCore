@@ -1,4 +1,5 @@
 using GeekFlashCore.CLI;
+using GeekFlashCore.CLI.Localization;
 using Serilog;
 
 CliOptions options;
@@ -8,7 +9,7 @@ try
 }
 catch (Exception exception)
 {
-    Console.Error.WriteLine($"参数错误: {exception.Message}");
+    Console.Error.WriteLine(Strings.FormatCli_ArgumentError(exception.Message));
     CommandLine.PrintHelp();
     return 2;
 }
@@ -25,13 +26,13 @@ try
 }
 catch (OperationCanceledException)
 {
-    Console.Error.WriteLine("操作已取消。");
+    Console.Error.WriteLine(Strings.Cli_OperationCancelled);
     return 130;
 }
 catch (Exception exception)
 {
-    Log.Error(exception, "Command failed: {Message}", exception.Message);
-    Console.Error.WriteLine($"失败: {exception.Message}");
+    Log.Error(exception, Strings.Cli_LogCommandFailed, exception.Message);
+    Console.Error.WriteLine(Strings.FormatCli_CommandFailed(exception.Message));
     return 1;
 }
 finally

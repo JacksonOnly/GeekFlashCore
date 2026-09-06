@@ -13,7 +13,7 @@ internal sealed class ConsoleUi
     private int _progressRows;
     private readonly ProgressDisplay _progress = new(TimeProvider.System);
 
-    public void WriteBanner() => WriteLine("GeekFlashCore CLI 0.1");
+    public void WriteBanner() => WriteLine(Strings.Cli_Banner);
 
     public void WriteLine(string value)
     {
@@ -85,26 +85,60 @@ internal sealed class ConsoleUi
         lock (_gate)
         {
             ClearProgressUnsafe();
-            Console.WriteLine("Protocol: QualcommEdl");
-            Console.WriteLine($"Vendor: {info.Vendor}");
-            Console.WriteLine($"OEM: {info.OemName ?? "unknown"}, SoC: {info.SocName ?? "unknown"}, SecureBoot: {info.SecureBoot}");
+            string unknown = Strings.Cli_UnknownValue;
+            Console.WriteLine(Strings.FormatCli_InfoProtocol("QualcommEdl"));
+            Console.WriteLine(Strings.FormatCli_InfoVendor(info.Vendor));
+            Console.WriteLine(Strings.FormatCli_InfoHardware(
+                info.OemName ?? unknown,
+                info.SocName ?? unknown,
+                info.SecureBoot));
             if (info.Sahara is not null)
             {
                 var sahara = info.Sahara;
                 var hw = sahara.MsmHwInfo;
-                Console.WriteLine($"Sahara: version={sahara.Version}, min={sahara.MinimumVersionSupported}, packet={sahara.MaximumPacketSizeSupported}, mode={sahara.Mode}");
-                Console.WriteLine($"  serial={sahara.Serial?.ToString() ?? "unknown"}, sbl={sahara.SblVersion?.ToString() ?? "unknown"}, caHashLength={sahara.CaHash?.Length ?? 0}");
-                Console.WriteLine($"  msmId={hw?.MsmId?.ToString() ?? "unknown"}, oemId={hw?.OemId?.ToString() ?? "unknown"}, modelId={hw?.ModelId?.ToString() ?? "unknown"}, antiRollback={hw?.AntiRollbackVersion?.ToString() ?? "unknown"}, socHwVersion={hw?.SocHwVersion?.ToString() ?? "unknown"}");
+                Console.WriteLine(Strings.FormatCli_InfoSahara(
+                    sahara.Version,
+                    sahara.MinimumVersionSupported,
+                    sahara.MaximumPacketSizeSupported,
+                    sahara.Mode));
+                Console.WriteLine(Strings.FormatCli_InfoSaharaIdentity(
+                    sahara.Serial?.ToString() ?? unknown,
+                    sahara.SblVersion?.ToString() ?? unknown,
+                    sahara.CaHash?.Length ?? 0));
+                Console.WriteLine(Strings.FormatCli_InfoHardwareIds(
+                    hw?.MsmId?.ToString() ?? unknown,
+                    hw?.OemId?.ToString() ?? unknown,
+                    hw?.ModelId?.ToString() ?? unknown,
+                    hw?.AntiRollbackVersion?.ToString() ?? unknown,
+                    hw?.SocHwVersion?.ToString() ?? unknown));
             }
             if (info.Firehose is not null)
             {
                 var firehose = info.Firehose;
                 var config = firehose.Configuration;
-                Console.WriteLine($"Firehose: target={firehose.TargetName ?? "unknown"}, ufs={firehose.UfsName ?? "unknown"}, storage={config?.Storage}, sector={config?.SectorSizeInBytes}, payload={config?.MaxPayloadSizeToTargetInBytes}");
+                Console.WriteLine(Strings.FormatCli_InfoFirehose(
+                    firehose.TargetName ?? unknown,
+                    firehose.UfsName ?? unknown,
+                    config?.Storage,
+                    config?.SectorSizeInBytes,
+                    config?.MaxPayloadSizeToTargetInBytes));
                 if (firehose.BasicDevCharacteristics is { } basic)
-                    Console.WriteLine($"  chip={basic.ChipName ?? "unknown"}, serial={basic.SerialNumber}, build={(basic.BuildDate == default ? "unknown" : basic.BuildDate.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture))}, functions={basic.SupportedFunctions.Count}");
+                    Console.WriteLine(Strings.FormatCli_InfoFirehoseDevice(
+                        basic.ChipName ?? unknown,
+                        basic.SerialNumber,
+                        basic.BuildDate == default
+                            ? unknown
+                            : basic.BuildDate.ToString(
+                                "yyyy-MM-dd HH:mm:ss",
+                                System.Globalization.CultureInfo.InvariantCulture),
+                        basic.SupportedFunctions.Count));
                 foreach (var storage in firehose.StorageInfos)
-                    Console.WriteLine($"  {storage.Storage} lun={storage.PhysicalPartitionNumber} blocks={storage.BlockCount} size={storage.BlockSizeInBytes} capacity={(storage.CapacityInBytes is { } capacity ? FormatBytes(capacity) : "unknown")}");
+                    Console.WriteLine(Strings.FormatCli_InfoStorage(
+                        storage.Storage,
+                        storage.PhysicalPartitionNumber,
+                        storage.BlockCount,
+                        storage.BlockSizeInBytes,
+                        storage.CapacityInBytes is { } capacity ? FormatBytes(capacity) : unknown));
             }
         }
     }

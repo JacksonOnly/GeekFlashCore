@@ -1,4 +1,5 @@
 using GeekFlashCore.Protocol.Qcom.Abstractions;
+using GeekFlashCore.CLI.Localization;
 
 namespace GeekFlashCore.CLI;
 
@@ -18,8 +19,10 @@ internal static class CommandLine
             if (name.StartsWith("--", StringComparison.Ordinal))
             {
                 if (name is not ("--port" or "--usb" or "--protocol" or "--loader" or "--digest" or "--vip-signed" or "--vip-chained" or "--oplus-digest" or "--oplus-mode" or "--oneplus-projid" or "--vendor" or "--auth" or "--read-timeout" or "--write-timeout"))
-                    throw new ArgumentException($"未知选项 {name}");
-                value ??= i + 1 < args.Length ? args[++i] : throw new ArgumentException($"缺少 {name} 的值");
+                    throw new ArgumentException(Strings.FormatCli_UnknownOption(name));
+                value ??= i + 1 < args.Length
+                    ? args[++i]
+                    : throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
                 builder = name switch
                 {
                     "--port" => builder with { Port = value }, "--usb" => builder with { Usb = value }, "--protocol" => builder with { Protocol = value },
@@ -29,7 +32,7 @@ internal static class CommandLine
                     "--oneplus-projid" => builder with { OnePlusProjectId = value },
                     "--auth" => builder with { AuthenticationKind = ParseAuthentication(value) },
                     "--read-timeout" => builder with { ReadTimeout = int.Parse(value) }, "--write-timeout" => builder with { WriteTimeout = int.Parse(value) },
-                    _ => throw new ArgumentException($"未知选项 {name}")
+                    _ => throw new ArgumentException(Strings.FormatCli_UnknownOption(name))
                 };
                 continue;
             }
@@ -45,11 +48,11 @@ internal static class CommandLine
 
     public static void PrintHelp()
     {
-        Console.WriteLine("GeekFlashCore CLI");
-        Console.WriteLine("用法: geekflash [选项] <命令> [参数]");
-        Console.WriteLine("命令: devices | connect | info | partitions | read | write | erase | reboot");
+        Console.WriteLine(Strings.Cli_Title);
+        Console.WriteLine(Strings.Cli_HelpUsage);
+        Console.WriteLine(Strings.Cli_HelpCommands);
         foreach (string usage in CommandSyntax.Usages.Values.Where(x => x.Length > 0)) Console.WriteLine("  " + usage);
-        Console.WriteLine("选项: --port COM3 | --usb VID:PID | --protocol QualcommEdl | --loader FILE | --digest FILE | --oplus-digest FILE");
-        Console.WriteLine("      --oplus-mode OplusDigestPt|OplusDigestLegacy | --oneplus-projid ID[,ID] | --vendor NAME | --auth xiaomi (覆盖内置签名) | --verbose");
+        Console.WriteLine(Strings.Cli_HelpOptionsPrimary);
+        Console.WriteLine(Strings.Cli_HelpOptionsSecondary);
     }
 }

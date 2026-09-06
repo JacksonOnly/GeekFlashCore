@@ -23,7 +23,8 @@ internal sealed class CliApplication
         _ui.WriteBanner();
         ProtocolRegistration? requestedRegistration = null;
         if (!string.IsNullOrWhiteSpace(options.Protocol) && !ProtocolRegistry.TryResolve(options.Protocol, out requestedRegistration))
-            throw new ArgumentException($"协议 '{options.Protocol}' 当前未注册；可用协议：{ProtocolRegistry.SupportedNames}");
+            throw new ArgumentException(
+                Strings.FormatCli_ProtocolNotRegistered(options.Protocol, ProtocolRegistry.SupportedNames));
         if (requestedRegistration is null && !options.Command.Equals("interactive", StringComparison.OrdinalIgnoreCase))
             ProtocolRegistry.TryResolveCommand(options.Command, out requestedRegistration);
         try { options = NormalizeAndValidate(options, requestedRegistration); }
@@ -49,7 +50,7 @@ internal sealed class CliApplication
             connection.Registration.CommandSet?.PrintHelp(protocol, _ui);
             return await ExecuteCommandAsync(protocol, connection.Registration, options, progress, ct).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) { _ui.WriteLine("操作已取消。"); return 130; }
+        catch (OperationCanceledException) { _ui.WriteLine(Strings.Cli_OperationCancelled); return 130; }
         catch (Exception exception) { _ui.LogException(exception); return 1; }
         finally { transport.Dispose(); }
     }
@@ -117,7 +118,7 @@ internal sealed class CliApplication
                     throw new InvalidOperationException(Strings.FormatCli_CommandUnsuccessful("reboot"));
                 return 0;
             case "help": CommandLine.PrintHelp(); registration.CommandSet?.PrintHelp(protocol, _ui); return 0;
-            default: throw new ArgumentException($"未知命令 '{options.Command}'");
+            default: throw new ArgumentException(Strings.FormatCli_UnknownCommand(options.Command));
         }
     }
 
@@ -145,7 +146,7 @@ internal sealed class CliApplication
         try
         {
             foreach (var device in UsbEnumeratorFactory.Create().GetDevices())
-                _ui.WriteLine($"{device.VendorId?.ToString("X4") ?? "????"}:{device.ProductId?.ToString("X4") ?? "????"} {device.FriendlyName ?? device.Description ?? "USB device"}");
+                _ui.WriteLine($"{device.VendorId?.ToString("X4") ?? "????"}:{device.ProductId?.ToString("X4") ?? "????"} {device.FriendlyName ?? device.Description ?? Strings.Cli_UsbDeviceFallback}");
             return 0;
         }
         catch (Exception exception) { _ui.LogException(exception); return 1; }
@@ -161,7 +162,7 @@ internal sealed class CliApplication
             else if (char.IsWhiteSpace(ch)) { if (current.Length > 0) { tokens.Add(current.ToString()); current.Clear(); } }
             else current.Append(ch);
         }
-        if (quote != '\0') throw new ArgumentException("命令包含未闭合引号");
+        if (quote != '\0') throw new ArgumentException(Strings.Cli_UnclosedQuote);
         if (current.Length > 0) tokens.Add(current.ToString());
         return tokens.ToArray();
     }

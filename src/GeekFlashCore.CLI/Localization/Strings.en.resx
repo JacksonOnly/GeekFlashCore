@@ -42,4 +42,52 @@
   <data name="Cli_ProgressElapsed" xml:space="preserve"><value>Elapsed {0}</value></data>
   <data name="Cli_ProgressDuration" xml:space="preserve"><value>Duration {0}</value></data>
   <data name="Cli_ProgressRemaining" xml:space="preserve"><value>Remaining {0}</value></data>
+  <data name="Cli_Title" xml:space="preserve"><value>GeekFlashCore CLI</value></data>
+  <data name="Cli_Banner" xml:space="preserve"><value>GeekFlashCore CLI 0.1</value></data>
+  <data name="Cli_HelpUsage" xml:space="preserve"><value>Usage: geekflash [options] &lt;command&gt; [arguments]</value></data>
+  <data name="Cli_HelpCommands" xml:space="preserve"><value>Commands: devices | connect | info | partitions | read | write | erase | reboot</value></data>
+  <data name="Cli_HelpOptionsPrimary" xml:space="preserve"><value>Options: --port COM3 | --usb VID:PID | --protocol QualcommEdl | --loader FILE | --digest FILE | --oplus-digest FILE</value></data>
+  <data name="Cli_HelpOptionsSecondary" xml:space="preserve"><value>         --oplus-mode OplusDigestPt|OplusDigestLegacy | --oneplus-projid ID[,ID] | --vendor NAME | --auth xiaomi (overrides built-in signature) | --verbose</value></data>
+  <data name="Cli_UnknownOption" xml:space="preserve"><value>Unknown option {0}.</value></data>
+  <data name="Cli_MissingOptionValue" xml:space="preserve"><value>Option {0} requires a value.</value></data>
+  <data name="Cli_UnknownCommand" xml:space="preserve"><value>Unknown command '{0}'.</value></data>
+  <data name="Cli_UnclosedQuote" xml:space="preserve"><value>The command contains an unclosed quote.</value></data>
+  <data name="Cli_ProtocolNotRegistered" xml:space="preserve"><value>Protocol '{0}' is not registered. Available protocols: {1}.</value></data>
+  <data name="Cli_UsbFormatInvalid" xml:space="preserve"><value>--usb must use VID:PID format, for example 05c6:9008.</value></data>
+  <data name="Cli_WaitingForDevice" xml:space="preserve"><value>Waiting for a registered protocol device...</value></data>
+  <data name="Cli_DeviceMissingComPort" xml:space="preserve"><value>The USB device did not provide a COM port. Use --usb VID:PID.</value></data>
+  <data name="Cli_DeviceNotFound" xml:space="preserve"><value>No device was found. Use --port or --usb VID:PID.</value></data>
+  <data name="Cli_NoProtocolRegistrations" xml:space="preserve"><value>No protocol registrations are available.</value></data>
+  <data name="Cli_ProtocolSelectionRequired" xml:space="preserve"><value>Use --protocol when more than one protocol is registered.</value></data>
+  <data name="Cli_ArgumentError" xml:space="preserve"><value>Argument error: {0}</value></data>
+  <data name="Cli_OperationCancelled" xml:space="preserve"><value>Operation cancelled.</value></data>
+  <data name="Cli_CommandFailed" xml:space="preserve"><value>Failed: {0}</value></data>
+  <data name="Cli_QcomWaitingForDevice" xml:space="preserve"><value>Waiting for a Qualcomm EDL USB device...</value></data>
+  <data name="Cli_SaharaProgrammerPrompt" xml:space="preserve"><value>Sahara programmer path</value></data>
+  <data name="Cli_SaharaProgrammerMissing" xml:space="preserve"><value>The Sahara programmer file was not found.</value></data>
+  <data name="Cli_OplusDigestPrompt" xml:space="preserve"><value>Oplus Digest ({0}) path</value></data>
+  <data name="Cli_OplusDigestMissing" xml:space="preserve"><value>The Oplus Digest file was not found.</value></data>
+  <data name="Cli_FirehoseDigestPrompt" xml:space="preserve"><value>Firehose Digest path</value></data>
+  <data name="Cli_FirehoseDigestMissing" xml:space="preserve"><value>The Firehose Digest file was not found.</value></data>
+  <data name="Cli_VipSignedPrompt" xml:space="preserve"><value>VIP signed table path</value></data>
+  <data name="Cli_VipSignedMissing" xml:space="preserve"><value>The VIP signed table file was not found.</value></data>
+  <data name="Cli_VipChainedPrompt" xml:space="preserve"><value>VIP chained table path (optional)</value></data>
+  <data name="Cli_VipChainedMissing" xml:space="preserve"><value>The VIP chained table file was not found.</value></data>
+  <data name="Cli_AuthenticationRequired" xml:space="preserve"><value>{0} authentication material is required. Enter a hexadecimal payload or leave blank to cancel.</value></data>
+  <data name="Cli_AuthenticationPayloadPrompt" xml:space="preserve"><value>Authentication payload</value></data>
+  <data name="Cli_AuthenticationCancelled" xml:space="preserve"><value>Authentication was cancelled by the user.</value></data>
+  <data name="Cli_AuthenticationPayloadInvalid" xml:space="preserve"><value>The authentication payload must be hexadecimal.</value></data>
+  <data name="Cli_InfoProtocol" xml:space="preserve"><value>Protocol: {0}</value></data>
+  <data name="Cli_InfoVendor" xml:space="preserve"><value>Vendor: {0}</value></data>
+  <data name="Cli_InfoHardware" xml:space="preserve"><value>OEM: {0}, SoC: {1}, SecureBoot: {2}</value></data>
+  <data name="Cli_InfoSahara" xml:space="preserve"><value>Sahara: version={0}, min={1}, packet={2}, mode={3}</value></data>
+  <data name="Cli_InfoSaharaIdentity" xml:space="preserve"><value>  serial={0}, sbl={1}, caHashLength={2}</value></data>
+  <data name="Cli_InfoHardwareIds" xml:space="preserve"><value>  msmId={0}, oemId={1}, modelId={2}, antiRollback={3}, socHwVersion={4}</value></data>
+  <data name="Cli_InfoFirehose" xml:space="preserve"><value>Firehose: target={0}, ufs={1}, storage={2}, sector={3}, payload={4}</value></data>
+  <data name="Cli_InfoFirehoseDevice" xml:space="preserve"><value>  chip={0}, serial={1}, build={2}, functions={3}</value></data>
+  <data name="Cli_InfoStorage" xml:space="preserve"><value>  {0} lun={1} blocks={2} size={3} capacity={4}</value></data>
+  <data name="Cli_UnknownValue" xml:space="preserve"><value>unknown</value></data>
+  <data name="Cli_UsbDeviceFallback" xml:space="preserve"><value>USB device</value></data>
+  <data name="Cli_SaharaProbeResult" xml:space="preserve"><value>Sahara v{0}, mode={1}, packet={2}</value></data>
+  <data name="Cli_XmlResult" xml:space="preserve"><value>XML: {0}</value></data>
 </root>

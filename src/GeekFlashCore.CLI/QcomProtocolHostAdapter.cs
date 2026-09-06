@@ -12,7 +12,7 @@ internal static class QcomProtocolHostAdapter
         ProtocolType.QualcommEdl,
         new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "qcom", "qualcomm", "qualcommedl" },
         "QualcommEdl",
-        "等待 Qualcomm EDL USB 设备热插拔...",
+        Strings.Cli_QcomWaitingForDevice,
         new QcomDeviceIdentify(),
         Create,
         [],
@@ -72,14 +72,17 @@ internal static class QcomProtocolHostAdapter
                     return 0;
                 case "probe-sahara":
                     var target = qcom.ProbeSahara(progress);
-                    ui.WriteLine($"Sahara v{target.Version}, mode={target.Mode}, packet={target.MaximumPacketSizeSupported}");
+                    ui.WriteLine(Strings.FormatCli_SaharaProbeResult(
+                        target.Version,
+                        target.Mode,
+                        target.MaximumPacketSizeSupported));
                     return 0;
                 case "xml":
                     string path = ConsolePath.Normalize(options.Arguments[0])!;
                     if (new FileInfo(path).Length > FirehoseConstants.MaximumXmlPacketSize) throw new ArgumentException(Strings.Cli_XmlTooLarge);
                     var result = qcom.ExecuteFirehoseXml(File.ReadAllText(path));
                     if (!result.IsSuccess) throw new InvalidOperationException(Strings.FormatCli_CommandUnsuccessful("xml"));
-                    ui.WriteLine($"XML: {result.Status}");
+                    ui.WriteLine(Strings.FormatCli_XmlResult(result.Status));
                     return 0;
                 default:
                     await FirehoseCommands.ExecuteAsync(qcom, options.Command, options.Arguments, ui, ct);

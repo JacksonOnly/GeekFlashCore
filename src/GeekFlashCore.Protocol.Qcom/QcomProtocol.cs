@@ -32,6 +32,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private readonly IVendorAuthenticationProvider? _authenticationProvider;
     private readonly IFirehoseConfigurationProvider? _configurationProvider;
     private readonly IQcomProgrammerInspector _inspector;
+    private readonly QcomResourceResolver _resourceResolver;
     private readonly bool _leaveTransportOpen;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
@@ -59,6 +60,9 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         Transport = transport ?? throw new ArgumentNullException(nameof(transport));
         _options = options ?? new QcomProtocolOptions();
         _options.Validate();
+        _resourceResolver = new QcomResourceResolver(
+            _options.ResourceRequestTimeoutMilliseconds,
+            _lifetime.Token);
         _imageProvider = imageProvider;
         _digestProvider = digestProvider;
         _firehoseDigestProvider = firehoseDigestProvider;
@@ -90,7 +94,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             {
                 if (!_sahara.IsConnected) ProbeCore(progress);
                 if (_imageProvider is null) throw new QcomResourceException(Strings.Qcom_LoaderProviderRequired);
-                var response = await ResolveResourceAsync(token => _imageProvider.ResolveAsync(
+                var response = await _resourceResolver.ResolveAsync(token => _imageProvider.ResolveAsync(
                     new SaharaImageEntryRequest(Snapshot(_targetInfo)!.Sahara!) { VendorHint = _options.VendorOverride }, token), ct).ConfigureAwait(false);
                 if (response.Entries is null || response.Entries.Count == 0)
                     throw new QcomResourceException(Strings.Qcom_LoaderProviderRequired);
@@ -101,7 +105,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             FirehoseConfiguration configuration = _options.Firehose;
             if (_configurationProvider is not null)
             {
-                var response = await ResolveResourceAsync(token => _configurationProvider.ResolveAsync(
+                var response = await _resourceResolver.ResolveAsync(token => _configurationProvider.ResolveAsync(
                     new FirehoseConfigurationRequest(TargetInfo!, configuration), token), ct).ConfigureAwait(false);
                 configuration = response.Configuration ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
             }
@@ -179,7 +183,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             FirehoseConfiguration configuration = _options.Firehose;
             if (_configurationProvider is not null)
             {
-                var response = ResolveResourceSync(token => _configurationProvider.ResolveAsync(
+                var response = _resourceResolver.Resolve(token => _configurationProvider.ResolveAsync(
                     new FirehoseConfigurationRequest(TargetInfo!, configuration), token));
                 configuration = response.Configuration ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
             }
@@ -602,7 +606,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
 
         if (_digestProvider is null)
             throw new QcomResourceException(Strings.Qcom_InvalidResource);
-        var response = await ResolveResourceAsync(token => _digestProvider.ResolveAsync(
+        var response = await _resourceResolver.ResolveAsync(token => _digestProvider.ResolveAsync(
             new OplusDigestResourceRequest(TargetInfo!, _options.OplusDigest.Mode), token), ct).ConfigureAwait(false);
         IDataSource digest = response.Digest ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
         int bufferSize = checked((int)(result.Configuration.MaxPayloadSizeToTargetInBytesSupported > 0
@@ -627,7 +631,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
 
         if (_digestProvider is null)
             throw new QcomResourceException(Strings.Qcom_InvalidResource);
-        var response = ResolveResourceSync(token => _digestProvider.ResolveAsync(
+        var response = _resourceResolver.Resolve(token => _digestProvider.ResolveAsync(
             new OplusDigestResourceRequest(TargetInfo!, _options.OplusDigest.Mode), token));
         IDataSource digest = response.Digest ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
         int bufferSize = checked((int)(result.Configuration.MaxPayloadSizeToTargetInBytesSupported > 0
@@ -648,7 +652,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             return;
         if (_firehoseDigestProvider is null)
             throw new QcomResourceException(Strings.Qcom_InvalidResource);
-        FirehoseDigestResourceResponse response = await ResolveResourceAsync(
+        FirehoseDigestResourceResponse response = await _resourceResolver.ResolveAsync(
             token => _firehoseDigestProvider.ResolveAsync(new FirehoseDigestResourceRequest(TargetInfo!), token), ct)
             .ConfigureAwait(false);
         IDataSource digest = response.Digest ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
@@ -667,7 +671,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             return;
         if (_firehoseDigestProvider is null)
             throw new QcomResourceException(Strings.Qcom_InvalidResource);
-        FirehoseDigestResourceResponse response = ResolveResourceSync(
+        FirehoseDigestResourceResponse response = _resourceResolver.Resolve(
             token => _firehoseDigestProvider.ResolveAsync(new FirehoseDigestResourceRequest(TargetInfo!), token));
         IDataSource digest = response.Digest ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
         if (digest.Length is <= 0 or > FirehoseConstants.MaximumRawTransferLength)
@@ -693,7 +697,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             throw new QcomResourceException(Strings.Qcom_FirehoseVipProviderRequired);
         if (_options.FirehoseVip.RequireStartupMarker && !announced)
             throw new QcomResourceException(Strings.Qcom_FirehoseVipNotAnnounced);
-        FirehoseVipResourceResponse response = await ResolveResourceAsync(
+        FirehoseVipResourceResponse response = await _resourceResolver.ResolveAsync(
             token => _firehoseVipProvider.ResolveAsync(new FirehoseVipResourceRequest(TargetInfo!), token), ct)
             .ConfigureAwait(false);
         _vipPolicy = new FirehoseVipTransferPolicy(response);
@@ -714,7 +718,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             throw new QcomResourceException(Strings.Qcom_FirehoseVipProviderRequired);
         if (_options.FirehoseVip.RequireStartupMarker && !announced)
             throw new QcomResourceException(Strings.Qcom_FirehoseVipNotAnnounced);
-        FirehoseVipResourceResponse response = ResolveResourceSync(
+        FirehoseVipResourceResponse response = _resourceResolver.Resolve(
             token => _firehoseVipProvider.ResolveAsync(new FirehoseVipResourceRequest(TargetInfo!), token));
         _vipPolicy = new FirehoseVipTransferPolicy(response);
         _firehose!.SetBeforeCommand(_vipPolicy.BeforeCommand);
@@ -863,65 +867,23 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private ValueTask<VendorAuthenticationResourceResponse> AuthenticationResourceAsync(VendorAuthenticationResourceRequest request, CancellationToken ct)
     {
         if (_authenticationProvider is null) throw new QcomAuthenticationException(Strings.Qcom_AuthenticationProviderRequired);
-        return ResolveResourceAsync(token => _authenticationProvider.ResolveAsync(request, token), ct);
+        return _resourceResolver.ResolveAsync(
+            token => _authenticationProvider.ResolveAsync(request, token),
+            ct,
+            DisposeLateAuthentication);
     }
 
     private VendorAuthenticationResourceResponse AuthenticationResource(VendorAuthenticationResourceRequest request)
     {
         if (_authenticationProvider is null)
             throw new QcomAuthenticationException(Strings.Qcom_AuthenticationProviderRequired);
-        return ResolveResourceSync(token => _authenticationProvider.ResolveAsync(request, token));
+        return _resourceResolver.Resolve(
+            token => _authenticationProvider.ResolveAsync(request, token),
+            DisposeLateAuthentication);
     }
 
-    private async ValueTask<T> ResolveResourceAsync<T>(Func<CancellationToken, ValueTask<T>> request, CancellationToken ct) where T : class
-    {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(_options.ResourceRequestTimeoutMilliseconds);
-        Task<T>? pending = null;
-        try
-        {
-            pending = request(timeout.Token).AsTask();
-            var result = await pending.WaitAsync(timeout.Token).ConfigureAwait(false);
-            if (result is null) throw new QcomResourceException(Strings.Qcom_InvalidResource);
-            return result;
-        }
-        catch (OperationCanceledException)
-        {
-            if (pending is not null) _ = DisposeLateAuthenticationAsync(pending);
-            throw;
-        }
-        catch (Exception exception) when (exception is not QcomProtocolException)
-        { throw new QcomResourceException(Strings.Qcom_InvalidResource, exception); }
-    }
-
-    private T ResolveResourceSync<T>(Func<CancellationToken, ValueTask<T>> request) where T : class
-    {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
-        timeout.CancelAfter(_options.ResourceRequestTimeoutMilliseconds);
-        Task<T>? pending = null;
-        try
-        {
-            pending = request(timeout.Token).AsTask();
-            T? result = pending.WaitAsync(timeout.Token).GetAwaiter().GetResult();
-            return result ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
-        }
-        catch (OperationCanceledException)
-        {
-            if (pending is not null)
-                _ = DisposeLateAuthenticationAsync(pending);
-            throw;
-        }
-        catch (Exception exception) when (exception is not QcomProtocolException)
-        {
-            throw new QcomResourceException(Strings.Qcom_InvalidResource, exception);
-        }
-    }
-
-    private static async Task DisposeLateAuthenticationAsync<T>(Task<T> task)
-    {
-        try { if (await task.ConfigureAwait(false) is VendorAuthenticationResourceResponse response) response.Payload.Dispose(); }
-        catch { /* Observe a provider failure after cancellation without retaining authentication material. */ }
-    }
+    private static void DisposeLateAuthentication(VendorAuthenticationResourceResponse response) =>
+        response.Payload.Dispose();
 
     private Operation Enter()
     {

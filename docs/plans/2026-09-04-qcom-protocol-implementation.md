@@ -418,6 +418,13 @@
 - 证据：新增缓存初始化、重配置缓存重建、重复 GPT 读取和 CLI 缺失缓存不刷新测试；Qcom 224/224、CLI 47/47 通过，Release 构建和 `git diff --check` 通过。测试均使用模拟传输，完整线路见 `docs/plans/2026-09-06-storage-info-cache.md`。
 - 风险：多 LUN 初始化耗时、设备对未报告 LUN 的 NAK/超时以及真实 CLI 分区读取仍需硬件复测；当前策略按设备报告的数量严格初始化，初始化阶段失败会阻止连接成功。
 
+### CLI-15（2026-09-06）
+
+- 行为结论：CLI 仅负责命令语法、文本数值转换、文件资源和输出。NOP、SetBootableStorageDrive、XblGpt、FixGpt、Patch、Benchmark、GetSha256Digest 通过 `IQcomProtocol` 类型化入口执行；Core 统一负责会话互斥、取消、LUN/缓存容量/扇区校验、Firehose packet 生成和响应解析。Peek、Poke、FirmwareWrite 的协议线路也统一复用 `FirehoseStorageService`，不再由 Qcom 门面维护第二套 Raw/日志解析实现。
+- `StorageCommands` 删除 Qcom 的 LUN、容量重复校验；分区表、命名目标和 sector 读写只消费 Configure 阶段建立的缓存。CLI 不再调用 `ExecuteFirehoseCommand` 执行已建模命令。
+- 证据：Qcom 224/224、CLI 48/48 通过；Release 构建和 `git diff --check` 通过。类型化 CLI 分发测试确认所有命令不再发送通用 `BaseCommand`。
+- 风险：真实设备对 XBL GPT、Benchmark、Peek 日志/Raw 方言及特定 Firehose 响应仍需硬件复测；`ExecuteFirehoseCommand` 保留为底层扩展/诊断入口，不应作为新宿主的首选 API。
+
 ## 未决风险
 
 ### CLI-10：联机信息与重连（2026-09-05）

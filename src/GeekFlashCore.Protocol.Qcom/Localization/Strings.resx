@@ -389,6 +389,7 @@
   <data name="Qcom_GptHeaderCrcInvalid" xml:space="preserve"><value>GPT 头 CRC 校验失败。</value></data>
   <data name="Qcom_InvalidLunCount" xml:space="preserve"><value>设备返回的物理分区数量无效。</value></data>
   <data name="Qcom_UnknownLun" xml:space="preserve"><value>指定 LUN 不在设备报告的物理分区范围内。</value></data>
+  <data name="Qcom_StorageRangeOutsideDevice" xml:space="preserve"><value>请求范围超出设备存储容量。</value></data>
   <data name="Qcom_StorageCapacityMissing" xml:space="preserve"><value>该 LUN 未提供可用的存储容量。</value></data>
   <data name="Qcom_PeekLengthMismatch" xml:space="preserve"><value>Peek 返回的十六进制数据长度与请求不符。</value></data>
   <data name="Progress_Writing" xml:space="preserve"><value>写入</value></data>

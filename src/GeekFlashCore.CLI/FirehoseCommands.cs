@@ -1,4 +1,3 @@
-using System.Globalization;
 using GeekFlashCore.CLI.Localization;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
@@ -44,7 +43,8 @@ internal static class FirehoseCommands
                 case "patch":
                     Count(a, 5); CommandSyntax.Lun(a[0]); Number(a[1]); Number(a[2]);
                     ulong size = Number(a[3]), patchValue = Unsigned(a[4]);
-                    if (size is not (1 or 2 or 4 or 8) || size < 8 && patchValue >= (1UL << (int)(size * 8))) throw new FormatException();
+                    if (size is not (1 or 2 or 4 or 8) || size < 8 && patchValue >= (1UL << (int)(size * 8)) || Number(a[2]) > uint.MaxValue)
+                        throw new FormatException();
                     break;
                 case "benchmark": Count(a, 3); CommandSyntax.Lun(a[0]); Choice(a[1], "read", "write", "digest"); if (Number(a[2]) is 0 or > 1000) throw new FormatException(); break;
                 case "getsha256digest": Count(a, 3); CommandSyntax.Lun(a[0]); Range(a[1], a[2]); break;
@@ -123,12 +123,13 @@ internal static class FirehoseCommands
         if (command == "configure") PrintMapping(protocol, ui);
     }
 
-    private static Task Nop(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct) => Send(p, new NopCommand());
+    private static Task Nop(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct)
+    { Check(p.Nop(ct)); return Task.CompletedTask; }
     private static Task Configure(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct)
     { Check(p.ConfigureFirehose()); return Task.CompletedTask; }
     private static Task StorageInfo(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct)
     {
-        foreach (uint lun in a[0].Equals("all", StringComparison.OrdinalIgnoreCase) ? p.GetPhysicalPartitions() : [Lun(p, a[0])])
+        foreach (uint lun in a[0].Equals("all", StringComparison.OrdinalIgnoreCase) ? p.GetPhysicalPartitions() : [CommandSyntax.Lun(a[0])])
         {
             ct.ThrowIfCancellationRequested();
             var info = p.GetStorageInfo(lun);
@@ -136,18 +137,14 @@ internal static class FirehoseCommands
         }
         return Task.CompletedTask;
     }
-    private static Task SetBootable(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct) =>
-        Send(p, new SetBootableStorageDriveCommand { Value = Lun(p, a[0]) });
+    private static Task SetBootable(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct)
+    { Check(p.SetBootableStorageDrive(CommandSyntax.Lun(a[0]), ct)); return Task.CompletedTask; }
     private static Task Patch(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct)
     {
-        uint size = StorageCommands.SectorSize(p);
-        ulong offset = CommandSyntax.Number(a[2]), count = CommandSyntax.Number(a[3]);
-        if (offset + count > size) throw new ArgumentException(Strings.Cli_RangeOutsideStorage);
-        uint lun = Lun(p, a[0]);
-        ValidateSectorRange(p, lun, a[1], "1");
-        return Send(p, new PatchCommand { PhysicalPartitionNumber = lun, SectorSizeInBytes = size,
-            StartSector = Decimal(a[1]), ByteOffset = checked((uint)offset), SizeInBytes = (uint)count,
-            Value = CommandSyntax.Unsigned(a[4]).ToString(CultureInfo.InvariantCulture), FileName = "DISK" });
+        Check(p.Patch(CommandSyntax.Lun(a[0]), checked((long)CommandSyntax.Number(a[1])),
+            checked((uint)CommandSyntax.Number(a[2])), checked((uint)CommandSyntax.Number(a[3])),
+            CommandSyntax.Unsigned(a[4]), ct));
+        return Task.CompletedTask;
     }
     private static async Task Power(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct)
     {
@@ -155,36 +152,27 @@ internal static class FirehoseCommands
         { "reset" => ProtocolRebootMode.System, "reset_to_edl" => ProtocolRebootMode.Download, _ => ProtocolRebootMode.PowerOff };
         if (!await p.RebootAsync(mode, ct: ct)) throw new InvalidOperationException(Strings.FormatCli_CommandUnsuccessful("power"));
     }
-    private static Task Benchmark(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct) =>
-        Send(p, new BenchmarkCommand { PhysicalPartitionNumber = Lun(p, a[0]), Trials = (uint)CommandSyntax.Number(a[2]),
-            TestReadPerformance = a[1].Equals("read", StringComparison.OrdinalIgnoreCase) ? 1u : 0u,
-            TestWritePerformance = a[1].Equals("write", StringComparison.OrdinalIgnoreCase) ? 1u : 0u,
-            TestDigestPerformance = a[1].Equals("digest", StringComparison.OrdinalIgnoreCase) ? 1u : 0u });
-    private static Task XblGpt(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct) =>
-        Send(p, new XblGptCommand { Lun = Lun(p, a[0]) });
+    private static Task Benchmark(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct)
+    {
+        FirehoseBenchmarkMode mode = a[1].ToLowerInvariant() switch
+        { "read" => FirehoseBenchmarkMode.Read, "write" => FirehoseBenchmarkMode.Write, _ => FirehoseBenchmarkMode.Digest };
+        Check(p.Benchmark(CommandSyntax.Lun(a[0]), mode, checked((uint)CommandSyntax.Number(a[2])), ct));
+        return Task.CompletedTask;
+    }
+    private static Task XblGpt(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct)
+    { Check(p.XblGpt(CommandSyntax.Lun(a[0]), ct)); return Task.CompletedTask; }
     private static Task FixGpt(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct)
     {
-        uint lun = Lun(p, a[0]);
-        return Send(p, new FixGptCommand { PhysicalPartitionNumber = lun, Lun = lun.ToString(CultureInfo.InvariantCulture), GrowLastPartition = byte.Parse(a[1]) });
+        Check(p.FixGpt(CommandSyntax.Lun(a[0]), a[1] == "1", ct));
+        return Task.CompletedTask;
     }
     private static Task Sha256(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct)
     {
-        uint lun = Lun(p, a[0]);
-        ValidateSectorRange(p, lun, a[1], a[2]);
-        var result = p.ExecuteFirehoseCommand(new GetSha256DigestCommand { PhysicalPartitionNumber = lun,
-            SectorSizeInBytes = StorageCommands.SectorSize(p), StartSector = Decimal(a[1]), NumPartitionSectors = Decimal(a[2]) });
-        Check(result);
-        foreach (string text in result.Attributes.Values.Concat(result.Logs.Select(x => x.Message)))
-        {
-            for (int index = 0; index <= text.Length - 64; index++)
-            {
-                var hex = text.AsSpan(index, 64);
-                if (hex.ContainsAnyExcept("0123456789abcdefABCDEF")) continue;
-                ui.WriteLine("SHA256: " + hex.ToString());
-                return Task.CompletedTask;
-            }
-        }
-        throw new InvalidDataException(Strings.Cli_DigestMissing);
+        byte[] digest = p.GetSha256Digest(CommandSyntax.Lun(a[0]),
+            checked((long)CommandSyntax.Number(a[1])), checked((long)CommandSyntax.Number(a[2])),
+            cancellationToken: ct);
+        ui.WriteLine("SHA256: " + Convert.ToHexString(digest));
+        return Task.CompletedTask;
     }
     private static Task Peek(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct)
     {
@@ -195,23 +183,8 @@ internal static class FirehoseCommands
     private static Task Poke(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct)
     { p.Poke(CommandSyntax.Unsigned(a[0]), new FileDataSource(ConsolePath.Normalize(a[1])!), ct); return Task.CompletedTask; }
     private static Task FirmwareWrite(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct)
-    { Check(p.FirmwareWrite(Lun(p, a[0]), new FileDataSource(ConsolePath.Normalize(a[1])!), ct)); return Task.CompletedTask; }
+    { Check(p.FirmwareWrite(CommandSyntax.Lun(a[0]), new FileDataSource(ConsolePath.Normalize(a[1])!), ct)); return Task.CompletedTask; }
 
-    private static uint Lun(IQcomProtocol p, string value)
-    {
-        uint lun = CommandSyntax.Lun(value);
-        if (!p.GetPhysicalPartitions().Contains(lun)) throw new ArgumentException(Strings.FormatCli_UnknownLun(lun));
-        return lun;
-    }
-    private static void ValidateSectorRange(IQcomProtocol p, uint lun, string start, string count)
-    {
-        var info = p.TargetInfo?.Firehose?.StorageInfos.FirstOrDefault(x => x.PhysicalPartitionNumber == lun);
-        if (info is null) throw new InvalidOperationException(Strings.Cli_StorageNotConfigured);
-        if (info.BlockCount is not { } blocks || checked(CommandSyntax.Number(start) + CommandSyntax.Number(count)) > blocks)
-            throw new ArgumentException(Strings.Cli_RangeOutsideStorage);
-    }
-    private static string Decimal(string value) => CommandSyntax.Number(value).ToString(CultureInfo.InvariantCulture);
-    private static Task Send(IQcomProtocol p, BaseCommand command) { Check(p.ExecuteFirehoseCommand(command)); return Task.CompletedTask; }
     private static void Check(FirehoseCommandResult result)
     { if (!result.IsSuccess) throw new InvalidOperationException(Strings.FormatCli_CommandUnsuccessful(result.Status)); }
 }

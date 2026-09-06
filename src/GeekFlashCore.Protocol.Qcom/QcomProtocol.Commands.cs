@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using System.Globalization;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
@@ -7,50 +6,90 @@ namespace GeekFlashCore.Protocol.Qcom;
 
 public sealed partial class QcomProtocol
 {
+    public FirehoseCommandResult Nop(CancellationToken cancellationToken = default)
+    {
+        using var operation = EnterConnected();
+        cancellationToken.ThrowIfCancellationRequested();
+        return _storage!.Nop(cancellationToken);
+    }
+
+    public FirehoseCommandResult SetBootableStorageDrive(uint physicalPartitionNumber,
+        CancellationToken cancellationToken = default)
+    {
+        using var operation = EnterConnected();
+        ValidateLun(physicalPartitionNumber);
+        cancellationToken.ThrowIfCancellationRequested();
+        return _storage!.SetBootableStorageDrive(physicalPartitionNumber, cancellationToken);
+    }
+
+    public FirehoseCommandResult XblGpt(uint physicalPartitionNumber,
+        CancellationToken cancellationToken = default)
+    {
+        using var operation = EnterConnected();
+        ValidateLun(physicalPartitionNumber);
+        cancellationToken.ThrowIfCancellationRequested();
+        return _storage!.XblGpt(physicalPartitionNumber, cancellationToken);
+    }
+
+    public FirehoseCommandResult FixGpt(uint physicalPartitionNumber, bool growLastPartition = true,
+        CancellationToken cancellationToken = default)
+    {
+        using var operation = EnterConnected();
+        ValidateLun(physicalPartitionNumber);
+        cancellationToken.ThrowIfCancellationRequested();
+        return _storage!.FixGpt(physicalPartitionNumber,
+            physicalPartitionNumber.ToString(CultureInfo.InvariantCulture), growLastPartition, cancellationToken);
+    }
+
+    public FirehoseCommandResult Patch(uint physicalPartitionNumber, long startSector, uint byteOffset,
+        uint sizeInBytes, ulong value, CancellationToken cancellationToken = default)
+    {
+        using var operation = EnterConnected();
+        ValidateLun(physicalPartitionNumber);
+        ValidateCachedSectorRange(physicalPartitionNumber, startSector, 1);
+        uint sectorSize = _storage!.Configuration.SectorSizeInBytes;
+        if (sizeInBytes is not (1 or 2 or 4 or 8) || checked((ulong)byteOffset + sizeInBytes) > sectorSize)
+            throw new ArgumentOutOfRangeException(nameof(sizeInBytes));
+        if (sizeInBytes < sizeof(ulong) && value >= (1UL << checked((int)sizeInBytes * 8)))
+            throw new ArgumentOutOfRangeException(nameof(value));
+        cancellationToken.ThrowIfCancellationRequested();
+        return _storage.Patch(physicalPartitionNumber, startSector, byteOffset, sizeInBytes,
+            value.ToString(CultureInfo.InvariantCulture), cancellationToken: cancellationToken);
+    }
+
+    public FirehoseCommandResult Benchmark(uint physicalPartitionNumber, FirehoseBenchmarkMode mode,
+        uint trials = 1, CancellationToken cancellationToken = default)
+    {
+        using var operation = EnterConnected();
+        if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
+        ValidateLun(physicalPartitionNumber);
+        cancellationToken.ThrowIfCancellationRequested();
+        return _storage!.Benchmark(physicalPartitionNumber, trials,
+            testDigestPerformance: mode == FirehoseBenchmarkMode.Digest,
+            testWritePerformance: mode == FirehoseBenchmarkMode.Write,
+            testReadPerformance: mode == FirehoseBenchmarkMode.Read,
+            cancellationToken: cancellationToken);
+    }
+
+    public byte[] GetSha256Digest(uint physicalPartitionNumber, long startSector, long sectorCount,
+        FirehoseIoOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        using var operation = EnterConnected();
+        ValidateLun(physicalPartitionNumber);
+        ValidateCachedSectorRange(physicalPartitionNumber, startSector, sectorCount);
+        cancellationToken.ThrowIfCancellationRequested();
+        return _storage!.GetSha256Digest(physicalPartitionNumber, startSector, sectorCount,
+            options, cancellationToken);
+    }
+
     public long Peek(ulong address, long length, Stream destination, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(destination);
         if (!destination.CanWrite) throw new ArgumentException(Strings.Firehose_DestinationStreamNotWritable, nameof(destination));
         ValidateMemoryRange(address, length);
         using var operation = EnterConnected();
-        Span<byte> buffer = stackalloc byte[256];
-        long completed = 0;
-        while (completed < length)
-        {
-            ct.ThrowIfCancellationRequested();
-            int count = (int)Math.Min(buffer.Length, length - completed);
-            var result = _firehose!.Execute(new PeekCommand
-            {
-                Address64 = checked(address + (ulong)completed).ToString(CultureInfo.InvariantCulture),
-                SizeInBytes = (ulong)count
-            }, cancellationToken: ct);
-            int decoded = 0;
-            foreach (var log in result.Logs)
-            {
-                string[] tokens = log.Message.Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
-                if (tokens.Length == 0 || !tokens.All(IsHexBytes)) continue;
-                foreach (string token in tokens)
-                {
-                    ReadOnlySpan<char> hex = token.AsSpan();
-                    if (hex.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) hex = hex[2..];
-                    if (hex.Length / 2 > count - decoded) throw new QcomProtocolException(Strings.Qcom_PeekLengthMismatch);
-                    for (int i = 0; i < hex.Length; i += 2)
-                        buffer[decoded++] = byte.Parse(hex.Slice(i, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-                }
-            }
-            if (decoded != count) throw new QcomProtocolException(Strings.Qcom_PeekLengthMismatch);
-            destination.Write(buffer[..count]);
-            buffer.Clear();
-            completed += count;
-        }
-        return completed;
-    }
-
-    private static bool IsHexBytes(string token)
-    {
-        ReadOnlySpan<char> hex = token.AsSpan();
-        if (hex.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) hex = hex[2..];
-        return !hex.IsEmpty && hex.Length % 2 == 0 && !hex.ContainsAnyExcept("0123456789abcdefABCDEF");
+        ct.ThrowIfCancellationRequested();
+        return _storage!.Peek(address, length, destination, ct);
     }
 
     public long Poke(ulong address, IDataSource source, CancellationToken ct = default)
@@ -60,25 +99,7 @@ public sealed partial class QcomProtocol
         ValidateMemoryRange(address, length);
         using var operation = EnterConnected();
         ct.ThrowIfCancellationRequested();
-        using Stream stream = source.OpenStream() ?? throw new InvalidDataException(Strings.Qcom_FirehoseProgramStreamMissing);
-        if (!stream.CanRead) throw new ArgumentException(Strings.Firehose_SourceStreamNotReadable, nameof(source));
-        Span<byte> buffer = stackalloc byte[8];
-        for (long completed = 0; completed < length;)
-        {
-            ct.ThrowIfCancellationRequested();
-            int count = (int)Math.Min(8, length - completed);
-            buffer.Clear();
-            stream.ReadExactly(buffer[..count]);
-            ulong value = BinaryPrimitives.ReadUInt64LittleEndian(buffer);
-            _firehose!.Execute(new PokeCommand
-            {
-                Address64 = checked(address + (ulong)completed), SizeInBytes = (uint)count,
-                Value64 = "0x" + value.ToString("X16", CultureInfo.InvariantCulture)
-            }, cancellationToken: ct);
-            completed += count;
-        }
-        buffer.Clear();
-        return length;
+        return _storage!.Poke(address, source, ct);
     }
 
     public FirehoseCommandResult FirmwareWrite(uint physicalPartitionNumber, IDataSource source, CancellationToken ct = default)
@@ -90,15 +111,7 @@ public sealed partial class QcomProtocol
         using var operation = EnterConnected();
         ValidateLun(physicalPartitionNumber);
         ct.ThrowIfCancellationRequested();
-        using Stream stream = source.OpenStream() ?? throw new InvalidDataException(Strings.Qcom_FirehoseProgramStreamMissing);
-        if (!stream.CanRead) throw new ArgumentException(Strings.Firehose_SourceStreamNotReadable, nameof(source));
-        _firehose!.Execute(new FirmwareWriteCommand
-        {
-            PhysicalPartitionNumber = physicalPartitionNumber, SectorSizeInBytes = 1,
-            NumPartitionSectors = (ulong)length
-        }, expectedRawMode: true, cancellationToken: ct);
-        return _firehose.SendRaw(stream, length, length,
-            checked((int)Math.Min(_storage!.Configuration.MaxPayloadSizeToTargetInBytes, 1024 * 1024)), cancellationToken: ct);
+        return _storage!.FirmwareWrite(physicalPartitionNumber, source, ct);
     }
 
     private static void ValidateMemoryRange(ulong address, long length)

@@ -4,6 +4,7 @@ using GeekFlashCore.Gpt;
 using GeekFlashCore.Gpt.Abstractions;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
+using GeekFlashCore.Protocol.Qcom.Firehose.Storage;
 using GeekFlashCore.Shared.Utilities;
 using Serilog;
 
@@ -56,7 +57,7 @@ public sealed partial class QcomProtocol
         using var operation = EnterConnected();
         ct.ThrowIfCancellationRequested();
         var range = ResolveTarget(target, ct);
-        _storage!.Erase(range.Partition, range.Start, range.Count);
+        _storage!.Erase(range.Partition, range.Start, range.Count, cancellationToken: ct);
         return Task.FromResult(true);
     }
 
@@ -141,23 +142,49 @@ public sealed partial class QcomProtocol
             case SectorTarget sectors:
                 if (sectors.SectorSize != size) throw new ArgumentException(Strings.Qcom_TargetSectorSizeMismatch, nameof(target));
                 range = new(partition, sectors.StartSector, sectors.SectorCount, size);
+                ValidateLun(partition);
+                ValidateCachedSectorRange(range);
                 break;
             case OffsetTarget bytes:
                 if (bytes.StartOffset % size != 0 || bytes.Length % size != 0)
                     throw new ArgumentException(Strings.Qcom_OffsetTargetNotAligned, nameof(target));
+                ValidateLun(partition);
                 range = new(partition, bytes.StartOffset / size, bytes.Length / size, size);
+                ValidateCachedSectorRange(range);
                 break;
             case PartitionTarget named:
+                ValidateLun(partition);
                 var matches = ReadPartitions(ct, target.PhysicalPartitionNumber).Where(x => x.Name == named.Name &&
                     (target.PhysicalPartitionNumber is null || x.Range.Partition == partition)).ToArray();
                 if (matches.Length == 0) throw new ArgumentException(string.Format(Strings.Qcom_PartitionNotFound, named.Name), nameof(target));
                 if (matches.Length > 1) throw new ArgumentException(string.Format(Strings.Qcom_PartitionAmbiguousAcrossLuns, named.Name), nameof(target));
                 range = matches[0].Range;
+                ValidateCachedSectorRange(range);
                 break;
             default: throw new ArgumentException(string.Format(Strings.Qcom_UnsupportedStorageTarget, target.GetType().Name), nameof(target));
         }
-        Firehose.Storage.FirehoseRangeValidator.ValidateSectorRange(range.Partition, range.Start, range.Count, range.SectorSize);
         return range;
+    }
+
+    private void ValidateCachedSectorRange(TargetRange range)
+    {
+        FirehoseRangeValidator.ValidateSectorRange(range.Partition, range.Start, range.Count, range.SectorSize);
+        ValidateCachedSectorCapacity(range.Partition, range.Start, range.Count);
+    }
+
+    private void ValidateCachedSectorRange(uint physicalPartitionNumber, long startSector, long sectorCount)
+    {
+        FirehoseRangeValidator.ValidateSectorRange(physicalPartitionNumber, startSector, sectorCount,
+            _storage!.Configuration.SectorSizeInBytes);
+        ValidateCachedSectorCapacity(physicalPartitionNumber, startSector, sectorCount);
+    }
+
+    private void ValidateCachedSectorCapacity(uint physicalPartitionNumber, long startSector, long sectorCount)
+    {
+        FirehoseStorageInfo? info = _targetInfo!.Firehose!.StorageInfos
+            .FirstOrDefault(item => item.PhysicalPartitionNumber == physicalPartitionNumber);
+        if (info?.BlockCount is not { } blockCount || checked((ulong)startSector + (ulong)sectorCount) > blockCount)
+            throw new ArgumentOutOfRangeException(nameof(sectorCount), Strings.Qcom_StorageRangeOutsideDevice);
     }
 
     private List<(string Name, TargetRange Range)> ReadPartitions(CancellationToken ct, uint? selectedLun = null)

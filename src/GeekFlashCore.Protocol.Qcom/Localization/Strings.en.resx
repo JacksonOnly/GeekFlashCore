@@ -492,6 +492,7 @@ Current {0}, expected {1}</value>
   <data name="Qcom_GptHeaderCrcInvalid" xml:space="preserve"><value>GPT header CRC validation failed.</value></data>
   <data name="Qcom_InvalidLunCount" xml:space="preserve"><value>The device reported an invalid physical partition count.</value></data>
   <data name="Qcom_UnknownLun" xml:space="preserve"><value>The LUN is outside the physical partitions reported by the device.</value></data>
+  <data name="Qcom_StorageRangeOutsideDevice" xml:space="preserve"><value>The requested range exceeds the device storage capacity.</value></data>
   <data name="Qcom_StorageCapacityMissing" xml:space="preserve"><value>No usable storage capacity was reported for this LUN.</value></data>
   <data name="Qcom_PeekLengthMismatch" xml:space="preserve"><value>The hexadecimal Peek data length does not match the request.</value></data>
   <data name="Progress_Writing" xml:space="preserve"><value>Writing</value></data>

@@ -30,15 +30,6 @@ internal static class StorageCommands
         if (protocol is IQcomProtocol device)
         {
             FirehoseCommands.Require(device, command == "write" ? "program" : command);
-            if (target.PhysicalPartitionNumber is { } lun && !device.GetPhysicalPartitions().Contains(lun))
-                throw new ArgumentException(Strings.FormatCli_UnknownLun(lun));
-            if (target is SectorTarget sectors)
-            {
-                var info = device.TargetInfo?.Firehose?.StorageInfos.FirstOrDefault(x => x.PhysicalPartitionNumber == sectors.PhysicalPartitionNumber);
-                if (info is null) throw new InvalidOperationException(Strings.Cli_StorageNotConfigured);
-                if (info.BlockCount is not { } blocks || checked((ulong)(sectors.StartSector + sectors.SectorCount)) > blocks)
-                    throw new ArgumentException(Strings.Cli_RangeOutsideStorage);
-            }
         }
         if (command == "erase")
         {

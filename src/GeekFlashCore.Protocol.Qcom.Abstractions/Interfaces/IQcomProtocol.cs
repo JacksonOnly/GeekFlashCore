@@ -29,6 +29,23 @@ public interface IQcomProtocol : IProtocol,IBlockDeviceProvider
 
     FirehoseCommandResult ExecuteFirehoseCommand(BaseCommand command);
 
+    FirehoseCommandResult Nop(CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+    FirehoseCommandResult SetBootableStorageDrive(uint physicalPartitionNumber,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    FirehoseCommandResult XblGpt(uint physicalPartitionNumber,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    FirehoseCommandResult FixGpt(uint physicalPartitionNumber, bool growLastPartition = true,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    FirehoseCommandResult Patch(uint physicalPartitionNumber, long startSector, uint byteOffset,
+        uint sizeInBytes, ulong value, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+    FirehoseCommandResult Benchmark(uint physicalPartitionNumber, FirehoseBenchmarkMode mode,
+        uint trials = 1, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    byte[] GetSha256Digest(uint physicalPartitionNumber, long startSector, long sectorCount,
+        FirehoseIoOptions? options = null, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
     FirehoseCommandResult ExecuteFirehoseXml(string xml);
 
     IReadOnlyList<uint> GetPhysicalPartitions() => throw new NotSupportedException();

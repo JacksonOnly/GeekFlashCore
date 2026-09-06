@@ -214,15 +214,29 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
 
     public long Program(FirehoseProgramRequest request, IProgress<ProgressRecord>? progress = null, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
         using var operation = EnterConnected();
         cancellationToken.ThrowIfCancellationRequested();
+        request.Validate();
+        ValidateLun(request.PhysicalPartitionNumber);
+        if (request.SectorSizeInBytes != _storage!.Configuration.SectorSizeInBytes)
+            throw new ArgumentException(Strings.Qcom_TargetSectorSizeMismatch, nameof(request));
+        ValidateCachedSectorRange(new TargetRange(request.PhysicalPartitionNumber, request.StartSector,
+            request.SectorCount, request.SectorSizeInBytes, request.Label));
         return _storage!.Program(request, ProgramProgress(progress), cancellationToken);
     }
 
     public long Read(FirehoseReadRequest request, Stream destination, IProgress<ProgressRecord>? progress = null, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
         using var operation = EnterConnected();
         cancellationToken.ThrowIfCancellationRequested();
+        request.Validate();
+        ValidateLun(request.PhysicalPartitionNumber);
+        if (request.SectorSizeInBytes != _storage!.Configuration.SectorSizeInBytes)
+            throw new ArgumentException(Strings.Qcom_TargetSectorSizeMismatch, nameof(request));
+        ValidateCachedSectorRange(new TargetRange(request.PhysicalPartitionNumber, request.StartSector,
+            request.SectorCount, request.SectorSizeInBytes, request.Label));
         return ReadWithProgress(request, destination, progress, cancellationToken);
     }
 
@@ -260,7 +274,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             ProtocolRebootMode.PowerOff => FirehosePowerValue.Off,
             _ => throw new ArgumentOutOfRangeException(nameof(mode))
         };
-        _storage!.Power(value);
+        _storage!.Power(value, cancellationToken: ct);
         Cleanup();
         return Task.FromResult(true);
     }

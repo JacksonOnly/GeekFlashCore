@@ -214,14 +214,14 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     {
         using var operation = EnterConnected();
         cancellationToken.ThrowIfCancellationRequested();
-        return _storage!.Program(request, Adapt(progress, request.GetWireLength()), cancellationToken);
+        return _storage!.Program(request, ProgramProgress(progress), cancellationToken);
     }
 
     public long Read(FirehoseReadRequest request, Stream destination, IProgress<ProgressRecord>? progress = null, CancellationToken cancellationToken = default)
     {
         using var operation = EnterConnected();
         cancellationToken.ThrowIfCancellationRequested();
-        return _storage!.Read(request, destination, Adapt(progress, request.GetByteLength()), cancellationToken);
+        return ReadWithProgress(request, destination, progress, cancellationToken);
     }
 
     public FirehoseCommandResult ExecuteFirehoseCommand(BaseCommand command)
@@ -906,9 +906,17 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             owner._gate.Release();
         }
     }
-    private sealed class InlineProgress(IProgress<ProgressRecord> progress, long total) : IProgress<long>
-    { public void Report(long value) => progress.Report(new ProgressRecord(total, value, string.Empty)); }
-    private static IProgress<long>? Adapt(IProgress<ProgressRecord>? progress, long total) => progress is null ? null : new InlineProgress(progress, total);
+    private static IProgress<long>? ProgramProgress(IProgress<ProgressRecord>? progress) =>
+        progress is null ? null : new TransferProgress(progress, Strings.Progress_Writing);
+
+    private long ReadWithProgress(FirehoseReadRequest request, Stream destination, IProgress<ProgressRecord>? progress, CancellationToken ct)
+    {
+        var transfer = progress is null ? null : new TransferProgress(progress, Strings.Progress_Reading);
+        transfer?.Start(request.GetByteLength());
+        long read = _storage!.Read(request, destination, transfer, ct);
+        transfer?.Complete(read);
+        return read;
+    }
     private static QcomTargetInfo? Snapshot(QcomTargetInfo? info) => info is null ? null : info with
     {
         Sahara = info.Sahara is null ? null : info.Sahara with { MsmHwInfo = info.Sahara.MsmHwInfo is null ? null : info.Sahara.MsmHwInfo with { } },

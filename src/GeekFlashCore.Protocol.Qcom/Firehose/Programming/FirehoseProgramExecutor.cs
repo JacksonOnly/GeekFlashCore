@@ -41,6 +41,13 @@ internal sealed class FirehoseProgramExecutor
             }
         }
 
+        if (progress is ITransferProgress transfer)
+        {
+            long total = 0;
+            foreach (var segment in plan.Segments)
+                total = checked(total + segment.SectorCount * request.SectorSizeInBytes);
+            transfer.Start(total);
+        }
         long completed = 0;
         foreach (FirehoseProgramSegment segment in plan.Segments)
         {
@@ -66,6 +73,7 @@ internal sealed class FirehoseProgramExecutor
                 _policy?.CommandCompleted();
             }
         }
+        (progress as ITransferProgress)?.Complete(completed);
         return completed;
     }
 

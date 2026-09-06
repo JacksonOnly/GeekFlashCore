@@ -107,6 +107,8 @@ internal class SaharaProtocol : IDisposable
         Stream? stream = null;
         long totalBytes = 0;
         var stopwatch = Stopwatch.StartNew();
+        progress?.Report(new ProgressRecord(totalImageBytes, 0, Strings.Progress_Uploading)
+            { Unit = ProgressUnit.Bytes, Phase = ProgressPhase.Started });
         try
         {
             while (true)
@@ -184,7 +186,7 @@ internal class SaharaProtocol : IDisposable
                             {
                                 lastReportedBytes = totalBytes;
                                 progress.Report(new ProgressRecord(totalImageBytes, totalBytes,
-                                    Strings.FormatProgress_UploadingImage(currentImageId)));
+                                    Strings.FormatProgress_UploadingImage(currentImageId)) { Unit = ProgressUnit.Bytes });
                             }
                         }
                         finally
@@ -230,7 +232,7 @@ internal class SaharaProtocol : IDisposable
                             _targetInfo.Mode = SaharaMode.ImageTxComplete;
                             LogThroughput("UploadImage", totalBytes, stopwatch.Elapsed);
                             progress?.Report(new ProgressRecord(totalImageBytes, totalBytes,
-                                Strings.Progress_UploadComplete));
+                                Strings.Progress_UploadComplete) { Unit = ProgressUnit.Bytes, Phase = ProgressPhase.Completed });
                             return;
                         }
 
@@ -246,7 +248,7 @@ internal class SaharaProtocol : IDisposable
                         {
                             lastReportedBytes = totalBytes;
                             progress.Report(new ProgressRecord(totalImageBytes, totalBytes,
-                                Strings.FormatProgress_UploadingImage(currentImageId)));
+                                Strings.FormatProgress_UploadingImage(currentImageId)) { Unit = ProgressUnit.Bytes });
                         }
 
                         currentImageId = -1;

@@ -494,4 +494,7 @@ Current {0}, expected {1}</value>
   <data name="Qcom_UnknownLun" xml:space="preserve"><value>The LUN is outside the physical partitions reported by the device.</value></data>
   <data name="Qcom_StorageCapacityMissing" xml:space="preserve"><value>No usable storage capacity was reported for this LUN.</value></data>
   <data name="Qcom_PeekLengthMismatch" xml:space="preserve"><value>The hexadecimal Peek data length does not match the request.</value></data>
+  <data name="Progress_Writing" xml:space="preserve"><value>Writing</value></data>
+  <data name="Progress_Reading" xml:space="preserve"><value>Reading</value></data>
+  <data name="Progress_Uploading" xml:space="preserve"><value>Uploading Loader</value></data>
 </root>

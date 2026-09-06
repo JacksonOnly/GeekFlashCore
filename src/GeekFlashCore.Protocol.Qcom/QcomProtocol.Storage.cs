@@ -167,8 +167,6 @@ public sealed partial class QcomProtocol
         foreach (uint lun in selectedLun is { } value ? [value] : KnownLuns())
         {
             ct.ThrowIfCancellationRequested();
-            if (!_targetInfo!.Firehose!.StorageInfos.Any(x => x.PhysicalPartitionNumber == lun))
-                QueryStorageInfo(lun);
             var descriptor = _storage!.GetBlockDevices().FirstOrDefault(x => x.PhysicalPartitionNumber == lun);
             if (descriptor is null)
             {

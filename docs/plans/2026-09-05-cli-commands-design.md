@@ -12,7 +12,7 @@
 
 ## 协议与资源边界
 
-核心增加按 LUN 读取分区和查询存储的公共方法；通用 GetPartitionsAsync 枚举设备 num_physical 范围内的 LUN（上限为现有 MaximumPhysicalPartitionCount），逐个按需查询容量，保留局部无 GPT 的诊断，传输错误继续传播。同名分区要求明确 LUN。已有连接顺序不变，多 LUN 探测发生在分区命令阶段。
+核心增加按 LUN 读取分区和查询存储的公共方法；Configure 阶段读取 LUN 0 并按设备报告的 `num_physical`（上限为现有 MaximumPhysicalPartitionCount）各读取其余 LUN 一次，建立本次会话的存储快照。通用 GetPartitionsAsync 只消费快照，保留局部无 GPT 的诊断，传输错误继续传播；同名分区要求明确 LUN。显式 `getstorageinfo` 仍可主动刷新，分区和范围命令不再隐式查询。
 
 CLI 映射为“本地已实现处理器 ∩ 设备声明命令”。连接后显示映射成功、命令说明和具体用法，只展示交集，缺少能力证据时不虚构支持。`CommandSyntax` 和离线 help 仅包含通用命令；注册适配器通过 `IProtocolCommandSet` 提供 Firehose 专用解析、执行和动态帮助，主流程继续只依赖 `IProtocol`。普通 `read/write/erase` 与 `program` 别名使用同一存储入口；每次执行检查当前快照，重配后重新显示映射。保留 `qcom` 前缀入口。`qcom xml` 和 `qcom probe-sahara` 保留为显式诊断入口，不纳入设备命令交集列表。
 

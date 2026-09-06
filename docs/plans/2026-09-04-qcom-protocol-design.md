@@ -149,7 +149,7 @@ Configure 使用有界状态机实现，保留 GeekFlashTool 的顺序和兼容�
 - 发送 MemoryName、Verbose、AlwaysValidate、MaxDigestTable、MaxPayload、ZLPAwareHost、SkipStorageInit；
 - ZTE 等厂商附加 OEM 属性；
 - 根据 NAK 内容执行厂商认证、存储类型回退、Payload/Digest 大小修正和扇区大小修正；
-- Configure 成功后解析存储信息，再执行 Nothing、OnePlus 等后续认证和缓冲等级设置。
+- Configure 成功后解析 LUN 0 存储信息，并按其 `num_physical` 在同一初始化阶段各读取其余 LUN 一次，再执行 Nothing、OnePlus 等后续认证和缓冲等级设置。分区表和范围校验只使用这份会话缓存；只有显式 `GetStorageInfo` 才主动刷新。
 
 每次重试必须使配置状态发生明确变化；状态重复或超过上限立即返回结构化错误，避免无限重试。最终 Payload 为调用方上限、设备运行时能力、Loader 静态提示和安全上限的最小值。
 

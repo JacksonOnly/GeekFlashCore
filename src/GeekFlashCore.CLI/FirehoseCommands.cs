@@ -205,7 +205,8 @@ internal static class FirehoseCommands
     }
     private static void ValidateSectorRange(IQcomProtocol p, uint lun, string start, string count)
     {
-        var info = p.TargetInfo?.Firehose?.StorageInfos.FirstOrDefault(x => x.PhysicalPartitionNumber == lun) ?? p.GetStorageInfo(lun);
+        var info = p.TargetInfo?.Firehose?.StorageInfos.FirstOrDefault(x => x.PhysicalPartitionNumber == lun);
+        if (info is null) throw new InvalidOperationException(Strings.Cli_StorageNotConfigured);
         if (info.BlockCount is not { } blocks || checked(CommandSyntax.Number(start) + CommandSyntax.Number(count)) > blocks)
             throw new ArgumentException(Strings.Cli_RangeOutsideStorage);
     }

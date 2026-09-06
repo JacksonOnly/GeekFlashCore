@@ -128,6 +128,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
                     .ConfigureAwait(false);
                 await InitializeStorageAsync(configured, ct).ConfigureAwait(false);
             }
+            CacheAdditionalStorageInfos(ct);
             await VerifyVendorAsync(ct).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
             _connected = true;
@@ -202,6 +203,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
                     LimitConfiguration(configuration), _targetInfo!.Vendor, GetXiaomiAuthentication());
                 InitializeStorage(result);
             }
+            CacheAdditionalStorageInfos(CancellationToken.None);
             VerifyVendor();
             _connected = true;
             progress?.Report(new ProgressRecord(1, 1, Strings.Progress_Connected));
@@ -533,6 +535,36 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
                     ? _targetInfo.Firehose.TargetName : result.Configuration.TargetName
             }
         };
+    }
+
+    // Configure owns the storage snapshot; later partition and range operations only consume it.
+    private void CacheAdditionalStorageInfos(CancellationToken cancellationToken)
+    {
+        FirehoseStorageInfo primary = _targetInfo?.Firehose?.StorageInfos
+            .FirstOrDefault(static item => item.PhysicalPartitionNumber == 0)
+            ?? throw new InvalidOperationException(Strings.Qcom_FirehoseNotConfigured);
+        if (!primary.Properties.TryGetValue("num_physical", out string? value))
+            return;
+        if (!uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out uint count) ||
+            count is 0 or > FirehoseConstants.MaximumPhysicalPartitionCount)
+            throw new QcomProtocolException(Strings.Qcom_InvalidLunCount);
+
+        for (uint lun = 1; lun < count; lun++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            FirehoseStorageInfo info = _storage!.GetStorageInfo(lun);
+            _targetInfo = _targetInfo! with
+            {
+                Firehose = _targetInfo.Firehose! with
+                {
+                    StorageInfos = _targetInfo.Firehose.StorageInfos
+                        .Where(item => item.PhysicalPartitionNumber != lun)
+                        .Append(info)
+                        .OrderBy(item => item.PhysicalPartitionNumber)
+                        .ToArray()
+                }
+            };
+        }
     }
 
     private async ValueTask InitializeStorageAsync(FirehoseConfigureResult result, CancellationToken ct)

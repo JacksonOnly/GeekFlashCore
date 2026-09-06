@@ -11,7 +11,7 @@
 
 - 2026-09-05：初始工作区干净（70f8d90）。实机反馈证明 GPT、UFS 产品和构建日期已可用；本轮确认 CLI 忽略 partitions 参数、能力解析有默认回填问题。已核对 EdlClient NOP、读写、擦除、patch、power、peek/poke、xblgpt 方法。
 
-- 2026-09-05 / CLI-11：完成按 LUN/全 LUN 查询；无 num_physical 时只使用已有信息，非法或超过 8 的数量被拒绝。部分 GPT 无效记录 Warning，传输失败传播。SupportedFunctions 来自实际日志，取消默认 18 项；Chip 优先 Firehose，再使用 Sahara/SoC 证据。
+- 2026-09-05 / CLI-11：完成按 LUN/全 LUN 查询；无 num_physical 时只使用已有信息，非法或超过 8 的数量被拒绝。部分 GPT 无效记录 Warning，传输失败传播。SupportedFunctions 来自实际日志，取消默认 18 项；Chip 优先 Firehose，再使用 Sahara/SoC 证据。后续 CLI-14 将容量探测收敛到 Configure 阶段，分区和范围命令只读缓存。
 - 2026-09-05 / CLI-11：通用帮助仅列通用命令；Firehose 的命令说明和语法通过协议注册项显示，按 Core 与设备支持交集过滤，大小写不敏感，未实现命令不展示。`qcom` 前缀兼容。交互 `connect` 实际调用重连并刷新映射。读写擦支持名称和 sector 形式，缺参/额外参数返回 2；范围校验和名称消歧发生在创建读取文件前。
 - 2026-09-05 / CLI-11：Peek 按 256 字节分块解析，Poke 按最多 8 字节小端发送，FirmwareWrite 流式传输、打开者释放 Stream；NAK/取消有测试。按名称 Raw 写入只补齐末扇区，显式 sector 写入仍补齐目标范围；公开 Program 请求默认行为保持兼容。
 

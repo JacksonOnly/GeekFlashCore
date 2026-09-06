@@ -30,7 +30,7 @@ public static class SparseImageWriter
         long origin = source.Position;
         try
         {
-            var device = new SeekableStreamBlockDevice(source, origin);
+            using var device = CreateStreamDevice(source, origin);
             return Analyze(device, options, buffers);
         }
         finally
@@ -71,8 +71,9 @@ public static class SparseImageWriter
         long origin = source.Position;
         try
         {
+            using var device = CreateStreamDevice(source, origin);
             return Write(
-                new SeekableStreamBlockDevice(source, origin),
+                device,
                 destination,
                 plan,
                 bufferSize,
@@ -112,7 +113,8 @@ public static class SparseImageWriter
         long origin = source.Position;
         try
         {
-            return Write(new SeekableStreamBlockDevice(source, origin), destination, options, progress, buffers);
+            using var device = CreateStreamDevice(source, origin);
+            return Write(device, destination, options, progress, buffers);
         }
         finally
         {
@@ -224,7 +226,7 @@ public static class SparseImageWriter
         long origin = source.Position;
         try
         {
-            var device = new SeekableStreamBlockDevice(source, origin);
+            using var device = CreateStreamDevice(source, origin);
             options ??= new SparseImageWriteOptions();
             options.Validate();
             return await WriteAsyncCore(device, destination, options, progress, buffers, cancellationToken)
@@ -278,7 +280,7 @@ public static class SparseImageWriter
         long origin = source.Position;
         try
         {
-            var device = new SeekableStreamBlockDevice(source, origin);
+            using var device = CreateStreamDevice(source, origin);
             ValidatePlannedWrite(device, destination, plan, bufferSize);
             return await WritePlannedAsyncCore(
                     device,
@@ -301,6 +303,14 @@ public static class SparseImageWriter
         if (!source.CanRead || !source.CanSeek)
             throw new ArgumentException(Strings.SourceMustBeReadableAndSeekable, nameof(source));
     }
+
+    private static StreamBlockDevice CreateStreamDevice(Stream source, long origin) =>
+        new(
+            source,
+            checked(source.Length - origin),
+            DeviceOwnership.Borrow,
+            logicalBlockSize: 1,
+            id: new BlockDeviceId("stream:sparse-writer"));
 
     private static void ValidateDestination(Stream destination)
     {

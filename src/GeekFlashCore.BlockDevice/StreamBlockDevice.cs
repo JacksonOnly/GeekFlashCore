@@ -1,8 +1,7 @@
-using GeekFlashCore.BlockDevice.Abstractions;
+namespace GeekFlashCore.BlockDevice;
 
-namespace GeekFlashCore.Android.Lp;
-
-internal sealed class SeekableStreamBlockDevice : IReadableBlockDevice
+/// <summary>Exposes a fixed window of a readable, seekable stream as a block device.</summary>
+public sealed class StreamBlockDevice : IReadableBlockDevice
 {
     private readonly Stream _source;
     private readonly object _sync = new();
@@ -10,35 +9,30 @@ internal sealed class SeekableStreamBlockDevice : IReadableBlockDevice
     private readonly bool _ownsSource;
     private bool _disposed;
 
-    internal SeekableStreamBlockDevice(
+    public StreamBlockDevice(
         Stream source,
         long length,
         DeviceOwnership ownership,
-        int logicalBlockSize = 512)
+        int logicalBlockSize = 512,
+        BlockDeviceId? id = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         if (!source.CanRead || !source.CanSeek)
-        {
-            throw new ArgumentException(null, nameof(source));
-        }
+            throw new ArgumentException(Strings.StreamMustBeReadableAndSeekable, nameof(source));
         ArgumentOutOfRangeException.ThrowIfNegative(length);
         ArgumentOutOfRangeException.ThrowIfLessThan(logicalBlockSize, 1);
         if (!Enum.IsDefined(ownership))
-        {
             throw new ArgumentOutOfRangeException(nameof(ownership));
-        }
 
         _origin = source.Position;
         if (_origin > source.Length - length)
-        {
             throw new ArgumentOutOfRangeException(nameof(length));
-        }
 
         _source = source;
         _ownsSource = ownership == DeviceOwnership.Transfer;
         Length = length;
         LogicalBlockSize = logicalBlockSize;
-        Id = new BlockDeviceId($"stream:{Guid.NewGuid():N}");
+        Id = id ?? new BlockDeviceId($"stream:{Guid.NewGuid():N}");
     }
 
     public BlockDeviceId Id { get; }
@@ -47,22 +41,21 @@ internal sealed class SeekableStreamBlockDevice : IReadableBlockDevice
 
     public int ReadAt(long offset, Span<byte> destination)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentOutOfRangeException.ThrowIfNegative(offset);
-        if (offset >= Length || destination.IsEmpty)
-        {
-            return 0;
-        }
-
-        int length = (int)Math.Min(destination.Length, Length - offset);
         lock (_sync)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
+            int length = BlockDeviceIO.GetReadLength(Length, offset, destination.Length);
+            if (length == 0)
+                return 0;
+
             long previous = _source.Position;
             try
             {
                 _source.Position = checked(_origin + offset);
-                return _source.Read(destination[..length]);
+                return BlockDeviceIO.ValidateReadResult(
+                    _source.Read(destination[..length]),
+                    length);
             }
             finally
             {
@@ -76,16 +69,13 @@ internal sealed class SeekableStreamBlockDevice : IReadableBlockDevice
         lock (_sync)
         {
             if (_disposed)
-            {
                 return;
-            }
 
             _disposed = true;
             if (_ownsSource)
-            {
                 _source.Dispose();
-            }
         }
+
         GC.SuppressFinalize(this);
     }
 }

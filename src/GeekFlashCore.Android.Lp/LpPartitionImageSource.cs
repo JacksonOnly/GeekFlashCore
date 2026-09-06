@@ -114,7 +114,7 @@ public sealed class LpPartitionImageSource : IDisposable
 
         if (source.CanSeek)
         {
-            SeekableStreamBlockDevice? device = null;
+            StreamBlockDevice? device = null;
             try
             {
                 bool sparse = SparseImageParser.IsSparse(source);
@@ -127,7 +127,7 @@ public sealed class LpPartitionImageSource : IDisposable
                         Resources.RawLengthExceedsSource);
                 }
                 long length = sparse ? available : rawLength ?? available;
-                device = new SeekableStreamBlockDevice(source, length, ownership);
+                device = new StreamBlockDevice(source, length, ownership);
                 return FromOwnedDevice(device, sparse, limits, temporaryPath: null);
             }
             catch

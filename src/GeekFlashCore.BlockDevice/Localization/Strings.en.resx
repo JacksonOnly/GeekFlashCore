@@ -35,4 +35,5 @@
   <data name="ReadAheadMadeNoProgress" xml:space="preserve"><value>The read-ahead window made no progress.</value></data>
   <data name="SliceExceedsSource" xml:space="preserve"><value>The slice exceeds the source device.</value></data>
   <data name="BlockDeviceLengthFixed" xml:space="preserve"><value>The block device has a fixed length and cannot be resized.</value></data>
+  <data name="StreamMustBeReadableAndSeekable" xml:space="preserve"><value>The source stream must be readable and seekable.</value></data>
 </root>

@@ -9,6 +9,7 @@
     <ItemGroup>
       <ProjectReference Include="..\GeekFlashCore.Gpt\GeekFlashCore.Gpt.csproj" />
       <ProjectReference Include="..\GeekFlashCore.Android.Sparse\GeekFlashCore.Android.Sparse.csproj" />
+      <ProjectReference Include="..\GeekFlashCore.BlockDevice\GeekFlashCore.BlockDevice.csproj" />
       <ProjectReference Include="..\GeekFlashCore.Gpt.Abstractions\GeekFlashCore.Gpt.Abstractions.csproj" />
       <ProjectReference Include="..\GeekFlashCore.Protocol.Qcom.Abstractions\GeekFlashCore.Protocol.Qcom.Abstractions.csproj" />
       <ProjectReference Include="..\GeekFlashCore.Shared\GeekFlashCore.Shared.csproj" />

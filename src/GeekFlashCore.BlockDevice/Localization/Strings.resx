@@ -35,4 +35,5 @@
   <data name="ReadAheadMadeNoProgress" xml:space="preserve"><value>预读窗口没有取得进展。</value></data>
   <data name="SliceExceedsSource" xml:space="preserve"><value>切片超出源设备边界。</value></data>
   <data name="BlockDeviceLengthFixed" xml:space="preserve"><value>块设备长度固定，不能调整。</value></data>
+  <data name="StreamMustBeReadableAndSeekable" xml:space="preserve"><value>来源 Stream 必须可读且可定位。</value></data>
 </root>

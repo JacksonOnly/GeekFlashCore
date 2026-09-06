@@ -1,6 +1,7 @@
 using GeekFlashCore.Android.Sparse;
 using GeekFlashCore.Android.Sparse.Models;
 using GeekFlashCore.Android.Sparse.Types;
+using GeekFlashCore.BlockDevice;
 using GeekFlashCore.BlockDevice.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 
@@ -18,7 +19,13 @@ internal static class SparseProgramPlanner
         long position = source.Position;
         try
         {
-            using var document = SparseImageParser.Open(new StreamSource(source), DeviceOwnership.Borrow);
+            using var sourceDevice = new StreamBlockDevice(
+                source,
+                checked(source.Length - position),
+                DeviceOwnership.Borrow,
+                logicalBlockSize: 1,
+                id: new BlockDeviceId("qcom-sparse-source"));
+            using var document = SparseImageParser.Open(sourceDevice, DeviceOwnership.Borrow);
             if (document.ExpandedLength > request.GetWireLength())
             throw new ArgumentException(Strings.Qcom_SparseRegionExceedsTarget, nameof(request));
             if (document.ChecksumStatus == SparseChecksumStatus.NotVerified)
@@ -63,16 +70,4 @@ internal static class SparseProgramPlanner
         return segments;
     }
 
-    private sealed class StreamSource(Stream stream) : IReadableBlockDevice
-    {
-        public BlockDeviceId Id { get; } = new("qcom-sparse-source");
-        public long Length => stream.Length;
-        public int LogicalBlockSize => 1;
-        public int ReadAt(long offset, Span<byte> destination)
-        {
-            stream.Position = offset;
-            return stream.Read(destination);
-        }
-        public void Dispose() { }
-    }
 }

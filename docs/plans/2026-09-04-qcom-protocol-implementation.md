@@ -432,6 +432,12 @@
 - 证据：OnePlus/Nothing 候选和 Token 长度测试、program/patch 认证字段测试通过；Qcom 228 项、CLI 48 项，解决方案 Release 构建 0 警告/0 错误，`git diff --check` 通过。
 - 风险：OnePlus Demacia 明文和不同 Loader 对 v3 时间戳/命令能力的兼容性仍需真实设备复测；候选表来自当前 GeekFlashTool 源码，新增机型需补配置。
 
+### CLI-17（2026-09-06）
+
+- 行为结论：OplusDigestLegacy 会话在 Firehose Configure 前启用统一 XML 声明注入，所有 XML 命令的声明头追加 `chimerais="power"`；覆盖 Configure、存储查询、program/read、厂商 Verify、Nop、恢复探测和自定义 XML。标准 XML 仍先经过安全校验，只有线上发送文本使用扩展声明；OplusDigestPt、普通 Digest 和无 Digest 会话不注入。
+- 证据：新增 FirehoseSession XML 声明注入线路测试；目标 Qcom 测试、CLI 测试、Release 构建和 `git diff --check` 待本轮完成后记录。
+- 风险：自定义声明是特定 OplusLegacy Loader 方言，真实设备需确认带 XML 声明的 Configure、恢复探测和各厂商命令均接受该属性。
+
 ## 未决风险
 
 ### CLI-10：联机信息与重连（2026-09-05）

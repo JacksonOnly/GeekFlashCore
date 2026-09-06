@@ -425,6 +425,10 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private void StartFirehose()
     {
         if (_firehose is null) throw new InvalidOperationException(Strings.Qcom_InvalidSessionState);
+        _firehose.SetXmlDeclarationAttribute(
+            _options.OplusDigest.Mode == OplusDigestMode.OplusDigestLegacy
+                ? "chimerais=\"power\""
+                : null);
         if (_firehose.State == FirehoseSessionState.Created)
         {
             try
@@ -436,6 +440,10 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
                 // A programmer that is already in Firehose mode may not replay startup logs.
                 _firehose.Dispose();
                 _firehose = new FirehoseSession(_wire!, _options.ReadTimeoutMilliseconds);
+                _firehose.SetXmlDeclarationAttribute(
+                    _options.OplusDigest.Mode == OplusDigestMode.OplusDigestLegacy
+                        ? "chimerais=\"power\""
+                        : null);
                 if (!_firehose.TryProbe(GetProtocolProbeTimeout(), out _startup))
                     throw;
             }

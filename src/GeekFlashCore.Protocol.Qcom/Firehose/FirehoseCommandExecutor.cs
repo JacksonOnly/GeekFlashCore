@@ -19,19 +19,32 @@ internal sealed class FirehoseCommandExecutor
     public FirehoseResponse ReceiveStartupLogs(int? timeoutMilliseconds = null) =>
         _receiver.ReceiveStartupLog(timeoutMilliseconds);
 
-    public FirehoseCommandResult Execute(BaseCommand command, bool expectedRawMode)
+    public FirehoseCommandResult Execute(BaseCommand command, bool expectedRawMode, string? xmlDeclarationAttribute = null)
     {
         ArgumentNullException.ThrowIfNull(command);
-        _sender.SendCommand(command);
+        string xml = command.Build();
+        ValidateXml(xml);
+        _sender.SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute));
         bool publishDeviceText = command is not (PeekCommand or PokeCommand or GetSha256DigestCommand);
         return ValidateResponse(_receiver.Receive(publishDeviceText), expectedRawMode, publishDeviceText);
     }
 
-    public FirehoseCommandResult ExecuteXml(string xml, bool expectedRawMode)
+    public FirehoseCommandResult ExecuteXml(string xml, bool expectedRawMode, string? xmlDeclarationAttribute = null)
     {
         ValidateXml(xml);
-        _sender.SendXml(xml);
+        _sender.SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute));
         return ValidateResponse(_receiver.Receive(), expectedRawMode);
+    }
+
+    private static string ApplyXmlDeclarationAttribute(string xml, string? attribute)
+    {
+        if (string.IsNullOrWhiteSpace(attribute))
+            return xml;
+        const string declarationEnd = "?>";
+        int end = xml.IndexOf(declarationEnd, StringComparison.Ordinal);
+        if (end < 0)
+            return $"<?xml version=\"1.0\" encoding=\"UTF-8\" {attribute}?>" + xml;
+        return xml[..end] + " " + attribute + declarationEnd + xml[(end + declarationEnd.Length)..];
     }
 
     public FirehoseCommandResult SendRaw(

@@ -27,6 +27,7 @@ public sealed class FirehoseSession : IDisposable
     private int _state = (int)FirehoseSessionState.Created;
     private FirehoseSessionState _stateBeforeRaw;
     private Action<FirehoseSession, CancellationToken>? _beforeCommand;
+    private string? _xmlDeclarationAttribute;
 
     public FirehoseSession(ITransport transport, int readTimeoutMilliseconds)
     {
@@ -45,6 +46,9 @@ public sealed class FirehoseSession : IDisposable
 
     internal void SetBeforeCommand(Action<FirehoseSession, CancellationToken>? callback) =>
         _beforeCommand = callback;
+
+    internal void SetXmlDeclarationAttribute(string? attribute) =>
+        _xmlDeclarationAttribute = attribute;
 
     public FirehoseResponse Start(int? startupTimeoutMilliseconds = null)
     {
@@ -76,7 +80,8 @@ public sealed class FirehoseSession : IDisposable
         _receiver.SetReadTimeout(timeoutMilliseconds);
         try
         {
-            FirehoseCommandResult result = _executor.Execute(new NopCommand(), expectedRawMode: false);
+            FirehoseCommandResult result = _executor.Execute(new NopCommand(), expectedRawMode: false,
+                xmlDeclarationAttribute: _xmlDeclarationAttribute);
             if (!result.IsSuccess)
                 return false;
             response = new FirehoseResponse(result.Logs, result.Attributes, result.Status, result.RawMode,
@@ -110,7 +115,7 @@ public sealed class FirehoseSession : IDisposable
         {
             _beforeCommand?.Invoke(this, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            FirehoseCommandResult result = _executor.Execute(command, expectedRawMode);
+            FirehoseCommandResult result = _executor.Execute(command, expectedRawMode, _xmlDeclarationAttribute);
             CompleteCommand(command is ConfigureCommand, result, initialState);
             return result;
         }
@@ -135,7 +140,7 @@ public sealed class FirehoseSession : IDisposable
         {
             _beforeCommand?.Invoke(this, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            FirehoseCommandResult result = _executor.ExecuteXml(xml, expectedRawMode);
+            FirehoseCommandResult result = _executor.ExecuteXml(xml, expectedRawMode, _xmlDeclarationAttribute);
             CompleteCommand(configured: false, result, initialState);
             return result;
         }

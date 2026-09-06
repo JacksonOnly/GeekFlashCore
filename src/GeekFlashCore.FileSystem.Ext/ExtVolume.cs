@@ -322,7 +322,7 @@ public sealed class ExtVolume : IFileSystemVolume
         else
         {
             using var stream = new ExtFileStream(this, inode);
-            ReadExactly(stream, target);
+            stream.ReadExactly(target);
         }
 
         return CreateName(target);
@@ -457,17 +457,6 @@ public sealed class ExtVolume : IFileSystemVolume
         catch (DecoderFallbackException)
         {
             return new FileSystemName(FileSystemNameState.Undecodable, bytes);
-        }
-    }
-
-    private static void ReadExactly(Stream source, Span<byte> destination)
-    {
-        int total = 0;
-        while (total < destination.Length)
-        {
-            int read = source.Read(destination[total..]);
-            if (read == 0) throw new EndOfStreamException(Strings.IoFailure);
-            total += read;
         }
     }
 

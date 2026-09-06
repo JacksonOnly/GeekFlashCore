@@ -8,7 +8,7 @@ public record FirehoseResponse<T> : FirehoseResponse
 
     public FirehoseResponse(FirehoseResponse response, T? data)
         : base(
-            response.Logs,
+            (response ?? throw new ArgumentNullException(nameof(response))).Logs,
             response.Attributes,
             response.Status,
             response.RawMode,

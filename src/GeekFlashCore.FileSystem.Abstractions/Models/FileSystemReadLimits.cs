@@ -1,4 +1,6 @@
-﻿namespace GeekFlashCore.FileSystem.Abstractions;
+﻿using GeekFlashCore.FileSystem.Abstractions.Localization;
+
+namespace GeekFlashCore.FileSystem.Abstractions;
 
 public sealed record FileSystemReadLimits
 {
@@ -30,6 +32,7 @@ public sealed record FileSystemReadLimits
         if ((long)maximumCompressedInputBytes + maximumDecodedBytes > maximumWorkingBytes)
         {
             throw new ArgumentException(
+                Strings.WorkingBudgetTooSmall,
                 nameof(maximumWorkingBytes));
         }
 

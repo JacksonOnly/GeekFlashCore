@@ -6,6 +6,8 @@ public static class UsbDeviceMonitorExtensions
 {
     public static string? ExtractPortName(this UsbDeviceInfo device)
     {
+        ArgumentNullException.ThrowIfNull(device);
+
         var name = device.FriendlyName;
         if (string.IsNullOrEmpty(name))
         {

@@ -118,7 +118,7 @@ public sealed class ErofsDirectoryReader : IFileSystemDirectoryReader
             _volume.Superblock.BlockSize,
             _stream.Length - _stream.Position);
         Span<byte> block = _buffer.Memory.Span[.._blockLength];
-        ReadExactly(_stream, block);
+        _stream.ReadExactly(block);
         if (_blockLength < DirectoryEntrySize)
             throw BadDirectoryEntry("block_length", Strings.CorruptMetadata, 0);
 
@@ -156,17 +156,6 @@ public sealed class ErofsDirectoryReader : IFileSystemDirectoryReader
         ErofsInodeType.SymbolicLink => 7,
         _ => 0
     };
-
-    private static void ReadExactly(Stream source, Span<byte> destination)
-    {
-        int completed = 0;
-        while (completed < destination.Length)
-        {
-            int read = source.Read(destination[completed..]);
-            if (read == 0) throw new EndOfStreamException(Strings.IoFailure);
-            completed += read;
-        }
-    }
 
     private void ThrowIfDisposed()
     {

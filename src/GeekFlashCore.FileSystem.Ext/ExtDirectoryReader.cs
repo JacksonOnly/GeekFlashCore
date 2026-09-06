@@ -43,7 +43,7 @@ public sealed class ExtDirectoryReader : IFileSystemDirectoryReader
         while (_stream.Position < _stream.Length)
         {
             long recordOffset = _stream.Position;
-            ReadExactly(_stream, header);
+            _stream.ReadExactly(header);
             uint inodeNumber = BinaryPrimitives.ReadUInt32LittleEndian(header);
             ushort rawRecordLength = BinaryPrimitives.ReadUInt16LittleEndian(header[4..]);
             int recordLength = DecodeRecordLength(rawRecordLength, blockSize);
@@ -63,7 +63,7 @@ public sealed class ExtDirectoryReader : IFileSystemDirectoryReader
             }
 
             byte[] name = new byte[nameLength];
-            ReadExactly(_stream, name);
+            _stream.ReadExactly(name);
             _stream.Position = checked(recordOffset + recordLength);
             if (inodeNumber == 0) continue;
             if (inodeNumber > _volume.Superblock.InodeCount)
@@ -102,17 +102,6 @@ public sealed class ExtDirectoryReader : IFileSystemDirectoryReader
         if (blockSize == 65536 && (rawLength == 0 || rawLength == ushort.MaxValue))
             return 65536;
         return rawLength;
-    }
-
-    private static void ReadExactly(Stream stream, Span<byte> destination)
-    {
-        int total = 0;
-        while (total < destination.Length)
-        {
-            int read = stream.Read(destination[total..]);
-            if (read == 0) throw new EndOfStreamException(Strings.IoFailure);
-            total += read;
-        }
     }
 
     private void ThrowIfDisposed()

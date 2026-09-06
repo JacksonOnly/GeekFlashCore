@@ -1,5 +1,4 @@
-﻿using GeekFlashCore.Android.Sparse.BlockDevice;
-using GeekFlashCore.Android.Sparse.Constants;
+﻿using GeekFlashCore.Android.Sparse.Constants;
 using GeekFlashCore.Android.Sparse.Internals;
 using GeekFlashCore.Android.Sparse.Models;
 using GeekFlashCore.BlockDevice;

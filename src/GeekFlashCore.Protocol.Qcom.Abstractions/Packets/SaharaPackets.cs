@@ -15,7 +15,6 @@ public ref struct SaharaHelloRequest()
     public uint Reserved4;
     public uint Reserved5;
 
-    // PS: Rider的代码生成真的很好
     public SaharaHelloRequest(uint version, uint versionSupported, uint commandPacketLength, SaharaMode mode,
         uint reserved0, uint reserved1, uint reserved2, uint reserved3, uint reserved4, uint reserved5) : this()
     {

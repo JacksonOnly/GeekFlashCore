@@ -1,3 +1,1 @@
-﻿// global using 指令
-
-global using GeekFlashCore.FileSystem.Erofs.Localization;
+﻿global using GeekFlashCore.FileSystem.Erofs.Localization;

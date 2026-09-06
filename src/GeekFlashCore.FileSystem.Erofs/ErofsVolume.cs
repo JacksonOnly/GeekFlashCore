@@ -240,7 +240,7 @@ public sealed class ErofsVolume : IFileSystemVolume
 
         byte[] target = new byte[checked((int)inode.Size)];
         using var stream = new ErofsFileStream(this, inode);
-        ReadExactly(stream, target);
+        stream.ReadExactly(target);
         return CreateName(target);
     }
 
@@ -494,17 +494,6 @@ public sealed class ErofsVolume : IFileSystemVolume
     {
         if (blocks > (ulong)long.MaxValue / (uint)blockSize) return long.MaxValue;
         return (long)(blocks * (uint)blockSize);
-    }
-
-    private static void ReadExactly(Stream source, Span<byte> destination)
-    {
-        int completed = 0;
-        while (completed < destination.Length)
-        {
-            int read = source.Read(destination[completed..]);
-            if (read == 0) throw new EndOfStreamException(Strings.IoFailure);
-            completed += read;
-        }
     }
 
     private static ushort ReadUInt16(ReadOnlySpan<byte> source, int offset) =>

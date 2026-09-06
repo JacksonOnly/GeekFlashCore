@@ -7,6 +7,8 @@ public class QcomDeviceIdentify : IDeviceIdentify
 {
     public DeviceProbeResult Identify(UsbDeviceInfo deviceInfo)
     {
+        ArgumentNullException.ThrowIfNull(deviceInfo);
+
         ProtocolType protocolType = (deviceInfo.VendorId, deviceInfo.ProductId) switch
         {
             // 9008 is the confirmed Qualcomm EDL product. Other Qualcomm
@@ -15,9 +17,8 @@ public class QcomDeviceIdentify : IDeviceIdentify
             (0x05c6, 0x9008) => ProtocolType.QualcommEdl,
             _ => ProtocolType.Unknown
         };
-        if(protocolType!= ProtocolType.Unknown)
-            return DeviceProbeResult.Ok(protocolType);
-        else 
-            return DeviceProbeResult.Fail();
+        return protocolType != ProtocolType.Unknown
+            ? DeviceProbeResult.Ok(protocolType)
+            : DeviceProbeResult.Fail();
     }
 }

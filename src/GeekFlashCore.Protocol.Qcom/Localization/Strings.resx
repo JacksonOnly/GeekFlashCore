@@ -398,6 +398,7 @@
   <data name="Qcom_StorageRangeOutsideDevice" xml:space="preserve"><value>请求范围超出设备存储容量。</value></data>
   <data name="Qcom_StorageCapacityMissing" xml:space="preserve"><value>该 LUN 未提供可用的存储容量。</value></data>
   <data name="Qcom_PeekLengthMismatch" xml:space="preserve"><value>Peek 返回的十六进制数据长度与请求不符。</value></data>
+  <data name="Qcom_StoragePolicyMappingInvalid" xml:space="preserve"><value>存储策略返回了无效或不完整的扇区映射。</value></data>
   <data name="Progress_Writing" xml:space="preserve"><value>写入</value></data>
   <data name="Progress_Reading" xml:space="preserve"><value>读取</value></data>
   <data name="Progress_Uploading" xml:space="preserve"><value>上传 Loader</value></data>

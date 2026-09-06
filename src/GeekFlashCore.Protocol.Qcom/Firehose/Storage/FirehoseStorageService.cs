@@ -539,9 +539,13 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
     }
 
     private IReadOnlyList<FirehoseStorageRange> Map(uint partition, long start, long count,
-        bool write, string? label = null, string? fileName = null) =>
-        _policy?.Map(partition, start, count, write, label, fileName) ??
-        [new FirehoseStorageRange(start, count, label, fileName)];
+        bool write, string? label = null, string? fileName = null)
+    {
+        IReadOnlyList<FirehoseStorageRange>? ranges = _policy is null
+            ? [new FirehoseStorageRange(start, count, label, fileName)]
+            : _policy.Map(partition, start, count, write, label, fileName);
+        return FirehoseStorageRangeValidator.Validate(ranges, start, count);
+    }
 
     private void ExecuteTransfer(BaseCommand command, CancellationToken cancellationToken)
     {

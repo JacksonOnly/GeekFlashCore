@@ -30,19 +30,28 @@ internal sealed class FirehoseProgramExecutor
         CancellationToken cancellationToken)
     {
         using FirehoseProgramPlan plan = FirehoseProgramPlanner.Create(request, source, cancellationToken);
-        // Validate every mapping before the first command, but do not retain all
-        // mapped ranges for the lifetime of a large Sparse image.
-        if (_policy is not null)
+        var mappedSegments = new IReadOnlyList<FirehoseStorageRange>[plan.Segments.Count];
+        for (int index = 0; index < plan.Segments.Count; index++)
         {
-            foreach (FirehoseProgramSegment segment in plan.Segments)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                IReadOnlyList<FirehoseStorageRange> ranges = _policy.Map(
-                    request.PhysicalPartitionNumber, segment.StartSector, segment.SectorCount,
-                    true, request.Label, request.FileName);
-                if (ranges is null || ranges.Count == 0)
-                    throw new InvalidDataException(Strings.Qcom_InvalidResource);
-            }
+            cancellationToken.ThrowIfCancellationRequested();
+            FirehoseProgramSegment segment = plan.Segments[index];
+            IReadOnlyList<FirehoseStorageRange>? ranges = _policy is null
+                ? [new FirehoseStorageRange(
+                    segment.StartSector,
+                    segment.SectorCount,
+                    request.Label,
+                    request.FileName)]
+                : _policy.Map(
+                    request.PhysicalPartitionNumber,
+                    segment.StartSector,
+                    segment.SectorCount,
+                    true,
+                    request.Label,
+                    request.FileName);
+            mappedSegments[index] = FirehoseStorageRangeValidator.Validate(
+                ranges,
+                segment.StartSector,
+                segment.SectorCount);
         }
 
         if (progress is ITransferProgress transfer)
@@ -53,15 +62,12 @@ internal sealed class FirehoseProgramExecutor
             transfer.Start(total);
         }
         long completed = 0;
-        foreach (FirehoseProgramSegment segment in plan.Segments)
+        for (int index = 0; index < plan.Segments.Count; index++)
         {
+            FirehoseProgramSegment segment = plan.Segments[index];
             using Stream segmentSource = segment.OpenRead(plan.Source);
             long sourceRemaining = segment.SourceLength;
-            IReadOnlyList<FirehoseStorageRange> ranges = _policy?.Map(
-                request.PhysicalPartitionNumber, segment.StartSector, segment.SectorCount,
-                true, request.Label, request.FileName) ??
-                [new FirehoseStorageRange(segment.StartSector, segment.SectorCount, request.Label, request.FileName)];
-            foreach (FirehoseStorageRange range in ranges)
+            foreach (FirehoseStorageRange range in mappedSegments[index])
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 ProgramCommand command = CreateCommand(request, range);

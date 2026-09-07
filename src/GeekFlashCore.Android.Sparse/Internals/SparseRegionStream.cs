@@ -10,6 +10,7 @@ internal sealed class SparseRegionStream : Stream
     private readonly Stream _source;
     private readonly IReadOnlyList<SparseDataChunk> _chunks;
     private readonly bool _leaveOpen;
+    private readonly long _sourceOrigin;
     private int _chunkIndex;
     private long _chunkPosition;
     private long _position;
@@ -25,6 +26,7 @@ internal sealed class SparseRegionStream : Stream
         _chunks = chunks;
         Length = length;
         _leaveOpen = leaveOpen;
+        _sourceOrigin = source.Position;
     }
 
     public override bool CanRead => !_disposed;
@@ -53,7 +55,7 @@ internal sealed class SparseRegionStream : Stream
 
             if (chunk.Type == SparseDataChunkType.Raw)
             {
-                long sourcePosition = checked(chunk.SourceOffset + _chunkPosition);
+                long sourcePosition = checked(_sourceOrigin + chunk.SourceOffset + _chunkPosition);
                 if (_source.Position != sourcePosition)
                     _source.Position = sourcePosition;
                 _source.ReadExactly(destination);
@@ -91,8 +93,13 @@ internal sealed class SparseRegionStream : Stream
         if (_disposed)
             return;
 
-        if (disposing && !_leaveOpen)
-            _source.Dispose();
+        if (disposing)
+        {
+            if (_leaveOpen)
+                _source.Position = _sourceOrigin;
+            else
+                _source.Dispose();
+        }
         _disposed = true;
         base.Dispose(disposing);
     }

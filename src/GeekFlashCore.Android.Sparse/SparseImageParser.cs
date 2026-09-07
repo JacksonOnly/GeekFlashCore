@@ -281,7 +281,7 @@ public static class SparseImageParser
         long origin = source.Position;
         try
         {
-            return ParseCore(source);
+            return ParseCore(source, origin);
         }
         catch (EndOfStreamException exception)
         {
@@ -297,7 +297,7 @@ public static class SparseImageParser
         }
     }
 
-    private static SparseImage ParseCore(Stream source)
+    private static SparseImage ParseCore(Stream source, long origin)
     {
         Span<byte> bytes = stackalloc byte[SparseConstant.HeaderLength];
         source.ReadExactly(bytes);
@@ -369,7 +369,7 @@ public static class SparseImageParser
 
                     rawChunks.Add(new SparseDataChunk(
                         SparseDataChunkType.Raw,
-                        source.Position,
+                        checked(source.Position - origin),
                         outputLength,
                         0));
                     rawLength = checked(rawLength + outputLength);

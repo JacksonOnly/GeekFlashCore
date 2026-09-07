@@ -16,6 +16,8 @@ public sealed class SparseRegion
     public uint StartBlock { get; }
     public long Length { get; }
 
+    /// <summary>Opens this region using the stream's current position as the sparse image origin.</summary>
+    /// <remarks>When <paramref name="leaveOpen"/> is true, disposing the returned stream restores that position.</remarks>
     public Stream OpenRead(Stream source, bool leaveOpen = true)
     {
         ArgumentNullException.ThrowIfNull(source);

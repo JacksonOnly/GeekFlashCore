@@ -435,8 +435,18 @@
 ### CLI-17（2026-09-06）
 
 - 行为结论：OplusDigestLegacy 会话在 Firehose Configure 前启用统一 XML 声明注入，所有 XML 命令的声明头追加 `chimerais="power"`；覆盖 Configure、存储查询、program/read、厂商 Verify、Nop、恢复探测和自定义 XML。标准 XML 仍先经过安全校验，只有线上发送文本使用扩展声明；OplusDigestPt、普通 Digest 和无 Digest 会话不注入。
-- 证据：新增 FirehoseSession XML 声明注入线路测试；目标 Qcom 测试、CLI 测试、Release 构建和 `git diff --check` 待本轮完成后记录。
+- 证据：新增 FirehoseSession XML 声明注入线路测试；最终验收 Qcom 246/246、CLI 51/51 通过，Release 构建 0 警告/0 错误，`git diff --check` 通过。
 - 风险：自定义声明是特定 OplusLegacy Loader 方言，真实设备需确认带 XML 声明的 Configure、恢复探测和各厂商命令均接受该属性。
+
+### 全仓质量治理（2026-09-06，最终验收 2026-09-07）
+
+- 任务：全仓质量治理。
+- 行为结论：Firehose 映射在零线路写入前验证；安全预取消不使会话失效，Raw 取消仍使会话失效；资源请求与迟到敏感结果的生命周期已独立封装；Qcom Sparse 使用单次严格解析；CLI 用户文本已资源化，重复 Stream/块设备基础设施已收敛。
+- 验证证据：Qcom 246/246、CLI 51/51、Android LP 55/55、Core 7/7 通过；Release 解决方案构建 0 警告/0 错误；`git diff --check` 通过，`git ls-files .tests` 无输出。
+- 严格分析：`latest-all` 重建成功，366 条唯一诊断；`CA2016=0`、`CA2025=0`。`fixed`：映射范围、取消传递、资源 CTS 生命周期和公共参数契约；`retained-by-design`：同步协议边界、所有权转移 Dispose、固定线路布局、本地化日志隔离；`hardware-or-measurement-required`：LibUsb 分配与真机取消延迟；`unrelated`：计划外存量诊断。
+- 提交：`5292540 fix(qcom): validate mapped firehose ranges`；`b1c7215 fix(qcom): align cancellation boundaries`；`d60342d refactor(qcom): isolate resource resolution`；`75c8f66 refactor(block): share seekable stream adapter`；`f3de74c perf(qcom): parse sparse programs once`；`00bd533 fix(cli): localize remaining user messages`；`86303f2 refactor(core): remove redundant infrastructure`。
+- 工作区：文档收尾前仅计划要求的文档受跟踪改动；`.tests`、`bin/obj`、IDE 文件和分析日志均 ignored，`.tests` 无受跟踪文件。
+- 风险：未在真实 Qualcomm/Oplus/OnePlus/Nothing 设备验证；同步 Transport 无法中断正在阻塞的读；LibUsb 分配优化缺少真实传输测量，本轮未修改。
 
 ## 未决风险
 

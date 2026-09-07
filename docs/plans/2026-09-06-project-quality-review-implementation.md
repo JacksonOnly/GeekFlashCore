@@ -52,7 +52,7 @@
 - Consumes: `IFirehoseStoragePolicy.Map(uint, long, long, bool, string?, string?)` and `FirehoseStorageRange`.
 - Produces: `internal static IReadOnlyList<FirehoseStorageRange> FirehoseStorageRangeValidator.Validate(IReadOnlyList<FirehoseStorageRange>? ranges, long requestedStartSector, long requestedSectorCount)`.
 
-- [ ] **Step 1: Add failing zero-wire and single-evaluation tests**
+- [x] **Step 1: Add failing zero-wire and single-evaluation tests**
 
 Add a table-driven policy test covering null, empty, zero/negative count, overlap, gap, wrong start, overflow and total mismatch. The assertion must verify the failure happens before `ScriptedTransport.Written` changes. Add a stateful policy proving Program calls `Map` once per planned segment:
 
@@ -93,18 +93,22 @@ public void Program_EvaluatesEachPolicyMappingOnce()
 `InvalidMappings` must return these exact invalid shapes for request `[10, 14)`:
 
 ```csharp
-public static TheoryData<IReadOnlyList<FirehoseStorageRange>?> InvalidMappings => new()
+public static TheoryData<IReadOnlyList<FirehoseStorageRange>?> InvalidMappings
 {
-    null,
-    [],
-    [new(10, 0, null, null)],
-    [new(10, -1, null, null)],
-    [new(9, 4, null, null)],
-    [new(10, 2, null, null), new(11, 2, null, null)],
-    [new(10, 2, null, null), new(13, 1, null, null)],
-    [new(10, 5, null, null)],
-    [new(long.MaxValue, 2, null, null)]
-};
+    get
+    {
+        var data = new TheoryData<IReadOnlyList<FirehoseStorageRange>?>();
+        data.Add(null);
+        data.Add([]);
+        data.Add([new(10, 0, null, null)]);
+        data.Add([new(10, -1, null, null)]);
+        data.Add([new(9, 4, null, null)]);
+        data.Add([new(10, 2, null, null), new(11, 2, null, null)]);
+        data.Add([new(10, 2, null, null), new(13, 1, null, null)]);
+        data.Add([new(10, 5, null, null)]);
+        return data;
+    }
+}
 ```
 
 Add a direct overflow case so the endpoint addition is exercised rather than rejected first for a wrong start:
@@ -139,7 +143,7 @@ private static FirehoseStorageService Service(
 }, policy);
 ```
 
-- [ ] **Step 2: Run the focused tests and confirm RED**
+- [x] **Step 2: Run the focused tests and confirm RED**
 
 Run:
 
@@ -149,7 +153,7 @@ dotnet test .tests/GeekFlashCore.Protocol.Qcom.Tests/GeekFlashCore.Protocol.Qcom
 
 Expected: invalid mappings are accepted too late or fail with a different exception, and `Program_EvaluatesEachPolicyMappingOnce` reports `MapCount == 2`.
 
-- [ ] **Step 3: Implement the centralized validator**
+- [x] **Step 3: Implement the centralized validator**
 
 Use a remaining-count algorithm so neither endpoint subtraction nor accumulated totals can silently overflow:
 
@@ -187,19 +191,20 @@ internal static class FirehoseStorageRangeValidator
 
 Add resource key `Qcom_StoragePolicyMappingInvalid` with Chinese value `存储策略返回了无效或不完整的扇区映射。` and English value `The storage policy returned an invalid or incomplete sector mapping.`
 
-- [ ] **Step 4: Route Read and Program through the validator once**
+- [x] **Step 4: Route Read and Program through the validator once**
 
 In `FirehoseStorageService.Map`, validate both policy and identity mappings. In `FirehoseProgramExecutor`, build one validated mapping array before the first XML write and reuse it during transfer:
 
 ```csharp
 private IReadOnlyList<FirehoseStorageRange> Map(
     uint partition, long start, long count, bool write,
-    string? label = null, string? fileName = null) =>
-    FirehoseStorageRangeValidator.Validate(
-        _policy?.Map(partition, start, count, write, label, fileName) ??
-        [new FirehoseStorageRange(start, count, label, fileName)],
-        start,
-        count);
+    string? label = null, string? fileName = null)
+{
+    IReadOnlyList<FirehoseStorageRange>? ranges = _policy is null
+        ? [new FirehoseStorageRange(start, count, label, fileName)]
+        : _policy.Map(partition, start, count, write, label, fileName);
+    return FirehoseStorageRangeValidator.Validate(ranges, start, count);
+}
 ```
 
 ```csharp
@@ -208,17 +213,17 @@ for (int index = 0; index < plan.Segments.Count; index++)
 {
     cancellationToken.ThrowIfCancellationRequested();
     FirehoseProgramSegment segment = plan.Segments[index];
+    IReadOnlyList<FirehoseStorageRange>? ranges = _policy is null
+        ? [new FirehoseStorageRange(segment.StartSector, segment.SectorCount,
+            request.Label, request.FileName)]
+        : _policy.Map(request.PhysicalPartitionNumber, segment.StartSector,
+            segment.SectorCount, true, request.Label, request.FileName);
     mappedSegments[index] = FirehoseStorageRangeValidator.Validate(
-        _policy?.Map(request.PhysicalPartitionNumber, segment.StartSector,
-            segment.SectorCount, true, request.Label, request.FileName) ??
-        [new FirehoseStorageRange(segment.StartSector, segment.SectorCount,
-            request.Label, request.FileName)],
-        segment.StartSector,
-        segment.SectorCount);
+        ranges, segment.StartSector, segment.SectorCount);
 }
 ```
 
-- [ ] **Step 5: Verify GREEN and regression coverage**
+- [x] **Step 5: Verify GREEN and regression coverage**
 
 Run the focused test command from Step 2, then:
 
@@ -230,7 +235,7 @@ git diff --check
 
 Expected: Qcom tests all pass, Release build has 0 errors, and diff check has no output.
 
-- [ ] **Step 6: Commit production changes only**
+- [x] **Step 6: Commit production changes only**
 
 ```powershell
 git add src/GeekFlashCore.Protocol.Qcom/Firehose/Storage/FirehoseStorageRangeValidator.cs src/GeekFlashCore.Protocol.Qcom/Firehose/Storage/FirehoseStorageService.cs src/GeekFlashCore.Protocol.Qcom/Firehose/Programming/FirehoseProgramExecutor.cs src/GeekFlashCore.Protocol.Qcom/Localization/Strings.resx src/GeekFlashCore.Protocol.Qcom/Localization/Strings.en.resx
@@ -259,7 +264,7 @@ git commit -m "fix(qcom): validate mapped firehose ranges"
 - Consumes: `FirehoseSession.Execute(BaseCommand, bool, CancellationToken)` and synchronous transport behavior.
 - Produces: pre-wire cancellation leaves the original session state usable; any cancellation after Raw starts leaves `FirehoseSessionState.Faulted`.
 
-- [ ] **Step 1: Add cancellation state tests**
+- [x] **Step 1: Add cancellation state tests**
 
 Add a test proving pre-cancel writes nothing and does not poison the session. The second NOP consumes the only scripted ACK:
 
@@ -284,7 +289,7 @@ public void Execute_PreCancelledDoesNotWriteOrFaultSession()
 
 Add a `_beforeCommand` boundary test where the callback returns in XML state, cancels the token, and verifies the main command is omitted while the state remains `Configured`. Retain the existing `RawCancellation_InvalidatesSessionAndLease` test as the Raw-stage contract.
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 Run:
 
@@ -294,7 +299,7 @@ dotnet test .tests/GeekFlashCore.Protocol.Qcom.Tests/GeekFlashCore.Protocol.Qcom
 
 Expected: the pre-cancel test observes `Faulted` under the current catch-all path.
 
-- [ ] **Step 3: Preserve state only before the main wire command**
+- [x] **Step 3: Preserve state only before the main wire command**
 
 Apply the same sent-boundary structure to `Execute` and `ExecuteXml`:
 
@@ -328,7 +333,7 @@ throw new InvalidOperationException(
     Strings.FormatQcom_FirehoseExpectedState(expectedState, state));
 ```
 
-- [ ] **Step 4: Propagate tokens at every already-tokenized call site**
+- [x] **Step 4: Propagate tokens at every already-tokenized call site**
 
 Make the default storage policy call exact:
 
@@ -341,7 +346,7 @@ return session.Execute(
 
 Pass the current method token in `ConfigureNegotiator`, `FirehoseProgramExecutor`, `FirehoseStorageService` firmware/erase/read-related paths, `OplusDigestLegacyPolicy` replay/NOP paths and `OplusGptCompatibility`. Do not add cancellation parameters to public methods that currently have no token; this task only closes dropped-token gaps where the caller already supplies one.
 
-- [ ] **Step 5: Verify Qcom behavior and analyzer signal**
+- [x] **Step 5: Verify Qcom behavior and analyzer signal**
 
 Run:
 
@@ -353,7 +358,7 @@ git diff --check
 
 Expected: tests pass; no CA2016 remains at a call site whose containing method already receives the same cancellation token. Remaining synchronous APIs without tokens are listed in the final progress record rather than silently changed.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/GeekFlashCore.Protocol.Qcom/Firehose/FirehoseSession.cs src/GeekFlashCore.Protocol.Qcom/Firehose/Storage/IFirehoseStoragePolicy.cs src/GeekFlashCore.Protocol.Qcom/Firehose/Storage/FirehoseStorageService.cs src/GeekFlashCore.Protocol.Qcom/Firehose/Programming/FirehoseProgramExecutor.cs src/GeekFlashCore.Protocol.Qcom/Firehose/Configuration/ConfigureNegotiator.cs src/GeekFlashCore.Protocol.Qcom/Vendors/Oplus/OplusDigestLegacyPolicy.cs src/GeekFlashCore.Protocol.Qcom/Vendors/Oplus/OplusGptCompatibility.cs src/GeekFlashCore.Protocol.Qcom/Localization/Strings.resx src/GeekFlashCore.Protocol.Qcom/Localization/Strings.en.resx
@@ -374,7 +379,7 @@ git commit -m "fix(qcom): align cancellation boundaries"
 - Consumes: lifetime token, `QcomProtocolOptions.ResourceRequestTimeoutMilliseconds`, provider `ValueTask<T>`, and optional late-result disposer.
 - Produces: `ValueTask<T> ResolveAsync<T>(Func<CancellationToken, ValueTask<T>>, CancellationToken, Action<T>?)` and `T Resolve<T>(Func<CancellationToken, ValueTask<T>>, Action<T>?)`, both constrained with `where T : class`.
 
-- [ ] **Step 1: Add failing lifetime and sensitive-payload tests**
+- [x] **Step 1: Add failing lifetime and sensitive-payload tests**
 
 Create a provider that waits for cancellation, deliberately reads its token after the caller has already timed out, then returns a `VendorAuthenticationResourceResponse`. Assert that token access is safe and the late payload is disposed:
 
@@ -383,7 +388,7 @@ Create a provider that waits for cancellation, deliberately reads its token afte
 public async Task ResolveAsync_KeepsLinkedSourceAliveUntilLateProviderCompletes()
 {
     using var lifetime = new CancellationTokenSource();
-    var resolver = new QcomResourceResolver(lifetime.Token, 20);
+    var resolver = new QcomResourceResolver(20, lifetime.Token);
     var payload = SensitiveDataOwner.CopyFrom([1, 2, 3, 4]);
     var providerFinished = new TaskCompletionSource(
         TaskCreationOptions.RunContinuationsAsynchronously);
@@ -405,7 +410,7 @@ public async Task ResolveAsync_KeepsLinkedSourceAliveUntilLateProviderCompletes(
 
 Add cases for synchronous success, null result, provider exception mapping, caller cancellation and lifetime cancellation. Provider exceptions other than `QcomProtocolException` must surface as `QcomResourceException` with the original exception as `InnerException`.
 
-- [ ] **Step 2: Confirm RED against the current private implementation**
+- [x] **Step 2: Confirm RED against the current private implementation**
 
 Run:
 
@@ -415,7 +420,7 @@ dotnet test .tests/GeekFlashCore.Protocol.Qcom.Tests/GeekFlashCore.Protocol.Qcom
 
 Expected: compilation fails because `QcomResourceResolver` does not exist; the existing workflow test remains as integration coverage.
 
-- [ ] **Step 3: Implement resolver ownership transfer**
+- [x] **Step 3: Implement resolver ownership transfer**
 
 The resolver owns the linked CTS. On cancellation it transfers CTS disposal to the observer task together with late-result cleanup:
 
@@ -426,8 +431,8 @@ internal sealed class QcomResourceResolver
     private readonly int _timeoutMilliseconds;
 
     internal QcomResourceResolver(
-        CancellationToken lifetimeToken,
-        int timeoutMilliseconds)
+        int timeoutMilliseconds,
+        CancellationToken lifetimeToken)
     {
         if (timeoutMilliseconds <= 0)
             throw new ArgumentOutOfRangeException(nameof(timeoutMilliseconds));
@@ -517,7 +522,7 @@ internal sealed class QcomResourceResolver
 
 The synchronous method uses `.GetAwaiter().GetResult()` only at the existing synchronous host boundary; no protocol-layer async wait is introduced.
 
-- [ ] **Step 4: Delegate from QcomProtocol**
+- [x] **Step 4: Delegate from QcomProtocol**
 
 Create `_resourceResolver` after `_options.Validate()`. Replace every private `ResolveResourceAsync/Sync` call with the collaborator. Authentication calls pass the exact disposer below; image, configuration, Digest and VIP calls pass no disposer because their `IDataSource` ownership remains with their response contract:
 
@@ -528,7 +533,7 @@ static void DisposeLateAuthentication(VendorAuthenticationResourceResponse respo
 
 Delete `ResolveResourceAsync`, `ResolveResourceSync` and `DisposeLateAuthenticationAsync` from `QcomProtocol.cs`.
 
-- [ ] **Step 5: Verify lifecycle behavior**
+- [x] **Step 5: Verify lifecycle behavior**
 
 Run:
 
@@ -540,7 +545,7 @@ git diff --check
 
 Expected: all focused tests pass; cancellation does not produce `ObjectDisposedException` in the provider; late authentication payload is disposed; solution builds cleanly.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/GeekFlashCore.Protocol.Qcom/Resources/QcomResourceResolver.cs src/GeekFlashCore.Protocol.Qcom/QcomProtocol.cs
@@ -568,7 +573,7 @@ git commit -m "refactor(qcom): isolate resource resolution"
 - Consumes: `IReadableBlockDevice`, `BlockDeviceId`, `BlockDeviceIO`, `DeviceOwnership`.
 - Produces: `public sealed class StreamBlockDevice` with constructor `StreamBlockDevice(Stream source, long length, DeviceOwnership ownership, int logicalBlockSize = 512, BlockDeviceId? id = null)`.
 
-- [ ] **Step 1: Create the ignored local core test project**
+- [x] **Step 1: Create the ignored local core test project**
 
 Use this exact project definition and confirm `git check-ignore` identifies it as ignored:
 
@@ -598,7 +603,7 @@ Use this exact project definition and confirm `git check-ignore` identifies it a
 
 Run `git check-ignore -v .tests/GeekFlashCore.Core.Tests/GeekFlashCore.Core.Tests.csproj`; expected: an ignore rule and the test path are printed.
 
-- [ ] **Step 2: Add failing adapter contract tests**
+- [x] **Step 2: Add failing adapter contract tests**
 
 Cover non-zero origin, fixed length, EOF, empty read, negative offset, position restoration, Borrow, Transfer, invalid ownership, non-seekable source and concurrent reads. The central behavior test is:
 
@@ -625,7 +630,7 @@ public void ReadAt_UsesCapturedOriginAndRestoresSourcePosition()
 }
 ```
 
-- [ ] **Step 3: Confirm RED**
+- [x] **Step 3: Confirm RED**
 
 Run:
 
@@ -636,7 +641,7 @@ dotnet test .tests/GeekFlashCore.Core.Tests/GeekFlashCore.Core.Tests.csproj -c R
 
 Expected: compilation fails because public `StreamBlockDevice` does not exist.
 
-- [ ] **Step 4: Implement the shared adapter**
+- [x] **Step 4: Implement the shared adapter**
 
 Implement construction and reads with captured origin, instance locking and `finally` restoration:
 
@@ -690,7 +695,7 @@ public sealed class StreamBlockDevice : IReadableBlockDevice
 
 Add idempotent locked disposal. Add `StreamMustBeReadableAndSeekable` to BlockDevice Chinese/English resources.
 
-- [ ] **Step 5: Replace all three private adapters**
+- [x] **Step 5: Replace all three private adapters**
 
 Use explicit ownership and logical block sizes:
 
@@ -702,7 +707,7 @@ new StreamBlockDevice(source, checked(source.Length - source.Position),
 
 LP passes its existing `length` and `ownership`. Qcom adds a direct `GeekFlashCore.BlockDevice` project reference and uses id `qcom-sparse-source`. Delete both duplicate class files and the nested `SparseProgramPlanner.StreamSource`.
 
-- [ ] **Step 6: Verify adapter and consumers**
+- [x] **Step 6: Verify adapter and consumers**
 
 Run:
 
@@ -716,7 +721,7 @@ git diff --check
 
 Expected: all tests pass, no source file named `SeekableStreamBlockDevice.cs` remains, and `rg "class StreamSource|class SeekableStreamBlockDevice" src` has no output.
 
-- [ ] **Step 7: Commit production changes only**
+- [x] **Step 7: Commit production changes only**
 
 ```powershell
 git add src/GeekFlashCore.BlockDevice src/GeekFlashCore.Android.Sparse/SparseImageWriter.cs src/GeekFlashCore.Android.Sparse/BlockDevice/SeekableStreamBlockDevice.cs src/GeekFlashCore.Android.Lp/LpPartitionImageSource.cs src/GeekFlashCore.Android.Lp/SeekableStreamBlockDevice.cs src/GeekFlashCore.Protocol.Qcom/GeekFlashCore.Protocol.Qcom.csproj src/GeekFlashCore.Protocol.Qcom/Firehose/Programming/SparseProgramPlanner.cs
@@ -738,7 +743,7 @@ git commit -m "refactor(block): share seekable stream adapter"
 - Consumes: `SparseDocument.Chunks`, `SparseChunk.OutputOffset`, `SparseChunk.PayloadOffset`, `SparseRegion`, and the shared `StreamBlockDevice` from Task 4.
 - Produces: `public IReadOnlyList<SparseRegion> SparseDocument.CreateDataRegions()`; Qcom consumes these regions without calling `SparseImageParser.Parse(Stream)`.
 
-- [ ] **Step 1: Add region projection and single-scan tests**
+- [x] **Step 1: Add region projection and single-scan tests**
 
 Build a sparse fixture with Raw, adjacent Raw, Don't Care, Fill and CRC chunks. Assert exact region starts and lengths:
 
@@ -821,7 +826,7 @@ internal static class SparseFixture
 
 In the Qcom test, `CountingStream.HeaderReadCount` increments only when `Read(Span<byte>)` begins at the captured source origin and the requested span includes the 28-byte file header. Assert `HeaderReadCount == 1`; the current two-parser path produces 2.
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 Run:
 
@@ -832,7 +837,7 @@ dotnet test .tests/GeekFlashCore.Protocol.Qcom.Tests/GeekFlashCore.Protocol.Qcom
 
 Expected: core test does not compile because `CreateDataRegions` is absent; the Qcom counting test detects the reparse.
 
-- [ ] **Step 3: Project validated chunks into streaming regions**
+- [x] **Step 3: Project validated chunks into streaming regions**
 
 Add `CreateDataRegions` to `SparseDocument`. Consecutive Raw chunks remain one region even when payloads are separated by chunk headers; `SparseRegionStream` already reads a list of source offsets. Fill is a one-chunk region; Don't Care and CRC flush Raw and emit no region:
 
@@ -871,11 +876,11 @@ public IReadOnlyList<SparseRegion> CreateDataRegions()
 
 The private `FlushRawRegion` added to `SparseDocument` must snapshot `rawChunks.ToArray()`, clear the list and reset `rawLength` exactly as the legacy parser does.
 
-- [ ] **Step 4: Make SparseProgramPlanner consume one document**
+- [x] **Step 4: Make SparseProgramPlanner consume one document**
 
 Open one shared `StreamBlockDevice`, one `SparseDocument`, verify checksum when `NotVerified`, check block-size alignment and expanded length, then iterate `document.CreateDataRegions()`. Delete the `try/finally` source rewind and the call to `SparseImageParser.Parse(source)`. Keep `SparseImageParser.Parse` public for compatibility, but no production Qcom path may call it.
 
-- [ ] **Step 5: Verify bytes, ordering and bounded planning memory**
+- [x] **Step 5: Verify bytes, ordering and bounded planning memory**
 
 Run:
 
@@ -889,7 +894,7 @@ git diff --check
 
 Expected: tests pass; `rg` has no output; mixed Raw/Fill/Don't Care bytes and XML sector starts match existing test expectations; planning structures scale with chunk count.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/GeekFlashCore.Android.Sparse/SparseDocument.cs src/GeekFlashCore.Protocol.Qcom/Firehose/Programming/SparseProgramPlanner.cs
@@ -920,7 +925,7 @@ git commit -m "perf(qcom): parse sparse programs once"
 - Consumes: generated `GeekFlashCore.CLI.Strings` properties and `Format<Key>` helpers.
 - Produces: identical resource key sets in neutral Chinese and English resources; no Chinese literal remains in CLI `.cs` files.
 
-- [ ] **Step 1: Add culture and resource parity tests**
+- [x] **Step 1: Add culture and resource parity tests**
 
 Capture help output under `zh-CN` and `en-US`, and compare resource key sets:
 
@@ -980,7 +985,7 @@ public void NeutralAndEnglishResourcesHaveIdenticalNonblankKeys()
 }
 ```
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 Run:
 
@@ -990,7 +995,7 @@ dotnet test .tests/GeekFlashCore.CLI.Tests/GeekFlashCore.CLI.Tests.csproj -c Rel
 
 Expected: English help still contains hardcoded Chinese text or the key sets differ after the new assertions are introduced.
 
-- [ ] **Step 3: Add exact resource contracts**
+- [x] **Step 3: Add exact resource contracts**
 
 Add matching Chinese and English values for these keys, preserving command names and format arguments:
 
@@ -1043,7 +1048,7 @@ Cli_XmlResult
 
 For example, `Cli_UnknownOption` is `未知选项 {0}。` / `Unknown option {0}.`; `Cli_ProtocolNotRegistered` is `协议“{0}”当前未注册；可用协议：{1}。` / `Protocol '{0}' is not registered. Available protocols: {1}.`
 
-- [ ] **Step 4: Replace literals without changing structure or exit codes**
+- [x] **Step 4: Replace literals without changing structure or exit codes**
 
 Use generated format helpers for parameters:
 
@@ -1059,7 +1064,7 @@ Console.WriteLine(Strings.Cli_HelpCommands);
 
 Keep protocol tokens (`QualcommEdl`), option names (`--usb`), VID/PID, paths and device-returned strings as format arguments. Do not localize log level abbreviations or raw protocol field names.
 
-- [ ] **Step 5: Verify both cultures and scan production literals**
+- [x] **Step 5: Verify both cultures and scan production literals**
 
 Run:
 
@@ -1072,7 +1077,7 @@ git diff --check
 
 Expected: CLI tests pass; the Chinese scan has no output; CLI builds with 0 errors; resource keys are identical.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/GeekFlashCore.CLI/Localization/Strings.resx src/GeekFlashCore.CLI/Localization/Strings.en.resx src/GeekFlashCore.CLI/CommandLine.cs src/GeekFlashCore.CLI/CliApplication.cs src/GeekFlashCore.CLI/TransportResolver.cs src/GeekFlashCore.CLI/ProtocolRegistry.cs src/GeekFlashCore.CLI/ConsoleUi.cs src/GeekFlashCore.CLI/QcomProtocolHostAdapter.cs src/GeekFlashCore.CLI/ConsoleProviders.cs src/GeekFlashCore.CLI/Program.cs
@@ -1107,7 +1112,7 @@ git commit -m "fix(cli): localize remaining user messages"
 - Consumes: .NET 8 `Stream.ReadExactly(Span<byte>)` and existing public constructors/extensions.
 - Produces: correct `ArgumentException.ParamName`, explicit null guards, no unused Serilog dependency in Protocol.Abstractions, and no duplicate private sequential read loops.
 
-- [ ] **Step 1: Add failing public contract tests**
+- [x] **Step 1: Add failing public contract tests**
 
 ```csharp
 [Fact]
@@ -1132,7 +1137,7 @@ public void PublicReferenceParametersRejectNull()
 }
 ```
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 Run:
 
@@ -1143,7 +1148,7 @@ dotnet test .tests/GeekFlashCore.Protocol.Qcom.Tests/GeekFlashCore.Protocol.Qcom
 
 Expected: `FileSystemReadLimits` has null `ParamName`, and one or more public null cases throw `NullReferenceException` or fail later.
 
-- [ ] **Step 3: Correct exception and null contracts**
+- [x] **Step 3: Correct exception and null contracts**
 
 Add resource `WorkingBudgetTooSmall` as `工作缓冲预算必须至少容纳压缩输入与解码输出。` / `The working buffer budget must contain both compressed input and decoded output.` and throw:
 
@@ -1185,7 +1190,7 @@ public FirehoseResponse(FirehoseResponse response, T? data)
 
 Simplify `QcomDeviceIdentify` to return the conditional result directly while retaining its protocol rationale comment.
 
-- [ ] **Step 4: Replace duplicate sequential read loops**
+- [x] **Step 4: Replace duplicate sequential read loops**
 
 At each Ext/Erofs call site replace the private helper call with the framework method:
 
@@ -1195,7 +1200,7 @@ stream.ReadExactly(target);
 
 Delete only the four private helpers whose entire behavior is an offset loop over `Stream.Read`. Keep `ErofsXattrReader.ReadExactly(Stream, long, Span<byte>)` because it also performs positioned access and therefore is not duplicate behavior.
 
-- [ ] **Step 5: Remove the unused dependency and valueless comments**
+- [x] **Step 5: Remove the unused dependency and valueless comments**
 
 Delete this item from `GeekFlashCore.Protocol.Abstractions.csproj`:
 
@@ -1205,7 +1210,7 @@ Delete this item from `GeekFlashCore.Protocol.Abstractions.csproj`:
 
 Remove only comments that literally describe generated global-using syntax or IDE code generation. Preserve comments explaining Qualcomm PID selection, protocol compatibility, ownership, retries and safety boundaries.
 
-- [ ] **Step 6: Verify targeted contracts and all consumers**
+- [x] **Step 6: Verify targeted contracts and all consumers**
 
 Run:
 
@@ -1219,7 +1224,7 @@ git diff --check
 
 Expected: tests and solution build pass; `rg` has no output; each project that uses Serilog still has its own explicit package reference or an intentional direct reference.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Review `git diff --name-only` before staging, then stage only the files listed in this task:
 
@@ -1241,7 +1246,7 @@ git commit -m "refactor(core): remove redundant infrastructure"
 - Consumes: commits and verification evidence from Tasks 1–7.
 - Produces: dated progress entries containing behavior, commands, exact pass counts, commit hashes, workspace state and unresolved hardware risks.
 
-- [ ] **Step 1: Run every local test suite**
+- [x] **Step 1: Run every local test suite**
 
 ```powershell
 dotnet test .tests/GeekFlashCore.Protocol.Qcom.Tests/GeekFlashCore.Protocol.Qcom.Tests.csproj -c Release --no-restore
@@ -1252,7 +1257,7 @@ dotnet test .tests/GeekFlashCore.Core.Tests/GeekFlashCore.Core.Tests.csproj -c R
 
 Expected: all four commands exit 0. Record each exact total; do not summarize a failing or skipped suite as passed.
 
-- [ ] **Step 2: Run Release build and repository hygiene checks**
+- [x] **Step 2: Run Release build and repository hygiene checks**
 
 ```powershell
 dotnet build GeekFlashCore.slnx -c Release --no-restore
@@ -1263,7 +1268,7 @@ git ls-files .tests
 
 Expected: build exits 0 with no errors; diff check has no output; `git ls-files .tests` has no output; status contains only the three intended documentation edits plus ignored test/build artifacts.
 
-- [ ] **Step 3: Re-run strict analysis and classify remaining warnings**
+- [x] **Step 3: Re-run strict analysis and classify remaining warnings**
 
 ```powershell
 New-Item -ItemType Directory -Force temp | Out-Null
@@ -1281,7 +1286,7 @@ unrelated: diagnostics outside files changed by this plan
 
 Do not suppress a warning merely to lower the count. If a new high-risk warning points into changed code, return to that task and fix it before continuing.
 
-- [ ] **Step 4: Update design status and implementation progress**
+- [x] **Step 4: Update design status and implementation progress**
 
 Set the design status to `已实施（待真实设备验证）`. Mark completed task checkboxes in this file. Add a 2026-09-06 quality-review entry to the Qualcomm implementation document with:
 
@@ -1294,7 +1299,7 @@ Set the design status to `已实施（待真实设备验证）`. Mark completed 
 风险：未在真实 Qualcomm/Oplus/OnePlus/Nothing 设备验证；同步 Transport 无法中断正在阻塞的读；LibUsb 分配优化缺少真实传输测量，未修改。
 ```
 
-- [ ] **Step 5: Review the complete diff and commit documentation**
+- [x] **Step 5: Review the complete diff and commit documentation**
 
 ```powershell
 git diff -- docs/plans/2026-09-04-qcom-protocol-implementation.md docs/plans/2026-09-06-project-quality-review-design.md docs/plans/2026-09-06-project-quality-review-implementation.md
@@ -1305,6 +1310,20 @@ git status --short --ignored
 ```
 
 Expected: documentation contains only observed facts and remaining risks; final tracked status is clean; `.tests`, `bin/obj` and `temp` remain ignored.
+
+## Execution Results
+
+### 2026-09-06 implementation / 2026-09-07 final verification
+
+- 行为结论：Firehose 策略映射现在会在首次线路写入前统一校验起点、连续性、长度与溢出；策略返回 `null` 不再被误解为 identity 映射。安全的线路前取消保留会话状态，Raw 开始后取消仍使会话失效。
+- 架构结论：资源请求、超时、迟到结果与敏感载荷释放收敛到 `QcomResourceResolver`；seekable `Stream` 适配收敛到公共 `StreamBlockDevice`；Qcom Sparse 从严格 `SparseDocument` 直接投影区域，同一输入的元数据解析从两次降为一次。
+- 可维护性结论：CLI 剩余用户可见文本已进入中英文资源；四处 Ext/Erofs 重复读取循环改用 .NET 8 `Stream.ReadExactly`；移除未使用 Serilog 依赖、无价值注释和遗留 using；公共空参数与文件系统预算异常契约已明确。
+- 验证证据：Qcom 246/246、CLI 51/51、Android LP 55/55、Core 7/7 通过；`dotnet build GeekFlashCore.slnx -c Release --no-restore` 为 0 警告/0 错误；`git diff --check` 和 `git ls-files .tests` 无错误/无输出。
+- 严格分析：`latest-all` 重建成功，共 366 条唯一诊断（构建输出分两阶段重复打印为 732 行）。`CA2016=0`、`CA2025=0`；新的 `QcomResourceResolver`、`StreamBlockDevice` 和 `SparseProgramPlanner` 无诊断，`FirehoseStorageRangeValidator` 仅有 `CA1512` 语法风格建议。
+- 分类处置：`fixed` = mapped-range validation、cancellation propagation、resource CTS lifetime、public null/ParamName contracts；`retained-by-design` = 同步协议边界、所有权转移 Dispose 路径、固定线路布局、本地化日志隔离和 OnePlus 协议兼容 IV；`hardware-or-measurement-required` = LibUsb 传输分配与真机取消延迟；`unrelated` = 本计划修改文件之外的存量诊断。未为降低数量新增抑制。
+- 生产提交：`5292540 fix(qcom): validate mapped firehose ranges`；`b1c7215 fix(qcom): align cancellation boundaries`；`d60342d refactor(qcom): isolate resource resolution`；`75c8f66 refactor(block): share seekable stream adapter`；`f3de74c perf(qcom): parse sparse programs once`；`00bd533 fix(cli): localize remaining user messages`；`86303f2 refactor(core): remove redundant infrastructure`。
+- 工作区：最终文档提交前仅本计划要求的三份文档为受跟踪改动；`.tests`、`bin/obj`、IDE 文件与 `temp/quality-review-analyzers.txt` 均保持 ignored，`.tests` 未被 Git 跟踪。
+- 风险：未在真实 Qualcomm/Oplus/OnePlus/Nothing 设备执行本轮回归；同步 `ITransport` 无法在协议层中断已阻塞的读；LibUsb 分配优化缺少真实传输吞吐与 GC 测量，因此本轮未修改。
 
 ## Execution Notes
 

@@ -1331,3 +1331,14 @@ Expected: documentation contains only observed facts and remaining risks; final 
 - 每个任务在目标测试首次失败后才写最小生产实现；若失败原因不是预期缺陷，先修正测试假设，不扩大生产修改。
 - 每个任务提交前检查完整 diff，不使用破坏性 Git 命令覆盖用户修改。
 - 本计划不实施 LibUsb 池化或 LP 日志生成器改写：两者缺少足够测量或无法同时保持本地化、EventId 与日志失败隔离，Task 8 记录为有理由保留的风险。
+
+### 2026-09-07 main merge readiness review
+
+- 首轮独立复审：无 Critical；发现 5 个 Important，分别是 VIP 在主 XML 写入前提前计数、Firehose 流式发送池化缓冲未清零、CLI 认证十六进制数组被重复复制、Sparse region 忽略非零流起点、两处 CLI 结果行仍硬编码英文。
+- 修复结论：VIP 通过实际 XML 写入后的回调提交帧计数；Raw 池化缓冲归还时清零；`SensitiveDataOwner.TakeOwnership` 明确转移并清零认证数组；Sparse strict/legacy 偏移统一相对当前流起点；存储与分区输出进入中英文资源。
+- 测试先行证据：取消主命令会复现 chained table 提前耗尽；数组池复用可读取完整 `0x5A` 载荷；新增所有权 API 在实现前编译失败；带 4 字节前缀的 strict/legacy Sparse region 分别读取错误和未恢复位置；中英文 CLI 结果测试在实现前 4/4 失败。实现后目标测试全部通过。
+- 依赖证据：完全还原后曾暴露 `Protocol.Qcom` 直接使用 Serilog 却依赖旧资产中的传递引用；提交 `ac8dbac fix(qcom): declare serilog dependency` 后，新鲜还原、Qcom 构建与测试恢复通过。
+- 生产提交：`1db191d fix(qcom): commit vip frames after wire send`；`bfdc728 fix(qcom): clear pooled raw buffers`；`d28b7ca fix(security): transfer authentication buffer ownership`；`931a8e3 fix(sparse): honor nonzero source origins`；`561b02d fix(cli): localize storage command output`。
+- 门禁证据：`dotnet restore GeekFlashCore.slnx` 成功；Qcom 250/250 连续两次通过，CLI 55/55、Android LP 55/55、Core 9/9 通过；Release 解决方案构建 0 警告/0 错误。
+- 测试夹具：首次全量 Qcom 运行发现进程级 Serilog 的测试 sink 用 `List<LogEvent>` 并发枚举竞争；ignored `.tests` 中改为 `ConcurrentQueue<LogEvent>` 后连续两次通过，不涉及生产代码。
+- 工作区：生产修改均已按独立行为提交；`.tests` 和 `bin/obj` 仍 ignored 且不提交。真实设备验证风险保持不变。

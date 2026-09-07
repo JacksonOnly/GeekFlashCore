@@ -529,3 +529,13 @@
 - CLI 显示当前量/总量、平均速度、已用/剩余时间，完成保留总用时；单调时钟计时，100 ms/1 s 终端/重定向节流，中文窄行显式换行和多行清理，新增文本中英文资源化。
 - 证据：Qcom 220、CLI 46 项完整测试通过（包含 64 MiB 流式窗口和 11 项进度格式化回归）；Release 构建 0 警告/0 错误，资源与 diff 检查通过。细节见 `2026-09-06-cli-progress-design.md` 和 `2026-09-06-cli-progress-implementation.md`。
 - 风险：未执行硬件刷写，平均速度/ETA 与终端实际效果待复测；擦除协议无逐字节反馈，不虚构速度；Sahara 重复/部分读取的总量限制沿用现状。cust.img 保持未跟踪，测试仅留在 ignored 的 .tests。
+
+### 主分支合并就绪复审（2026-09-07）
+
+- 任务：复审 `codex/develop-20260904` 相对本地 `main` 的完整差异，修复阻塞项，并在满足门禁后执行本地快进合并。
+- 行为结论：首轮独立复审无 Critical，5 个 Important 已全部修复。VIP 仅在主 XML 实际写入后提交帧数；Digest/VIP 流式缓冲归还池前清零；CLI 认证数组直接转移给敏感数据所有者；Sparse region 支持非零流起点并恢复借用流位置；存储与分区输出完成中英文资源化。
+- 依赖结论：新鲜还原暴露 `Protocol.Qcom` 缺少直接 Serilog 引用，历史 `--no-restore` 结果受旧 `project.assets.json` 掩盖；现已由 `ac8dbac` 明确声明 Serilog 4.4.0。
+- 验证证据：新鲜 `dotnet restore GeekFlashCore.slnx` 成功；Qcom 250/250 连续两次、CLI 55/55、Android LP 55/55、Core 9/9 通过；Release 解决方案构建 0 警告/0 错误。测试均为本地模拟或纯内存证据，不等同于真机线路验证。
+- 提交：`ac8dbac fix(qcom): declare serilog dependency`；`1db191d fix(qcom): commit vip frames after wire send`；`bfdc728 fix(qcom): clear pooled raw buffers`；`d28b7ca fix(security): transfer authentication buffer ownership`；`931a8e3 fix(sparse): honor nonzero source origins`；`561b02d fix(cli): localize storage command output`。
+- 工作区：`.tests`、构建输出和 IDE 文件保持 ignored；详细范围、兼容性和合并后步骤见 `2026-09-07-main-merge-notes.md`。
+- 风险：仍未覆盖真实 Qualcomm/Oplus/OnePlus/Nothing 设备矩阵；同步传输正在阻塞时的取消延迟取决于传输实现；严格 GPT/存储校验可能拒绝厂商非标准介质，需以脱敏抓包分析。

@@ -140,7 +140,7 @@ internal readonly struct FirehoseCmdSender
         finally
         {
             hash?.Dispose();
-            ArrayPool<byte>.Shared.Return(buffer);
+            ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
         }
     }
 }

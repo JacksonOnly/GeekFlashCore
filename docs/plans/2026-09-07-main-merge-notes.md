@@ -124,3 +124,11 @@ If post-merge verification fails, preserve both refs and investigate the exact m
 During the first post-merge Qcom test attempt, two concurrent uncommitted working-tree edits temporarily removed explicit `Protocol.Abstractions` entries from the solution and CLI project, and the Qcom abstraction project reference was also absent at the instant of compilation. The committed `536231f` tree already contained all three required entries. Restoring those exact committed lines produced a clean worktree and the complete post-merge gate above passed; no source commit was needed for this transient workspace anomaly.
 
 Local `main` remains intentionally unpushed. Hardware verification remains a release risk rather than a merge blocker because no complete physical Qualcomm/Xiaomi/OnePlus/Nothing/Oplus device matrix was available.
+
+## 8. Follow-up verification (2026-09-07)
+
+- `git fetch origin main` completed successfully. `origin/main` remains an ancestor of local `main` (`5b4d6c5` -> `9e2b4f6`); the remote has no commit absent from the local target, so no merge or rebase is required.
+- Re-ran the four post-merge Release test projects on the actual local `main`: Qcom 250/250, CLI 55/55, Android LP 55/55 and Core 9/9 passed.
+- Re-ran `dotnet build GeekFlashCore.slnx -c Release --no-restore`: 0 warnings and 0 errors.
+- `git diff --check` passed; `git ls-files .tests` produced no output. The tracked worktree remains clean and generated `.tests`, `bin/obj`, IDE and `temp` paths remain ignored.
+- No remote push or remote-branch deletion was performed. After containment and post-merge verification, the local `codex/develop-20260904` branch was deleted; its remote counterpart remains available for audit. The verified `main` at `9e2b4f6` was ahead of `origin/main` by 73 commits before this documentation-only follow-up.

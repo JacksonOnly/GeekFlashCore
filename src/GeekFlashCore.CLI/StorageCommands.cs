@@ -22,7 +22,12 @@ internal static class StorageCommands
             }
             if (partitions.Count == 0) Serilog.Log.Warning(Strings.Cli_NoPartitions);
             foreach (var item in partitions)
-                ui.WriteLine($"{item.Name,-32} lun={PartitionLun(item)} start={item.Address} offset={FormatSize(item.Offset)} length={FormatSize(item.Length)}");
+                ui.WriteLine(Strings.FormatCli_PartitionLine(
+                    (item.Name ?? string.Empty).PadRight(32),
+                    PartitionLun(item),
+                    item.Address?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? Strings.Cli_UnknownValue,
+                    FormatSize(item.Offset),
+                    FormatSize(item.Length)));
             return;
         }
 
@@ -77,7 +82,8 @@ internal static class StorageCommands
         return new PartitionTarget { Name = args[0], PhysicalPartitionNumber = args.Length > mandatory ? CommandSyntax.Lun(args[^1]) : null };
     }
 
-    private static string FormatSize(long? size) => size.HasValue ? ConsoleUi.FormatBytes(size.Value) : "unknown";
+    private static string FormatSize(long? size) =>
+        size.HasValue ? ConsoleUi.FormatBytes(size.Value) : Strings.Cli_UnknownValue;
 
     internal static uint SectorSize(IProtocol protocol)
     {

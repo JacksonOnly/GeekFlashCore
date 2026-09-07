@@ -133,7 +133,13 @@ internal static class FirehoseCommands
         {
             ct.ThrowIfCancellationRequested();
             var info = p.GetStorageInfo(lun);
-            ui.WriteLine($"{info.Storage} lun={lun} blocks={info.BlockCount} sector={info.BlockSizeInBytes} capacity={(info.CapacityInBytes is { } size ? ConsoleUi.FormatBytes(size) : "unknown")}");
+            string unknown = Strings.Cli_UnknownValue;
+            ui.WriteLine(Strings.FormatCli_StorageInfoLine(
+                info.Storage,
+                lun,
+                info.BlockCount?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? unknown,
+                info.BlockSizeInBytes?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? unknown,
+                info.CapacityInBytes is { } size ? ConsoleUi.FormatBytes(size) : unknown));
         }
         return Task.CompletedTask;
     }

@@ -86,6 +86,8 @@
   <data name="Cli_InfoFirehose" xml:space="preserve"><value>Firehose: target={0}, ufs={1}, storage={2}, sector={3}, payload={4}</value></data>
   <data name="Cli_InfoFirehoseDevice" xml:space="preserve"><value>  chip={0}, serial={1}, build={2}, functions={3}</value></data>
   <data name="Cli_InfoStorage" xml:space="preserve"><value>  {0} lun={1} blocks={2} size={3} capacity={4}</value></data>
+  <data name="Cli_StorageInfoLine" xml:space="preserve"><value>Storage={0} lun={1} blocks={2} sector={3} capacity={4}</value></data>
+  <data name="Cli_PartitionLine" xml:space="preserve"><value>{0} lun={1} start={2} offset={3} length={4}</value></data>
   <data name="Cli_UnknownValue" xml:space="preserve"><value>unknown</value></data>
   <data name="Cli_UsbDeviceFallback" xml:space="preserve"><value>USB device</value></data>
   <data name="Cli_SaharaProbeResult" xml:space="preserve"><value>Sahara v{0}, mode={1}, packet={2}</value></data>

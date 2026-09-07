@@ -18,6 +18,7 @@
     <ItemGroup>
       <PackageReference Include="OplusDigestUtils" Version="2026.8.11-g6c670d9" />
       <PackageReference Include="QcomImageUtils" Version="2026.8.11-g30ff56d" />
+      <PackageReference Include="Serilog" Version="4.4.0" />
     </ItemGroup>
 
 </Project>

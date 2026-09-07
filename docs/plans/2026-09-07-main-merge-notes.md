@@ -10,11 +10,11 @@ Pre-merge base: `a03eb99cf4fa0ee0eda409a5210170fe60169bc4`
 
 ## 1. Merge decision
 
-This branch is eligible for a local fast-forward merge after the second independent review and the post-merge verification described below complete without Critical or Important findings.
+The branch passed the second independent review with zero Critical, Important or Minor findings and was fast-forwarded into local `main` at reviewed head `536231f`.
 
-The source branch is a direct descendant of local `main`; `git merge-base --is-ancestor main codex/develop-20260904` exits with code 0. A fast-forward merge preserves the 67 small, behavior-oriented commits present before this merge-note commit and avoids an artificial merge commit.
+The source branch was a direct descendant of local `main`; `git merge-base --is-ancestor main codex/develop-20260904` exited with code 0. The fast-forward preserved the 67 small, behavior-oriented commits present before the merge-note commit and avoided an artificial merge commit.
 
-The merge is intentionally local. It does not push `main` or delete the source branch until the merged result has been verified.
+The merge is intentionally local and has not been pushed. The source branch is deleted only after the merged result passes the post-merge checks.
 
 ## 2. Scope
 
@@ -110,3 +110,17 @@ The `AnalysisLevel=latest-all` audit records 366 unique diagnostics. No suppress
 6. Keep the source branch until the merged result is green. Delete it only after verification; do not push without a separate request.
 
 If post-merge verification fails, preserve both refs and investigate the exact merged tree. Do not force-reset or delete the source branch.
+
+## 7. Actual merge result
+
+- Second independent review: Critical 0, Important 0, Minor 0; verdict `Ready to fast-forward merge: Yes`.
+- Remote check: `origin/main` remained at `5b4d6c5`; local pre-merge `main` was `a03eb99`, four commits ahead of the remote and with no remote-only commit.
+- Merge command: `git merge --ff-only codex/develop-20260904` advanced local `main` from `a03eb99` to `536231f` without conflicts or a merge commit.
+- Post-merge restore: `dotnet restore GeekFlashCore.slnx` completed successfully from project declarations.
+- Post-merge tests: Qcom 250/250, CLI 55/55, Android LP 55/55 and Core 9/9 passed as separately checked commands.
+- Post-merge build: `dotnet build GeekFlashCore.slnx -c Release --no-restore` completed with zero warnings and zero errors.
+- Hygiene: `git diff --check` passed and `.tests` remained ignored and untracked by Git.
+
+During the first post-merge Qcom test attempt, two concurrent uncommitted working-tree edits temporarily removed explicit `Protocol.Abstractions` entries from the solution and CLI project, and the Qcom abstraction project reference was also absent at the instant of compilation. The committed `536231f` tree already contained all three required entries. Restoring those exact committed lines produced a clean worktree and the complete post-merge gate above passed; no source commit was needed for this transient workspace anomaly.
+
+Local `main` remains intentionally unpushed. Hardware verification remains a release risk rather than a merge blocker because no complete physical Qualcomm/Xiaomi/OnePlus/Nothing/Oplus device matrix was available.

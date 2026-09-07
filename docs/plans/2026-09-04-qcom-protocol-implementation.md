@@ -539,3 +539,4 @@
 - 提交：`ac8dbac fix(qcom): declare serilog dependency`；`1db191d fix(qcom): commit vip frames after wire send`；`bfdc728 fix(qcom): clear pooled raw buffers`；`d28b7ca fix(security): transfer authentication buffer ownership`；`931a8e3 fix(sparse): honor nonzero source origins`；`561b02d fix(cli): localize storage command output`。
 - 工作区：`.tests`、构建输出和 IDE 文件保持 ignored；详细范围、兼容性和合并后步骤见 `2026-09-07-main-merge-notes.md`。
 - 风险：仍未覆盖真实 Qualcomm/Oplus/OnePlus/Nothing 设备矩阵；同步传输正在阻塞时的取消延迟取决于传输实现；严格 GPT/存储校验可能拒绝厂商非标准介质，需以脱敏抓包分析。
+- 合并结果：第二轮独立复审 Critical/Important/Minor 均为 0；本地 `main` 已由 `a03eb99` 快进到 `536231f`。合并后 Qcom 250/250、CLI 55/55、Android LP 55/55、Core 9/9 分别通过，Release 构建 0 警告/0 错误；远端尚未推送。

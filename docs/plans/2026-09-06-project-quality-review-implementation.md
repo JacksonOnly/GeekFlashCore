@@ -1342,3 +1342,4 @@ Expected: documentation contains only observed facts and remaining risks; final 
 - 门禁证据：`dotnet restore GeekFlashCore.slnx` 成功；Qcom 250/250 连续两次通过，CLI 55/55、Android LP 55/55、Core 9/9 通过；Release 解决方案构建 0 警告/0 错误。
 - 测试夹具：首次全量 Qcom 运行发现进程级 Serilog 的测试 sink 用 `List<LogEvent>` 并发枚举竞争；ignored `.tests` 中改为 `ConcurrentQueue<LogEvent>` 后连续两次通过，不涉及生产代码。
 - 工作区：生产修改均已按独立行为提交；`.tests` 和 `bin/obj` 仍 ignored 且不提交。真实设备验证风险保持不变。
+- 合并结果：第二轮独立复审为 Critical 0、Important 0、Minor 0；本地 `main` 通过 `--ff-only` 从 `a03eb99` 前进到 `536231f`。合并后分别运行 Qcom 250/250、CLI 55/55、Android LP 55/55、Core 9/9，Release 解决方案构建 0 警告/0 错误；未推送远端。

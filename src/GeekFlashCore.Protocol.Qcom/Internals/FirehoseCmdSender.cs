@@ -27,7 +27,7 @@ internal readonly struct FirehoseCmdSender
         SendXml(xml);
     }
 
-    public void SendXml(string xml)
+    public void SendXml(string xml, Action? packetSent = null)
     {
         ArgumentNullException.ThrowIfNull(xml);
 
@@ -43,6 +43,7 @@ internal readonly struct FirehoseCmdSender
         {
             int bytesWritten = Encoding.UTF8.GetBytes(xml, buffer);
             _transport.Write(buffer[..bytesWritten]);
+            packetSent?.Invoke();
             _logger.Debug(Strings.Qcom_LogSendXml, bytesWritten);
         }
         finally

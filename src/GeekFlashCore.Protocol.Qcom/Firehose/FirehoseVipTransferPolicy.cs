@@ -46,8 +46,9 @@ internal sealed class FirehoseVipTransferPolicy
             _tableIndex = next;
             _framesSent = 0;
         }
-        _framesSent = checked(_framesSent + 1);
     }
+
+    public void CommandSent() => _framesSent = checked(_framesSent + 1);
 
     private static void SendTable(FirehoseSession session, IDataSource table, CancellationToken cancellationToken)
     {

@@ -702,6 +702,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             .ConfigureAwait(false);
         _vipPolicy = new FirehoseVipTransferPolicy(response);
         _firehose!.SetBeforeCommand(_vipPolicy.BeforeCommand);
+        _firehose.SetCommandSent(_vipPolicy.CommandSent);
     }
 
     private void PrepareVip()
@@ -722,6 +723,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             token => _firehoseVipProvider.ResolveAsync(new FirehoseVipResourceRequest(TargetInfo!), token));
         _vipPolicy = new FirehoseVipTransferPolicy(response);
         _firehose!.SetBeforeCommand(_vipPolicy.BeforeCommand);
+        _firehose.SetCommandSent(_vipPolicy.CommandSent);
     }
 
     private async ValueTask<bool> AuthenticateXiaomiAsync(FirehoseNakException exception, CancellationToken ct)

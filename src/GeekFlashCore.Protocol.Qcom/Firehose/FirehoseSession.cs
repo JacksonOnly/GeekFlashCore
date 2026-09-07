@@ -27,6 +27,7 @@ public sealed class FirehoseSession : IDisposable
     private int _state = (int)FirehoseSessionState.Created;
     private FirehoseSessionState _stateBeforeRaw;
     private Action<FirehoseSession, CancellationToken>? _beforeCommand;
+    private Action? _commandSent;
     private string? _xmlDeclarationAttribute;
 
     public FirehoseSession(ITransport transport, int readTimeoutMilliseconds)
@@ -46,6 +47,9 @@ public sealed class FirehoseSession : IDisposable
 
     internal void SetBeforeCommand(Action<FirehoseSession, CancellationToken>? callback) =>
         _beforeCommand = callback;
+
+    internal void SetCommandSent(Action? callback) =>
+        _commandSent = callback;
 
     internal void SetXmlDeclarationAttribute(string? attribute) =>
         _xmlDeclarationAttribute = attribute;
@@ -118,7 +122,11 @@ public sealed class FirehoseSession : IDisposable
             _beforeCommand?.Invoke(this, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             mainCommandMayHaveChangedWire = true;
-            FirehoseCommandResult result = _executor.Execute(command, expectedRawMode, _xmlDeclarationAttribute);
+            FirehoseCommandResult result = _executor.Execute(
+                command,
+                expectedRawMode,
+                _xmlDeclarationAttribute,
+                _commandSent);
             CompleteCommand(command is ConfigureCommand, result, initialState);
             return result;
         }
@@ -151,7 +159,11 @@ public sealed class FirehoseSession : IDisposable
             _beforeCommand?.Invoke(this, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             mainCommandMayHaveChangedWire = true;
-            FirehoseCommandResult result = _executor.ExecuteXml(xml, expectedRawMode, _xmlDeclarationAttribute);
+            FirehoseCommandResult result = _executor.ExecuteXml(
+                xml,
+                expectedRawMode,
+                _xmlDeclarationAttribute,
+                _commandSent);
             CompleteCommand(configured: false, result, initialState);
             return result;
         }

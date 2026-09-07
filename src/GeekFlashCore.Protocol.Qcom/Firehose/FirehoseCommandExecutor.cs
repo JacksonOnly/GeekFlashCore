@@ -19,20 +19,28 @@ internal sealed class FirehoseCommandExecutor
     public FirehoseResponse ReceiveStartupLogs(int? timeoutMilliseconds = null) =>
         _receiver.ReceiveStartupLog(timeoutMilliseconds);
 
-    public FirehoseCommandResult Execute(BaseCommand command, bool expectedRawMode, string? xmlDeclarationAttribute = null)
+    public FirehoseCommandResult Execute(
+        BaseCommand command,
+        bool expectedRawMode,
+        string? xmlDeclarationAttribute = null,
+        Action? commandSent = null)
     {
         ArgumentNullException.ThrowIfNull(command);
         string xml = command.Build();
         ValidateXml(xml);
-        _sender.SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute));
+        _sender.SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute), commandSent);
         bool publishDeviceText = command is not (PeekCommand or PokeCommand or GetSha256DigestCommand);
         return ValidateResponse(_receiver.Receive(publishDeviceText), expectedRawMode, publishDeviceText);
     }
 
-    public FirehoseCommandResult ExecuteXml(string xml, bool expectedRawMode, string? xmlDeclarationAttribute = null)
+    public FirehoseCommandResult ExecuteXml(
+        string xml,
+        bool expectedRawMode,
+        string? xmlDeclarationAttribute = null,
+        Action? commandSent = null)
     {
         ValidateXml(xml);
-        _sender.SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute));
+        _sender.SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute), commandSent);
         return ValidateResponse(_receiver.Receive(), expectedRawMode);
     }
 

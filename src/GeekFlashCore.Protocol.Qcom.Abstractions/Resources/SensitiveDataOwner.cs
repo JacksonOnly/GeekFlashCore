@@ -25,6 +25,16 @@ public sealed class SensitiveDataOwner : IDisposable
     public static SensitiveDataOwner CopyFrom(ReadOnlySpan<byte> source) =>
         new(source.ToArray());
 
+    /// <summary>
+    /// Takes exclusive ownership of <paramref name="buffer"/> and clears it when disposed.
+    /// The caller must not access or modify the buffer after this call.
+    /// </summary>
+    public static SensitiveDataOwner TakeOwnership(byte[] buffer)
+    {
+        ArgumentNullException.ThrowIfNull(buffer);
+        return new SensitiveDataOwner(buffer);
+    }
+
     public void Dispose()
     {
         ClearBuffer();

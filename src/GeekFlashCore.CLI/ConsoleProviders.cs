@@ -1,6 +1,7 @@
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using GeekFlashCore.CLI.Localization;
+using System.Security.Cryptography;
 
 namespace GeekFlashCore.CLI;
 
@@ -82,14 +83,26 @@ internal sealed class ConsoleAuthenticationProvider(ConsoleUi ui) : IVendorAuthe
         string value = ui.Ask(Strings.Cli_AuthenticationPayloadPrompt, secret: true);
         if (string.IsNullOrWhiteSpace(value))
             throw new OperationCanceledException(Strings.Cli_AuthenticationCancelled);
+        byte[]? bytes = null;
+        SensitiveDataOwner? owner = null;
         try
         {
-            byte[] bytes = Convert.FromHexString(value.Replace(" ", string.Empty, StringComparison.Ordinal));
-            return ValueTask.FromResult(new VendorAuthenticationResourceResponse(SensitiveDataOwner.CopyFrom(bytes)));
+            bytes = Convert.FromHexString(value.Replace(" ", string.Empty, StringComparison.Ordinal));
+            owner = SensitiveDataOwner.TakeOwnership(bytes);
+            bytes = null;
+            var response = new VendorAuthenticationResourceResponse(owner);
+            owner = null;
+            return ValueTask.FromResult(response);
         }
         catch (FormatException exception)
         {
             throw new FormatException(Strings.Cli_AuthenticationPayloadInvalid, exception);
+        }
+        finally
+        {
+            if (bytes is not null)
+                CryptographicOperations.ZeroMemory(bytes);
+            owner?.Dispose();
         }
     }
 }

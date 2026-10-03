@@ -22,6 +22,7 @@ internal sealed class ConsoleSaharaImageProvider(ConsoleUi ui, string? configure
     public async ValueTask<SaharaImageEntryResponse> ResolveAsync(SaharaImageEntryRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        ui.PrintTargetInfo(new QcomTargetInfo { Sahara = request.TargetInfo });
         string? path = ConsolePath.Normalize(configuredPath ?? await ui.AskOptionalAsync(Strings.Cli_SaharaProgrammerPrompt, cancellationToken).ConfigureAwait(false));
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             throw new FileNotFoundException(Strings.Cli_SaharaProgrammerMissing, path);

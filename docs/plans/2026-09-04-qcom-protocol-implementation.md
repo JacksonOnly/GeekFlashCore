@@ -383,6 +383,8 @@
 
 ## 进度
 
+- 2026-10-03 SI-01～02：按用户追加要求完善 CLI Sahara 信息：连接上传前、info、probe-sahara 显示完整 PkHash 与厂商/芯片名称，序列号及 MSM/OEM/Model/SBL/SoC HW 等身份字段使用 HEX 并保留 64 位；诊断日志身份字段同步 HEX、Hash 仍只记录长度。目标 7 项及完整 105 项 Release 回归通过，构建无警告/错误，资源键及差异检查通过。实现与恢复记录见 `2026-10-03-cli-sahara-identity.md`，新版 EXE 已构建；本轮未做实机验证。
+
 - 2026-10-03 OB-01～05：用户实机日志确认 Oplus Loader 等待签名表时旧 CLI 错发 NOP。已按参考初始化顺序增加 Digest/Verify/Sign/sha256init 前置认证，Legacy Sign 必须、Pt 芯片匹配及手动替换，重配置保留已认证状态并关联延后验证日志，CLI 固定 256 扇区并移除六项 Legacy 参数，新增自动详细文件日志。98 项本地 Release 回归、Release 构建、双语资源及差异检查通过；新程序已构建，硬件复测待用户执行。设计、测试证据与恢复入口见 `2026-10-03-oplus-bootstrap-design.md`、`2026-10-03-oplus-bootstrap-implementation.md`。
 
 - 2026-10-03 QA-00：用户要求再次审查联机/读写/超时、完善 CLI，并指定 `QnQcLIB_Rector` 作为兼容参考；用户确认保留 Pt 分区映射，将参考行为完善到 Legacy。新方案和恢复进度见 `2026-10-03-qcom-legacy-audit-design.md` 与 `2026-10-03-qcom-legacy-audit-implementation.md`（设计待确认，生产代码尚未修改）。当前工作树无历史 `.tests`，新增 5 项模拟护栏，1 通过、4 失败，复现非 XML 被当作 Raw ACK、发送超过协商 Payload、VIP/Oplus 缺少互斥及 CLI Legacy 零配置。NuGet 还原和 Release 基线构建通过，0 警告/0 错误；USB 初始化、资源输入与设备等待问题已作静态记录，未做真实设备验证。本次无新增提交。

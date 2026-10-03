@@ -86,11 +86,12 @@ internal sealed class ConsoleUi
         {
             ClearProgressUnsafe();
             string unknown = Strings.Cli_UnknownValue;
+            var names = SaharaIdentityDisplay.Names(info);
             Console.WriteLine(Strings.FormatCli_InfoProtocol("QualcommEdl"));
             Console.WriteLine(Strings.FormatCli_InfoVendor(info.Vendor));
             Console.WriteLine(Strings.FormatCli_InfoHardware(
-                info.OemName ?? unknown,
-                info.SocName ?? unknown,
+                names.Oem,
+                names.Soc,
                 info.SecureBoot));
             if (info.Sahara is not null)
             {
@@ -102,15 +103,16 @@ internal sealed class ConsoleUi
                     sahara.MaximumPacketSizeSupported,
                     sahara.Mode));
                 Console.WriteLine(Strings.FormatCli_InfoSaharaIdentity(
-                    sahara.Serial?.ToString() ?? unknown,
-                    sahara.SblVersion?.ToString() ?? unknown,
-                    sahara.CaHash?.Length ?? 0));
+                    SaharaIdentityDisplay.Hex(sahara.Serial),
+                    SaharaIdentityDisplay.Hex(sahara.SblVersion)));
+                Console.WriteLine(Strings.FormatCli_InfoSaharaPkHash(
+                    sahara.CaHash is { Length: > 0 } hash ? Convert.ToHexString(hash.Span) : unknown));
                 Console.WriteLine(Strings.FormatCli_InfoHardwareIds(
-                    hw?.MsmId?.ToString() ?? unknown,
-                    hw?.OemId?.ToString() ?? unknown,
-                    hw?.ModelId?.ToString() ?? unknown,
-                    hw?.AntiRollbackVersion?.ToString() ?? unknown,
-                    hw?.SocHwVersion?.ToString() ?? unknown));
+                    SaharaIdentityDisplay.Hex(hw?.MsmId),
+                    SaharaIdentityDisplay.Hex(hw?.OemId, 4),
+                    SaharaIdentityDisplay.Hex(hw?.ModelId, 4),
+                    SaharaIdentityDisplay.Hex(hw?.AntiRollbackVersion),
+                    SaharaIdentityDisplay.Hex(hw?.SocHwVersion)));
             }
             if (info.Firehose is not null)
             {
@@ -125,7 +127,7 @@ internal sealed class ConsoleUi
                 if (firehose.BasicDevCharacteristics is { } basic)
                     Console.WriteLine(Strings.FormatCli_InfoFirehoseDevice(
                         basic.ChipName ?? unknown,
-                        basic.SerialNumber,
+                        SaharaIdentityDisplay.Hex(basic.SerialNumber),
                         basic.BuildDate == default
                             ? unknown
                             : basic.BuildDate.ToString(

@@ -78,10 +78,11 @@
   <data name="Cli_AuthenticationCancelled" xml:space="preserve"><value>用户取消认证。</value></data>
   <data name="Cli_AuthenticationPayloadInvalid" xml:space="preserve"><value>认证 payload 必须是十六进制。</value></data>
   <data name="Cli_InfoProtocol" xml:space="preserve"><value>协议: {0}</value></data>
-  <data name="Cli_InfoVendor" xml:space="preserve"><value>厂商: {0}</value></data>
-  <data name="Cli_InfoHardware" xml:space="preserve"><value>OEM: {0}, SoC: {1}, SecureBoot: {2}</value></data>
+  <data name="Cli_InfoVendor" xml:space="preserve"><value>厂商协议策略: {0}</value></data>
+  <data name="Cli_InfoHardware" xml:space="preserve"><value>厂商: {0}, 芯片: {1}, SecureBoot: {2}</value></data>
   <data name="Cli_InfoSahara" xml:space="preserve"><value>Sahara: version={0}, min={1}, packet={2}, mode={3}</value></data>
-  <data name="Cli_InfoSaharaIdentity" xml:space="preserve"><value>  serial={0}, sbl={1}, caHashLength={2}</value></data>
+  <data name="Cli_InfoSaharaIdentity" xml:space="preserve"><value>  serial={0}, sbl={1}</value></data>
+  <data name="Cli_InfoSaharaPkHash" xml:space="preserve"><value>  PkHash={0}</value></data>
   <data name="Cli_InfoHardwareIds" xml:space="preserve"><value>  msmId={0}, oemId={1}, modelId={2}, antiRollback={3}, socHwVersion={4}</value></data>
   <data name="Cli_InfoFirehose" xml:space="preserve"><value>Firehose: target={0}, ufs={1}, storage={2}, sector={3}, payload={4}</value></data>
   <data name="Cli_InfoFirehoseDevice" xml:space="preserve"><value>  chip={0}, serial={1}, build={2}, functions={3}</value></data>

@@ -25,6 +25,10 @@ Configure 有有限次数回退，多 LUN 查询逐个执行，因此连接累�
 
 资源提示仅在交互终端使用。脚本请显式提供资源并传入 `--non-interactive`，缺少资源立即失败，不会等输入；stdin 重定向同样不弹出资源提示。常见退出码：成功 0、执行失败 1、参数错误 2、取消 130。
 
+Sahara 探测成功后、Loader 上传前会输出完整身份信息；`info` 和 `probe-sahara` 同样显示厂商名称、芯片名称和完整 `PkHash`。PkHash 是 Sahara `ReadOemPkHash` 返回的原始字节（现有模型字段为 CaHash），按原始顺序显示大写 HEX，不重新计算 Hash。序列号、SBL、MSM ID、OEM ID、Model ID、AntiRollback 和 SoC HW Version 使用 `0x` 前缀的大写 HEX，64 位序列号完整保留；Firehose 信息中的序列号也使用 HEX。
+
+名称优先从 Sahara OEM/SoC HW/MSM 标识映射，无法识别时使用已有 Loader 名称或显示“未知”，原始 ID 仍保留。共享的 OEM ID 只显示对应厂商组，例如 OPPO / OnePlus / realme；“厂商协议策略”与硬件厂商名称分别显示。通用 Sahara 诊断日志中的身份 ID 改为 HEX，Hash 仍仅记录长度。
+
 ## Oplus 模式
 
 两种 Oplus 模式均在 Configure 和存储查询前执行：启动日志 → Digest → verify XML → Sign（零填充至 4096 字节）→ verify passed → sha256init → Configure。Digest 失败、Sign 超时或半帧均立即中止连接，不发送其他命令。

@@ -76,11 +76,8 @@ internal static class QcomProtocolHostAdapter
                     await StorageCommands.ExecuteAsync(protocol, "write", options.Arguments, ui, progress, ct);
                     return 0;
                 case "probe-sahara":
-                    var target = qcom.ProbeSahara(progress);
-                    ui.WriteLine(Strings.FormatCli_SaharaProbeResult(
-                        target.Version,
-                        target.Mode,
-                        target.MaximumPacketSizeSupported));
+                    qcom.ProbeSahara(progress);
+                    ui.PrintTargetInfo(qcom.TargetInfo);
                     return 0;
                 case "xml":
                     string path = ConsolePath.Normalize(options.Arguments[0])!;

@@ -667,8 +667,8 @@ internal class SaharaProtocol : IDisposable
     private static string FormatTargetInfo(SaharaTargetInfo info)
     {
         SaharaMsmHwInfo? hardware = info.MsmHwInfo;
-        static string FormatUInt(uint? value) => value?.ToString(CultureInfo.InvariantCulture) ?? "unknown";
-        static string FormatULong(ulong? value) => value?.ToString(CultureInfo.InvariantCulture) ?? "unknown";
+        static string FormatUInt(uint? value) => value is { } number ? "0x" + number.ToString("X8", CultureInfo.InvariantCulture) : "unknown";
+        static string FormatULong(ulong? value) => value is { } number ? "0x" + number.ToString("X8", CultureInfo.InvariantCulture) : "unknown";
         return string.Join(", ",
             $"Version={info.Version.ToString(CultureInfo.InvariantCulture)}",
             $"MinVersion={info.MinimumVersionSupported.ToString(CultureInfo.InvariantCulture)}",

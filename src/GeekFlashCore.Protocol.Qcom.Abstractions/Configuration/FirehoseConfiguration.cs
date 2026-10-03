@@ -36,7 +36,7 @@ public sealed record OplusDigestConfiguration
     /// <summary>Selects partition mapping or the Rector packet-counted Legacy flow.</summary>
     public OplusDigestMode Mode { get; init; }
     /// <summary>Maximum sectors per transfer; zero keeps the request unsegmented.</summary>
-    public int FixedSectorCount { get; init; }
+    public int FixedSectorCount { get; init; } = 256;
     /// <summary>Legacy table packet capacity. Counts XML and complete outgoing payloads, not transport chunks.</summary>
     public int MaxCommandsBeforeDigest { get; init; } = 53;
     /// <summary>Device table count before the first packet of a new Firehose session. Core counts its own probes and Configure retries.</summary>

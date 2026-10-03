@@ -128,6 +128,39 @@ internal sealed class FirehoseCommandExecutor
         return result;
     }
 
+    internal FirehoseCommandResult SendOplusSign(ReadOnlySpan<byte> signature, CancellationToken cancellationToken)
+    {
+        // A complete XML NAK permits the host to request a manual replacement. Do not
+        // interpret a timeout, partial XML or raw-mode response as a recoverable rejection.
+        _sender.SendRaw(signature.Length, signature, cancellationToken);
+        _legacyPacketSent?.Invoke();
+        cancellationToken.ThrowIfCancellationRequested();
+        FirehoseCommandResult result = ToResult(_receiver.Receive(cancellationToken: cancellationToken));
+        if (result.RawMode) throw new FirehoseProtocolException(Strings.Qcom_FirehoseRawModeUnexpected);
+        return result;
+    }
+
+    internal FirehoseCommandResult BeginOplusVerify(string? declarationAttribute, CancellationToken cancellationToken)
+    {
+        const string xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data><verify value=\"ping\" EnableVip=\"1\"/></data>";
+        cancellationToken.ThrowIfCancellationRequested();
+        SendXml(ApplyXmlDeclarationAttribute(xml, declarationAttribute), null);
+        FirehoseCommandResult result = ToResult(_receiver.Receive(cancellationToken: cancellationToken));
+        ThrowIfNak(result);
+        // Reference loaders can omit rawmode or set it true; either ACK is a
+        // request for the following 4096-byte Sign, never permission to send XML.
+        return result;
+    }
+
+    internal FirehoseCommandResult ReadOplusRejectionDetails(FirehoseCommandResult result, int timeout,
+        CancellationToken cancellationToken)
+    {
+        FirehoseResponse? tail = _receiver.ReceiveOptional(timeout, cancellationToken);
+        if (tail is null) return result;
+        if (tail.RawMode) throw new FirehoseProtocolException(Strings.Qcom_FirehoseRawModeUnexpected);
+        return result with { Logs = result.Logs.Concat(tail.Logs).ToArray() };
+    }
+
     internal FirehoseCommandResult ConfirmLegacyNop(string xml, bool requireHandler, int timeout,
         CancellationToken cancellationToken)
     {

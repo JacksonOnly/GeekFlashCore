@@ -515,4 +515,15 @@ Current {0}, expected {1}</value>
   <data name="Qcom_DeviceTextRedacted" xml:space="preserve"><value>Device diagnostic contains sensitive material or XML and was hidden.</value></data>
   <data name="Qcom_DeviceTextTruncated" xml:space="preserve"><value>{0}… (truncated)</value></data>
   <data name="Firehose_XmlResponseTooLarge" xml:space="preserve"><value>Combined Firehose response XML exceeds {0} bytes.</value></data>
+  <data name="Qcom_OplusSignRequired" xml:space="preserve"><value>Oplus initialization requires a Sign. Legacy requires an explicit Sign; provide one manually when Pt has no matching chip template.</value></data>
+  <data name="Qcom_OplusSignInvalid" xml:space="preserve"><value>Oplus Sign must be a readable binary resource of 1 to 4096 bytes.</value></data>
+  <data name="Qcom_OplusSignRejected" xml:space="preserve"><value>Oplus Sign verification failed. Re-enter EDL and check the Digest and Sign.</value></data>
+  <data name="Qcom_LogOplusDigestBootstrap" xml:space="preserve"><value>Oplus startup: sending the Digest signed table.</value></data>
+  <data name="Qcom_LogOplusVerify" xml:space="preserve"><value>Oplus startup: sending verify followed by the 4096-byte Sign.</value></data>
+  <data name="Qcom_LogOplusVerified" xml:space="preserve"><value>Oplus Sign verification and sha256init succeeded; continuing storage configuration.</value></data>
+  <data name="Qcom_LogOplusSignRejected" xml:space="preserve"><value>Oplus Sign verification failed; requesting one manual replacement.</value></data>
+  <data name="Qcom_LogStartupWait" xml:space="preserve"><value>Waiting for Firehose startup logs, budget {TimeoutMilliseconds} ms.</value></data>
+  <data name="Qcom_LogResponseTiming" xml:space="preserve"><value>Firehose response: status={Status} rawmode={RawMode} elapsed={ElapsedMilliseconds:F1} ms budget={TimeoutMilliseconds} ms.</value></data>
+  <data name="Qcom_LogWireCommand" xml:space="preserve"><value>Firehose send: command={CommandName} bytes={ByteCount}.</value></data>
+  <data name="Qcom_LogResponseInterrupted" xml:space="preserve"><value>Firehose receive interrupted: exception={ExceptionType} elapsed={ElapsedMilliseconds:F1} ms budget={TimeoutMilliseconds} ms.</value></data>
 </root>

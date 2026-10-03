@@ -412,4 +412,15 @@
   <data name="Qcom_DeviceTextRedacted" xml:space="preserve"><value>设备诊断包含敏感材料或 XML，已隐藏。</value></data>
   <data name="Qcom_DeviceTextTruncated" xml:space="preserve"><value>{0}…（已截断）</value></data>
   <data name="Firehose_XmlResponseTooLarge" xml:space="preserve"><value>Firehose 响应累计 XML 超过 {0} 字节。</value></data>
+  <data name="Qcom_OplusSignRequired" xml:space="preserve"><value>Oplus 初始化需要 Sign。Legacy 必须提供；Pt 无匹配芯片签名时请手动提供。</value></data>
+  <data name="Qcom_OplusSignInvalid" xml:space="preserve"><value>Oplus Sign 必须是 1 至 4096 字节的可读二进制资源。</value></data>
+  <data name="Qcom_OplusSignRejected" xml:space="preserve"><value>Oplus Sign 验证未通过，请重新进入 EDL 并检查 Digest 与 Sign。</value></data>
+  <data name="Qcom_LogOplusDigestBootstrap" xml:space="preserve"><value>Oplus 启动：发送 Digest 签名表。</value></data>
+  <data name="Qcom_LogOplusVerify" xml:space="preserve"><value>Oplus 启动：发送 verify，再发送 4096 字节 Sign。</value></data>
+  <data name="Qcom_LogOplusVerified" xml:space="preserve"><value>Oplus Sign 验证及 sha256init 成功，继续配置存储。</value></data>
+  <data name="Qcom_LogOplusSignRejected" xml:space="preserve"><value>Oplus Sign 未通过验证，请求一次手动替换。</value></data>
+  <data name="Qcom_LogStartupWait" xml:space="preserve"><value>等待 Firehose 启动日志，预算 {TimeoutMilliseconds} ms。</value></data>
+  <data name="Qcom_LogResponseTiming" xml:space="preserve"><value>Firehose 响应：状态={Status} rawmode={RawMode} 耗时={ElapsedMilliseconds:F1} ms 预算={TimeoutMilliseconds} ms。</value></data>
+  <data name="Qcom_LogWireCommand" xml:space="preserve"><value>Firehose 发送：命令={CommandName} 字节数={ByteCount}。</value></data>
+  <data name="Qcom_LogResponseInterrupted" xml:space="preserve"><value>Firehose 接收中断：异常={ExceptionType} 耗时={ElapsedMilliseconds:F1} ms 预算={TimeoutMilliseconds} ms。</value></data>
 </root>

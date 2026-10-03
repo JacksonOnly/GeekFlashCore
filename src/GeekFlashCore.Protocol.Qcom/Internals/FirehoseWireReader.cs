@@ -58,7 +58,7 @@ internal sealed class FirehoseWireReader : IDisposable
         }
     }
 
-    public FirehoseResponse ReadStartupLogs(int timeoutMilliseconds)
+    public FirehoseResponse ReadStartupLogs(int timeoutMilliseconds, Action<FirehoseResponseLog>? publishLog = null)
     {
         ThrowIfDisposed();
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
@@ -72,9 +72,12 @@ internal sealed class FirehoseWireReader : IDisposable
                 throw new InvalidDataException(Strings.Firehose_StartupDataNotXml);
             AddPacketBudget(ref responseBytes, packet.Length);
 
+            int firstLog = logs.Count;
             FirehoseResponseParser.ParseLogs(packet, logs);
+            for (int index = firstLog; index < logs.Count; index++) publishLog?.Invoke(logs[index]);
             if (logs.Exists(static log =>
-                    log.Message.Contains("End of supported functions", StringComparison.Ordinal)))
+                    log.Message.Contains("End of supported functions", StringComparison.Ordinal) ||
+                    log.Message.Contains("VIP is enabled", StringComparison.OrdinalIgnoreCase)))
                 return new FirehoseResponse(
                     logs,
                     new Dictionary<string, string>(),

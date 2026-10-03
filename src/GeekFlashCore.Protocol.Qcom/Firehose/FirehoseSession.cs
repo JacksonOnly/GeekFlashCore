@@ -336,6 +336,42 @@ public sealed class FirehoseSession : IDisposable
 
     internal void Invalidate() => SetState(FirehoseSessionState.Faulted);
 
+    internal FirehoseCommandResult SendOplusSign(ReadOnlySpan<byte> signature, CancellationToken cancellationToken)
+    {
+        using OperationLease operation = Enter(FirehoseSessionState.RawTransfer);
+        try
+        {
+            FirehoseCommandResult result = _executor.SendOplusSign(signature, cancellationToken);
+            SetState(_stateBeforeRaw);
+            return result;
+        }
+        catch { SetState(FirehoseSessionState.Faulted); throw; }
+    }
+
+    internal void BeginOplusVerify(CancellationToken cancellationToken)
+    {
+        using OperationLease operation = EnterCommand();
+        FirehoseSessionState initial = State;
+        try
+        {
+            _executor.BeginOplusVerify(_xmlDeclarationAttribute, cancellationToken);
+            _stateBeforeRaw = initial;
+            SetState(FirehoseSessionState.RawTransfer);
+        }
+        catch (FirehoseNakException exception) { CompleteNak(exception, initial); throw; }
+        catch { SetState(FirehoseSessionState.Faulted); throw; }
+    }
+
+    internal void ResetLegacyPacketCount() => _legacyCounter?.Reset();
+
+    internal FirehoseCommandResult ReadOplusRejectionDetails(FirehoseCommandResult result, int timeout,
+        CancellationToken cancellationToken)
+    {
+        using OperationLease operation = EnterCommand();
+        try { return _executor.ReadOplusRejectionDetails(result, timeout, cancellationToken); }
+        catch { SetState(FirehoseSessionState.Faulted); throw; }
+    }
+
     public void Dispose()
     {
         lock (_lifecycleLock)

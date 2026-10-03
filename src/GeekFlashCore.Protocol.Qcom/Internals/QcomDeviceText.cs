@@ -11,6 +11,8 @@ internal static partial class QcomDeviceText
 
     internal static string ForDisplay(string message)
     {
+        // Exact diagnostic allowlist: retain useful status/code, never an appended blob.
+        if (SafeSignatureStatus().IsMatch(message)) return message.Trim();
         if (message.IndexOfAny(['<', '>']) >= 0 ||
             SensitiveMarkers.Any(marker => message.Contains(marker, StringComparison.OrdinalIgnoreCase)) ||
             EncodedMaterial().IsMatch(message))
@@ -26,4 +28,7 @@ internal static partial class QcomDeviceText
 
     [GeneratedRegex("[0-9a-fA-F]{32,}|[A-Za-z0-9+/]{64,}={0,2}", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex EncodedMaterial();
+
+    [GeneratedRegex(@"\A\s*(?:ERROR:\s*)?(?:Verifying signature failed with [0-9]{1,10}|Authentication of signed hash failed [0-9]{1,10}|verify passed)\s*\z", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    private static partial Regex SafeSignatureStatus();
 }

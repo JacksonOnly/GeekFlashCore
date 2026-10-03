@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Diagnostics;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using GeekFlashCore.Transport.Abstractions;
 using Serilog;
@@ -24,15 +25,34 @@ internal sealed class FirehoseCmdReceiver : IDisposable
 
     public FirehoseResponse ReceiveStartupLog(int? timeoutMilliseconds = null)
     {
-        FirehoseResponse response = _reader.ReadStartupLogs(
-            timeoutMilliseconds ?? _readTimeoutMilliseconds);
-        PublishLogs(response);
+        long started = Stopwatch.GetTimestamp();
+        _logger.Debug(Strings.Qcom_LogStartupWait, timeoutMilliseconds ?? _readTimeoutMilliseconds);
+        FirehoseResponse response;
+        try { response = _reader.ReadStartupLogs(timeoutMilliseconds ?? _readTimeoutMilliseconds, PublishLog); }
+        catch (Exception exception)
+        {
+            _logger.Debug(Strings.Qcom_LogResponseInterrupted, exception.GetType().Name,
+                Stopwatch.GetElapsedTime(started).TotalMilliseconds, timeoutMilliseconds ?? _readTimeoutMilliseconds);
+            throw;
+        }
+        _logger.Debug(Strings.Qcom_LogResponseTiming, response.Status, response.RawMode,
+            Stopwatch.GetElapsedTime(started).TotalMilliseconds, timeoutMilliseconds ?? _readTimeoutMilliseconds);
         return response;
     }
 
     public FirehoseResponse Receive(bool publishLogs = true, CancellationToken cancellationToken = default)
     {
-        FirehoseResponse response = _reader.ReadResponse(_readTimeoutMilliseconds, cancellationToken);
+        long started = Stopwatch.GetTimestamp();
+        FirehoseResponse response;
+        try { response = _reader.ReadResponse(_readTimeoutMilliseconds, cancellationToken); }
+        catch (Exception exception)
+        {
+            _logger.Debug(Strings.Qcom_LogResponseInterrupted, exception.GetType().Name,
+                Stopwatch.GetElapsedTime(started).TotalMilliseconds, _readTimeoutMilliseconds);
+            throw;
+        }
+        _logger.Debug(Strings.Qcom_LogResponseTiming, response.Status, response.RawMode,
+            Stopwatch.GetElapsedTime(started).TotalMilliseconds, _readTimeoutMilliseconds);
         if (publishLogs) PublishLogs(response);
         if (HasDiagnosticAttributes(response) && _logger.IsEnabled(LogEventLevel.Debug))
         {
@@ -46,8 +66,15 @@ internal sealed class FirehoseCmdReceiver : IDisposable
 
     public FirehoseResponse? PollResponse() => _reader.PollResponse();
 
-    internal FirehoseResponse? ReceiveOptional(int timeout, CancellationToken cancellationToken) =>
-        _reader.ReadOptionalResponse(timeout, cancellationToken);
+    internal FirehoseResponse? ReceiveOptional(int timeout, CancellationToken cancellationToken)
+    {
+        long started = Stopwatch.GetTimestamp();
+        FirehoseResponse? response = _reader.ReadOptionalResponse(timeout, cancellationToken);
+        if (response is not null) PublishLogs(response);
+        _logger.Debug(Strings.Qcom_LogResponseTiming, response?.Status, response?.RawMode,
+            Stopwatch.GetElapsedTime(started).TotalMilliseconds, timeout);
+        return response;
+    }
 
     internal FirehoseResponse ReceiveWithin(int timeout, CancellationToken cancellationToken) =>
         _reader.ReadResponse(timeout, cancellationToken);
@@ -124,13 +151,17 @@ internal sealed class FirehoseCmdReceiver : IDisposable
     private void PublishLogs(FirehoseResponse response)
     {
         foreach (FirehoseResponseLog log in response.Logs)
-        {
+            PublishLog(log);
+    }
+
+    private void PublishLog(FirehoseResponseLog log)
+    {
             string message = QcomDeviceText.ForDisplay(log.Message);
             if (log.Level == FirehoseLogLevel.Info &&
                 log.Message.StartsWith("Calling handler for ", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.Debug(Strings.Qcom_LogDeviceMessage, message);
-                continue;
+                return;
             }
 
             switch (log.Level)
@@ -148,7 +179,6 @@ internal sealed class FirehoseCmdReceiver : IDisposable
                 _logger.Information(Strings.Qcom_LogDeviceMessage, message);
                     break;
             }
-        }
     }
 
     private static bool HasDiagnosticAttributes(FirehoseResponse response)

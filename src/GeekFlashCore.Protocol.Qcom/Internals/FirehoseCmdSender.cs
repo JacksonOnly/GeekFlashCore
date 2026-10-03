@@ -1,7 +1,9 @@
 using System.Buffers;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
+using GeekFlashCore.Protocol.Qcom.Firehose;
 using GeekFlashCore.Transport.Abstractions;
 using Serilog;
 
@@ -44,6 +46,8 @@ internal readonly struct FirehoseCmdSender
         try
         {
             int bytesWritten = Encoding.UTF8.GetBytes(xml, buffer);
+            if (_logger.IsEnabled(Serilog.Events.LogEventLevel.Debug))
+                _logger.Debug(Strings.Qcom_LogWireCommand, GetCommandName(xml), Math.Min(bytesWritten, maximumWireLength ?? bytesWritten));
             _transport.Write(buffer[..Math.Min(bytesWritten, maximumWireLength ?? bytesWritten)]);
             packetSent?.Invoke();
             _logger.Debug(Strings.Qcom_LogSendXml, bytesWritten);
@@ -54,6 +58,18 @@ internal readonly struct FirehoseCmdSender
             if (rented is not null)
                 ArrayPool<byte>.Shared.Return(rented);
         }
+    }
+
+    private static string GetCommandName(string xml)
+    {
+        // Log just the validated element name, never attributes, values or the XML.
+        using var reader = XmlReader.Create(new StringReader(FirehoseLegacyXml.ForValidation(xml)),
+            new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null,
+                MaxCharactersInDocument = FirehoseConstants.MaximumXmlPacketSize });
+        while (reader.Read())
+            if (reader.NodeType == XmlNodeType.Element && reader.Depth == 1)
+                return QcomDeviceText.ForDisplay(reader.Name);
+        return "?";
     }
 
     public void SendRaw(

@@ -8,6 +8,7 @@ namespace GeekFlashCore.CLI;
 
 internal static class QcomProtocolHostAdapter
 {
+    internal static void ValidateOptions(CliOptions input) => CreateOptions(input).Validate();
     public static ProtocolRegistration Registration { get; } = new(
         ProtocolType.QualcommEdl,
         new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "qcom", "qualcomm", "qualcommedl" },
@@ -42,7 +43,15 @@ internal static class QcomProtocolHostAdapter
             OnePlusProjectId = input.OnePlusProjectId,
             ReadTimeoutMilliseconds = input.ReadTimeout,
             WriteTimeoutMilliseconds = input.WriteTimeout,
-            OplusDigest = new OplusDigestConfiguration { Mode = mode },
+            ConnectTimeoutMilliseconds = input.ConnectTimeout,
+            ResourceRequestTimeoutMilliseconds = input.ResourceTimeout,
+            OplusDigest = new OplusDigestConfiguration
+            {
+                Mode = mode, MaxCommandsBeforeDigest = input.LegacyMaxPackets,
+                InitialPacketCount = input.LegacyInitialPackets, FixedSectorCount = input.LegacyFixedSectors,
+                NopXml = input.LegacyNop, MaximumXmlSendSize = input.LegacyXmlLimit,
+                DigestResponseTimeoutMilliseconds = input.LegacyDigestTimeout
+            },
             FirehoseDigest = new FirehoseDigestConfiguration { Enabled = !string.IsNullOrWhiteSpace(input.Digest) },
             FirehoseVip = new FirehoseVipConfiguration { Enabled = !string.IsNullOrWhiteSpace(input.VipSigned) }
         };

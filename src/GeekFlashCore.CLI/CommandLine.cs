@@ -14,15 +14,17 @@ internal static class CommandLine
             string arg = args[i];
             if (arg is "-h" or "--help") return builder with { Command = "help" };
             if (arg is "-v" or "--verbose") { builder = builder with { Verbose = true }; continue; }
+            if (arg == "--non-interactive") { builder = builder with { NonInteractive = true }; continue; }
             string? value = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..] : null;
             string name = arg.Contains('=') ? arg[..arg.IndexOf('=')] : arg;
             if (name.StartsWith("--", StringComparison.Ordinal))
             {
-                if (name is not ("--port" or "--usb" or "--protocol" or "--loader" or "--digest" or "--vip-signed" or "--vip-chained" or "--oplus-digest" or "--oplus-mode" or "--oneplus-projid" or "--vendor" or "--auth" or "--read-timeout" or "--write-timeout"))
+                if (name is not ("--port" or "--usb" or "--protocol" or "--loader" or "--digest" or "--vip-signed" or "--vip-chained" or "--oplus-digest" or "--oplus-mode" or "--oneplus-projid" or "--vendor" or "--auth" or "--read-timeout" or "--write-timeout" or "--connect-timeout" or "--resource-timeout" or "--device-wait-timeout" or "--legacy-max-packets" or "--legacy-initial-packets" or "--legacy-fixed-sectors" or "--legacy-digest-timeout" or "--legacy-xml-limit" or "--legacy-nop"))
                     throw new ArgumentException(Strings.FormatCli_UnknownOption(name));
-                value ??= i + 1 < args.Length
+                value ??= i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal)
                     ? args[++i]
                     : throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
+                if (string.IsNullOrWhiteSpace(value)) throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
                 builder = name switch
                 {
                     "--port" => builder with { Port = value }, "--usb" => builder with { Usb = value }, "--protocol" => builder with { Protocol = value },
@@ -32,13 +34,26 @@ internal static class CommandLine
                     "--oneplus-projid" => builder with { OnePlusProjectId = value },
                     "--auth" => builder with { AuthenticationKind = ParseAuthentication(value) },
                     "--read-timeout" => builder with { ReadTimeout = int.Parse(value) }, "--write-timeout" => builder with { WriteTimeout = int.Parse(value) },
+                    "--connect-timeout" => builder with { ConnectTimeout = int.Parse(value) },
+                    "--resource-timeout" => builder with { ResourceTimeout = int.Parse(value) },
+                    "--device-wait-timeout" => builder with { DeviceWaitTimeout = int.Parse(value) },
+                    "--legacy-max-packets" => builder with { LegacyMaxPackets = int.Parse(value) },
+                    "--legacy-initial-packets" => builder with { LegacyInitialPackets = uint.Parse(value) },
+                    "--legacy-fixed-sectors" => builder with { LegacyFixedSectors = int.Parse(value) },
+                    "--legacy-digest-timeout" => builder with { LegacyDigestTimeout = int.Parse(value) },
+                    "--legacy-xml-limit" => builder with { LegacyXmlLimit = int.Parse(value) },
+                    "--legacy-nop" => builder with { LegacyNop = value },
                     _ => throw new ArgumentException(Strings.FormatCli_UnknownOption(name))
                 };
                 continue;
             }
             positional.Add(arg);
         }
-        return builder with { Command = positional.FirstOrDefault() ?? "interactive", Arguments = positional.Skip(1).ToArray() };
+        builder = builder with { Command = positional.FirstOrDefault() ?? "interactive", Arguments = positional.Skip(1).ToArray() };
+        builder.Validate();
+        if (builder.NonInteractive && builder.Command == "interactive")
+            throw new ArgumentException(Strings.Cli_NonInteractiveCommandRequired);
+        return builder;
     }
 
     private static QcomAuthenticationKind ParseAuthentication(string value) =>
@@ -54,5 +69,7 @@ internal static class CommandLine
         foreach (string usage in CommandSyntax.Usages.Values.Where(x => x.Length > 0)) Console.WriteLine("  " + usage);
         Console.WriteLine(Strings.Cli_HelpOptionsPrimary);
         Console.WriteLine(Strings.Cli_HelpOptionsSecondary);
+        Console.WriteLine(Strings.Cli_HelpOptionsTimeouts);
+        Console.WriteLine(Strings.Cli_HelpOptionsLegacy);
     }
 }

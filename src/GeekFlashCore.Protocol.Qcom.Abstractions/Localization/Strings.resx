@@ -9,4 +9,5 @@
   <data name="VipFrameCapacitiesPositive" xml:space="preserve"><value>VIP 帧容量必须为正数。</value></data>
   <data name="ProgramSourceLargerThanTarget" xml:space="preserve"><value>源数据大于目标范围。</value></data>
   <data name="VipAndOplusConflict" xml:space="preserve"><value>Firehose VIP 与 Oplus Digest 模式不能同时启用。</value></data>
+  <data name="LegacyNopInvalid" xml:space="preserve"><value>Legacy NOP 必须是包含一个 nop 命令的安全 data XML。</value></data>
 </root>

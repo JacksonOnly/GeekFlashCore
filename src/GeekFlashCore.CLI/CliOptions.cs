@@ -17,8 +17,34 @@ internal sealed record CliOptions
     public QcomVendorKind Vendor { get; init; } = QcomVendorKind.Auto;
     public QcomAuthenticationKind? AuthenticationKind { get; init; }
     public bool Verbose { get; init; }
+    public bool NonInteractive { get; init; }
+    public int ConnectTimeout { get; init; } = QcomProtocolOptions.DefaultConnectTimeoutMilliseconds;
+    public int ResourceTimeout { get; init; } = QcomProtocolOptions.DefaultResourceRequestTimeoutMilliseconds;
+    public int DeviceWaitTimeout { get; init; } = 30_000;
+    public int LegacyMaxPackets { get; init; } = 53;
+    public uint LegacyInitialPackets { get; init; }
+    public int LegacyFixedSectors { get; init; }
+    public int LegacyDigestTimeout { get; init; } = 1000;
+    public int LegacyXmlLimit { get; init; } = 4096;
+    public string? LegacyNop { get; init; }
     public int ReadTimeout { get; init; } = QcomProtocolOptions.DefaultReadTimeoutMilliseconds;
     public int WriteTimeout { get; init; } = QcomProtocolOptions.DefaultWriteTimeoutMilliseconds;
     public string Command { get; init; } = "interactive";
     public string[] Arguments { get; init; } = [];
+
+    public void Validate()
+    {
+        if (ReadTimeout <= 0 || WriteTimeout <= 0 || ConnectTimeout <= 0 || ResourceTimeout <= 0 || DeviceWaitTimeout <= 0)
+            throw new ArgumentException(Localization.Strings.Cli_TimeoutMustBePositive);
+        if (!Enum.IsDefined(Vendor) || !Enum.IsDefined(OplusMode) ||
+            AuthenticationKind is { } auth && !Enum.IsDefined(auth))
+            throw new ArgumentException(Localization.Strings.Cli_EnumInvalid);
+        if (Port is not null && Usb is not null)
+            throw new ArgumentException(Localization.Strings.Cli_TransportConflict);
+        if (Usb is { } usb && !TransportResolver.TryParseUsb(usb, out _, out _))
+            throw new ArgumentException(Localization.Strings.Cli_UsbFormatInvalid);
+        if (VipChained is not null && VipSigned is null)
+            throw new ArgumentException(Localization.Strings.Cli_VipSignedRequired);
+        QcomProtocolHostAdapter.ValidateOptions(this);
+    }
 }

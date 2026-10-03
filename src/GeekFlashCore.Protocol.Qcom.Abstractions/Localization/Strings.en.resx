@@ -9,4 +9,5 @@
   <data name="VipFrameCapacitiesPositive" xml:space="preserve"><value>VIP frame capacities must be positive.</value></data>
   <data name="ProgramSourceLargerThanTarget" xml:space="preserve"><value>The source is larger than the target range.</value></data>
   <data name="VipAndOplusConflict" xml:space="preserve"><value>Firehose VIP and Oplus Digest modes cannot be enabled together.</value></data>
+  <data name="LegacyNopInvalid" xml:space="preserve"><value>Legacy NOP must be safe data XML containing exactly one nop command.</value></data>
 </root>

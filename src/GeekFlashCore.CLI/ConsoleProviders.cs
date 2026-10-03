@@ -19,68 +19,68 @@ internal static class ConsolePath
 
 internal sealed class ConsoleSaharaImageProvider(ConsoleUi ui, string? configuredPath) : ISaharaImageProvider
 {
-    public ValueTask<SaharaImageEntryResponse> ResolveAsync(SaharaImageEntryRequest request, CancellationToken cancellationToken = default)
+    public async ValueTask<SaharaImageEntryResponse> ResolveAsync(SaharaImageEntryRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        string? path = ConsolePath.Normalize(configuredPath ?? ui.AskOptional(Strings.Cli_SaharaProgrammerPrompt));
+        string? path = ConsolePath.Normalize(configuredPath ?? await ui.AskOptionalAsync(Strings.Cli_SaharaProgrammerPrompt, cancellationToken).ConfigureAwait(false));
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             throw new FileNotFoundException(Strings.Cli_SaharaProgrammerMissing, path);
         var source = new FileDataSource(path);
-        return ValueTask.FromResult(new SaharaImageEntryResponse([new SaharaImageEntry(13, source.Length, source)]));
+        return new SaharaImageEntryResponse([new SaharaImageEntry(13, source.Length, source)]);
     }
 }
 
 internal sealed class ConsoleOplusDigestProvider(ConsoleUi ui, string? configuredPath) : IOplusDigestProvider
 {
-    public ValueTask<OplusDigestResourceResponse> ResolveAsync(OplusDigestResourceRequest request, CancellationToken cancellationToken = default)
+    public async ValueTask<OplusDigestResourceResponse> ResolveAsync(OplusDigestResourceRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         string? path = ConsolePath.Normalize(configuredPath ??
-            ui.AskOptional(Strings.FormatCli_OplusDigestPrompt(request.Mode)));
+            await ui.AskOptionalAsync(Strings.FormatCli_OplusDigestPrompt(request.Mode), cancellationToken).ConfigureAwait(false));
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             throw new FileNotFoundException(Strings.Cli_OplusDigestMissing, path);
-        return ValueTask.FromResult(new OplusDigestResourceResponse(new FileDataSource(path)));
+        return new OplusDigestResourceResponse(new FileDataSource(path));
     }
 }
 
 internal sealed class ConsoleFirehoseDigestProvider(ConsoleUi ui, string? configuredPath) : IFirehoseDigestProvider
 {
-    public ValueTask<FirehoseDigestResourceResponse> ResolveAsync(FirehoseDigestResourceRequest request, CancellationToken cancellationToken = default)
+    public async ValueTask<FirehoseDigestResourceResponse> ResolveAsync(FirehoseDigestResourceRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        string? path = ConsolePath.Normalize(configuredPath ?? ui.AskOptional(Strings.Cli_FirehoseDigestPrompt));
+        string? path = ConsolePath.Normalize(configuredPath ?? await ui.AskOptionalAsync(Strings.Cli_FirehoseDigestPrompt, cancellationToken).ConfigureAwait(false));
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             throw new FileNotFoundException(Strings.Cli_FirehoseDigestMissing, path);
-        return ValueTask.FromResult(new FirehoseDigestResourceResponse(new FileDataSource(path)));
+        return new FirehoseDigestResourceResponse(new FileDataSource(path));
     }
 }
 
 internal sealed class ConsoleVipProvider(ConsoleUi ui, string? signedPath, string? chainedPath) : IFirehoseVipProvider
 {
-    public ValueTask<FirehoseVipResourceResponse> ResolveAsync(FirehoseVipResourceRequest request, CancellationToken cancellationToken = default)
+    public async ValueTask<FirehoseVipResourceResponse> ResolveAsync(FirehoseVipResourceRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        string? signed = ConsolePath.Normalize(signedPath ?? ui.AskOptional(Strings.Cli_VipSignedPrompt));
+        string? signed = ConsolePath.Normalize(signedPath ?? await ui.AskOptionalAsync(Strings.Cli_VipSignedPrompt, cancellationToken).ConfigureAwait(false));
         if (string.IsNullOrWhiteSpace(signed) || !File.Exists(signed))
             throw new FileNotFoundException(Strings.Cli_VipSignedMissing, signed);
         var chained = new List<IDataSource>();
-        string? path = ConsolePath.Normalize(chainedPath ?? ui.AskOptional(Strings.Cli_VipChainedPrompt));
+        string? path = ConsolePath.Normalize(chainedPath ?? await ui.AskOptionalAsync(Strings.Cli_VipChainedPrompt, cancellationToken).ConfigureAwait(false));
         if (!string.IsNullOrWhiteSpace(path))
         {
             if (!File.Exists(path)) throw new FileNotFoundException(Strings.Cli_VipChainedMissing, path);
             chained.Add(new FileDataSource(path));
         }
-        return ValueTask.FromResult(new FirehoseVipResourceResponse(new FileDataSource(signed), chained));
+        return new FirehoseVipResourceResponse(new FileDataSource(signed), chained);
     }
 }
 
 internal sealed class ConsoleAuthenticationProvider(ConsoleUi ui) : IVendorAuthenticationProvider
 {
-    public ValueTask<VendorAuthenticationResourceResponse> ResolveAsync(VendorAuthenticationResourceRequest request, CancellationToken cancellationToken = default)
+    public async ValueTask<VendorAuthenticationResourceResponse> ResolveAsync(VendorAuthenticationResourceRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ui.WriteLine(Strings.FormatCli_AuthenticationRequired(request.Kind));
-        string value = ui.Ask(Strings.Cli_AuthenticationPayloadPrompt, secret: true);
+        string value = await ui.AskAsync(Strings.Cli_AuthenticationPayloadPrompt, cancellationToken, secret: true).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(value))
             throw new OperationCanceledException(Strings.Cli_AuthenticationCancelled);
         byte[]? bytes = null;
@@ -92,7 +92,7 @@ internal sealed class ConsoleAuthenticationProvider(ConsoleUi ui) : IVendorAuthe
             bytes = null;
             var response = new VendorAuthenticationResourceResponse(owner);
             owner = null;
-            return ValueTask.FromResult(response);
+            return response;
         }
         catch (FormatException exception)
         {

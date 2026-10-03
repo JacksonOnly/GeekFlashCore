@@ -1,3 +1,7 @@
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Xml;
+
 namespace GeekFlashCore.Protocol.Qcom.Abstractions;
 
 public sealed record FirehoseConfiguration
@@ -61,5 +65,42 @@ public sealed record OplusDigestConfiguration
             throw new ArgumentOutOfRangeException(nameof(DigestResponseTimeoutMilliseconds));
         if (NopXml?.Length > FirehoseConstants.MaximumXmlPacketSize)
             throw new ArgumentOutOfRangeException(nameof(NopXml));
+        if (NopXml is not null) ValidateNop(NopXml);
+    }
+
+    private static void ValidateNop(string xml)
+    {
+        if (Encoding.UTF8.GetByteCount(xml) > FirehoseConstants.MaximumXmlPacketSize)
+            throw new ArgumentException(Strings.LegacyNopInvalid, nameof(NopXml));
+        // These two declaration attributes are intentional Rector compatibility;
+        // validation normalizes them without changing the bytes sent to the device.
+        int end = xml.IndexOf("?>", StringComparison.Ordinal);
+        if (xml.StartsWith("<?xml", StringComparison.Ordinal) && end >= 0)
+            xml = Regex.Replace(xml[..end], "\\s+(?:chimerais|Bylaowang)\\s*=\\s*(?:\"power\"|'power')", "",
+                RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)) + xml[end..];
+        try
+        {
+            using var reader = XmlReader.Create(new StringReader(xml), new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null,
+                MaxCharactersInDocument = FirehoseConstants.MaximumXmlPacketSize,
+                IgnoreComments = true, IgnoreProcessingInstructions = true
+            });
+            reader.MoveToContent();
+            if (reader.NodeType != XmlNodeType.Element || reader.Name != "data" || reader.IsEmptyElement)
+                throw new XmlException();
+            int commands = 0;
+            while (reader.Read())
+            {
+                if (reader.NodeType != XmlNodeType.Element) continue;
+                if (reader.Depth != 1 || reader.Name != "nop") throw new XmlException();
+                commands++;
+            }
+            if (commands != 1) throw new XmlException();
+        }
+        catch (XmlException exception)
+        {
+            throw new ArgumentException(Strings.LegacyNopInvalid, nameof(NopXml), exception);
+        }
     }
 }

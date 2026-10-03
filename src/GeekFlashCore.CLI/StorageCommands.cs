@@ -60,8 +60,8 @@ internal static class StorageCommands
                             SectorCount = length / SectorSize(protocol), SectorSize = SectorSize(protocol) };
                     }
                 }
-                await using var stream = File.Create(file);
-                await protocol.ReadAsync(new ReadDestination { Target = target, OutputStream = stream, OwnsStream = false }, progress, ct);
+                await AtomicReadOutput.WriteAsync(file, stream => protocol.ReadAsync(
+                    new ReadDestination { Target = target, OutputStream = stream, OwnsStream = false }, progress, ct), ct);
             }
             else await protocol.WriteAsync(new WriteSource { Source = new FileDataSource(file), Target = target }, progress, ct);
         }

@@ -1,4 +1,3 @@
-using System.Text;
 using GeekFlashCore.CLI.Localization;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
@@ -12,6 +11,10 @@ internal sealed class ConsoleUi
     private readonly object _gate = new();
     private int _progressRows;
     private readonly ProgressDisplay _progress = new(TimeProvider.System);
+    private readonly ConsoleInputReader _input;
+    public bool AllowPrompts { get; set; } = true;
+
+    public ConsoleUi(TextReader? input = null) => _input = new ConsoleInputReader(input);
 
     public void WriteBanner() => WriteLine(Strings.Cli_Banner);
 
@@ -33,32 +36,29 @@ internal sealed class ConsoleUi
         }
     }
 
-    public string Ask(string prompt, string? defaultValue = null, bool secret = false)
+    public async Task<string> AskAsync(string prompt, CancellationToken cancellationToken,
+        string? defaultValue = null, bool secret = false)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!AllowPrompts || !_input.CanPrompt) throw new InvalidOperationException(Strings.Cli_InputUnavailable);
         lock (_gate)
         {
             ClearProgressUnsafe();
             Console.Write($"{prompt}{(defaultValue is null ? "" : $" [{defaultValue}]")}: ");
-            if (!secret) return ReadLine(defaultValue);
-            var buffer = new StringBuilder();
-            while (true)
-            {
-                var key = Console.ReadKey(intercept: true);
-                if (key.Key == ConsoleKey.Enter) { Console.WriteLine(); return buffer.ToString(); }
-                if (key.Key == ConsoleKey.Backspace && buffer.Length > 0) { buffer.Length--; continue; }
-                if (!char.IsControl(key.KeyChar)) buffer.Append(key.KeyChar);
-            }
         }
+        string? value = await _input.ReadAsync(secret, cancellationToken).ConfigureAwait(false);
+        return string.IsNullOrEmpty(value) ? defaultValue ?? string.Empty : value;
     }
 
-    public string? AskOptional(string prompt) => Ask(prompt, null) switch { "" => null, var value => value };
-
-    public bool Confirm(string prompt, bool defaultValue = false)
+    public async Task<string?> AskOptionalAsync(string prompt, CancellationToken cancellationToken)
     {
-        string suffix = defaultValue ? "Y/n" : "y/N";
-        string value = Ask($"{prompt} ({suffix})");
-        return string.IsNullOrWhiteSpace(value) ? defaultValue : value.StartsWith("y", StringComparison.OrdinalIgnoreCase);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!AllowPrompts || !_input.CanPrompt) return null;
+        string value = await AskAsync(prompt, cancellationToken).ConfigureAwait(false);
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
+
+    public Task<string?> ReadInputAsync(CancellationToken cancellationToken) => _input.ReadAsync(false, cancellationToken);
 
     public void Report(ProgressRecord record)
     {
@@ -160,7 +160,6 @@ internal sealed class ConsoleUi
         return $"{bytes.ToString("0", System.Globalization.CultureInfo.InvariantCulture)} Bytes ({value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} {units[unit]})";
     }
 
-    public static string ReadLine(string? fallback = null) => Console.ReadLine() is { } value && value.Length > 0 ? value : fallback ?? string.Empty;
     public void LogException(Exception exception) => Log.Error(exception, Strings.Cli_LogCommandFailed, exception.Message);
 
     internal void WriteLog(LogEvent logEvent)

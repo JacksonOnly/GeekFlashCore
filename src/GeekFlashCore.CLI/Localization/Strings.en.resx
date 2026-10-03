@@ -92,4 +92,21 @@
   <data name="Cli_UsbDeviceFallback" xml:space="preserve"><value>USB device</value></data>
   <data name="Cli_SaharaProbeResult" xml:space="preserve"><value>Sahara v{0}, mode={1}, packet={2}</value></data>
   <data name="Cli_XmlResult" xml:space="preserve"><value>XML: {0}</value></data>
+  <data name="Cli_TimeoutMustBePositive" xml:space="preserve"><value>Timeouts must be positive milliseconds.</value></data>
+  <data name="Cli_EnumInvalid" xml:space="preserve"><value>Invalid vendor, authentication kind, or Oplus mode.</value></data>
+  <data name="Cli_TransportConflict" xml:space="preserve"><value>Specify either --port or --usb.</value></data>
+  <data name="Cli_VipSignedRequired" xml:space="preserve"><value>--vip-chained requires --vip-signed.</value></data>
+  <data name="Cli_NonInteractiveCommandRequired" xml:space="preserve"><value>--non-interactive requires a command.</value></data>
+  <data name="Cli_DeviceWaitTimedOut" xml:space="preserve"><value>Device discovery exceeded {0} ms. Check the connection or specify --port / --usb.</value></data>
+  <data name="Cli_InputUnavailable" xml:space="preserve"><value>This operation requires terminal input. Supply the required resources through command-line options.</value></data>
+  <data name="Cli_InputTooLong" xml:space="preserve"><value>Input exceeds the allowed length.</value></data>
+  <data name="Cli_HelpOptionsTimeouts" xml:space="preserve"><value>  --non-interactive  Disable resource prompts; for scripts
+  --connect-timeout MS  Initial probe budget (default 1500; not a total connection deadline)
+  --resource-timeout MS  Per-resource request budget (default 15000)
+  --device-wait-timeout MS  Automatic discovery wait budget (default 30000)
+  --read-timeout MS / --write-timeout MS  Per-I/O budget (default 10000)</value></data>
+  <data name="Cli_HelpOptionsLegacy" xml:space="preserve"><value>  --oplus-mode OplusDigestLegacy --oplus-digest FILE
+  --legacy-max-packets N (default 53) --legacy-initial-packets N (default 0)
+  --legacy-fixed-sectors N (default 0, unsegmented) --legacy-nop XML
+  --legacy-digest-timeout MS (default 1000) --legacy-xml-limit N (default 4096)</value></data>
 </root>

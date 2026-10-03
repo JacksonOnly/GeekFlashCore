@@ -97,7 +97,8 @@ Interfaces：可取消单输入通道；新增 connect/resource/device-wait/Lega
 - 审查裁定：Sahara 按设备请求上传，分包/Configure/LUN 查询已有有界单次等待；不添加可能中断正常大镜像的统一读写总时限。同步阻塞 I/O 的取消最多等当前单次超时，持续有有效进度的操作由调用方 token 控制；CLI 明示各超时用途。Configure 是有限次数回退，多 LUN 有最大数量，累计连接耗时可能超过 ConnectTimeout（该字段用于探测）。没有硬件证据，不宣称真机验证或吞吐提升。
 - [x] QA-D：连接/实际读写路径修复与回归。
 - [x] QA-D 补充（2026-10-03）：模拟真实编排 ConnectAsync → 分片 RAW 取消 → Cleanup → ConnectAsync 复现重连读到旧 pending RAW 的失败，清理 QcomSessionTransport 前缀/溢出缓存后 GREEN。同一测试验证 TargetInfo 清空、旧块视图代数失效、新视图读回 512 字节；Pt 跨分区映射/未覆盖范围回归通过。使用模拟传输，非硬件测试。
-- [ ] QA-E：CLI 完善。
+- [x] QA-E（2026-10-03）：全局参数 8 项 RED→GREEN；额外 NOP/DTD/多命令校验 3 项 RED→GREEN，验证发生在设备发现前。取消输入与失败输出 2 项 RED→GREEN；选定协议过滤、非交互资源缺失、取消/成功输出替换回归通过。USB 传入读写预算、设备等待 30 秒默认总预算、连接/资源预算及 Legacy 参数映射、协议先于 transport 释放与工厂失败清理已完成。累计 47 项测试通过，CLI 使用说明已保存。
+- 输入裁定：终端按键轮询可取消；重定向只读命令，不提示资源/认证，保留唯一 pending stdin read 供下一次读取复用，避免取消后出现并发读任务。不会在 await 输入期间持有日志锁。stdin 底层不可取消时，一个读取任务可能等待到 EOF，CLI 退出不等待该任务，不会新建抢读者。
 - [ ] QA-F：完整验证、独立提交和风险收尾。
 
 ## 未决风险与恢复位置
@@ -105,4 +106,4 @@ Interfaces：可取消单输入通道；新增 connect/resource/device-wait/Lega
 - 工作树不含旧的本地测试工程；历史 246/51 测试结果不能算作本次完整回归结果，需在现有 `.tests` 逐项恢复必要覆盖。
 - Legacy NOP 文本优先、默认声明和长度截断语义已在设计明确；QA-C 须以逐字节 fixture 验证，防止全局声明注入覆盖原文。原配置成员保留，计数语义变化需迁移说明。
 - 尚未真实联机、读写或测量 USB 吞吐/取消延迟；静态发现与模拟证据分开记录。
-- 本次尚无提交。恢复时先检查本设计确认状态、`git status --short`，运行上述 5 项测试确认 4 个已知失败，再进入 QA-A。
+- 已提交 QA-A `a787b60`、QA-B `c78693d`、QA-C `499feb9`、QA-D `64dcb4f` / `d1fea65`。恢复先检查 `git status --short` 和本记录，从 QA-F 最终审查与验证继续。

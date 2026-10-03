@@ -92,4 +92,21 @@
   <data name="Cli_UsbDeviceFallback" xml:space="preserve"><value>USB 设备</value></data>
   <data name="Cli_SaharaProbeResult" xml:space="preserve"><value>Sahara v{0}, mode={1}, packet={2}</value></data>
   <data name="Cli_XmlResult" xml:space="preserve"><value>XML: {0}</value></data>
+  <data name="Cli_TimeoutMustBePositive" xml:space="preserve"><value>超时参数必须为正毫秒数。</value></data>
+  <data name="Cli_EnumInvalid" xml:space="preserve"><value>厂商、认证或 Oplus 模式无效。</value></data>
+  <data name="Cli_TransportConflict" xml:space="preserve"><value>--port 与 --usb 不能同时指定。</value></data>
+  <data name="Cli_VipSignedRequired" xml:space="preserve"><value>--vip-chained 需要同时指定 --vip-signed。</value></data>
+  <data name="Cli_NonInteractiveCommandRequired" xml:space="preserve"><value>--non-interactive 需要指定命令。</value></data>
+  <data name="Cli_DeviceWaitTimedOut" xml:space="preserve"><value>等待设备超过 {0} ms，请检查连接或显式指定 --port / --usb。</value></data>
+  <data name="Cli_InputUnavailable" xml:space="preserve"><value>此操作需要终端交互输入，请提前通过命令行指定所需资源。</value></data>
+  <data name="Cli_InputTooLong" xml:space="preserve"><value>输入长度超过允许范围。</value></data>
+  <data name="Cli_HelpOptionsTimeouts" xml:space="preserve"><value>  --non-interactive  禁止资源提示；用于脚本
+  --connect-timeout MS  初始探测预算（默认 1500；非整个连接时限）
+  --resource-timeout MS  每次资源请求预算（默认 15000）
+  --device-wait-timeout MS  自动发现等待预算（默认 30000）
+  --read-timeout MS / --write-timeout MS  单次 I/O 预算（默认 10000）</value></data>
+  <data name="Cli_HelpOptionsLegacy" xml:space="preserve"><value>  --oplus-mode OplusDigestLegacy --oplus-digest FILE
+  --legacy-max-packets N（默认 53） --legacy-initial-packets N（默认 0）
+  --legacy-fixed-sectors N（默认 0，不分段） --legacy-nop XML
+  --legacy-digest-timeout MS（默认 1000） --legacy-xml-limit N（默认 4096）</value></data>
 </root>

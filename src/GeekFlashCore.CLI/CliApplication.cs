@@ -20,6 +20,8 @@ internal sealed class CliApplication
 
     public async Task<int> RunAsync(CliOptions options, CancellationToken ct)
     {
+        options.Validate();
+        _ui.AllowPrompts = !options.NonInteractive;
         _ui.WriteBanner();
         ProtocolRegistration? requestedRegistration = null;
         if (!string.IsNullOrWhiteSpace(options.Protocol) && !ProtocolRegistry.TryResolve(options.Protocol, out requestedRegistration))
@@ -35,8 +37,8 @@ internal sealed class CliApplication
             return await InteractiveAsync(options, ct).ConfigureAwait(false);
 
         var connection = await CreateConnectionAsync(options, requestedRegistration, ct).ConfigureAwait(false);
+        using ITransport transport = connection.Transport;
         await using var protocol = connection.Protocol;
-        ITransport transport = connection.Transport;
         try
         {
             var progress = _progress;
@@ -52,14 +54,13 @@ internal sealed class CliApplication
         }
         catch (OperationCanceledException) { _ui.WriteLine(Strings.Cli_OperationCancelled); return 130; }
         catch (Exception exception) { _ui.LogException(exception); return 1; }
-        finally { transport.Dispose(); }
     }
 
     private async Task<int> InteractiveAsync(CliOptions options, CancellationToken ct)
     {
         var connection = await CreateConnectionAsync(options, null, ct).ConfigureAwait(false);
+        using ITransport transport = connection.Transport;
         await using var protocol = connection.Protocol;
-        ITransport transport = connection.Transport;
         try
         {
             await protocol.ConnectAsync(_progress, ct).ConfigureAwait(false);
@@ -68,7 +69,7 @@ internal sealed class CliApplication
             while (!ct.IsCancellationRequested)
             {
                 _ui.Write("geekflash> ");
-                string line = Console.ReadLine() ?? "exit";
+                string line = await _ui.ReadInputAsync(ct).ConfigureAwait(false) ?? "exit";
                 if (line.Equals("exit", StringComparison.OrdinalIgnoreCase) || line.Equals("quit", StringComparison.OrdinalIgnoreCase)) break;
                 try
                 {
@@ -76,13 +77,13 @@ internal sealed class CliApplication
                     if (parsed.Command.Equals("interactive", StringComparison.OrdinalIgnoreCase)) continue;
                     await ExecuteCommandAsync(protocol, connection.Registration, parsed, _progress, ct).ConfigureAwait(false);
                 }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
                 catch (Exception exception) { _ui.LogException(exception); }
             }
             return 0;
         }
         catch (OperationCanceledException) { return 130; }
         catch (Exception exception) { _ui.LogException(exception); return 1; }
-        finally { transport.Dispose(); }
     }
 
     private async Task<int> ExecuteCommandAsync(IProtocol protocol, ProtocolRegistration registration, CliOptions options, IProgress<ProgressRecord> progress, CancellationToken ct)
@@ -126,7 +127,8 @@ internal sealed class CliApplication
     {
         TransportResolution resolution = await _transportResolver.ResolveAsync(options, ct, requested).ConfigureAwait(false);
         ProtocolRegistration registration = requested ?? resolution.Registration;
-        return (registration.Factory(new ProtocolHostContext(_ui, options), resolution.Transport), resolution.Transport, registration);
+        try { return (registration.Factory(new ProtocolHostContext(_ui, options), resolution.Transport), resolution.Transport, registration); }
+        catch { resolution.Transport.Dispose(); throw; }
     }
 
     private static CliOptions NormalizeAndValidate(CliOptions options, ProtocolRegistration? registration)

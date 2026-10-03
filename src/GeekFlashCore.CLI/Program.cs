@@ -28,7 +28,7 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 Log.Information(Strings.Cli_LogFilePath, fileLog.FilePath);
 Log.Debug(Strings.Cli_LogSession, options.Command, options.EffectiveOplusMode, options.ConnectTimeout,
-    options.ReadTimeout, options.WriteTimeout, options.ResourceTimeout, Environment.Version);
+    options.ReadTimeout, options.WriteTimeout, options.EffectiveResourceTimeout, Environment.Version);
 using var cancellation = new CancellationTokenSource();
 Console.CancelKeyPress += (_, eventArgs) => { eventArgs.Cancel = true; cancellation.Cancel(); };
 try
@@ -38,7 +38,6 @@ try
 catch (OperationCanceledException)
 {
     Log.Warning(Strings.Cli_OperationCancelled);
-    Console.Error.WriteLine(Strings.Cli_OperationCancelled);
     return 130;
 }
 catch (Exception exception)

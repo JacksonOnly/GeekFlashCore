@@ -10,6 +10,7 @@ public sealed record QcomProtocolOptions
     public int ConnectTimeoutMilliseconds { get; init; } = DefaultConnectTimeoutMilliseconds;
     public int ReadTimeoutMilliseconds { get; init; } = DefaultReadTimeoutMilliseconds;
     public int WriteTimeoutMilliseconds { get; init; } = DefaultWriteTimeoutMilliseconds;
+    /// <summary>Resource request budget. -1 waits until caller or session cancellation; synchronous wire I/O remains bounded.</summary>
     public int ResourceRequestTimeoutMilliseconds { get; init; } = DefaultResourceRequestTimeoutMilliseconds;
     /// <summary>Send qdl-compatible Sahara HELLO response when the first protocol read times out.</summary>
     public bool ProbeFirehoseOnSaharaTimeout { get; init; } = true;
@@ -28,7 +29,8 @@ public sealed record QcomProtocolOptions
         ValidateTimeout(ConnectTimeoutMilliseconds, nameof(ConnectTimeoutMilliseconds));
         ValidateTimeout(ReadTimeoutMilliseconds, nameof(ReadTimeoutMilliseconds));
         ValidateTimeout(WriteTimeoutMilliseconds, nameof(WriteTimeoutMilliseconds));
-        ValidateTimeout(ResourceRequestTimeoutMilliseconds, nameof(ResourceRequestTimeoutMilliseconds));
+        if (ResourceRequestTimeoutMilliseconds != -1)
+            ValidateTimeout(ResourceRequestTimeoutMilliseconds, nameof(ResourceRequestTimeoutMilliseconds));
         ArgumentNullException.ThrowIfNull(Firehose);
         ArgumentNullException.ThrowIfNull(FirehoseDigest);
         ArgumentNullException.ThrowIfNull(FirehoseVip);

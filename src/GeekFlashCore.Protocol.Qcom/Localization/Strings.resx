@@ -423,4 +423,7 @@
   <data name="Qcom_LogResponseTiming" xml:space="preserve"><value>Firehose 响应：状态={Status} rawmode={RawMode} 耗时={ElapsedMilliseconds:F1} ms 预算={TimeoutMilliseconds} ms。</value></data>
   <data name="Qcom_LogWireCommand" xml:space="preserve"><value>Firehose 发送：命令={CommandName} 字节数={ByteCount}。</value></data>
   <data name="Qcom_LogResponseInterrupted" xml:space="preserve"><value>Firehose 接收中断：异常={ExceptionType} 耗时={ElapsedMilliseconds:F1} ms 预算={TimeoutMilliseconds} ms。</value></data>
+  <data name="Qcom_ResourceRequestTimedOut" xml:space="preserve"><value>资源请求超过 {0} ms；手动输入可使用无限资源预算 (-1)。</value></data>
+  <data name="Qcom_LogOplusResume" xml:space="preserve"><value>按调用方声明续接等待第一张 Digest 的 Oplus Loader：跳过 Sahara/启动日志，首包发送 Digest。此模式不适用于 RAW 中断或已认证会话。</value></data>
+  <data name="Qcom_LogOplusSilent" xml:space="preserve"><value>Oplus 被动探测未收到完整协议前缀。Loader 可能已运行且不重播日志；仅确认仍在等待第一张 Digest 时可使用 CLI --oplus-resume，否则请重新进入 EDL。</value></data>
 </root>

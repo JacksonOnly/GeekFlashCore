@@ -15,6 +15,7 @@ internal static class CommandLine
             if (arg is "-h" or "--help") return builder with { Command = "help" };
             if (arg is "-v" or "--verbose") { builder = builder with { Verbose = true }; continue; }
             if (arg == "--non-interactive") { builder = builder with { NonInteractive = true }; continue; }
+            if (arg == "--oplus-resume") { builder = builder with { OplusResume = true }; continue; }
             string? value = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..] : null;
             string name = arg.Contains('=') ? arg[..arg.IndexOf('=')] : arg;
             if (name.StartsWith("--", StringComparison.Ordinal))

@@ -24,6 +24,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
 {
     private const int MaxProtocolDetectionAttempts = 4;
     private const int DefaultProtocolProbeTimeoutMilliseconds = 250;
+    private bool _resumeAwaitingDigestUsed;
     private readonly QcomProtocolOptions _options;
     private readonly ISaharaImageProvider? _imageProvider;
     private readonly IOplusDigestProvider? _digestProvider;
@@ -293,6 +294,18 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private void DetectProtocol(bool probeFirehoseOnTimeout = true)
     {
         if (!Transport.IsOpen) Transport.Open();
+        // Only the caller can identify a silent loader as waiting for its first table.
+        // This opt-in performs no probe, reset, flush or XML before the Digest.
+        if (probeFirehoseOnTimeout && _options.OplusDigest.ResumeAwaitingDigest && !_resumeAwaitingDigestUsed)
+        {
+            _resumeAwaitingDigestUsed = true;
+            _wire = new QcomSessionTransport(Transport, [], _options.ReadTimeoutMilliseconds);
+            _firehose = CreateFirehoseSession(_wire);
+            _firehose.StartWithoutStartupLogs();
+            _targetInfo = new QcomTargetInfo { Vendor = QcomEvidenceMerger.ResolveVendor(_options.VendorOverride, null, QcomVendorKind.Generic) };
+            Log.Warning(Strings.Qcom_LogOplusResume);
+            return;
+        }
         bool allowRecovery = probeFirehoseOnTimeout && _options.ProbeFirehoseOnSaharaTimeout &&
             _options.OplusDigest.Mode == OplusDigestMode.None;
         Exception? lastException = null;
@@ -307,7 +320,12 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             catch (TimeoutException exception)
             {
                 lastException = exception;
-                if (!allowRecovery) throw;
+                if (!allowRecovery)
+                {
+                    if (probeFirehoseOnTimeout && _options.OplusDigest.Mode != OplusDigestMode.None)
+                        Log.Warning(Strings.Qcom_LogOplusSilent);
+                    throw;
+                }
                 if (attempt == 0)
                     SendSaharaHelloProbe();
                 else if (attempt == 1 && TryDetectRunningFirehose())

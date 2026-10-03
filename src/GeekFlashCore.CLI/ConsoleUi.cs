@@ -3,6 +3,7 @@ using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using Serilog;
 using Serilog.Events;
+using System.Diagnostics;
 
 namespace GeekFlashCore.CLI;
 
@@ -46,8 +47,19 @@ internal sealed class ConsoleUi
             ClearProgressUnsafe();
             Console.Write($"{prompt}{(defaultValue is null ? "" : $" [{defaultValue}]")}: ");
         }
-        string? value = await _input.ReadAsync(secret, cancellationToken).ConfigureAwait(false);
-        return string.IsNullOrEmpty(value) ? defaultValue ?? string.Empty : value;
+        long started = Stopwatch.GetTimestamp();
+        Log.Debug(Strings.Cli_LogInputWait, prompt);
+        try
+        {
+            string? value = await _input.ReadAsync(secret, cancellationToken).ConfigureAwait(false);
+            Log.Debug(Strings.Cli_LogInputReceived, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            return string.IsNullOrEmpty(value) ? defaultValue ?? string.Empty : value;
+        }
+        catch (OperationCanceledException)
+        {
+            Log.Debug(Strings.Cli_LogInputCancelled, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            throw;
+        }
     }
 
     public async Task<string?> AskOptionalAsync(string prompt, CancellationToken cancellationToken)

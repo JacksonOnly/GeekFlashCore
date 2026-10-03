@@ -13,6 +13,7 @@ internal sealed record CliOptions
     public string? VipChained { get; init; }
     public string? OplusDigest { get; init; }
     public string? OplusSign { get; init; }
+    public bool OplusResume { get; init; }
     public string? LogFile { get; init; }
     public string? OnePlusProjectId { get; init; }
     public OplusDigestMode OplusMode { get; init; }
@@ -23,7 +24,9 @@ internal sealed record CliOptions
     public bool Verbose { get; init; }
     public bool NonInteractive { get; init; }
     public int ConnectTimeout { get; init; } = QcomProtocolOptions.DefaultConnectTimeoutMilliseconds;
-    public int ResourceTimeout { get; init; } = QcomProtocolOptions.DefaultResourceRequestTimeoutMilliseconds;
+    public int? ResourceTimeout { get; init; }
+    public int EffectiveResourceTimeout => ResourceTimeout ?? (NonInteractive
+        ? QcomProtocolOptions.DefaultResourceRequestTimeoutMilliseconds : Timeout.Infinite);
     public int DeviceWaitTimeout { get; init; } = 30_000;
     public int ReadTimeout { get; init; } = QcomProtocolOptions.DefaultReadTimeoutMilliseconds;
     public int WriteTimeout { get; init; } = QcomProtocolOptions.DefaultWriteTimeoutMilliseconds;
@@ -32,8 +35,11 @@ internal sealed record CliOptions
 
     public void Validate()
     {
-        if (ReadTimeout <= 0 || WriteTimeout <= 0 || ConnectTimeout <= 0 || ResourceTimeout <= 0 || DeviceWaitTimeout <= 0)
+        if (ReadTimeout <= 0 || WriteTimeout <= 0 || ConnectTimeout <= 0 || DeviceWaitTimeout <= 0 ||
+            EffectiveResourceTimeout is 0 or < -1)
             throw new ArgumentException(Localization.Strings.Cli_TimeoutMustBePositive);
+        if (OplusResume && EffectiveOplusMode == OplusDigestMode.None)
+            throw new ArgumentException(Localization.Strings.Cli_OplusResumeNeedsMode);
         if (!Enum.IsDefined(Vendor) || !Enum.IsDefined(OplusMode) ||
             AuthenticationKind is { } auth && !Enum.IsDefined(auth))
             throw new ArgumentException(Localization.Strings.Cli_EnumInvalid);

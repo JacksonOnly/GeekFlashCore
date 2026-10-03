@@ -12,7 +12,8 @@ internal sealed class QcomResourceResolver
         int timeoutMilliseconds,
         CancellationToken lifetimeToken)
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(timeoutMilliseconds);
+        if (timeoutMilliseconds != Timeout.Infinite)
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(timeoutMilliseconds);
 
         _lifetimeToken = lifetimeToken;
         _timeoutMilliseconds = timeoutMilliseconds;
@@ -35,14 +36,18 @@ internal sealed class QcomResourceResolver
             T result = await pending.WaitAsync(linked.Token).ConfigureAwait(false);
             return result ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException exception)
         {
+            bool timedOut = _timeoutMilliseconds != Timeout.Infinite && linked.IsCancellationRequested &&
+                !cancellationToken.IsCancellationRequested && !_lifetimeToken.IsCancellationRequested;
             if (pending is not null)
             {
                 ObserveLate(pending, linked, disposeLateResult);
                 linked = null;
             }
 
+            if (timedOut)
+                throw new QcomResourceException(Strings.FormatQcom_ResourceRequestTimedOut(_timeoutMilliseconds), exception);
             throw;
         }
         catch (Exception exception) when (exception is not QcomProtocolException)
@@ -69,14 +74,18 @@ internal sealed class QcomResourceResolver
             T result = pending.WaitAsync(linked.Token).GetAwaiter().GetResult();
             return result ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException exception)
         {
+            bool timedOut = _timeoutMilliseconds != Timeout.Infinite && linked.IsCancellationRequested &&
+                !_lifetimeToken.IsCancellationRequested;
             if (pending is not null)
             {
                 ObserveLate(pending, linked, disposeLateResult);
                 linked = null;
             }
 
+            if (timedOut)
+                throw new QcomResourceException(Strings.FormatQcom_ResourceRequestTimedOut(_timeoutMilliseconds), exception);
             throw;
         }
         catch (Exception exception) when (exception is not QcomProtocolException)

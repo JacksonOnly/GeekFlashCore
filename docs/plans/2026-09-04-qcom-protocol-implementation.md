@@ -383,6 +383,8 @@
 
 ## 进度
 
+- 2026-10-03 IR-01～04：根据用户 Sign 等待退出与二次连接静默日志，CLI 默认无限资源等待（脚本仍 15000 ms），保留 Ctrl+C/迟到释放，明确区分有限资源超时与取消并补充等待耗时日志。显式 --oplus-resume 仅用于已运行且等待第一张 Digest 的 Loader，跳过 Sahara/启动日志，Pt/Legacy 同步异步首包 Digest；每实例一次，失败后不盲目重用。122 项完整 Release 本地测试（含 16 秒手动等待）、Release 构建通过；设计、进度和恢复条件见 `2026-10-03-oplus-input-resume-design.md`、`2026-10-03-oplus-input-resume-implementation.md`。没有本轮硬件连接/读写证据，设备自身等待时限和实机续接待验证。
+
 - 2026-10-03 SI-01～02：按用户追加要求完善 CLI Sahara 信息：连接上传前、info、probe-sahara 显示完整 PkHash 与厂商/芯片名称，序列号及 MSM/OEM/Model/SBL/SoC HW 等身份字段使用 HEX 并保留 64 位；诊断日志身份字段同步 HEX、Hash 仍只记录长度。目标 7 项及完整 105 项 Release 回归通过，构建无警告/错误，资源键及差异检查通过。实现与恢复记录见 `2026-10-03-cli-sahara-identity.md`，新版 EXE 已构建；本轮未做实机验证。
 
 - 2026-10-03 OB-01～05：用户实机日志确认 Oplus Loader 等待签名表时旧 CLI 错发 NOP。已按参考初始化顺序增加 Digest/Verify/Sign/sha256init 前置认证，Legacy Sign 必须、Pt 芯片匹配及手动替换，重配置保留已认证状态并关联延后验证日志，CLI 固定 256 扇区并移除六项 Legacy 参数，新增自动详细文件日志。98 项本地 Release 回归、Release 构建、双语资源及差异检查通过；新程序已构建，硬件复测待用户执行。设计、测试证据与恢复入口见 `2026-10-03-oplus-bootstrap-design.md`、`2026-10-03-oplus-bootstrap-implementation.md`。

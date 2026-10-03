@@ -93,7 +93,7 @@
   <data name="Cli_UsbDeviceFallback" xml:space="preserve"><value>USB 设备</value></data>
   <data name="Cli_SaharaProbeResult" xml:space="preserve"><value>Sahara v{0}, mode={1}, packet={2}</value></data>
   <data name="Cli_XmlResult" xml:space="preserve"><value>XML: {0}</value></data>
-  <data name="Cli_TimeoutMustBePositive" xml:space="preserve"><value>超时参数必须为正毫秒数。</value></data>
+  <data name="Cli_TimeoutMustBePositive" xml:space="preserve"><value>超时参数必须为正毫秒数；仅 --resource-timeout 可以是 -1（无限等待）。</value></data>
   <data name="Cli_EnumInvalid" xml:space="preserve"><value>厂商、认证或 Oplus 模式无效。</value></data>
   <data name="Cli_TransportConflict" xml:space="preserve"><value>--port 与 --usb 不能同时指定。</value></data>
   <data name="Cli_VipSignedRequired" xml:space="preserve"><value>--vip-chained 需要同时指定 --vip-signed。</value></data>
@@ -103,11 +103,12 @@
   <data name="Cli_InputTooLong" xml:space="preserve"><value>输入长度超过允许范围。</value></data>
   <data name="Cli_HelpOptionsTimeouts" xml:space="preserve"><value>  --non-interactive  禁止资源提示；用于脚本
   --connect-timeout MS  初始探测预算（默认 1500；非整个连接时限）
-  --resource-timeout MS  每次资源请求预算（默认 15000）
+  --resource-timeout MS  每次资源请求预算（交互默认不限时；非交互默认 15000；-1 不限时）
   --device-wait-timeout MS  自动发现等待预算（默认 30000）
   --read-timeout MS / --write-timeout MS  单次 I/O 预算（默认 10000）</value></data>
   <data name="Cli_HelpOptionsLegacy" xml:space="preserve"><value>  --oplus-mode OplusDigestLegacy --oplus-digest FILE
   --oplus-sign FILE  二进制 Sign；Legacy 必须，Pt 可选，缺失/验证失败时手动选择
+  --oplus-resume  续接已运行且等待第一张 Digest 的 Loader，跳过 Sahara 和启动日志
   Legacy 固定：容量 53，初始计数 0，分段 256 扇区，Digest 窗口 1000 ms，XML 上限 4096，内置 NOP
   --log-file FILE  指定详细日志路径；默认程序目录 logs 下自动生成</value></data>
   <data name="Cli_HelpQcomCommands" xml:space="preserve"><value>交互: interactive（默认）；Qualcomm 专用命令（设备需支持对应能力）：</value></data>
@@ -121,4 +122,8 @@
   <data name="Cli_LogFileFailed" xml:space="preserve"><value>无法创建调试日志：{0}</value></data>
   <data name="Cli_LogSession" xml:space="preserve"><value>CLI 会话：命令={Command} Oplus={OplusMode} 探测={ConnectTimeout} ms 读={ReadTimeout} ms 写={WriteTimeout} ms 资源={ResourceTimeout} ms .NET={Runtime}</value></data>
   <data name="Cli_OplusSignInvalid" xml:space="preserve"><value>Sign 文件不存在或长度不在 1 至 4096 字节范围，请重新选择二进制 Sign 文件。</value></data>
+  <data name="Cli_OplusResumeNeedsMode" xml:space="preserve"><value>--oplus-resume 需要启用 Oplus 模式，并确认 Loader 正在等待第一张 Digest。</value></data>
+  <data name="Cli_LogInputWait" xml:space="preserve"><value>等待手动输入：{Prompt}；可按 Ctrl+C 取消。</value></data>
+  <data name="Cli_LogInputReceived" xml:space="preserve"><value>手动输入已收到，等待 {ElapsedMilliseconds:F1} ms（不记录输入内容）。</value></data>
+  <data name="Cli_LogInputCancelled" xml:space="preserve"><value>手动输入等待被取消，已等待 {ElapsedMilliseconds:F1} ms。</value></data>
 </root>

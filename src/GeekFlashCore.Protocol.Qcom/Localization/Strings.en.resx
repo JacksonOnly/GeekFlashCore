@@ -526,4 +526,7 @@ Current {0}, expected {1}</value>
   <data name="Qcom_LogResponseTiming" xml:space="preserve"><value>Firehose response: status={Status} rawmode={RawMode} elapsed={ElapsedMilliseconds:F1} ms budget={TimeoutMilliseconds} ms.</value></data>
   <data name="Qcom_LogWireCommand" xml:space="preserve"><value>Firehose send: command={CommandName} bytes={ByteCount}.</value></data>
   <data name="Qcom_LogResponseInterrupted" xml:space="preserve"><value>Firehose receive interrupted: exception={ExceptionType} elapsed={ElapsedMilliseconds:F1} ms budget={TimeoutMilliseconds} ms.</value></data>
+  <data name="Qcom_ResourceRequestTimedOut" xml:space="preserve"><value>Resource request exceeded {0} ms; manual input can use an unlimited resource budget (-1).</value></data>
+  <data name="Qcom_LogOplusResume" xml:space="preserve"><value>Resuming an Oplus loader explicitly declared to await its initial Digest: skip Sahara/startup logs and send Digest first. This mode is unsuitable after RAW interruption or authentication.</value></data>
+  <data name="Qcom_LogOplusSilent" xml:space="preserve"><value>Passive Oplus detection did not receive a complete protocol prefix. A running loader may not replay logs; use CLI --oplus-resume only when it is known to await its initial Digest, otherwise re-enter EDL.</value></data>
 </root>

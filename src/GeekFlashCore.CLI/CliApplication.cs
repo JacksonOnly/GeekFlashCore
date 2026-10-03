@@ -52,7 +52,7 @@ internal sealed class CliApplication
             connection.Registration.CommandSet?.PrintHelp(protocol, _ui);
             return await ExecuteCommandAsync(protocol, connection.Registration, options, progress, ct).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) { _ui.WriteLine(Strings.Cli_OperationCancelled); return 130; }
+        catch (OperationCanceledException) { Log.Warning(Strings.Cli_OperationCancelled); return 130; }
         catch (Exception exception) { _ui.LogException(exception); return 1; }
     }
 
@@ -82,7 +82,7 @@ internal sealed class CliApplication
             }
             return 0;
         }
-        catch (OperationCanceledException) { return 130; }
+        catch (OperationCanceledException) { Log.Warning(Strings.Cli_OperationCancelled); return 130; }
         catch (Exception exception) { _ui.LogException(exception); return 1; }
     }
 

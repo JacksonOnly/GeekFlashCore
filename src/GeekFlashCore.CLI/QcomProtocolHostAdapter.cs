@@ -43,10 +43,10 @@ internal static class QcomProtocolHostAdapter
             ReadTimeoutMilliseconds = input.ReadTimeout,
             WriteTimeoutMilliseconds = input.WriteTimeout,
             ConnectTimeoutMilliseconds = input.ConnectTimeout,
-            ResourceRequestTimeoutMilliseconds = input.ResourceTimeout,
+            ResourceRequestTimeoutMilliseconds = input.EffectiveResourceTimeout,
             OplusDigest = new OplusDigestConfiguration
             {
-                Mode = mode, FixedSectorCount = 256
+                Mode = mode, FixedSectorCount = 256, ResumeAwaitingDigest = input.OplusResume
             },
             FirehoseDigest = new FirehoseDigestConfiguration { Enabled = !string.IsNullOrWhiteSpace(input.Digest) },
             FirehoseVip = new FirehoseVipConfiguration { Enabled = !string.IsNullOrWhiteSpace(input.VipSigned) }

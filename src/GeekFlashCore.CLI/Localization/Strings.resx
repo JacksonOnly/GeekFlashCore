@@ -109,4 +109,6 @@
   --legacy-max-packets N（默认 53） --legacy-initial-packets N（默认 0）
   --legacy-fixed-sectors N（默认 0，不分段） --legacy-nop XML
   --legacy-digest-timeout MS（默认 1000） --legacy-xml-limit N（默认 4096）</value></data>
+  <data name="Cli_HelpQcomCommands" xml:space="preserve"><value>交互: interactive（默认）；Qualcomm 专用命令（设备需支持对应能力）：</value></data>
+  <data name="Cli_HelpVipOptions" xml:space="preserve"><value>      --vip-signed FILE | --vip-chained FILE（需配合 signed；与 Digest/Oplus 互斥）</value></data>
 </root>

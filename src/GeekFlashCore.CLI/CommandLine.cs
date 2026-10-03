@@ -67,8 +67,11 @@ internal static class CommandLine
         Console.WriteLine(Strings.Cli_HelpUsage);
         Console.WriteLine(Strings.Cli_HelpCommands);
         foreach (string usage in CommandSyntax.Usages.Values.Where(x => x.Length > 0)) Console.WriteLine("  " + usage);
+        Console.WriteLine(Strings.Cli_HelpQcomCommands);
+        foreach (string usage in FirehoseCommands.Usages.Values) Console.WriteLine("  " + usage);
         Console.WriteLine(Strings.Cli_HelpOptionsPrimary);
         Console.WriteLine(Strings.Cli_HelpOptionsSecondary);
+        Console.WriteLine(Strings.Cli_HelpVipOptions);
         Console.WriteLine(Strings.Cli_HelpOptionsTimeouts);
         Console.WriteLine(Strings.Cli_HelpOptionsLegacy);
     }

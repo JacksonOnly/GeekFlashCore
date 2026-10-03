@@ -31,55 +31,55 @@ Files：`Internals/FirehoseWireReader.cs`、`Firehose/FirehosePayloadLimits.cs`�
 Interfaces：共用 `FirehosePayloadLimits.GetTransferBufferSize(FirehoseConfigureResponse) -> int`。
 
 - [x] RED：已有 ReadCommandRequiresExplicitXmlAckBeforeRawTransfer、ProgramPacketsRespectNegotiatedPayloadInsteadOfSupportedMaximum、VipAndOplusDigestAreRejectedBeforeConnecting 失败。
-- [ ] GREEN：非 XML 失败；实际 negotiated/supported 最小 Payload；VIP/Oplus 校验在连接前拒绝。
-- [ ] 验证：运行上述 Filter 测试，Release 构建、diff check。
-- [ ] 提交：`fix(qcom): enforce firehose response and payload limits`。
+- [x] GREEN：非 XML 失败；实际 negotiated/supported 最小 Payload；VIP/Oplus 校验在连接前拒绝。
+- [x] 验证：运行上述 Filter 测试，Release 构建、diff check。
+- [x] 提交：`fix(qcom): enforce firehose response and payload limits`。
 
 ## Task 2：QA-B USB
 
 Files：`Transport.LibUsb/Internals/LibUsbTransport.cs`、必要的独立 I/O 预算实现、`.tests` USB 测试。
 Interfaces：保留 ITransport；设备初始化与 I/O 就绪检查分开。
 
-- [ ] RED：受控 USB 设备首次打开/再打开/失败清理和短读预算测试。
-- [ ] GREEN：保留 context，正确发现接口和端点，精确读取总预算。
-- [ ] 验证：目标测试、Release 构建、diff check。
-- [ ] 提交：`fix(usb): repair transport lifecycle and read deadlines`。
+- [x] RED：受控 USB 设备首次打开/再打开/失败清理和短读预算测试。
+- [x] GREEN：保留 context，正确发现接口和端点，精确读取总预算。
+- [x] 验证：目标测试、Release 构建、diff check。
+- [x] 提交：`fix(usb): repair transport lifecycle and read deadlines`。
 
 ## Task 3：QA-C Legacy
 
 Files：OplusDigestLegacyPolicy/CommandCounter、Oplus configuration、Firehose Session/Executor/Reader/Sender、Storage/ProgramExecutor、Qcom 初始化、resx。
 Interfaces：内部 Legacy 发送选项和完整 payload 回调；可选回复返回完整日志/ACK/NAK，无独立 ACK 用同一接收队列确认。
 
-- [ ] RED：51/52/53/54 -> 3/2/1/0 NOP、Digest55、确认计1；日志错误继续；迟到纯 ACK 拒绝；半帧有界失败；签名只重放一次；Raw/FILL 每传输计1、读不自动换表。
-- [ ] GREEN：按 spec 3 的全部 11 条行为；Legacy 不强制解析 Pt 表，分段 0 表示不分段。
-- [ ] 验证：Legacy 全部模拟测试、Pt 授权回归、Release 构建、diff check。
-- [ ] 提交：`feat(qcom): replicate rector legacy digest flow`。
+- [x] RED：51/52/53/54 -> 3/2/1/0 NOP、Digest55、确认计1；日志错误继续；迟到纯 ACK 拒绝；半帧有界失败；签名只重放一次；Raw/FILL 每传输计1、读不自动换表。
+- [x] GREEN：按 spec 3 的全部 11 条行为；Legacy 不强制解析 Pt 表，分段 0 表示不分段。
+- [x] 验证：Legacy 全部模拟测试、Pt 映射回归、Release 构建、diff check。
+- [x] 提交：`feat(qcom): replicate rector legacy digest flow`。
 
 ## Task 4：QA-D 连接/读写
 
 Files：Firehose receiver/executor、Qcom session/storage、Sahara 相关收发路径。
 Interfaces：现有同步/异步门面共用相同 state/策略。
 
-- [ ] RED：取消最后 Raw 块不继续等待 ACK、提前 NAK 停写、短读/超时旧租约失效、重连清缓存、部分 XML/启动/多 LUN 等待有界。
-- [ ] GREEN：仅修复已复现的本项目缺陷，并记录累计等待与同步 I/O 取消限度。
-- [ ] 验证：目标测试和全套本地测试、Release 构建、diff check。
-- [ ] 提交：`fix(qcom): bound transfer cancellation and recovery`。
+- [x] RED：取消最后 Raw 块不继续等待 ACK、提前 NAK 停写、读取超时旧视图失效、重连清缓存、半帧与日志洪流限界；Sahara/多 LUN 上限采用静态审查证据。
+- [x] GREEN：仅修复已复现的本项目缺陷，并记录累计等待与同步 I/O 取消限度。
+- [x] 验证：目标测试和全套本地测试、Release 构建、diff check。
+- [x] 提交：`fix(qcom): bound transfer cancellation and recovery`。
 
 ## Task 5：QA-E CLI
 
 Files：CliOptions/CommandLine/QcomProtocolHostAdapter、ConsoleUi/ConsoleProviders/CliApplication、TransportResolver、StorageCommands、CLI resx。
 Interfaces：可取消单输入通道；新增 connect/resource/device-wait/Legacy 配置和 non-interactive 参数。
 
-- [ ] RED：CliLegacyModeCreatesUsableConfiguration、非法参数、取消输入、非交互缺资源、设备匹配和输出文件失败保留。
-- [ ] GREEN：配置 defaults=53/0/0；USB timeout 传递；设备等待总预算；输出同目录临时文件成功后替换。
-- [ ] 验证：所有本地 CLI 测试、help/非法参数冒烟、Release 构建、资源键检查。
-- [ ] 提交：`feat(cli): add bounded legacy and resource workflows`。
+- [x] RED：CliLegacyModeCreatesUsableConfiguration、非法参数、取消输入、输出文件失败保留；非交互缺资源/设备匹配补充回归。
+- [x] GREEN：配置 defaults=53/0/0；USB timeout 传递；设备等待总预算；输出同目录临时文件成功后替换。
+- [x] 验证：所有本地 CLI 测试、help/非法参数冒烟、Release 构建、资源键检查。
+- [x] 提交：`feat(cli): add bounded legacy and resource workflows`。
 
 ## Task 6：QA-F 交付
 
-- [ ] 全套本地测试、Release 构建、diff check、resx 键一致、无敏感日志/无被跟踪测试。
-- [ ] 重复分段传输分配趋势检查，记录只能由真机验证的项目。
-- [ ] 最终独立审查；重要发现先 RED 再 GREEN，文档同步和提交。
+- [x] 全套本地测试、Release 构建、diff check、resx 键一致、设备回显脱敏/限长回归、无被跟踪测试。
+- [x] 重复分段传输分配趋势检查，记录只能由真机验证的项目。
+- [x] 最终独立审查；重要发现先 RED 再 GREEN，文档同步和提交。
 
 ## 进度
 
@@ -99,16 +99,18 @@ Interfaces：可取消单输入通道；新增 connect/resource/device-wait/Lega
 - [x] QA-D 补充（2026-10-03）：模拟真实编排 ConnectAsync → 分片 RAW 取消 → Cleanup → ConnectAsync 复现重连读到旧 pending RAW 的失败，清理 QcomSessionTransport 前缀/溢出缓存后 GREEN。同一测试验证 TargetInfo 清空、旧块视图代数失效、新视图读回 512 字节；Pt 跨分区映射/未覆盖范围回归通过。使用模拟传输，非硬件测试。
 - [x] QA-E（2026-10-03）：全局参数 8 项 RED→GREEN；额外 NOP/DTD/多命令校验 3 项 RED→GREEN，验证发生在设备发现前。取消输入与失败输出 2 项 RED→GREEN；选定协议过滤、非交互资源缺失、取消/成功输出替换回归通过。USB 传入读写预算、设备等待 30 秒默认总预算、连接/资源预算及 Legacy 参数映射、协议先于 transport 释放与工厂失败清理已完成。累计 47 项测试通过，CLI 使用说明已保存。
 - 输入裁定：终端按键轮询可取消；重定向只读命令，不提示资源/认证，保留唯一 pending stdin read 供下一次读取复用，避免取消后出现并发读任务。不会在 await 输入期间持有日志锁。stdin 底层不可取消时，一个读取任务可能等待到 EOF，CLI 退出不等待该任务，不会新建抢读者。
-- [ ] QA-F：完整验证、独立提交和风险收尾。
+- [x] QA-F：完整验证、独立提交和风险收尾。
 - [x] QA-F 性能（2026-10-03）：百万扇区固定窗口预验证分配 48,000,248 字节，测试 RED；只对 Core 内部窗口序列校验基础覆盖和算术后降为 168 字节，GREEN。外部策略仍逐段防御性验证。RAW 流式发送 1 MiB/32 MiB 分配为 0/24 字节（池预热、本地 sink，不代表设备吞吐）。
 - [x] QA-F 独立审查 USB（2026-10-03）：Configuration=0 表示未配置，模拟首次 Open 成功/失败清理 2 项 RED→GREEN；先选择带目标 bulk 接口的有效配置并验证设置结果，再声明接口。未使用硬件。
 - [x] QA-F 独立审查 Core（2026-10-03）：review `37ee307..f5b0075` 无 Critical、5 Important；已逐项修复。会话计数在 Configure 前挂载并跨 storage fallback 保留（2 项 RED→GREEN，新增 reason-only 证据回归、完整连接后连续 26 次写入在正确边界换表）；显式 Emmc 复合 NAK 禁止切换 UFS（sync/async 1 项 RED→GREEN）；完整日志 CRLF 允许、CRLF+半帧拒绝（1 RED→GREEN、1 失败路径回归）；USB 未配置 2 RED→GREEN；日志 sink 验证 Token/签名/XML 和展示长度 4 RED→GREEN。展示脱敏不修改协议内部 Result，NAK reason 内部匹配保留。
 - [x] QA-F 故障和洪流（2026-10-03）：有效 XML 日志帧累计超过 1 MiB 不再持续积累；日志洪流 1 项 RED→GREEN。RAW 异常后 Close 抛错仍释放会话锁，Dispose 清理失败仍释放自有 transport，2 项 RED→GREEN。读取超时失效/重连旧视图回归通过。当前 66 项本次本地测试全部通过；不冒充旧历史测试或硬件验证。
 - 审查裁定：撤销“宿主估算安装前 Configure 计数”，InitialPacketCount 只注入新会话一次；后续命令用同一共享计数。异常 Message 改为安全资源摘要，设备原文保留在领域 Result 供内部回退匹配，宿主自行打印 Result 时需遵守同样的敏感数据约束。
+- [x] 最终验证（2026-10-03）：66/66 Release 本地测试通过；Release 解决方案构建 0 警告/0 错误；CLI help 展示全部专用命令、VIP/Legacy/等待参数，非法 timeout 退出码 2；中英文资源键 CLI=100、Qcom=231、Qcom.Abstractions=6、LibUsb=14 一致；diff check 通过，`.tests`/bin/obj/temp 跟踪列表为空。
+- 交付裁定：用户授权当前重构与修复，未要求合并/推送，保留 `codex/qcom-legacy-audit` 和现有管理 worktree 供审阅；没有修改主工作区、没有推送或硬件写入，不追加无必要确认流程。
 
 ## 未决风险与恢复位置
 
 - 工作树不含旧的本地测试工程；历史 246/51 测试结果不能算作本次完整回归结果，需在现有 `.tests` 逐项恢复必要覆盖。
-- Legacy NOP 文本优先、默认声明和长度截断语义已在设计明确；QA-C 须以逐字节 fixture 验证，防止全局声明注入覆盖原文。原配置成员保留，计数语义变化需迁移说明。
+- Legacy NOP 文本优先、默认声明和长度截断语义已在设计明确并有模拟线路证据；原 MaxCommandsBeforeDigest 现按完整包计数，InitialPacketCount 为会话前快照，迁移说明见 `docs/cli-qcom.md`。
 - 尚未真实联机、读写或测量 USB 吞吐/取消延迟；静态发现与模拟证据分开记录。
-- 已提交 QA-A `a787b60`、QA-B `c78693d`、QA-C `499feb9`、QA-D `64dcb4f` / `d1fea65`。恢复先检查 `git status --short` 和本记录，从 QA-F 最终审查与验证继续。
+- 已提交 QA-A `a787b60`、QA-B `c78693d`、QA-C `499feb9`、QA-D `64dcb4f` / `d1fea65`、QA-E `f5b0075`、QA-F `2272b95` / `e47f4b5`；收尾提交见当前 `git log`。恢复先检查工作区和本记录；下一步为非破坏性真实设备联机/线路兼容矩阵，实际写入需使用用户明确指定的测试设备和镜像。

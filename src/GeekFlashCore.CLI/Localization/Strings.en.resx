@@ -109,4 +109,6 @@
   --legacy-max-packets N (default 53) --legacy-initial-packets N (default 0)
   --legacy-fixed-sectors N (default 0, unsegmented) --legacy-nop XML
   --legacy-digest-timeout MS (default 1000) --legacy-xml-limit N (default 4096)</value></data>
+  <data name="Cli_HelpQcomCommands" xml:space="preserve"><value>Interactive: interactive (default); Qualcomm commands (require corresponding device capabilities):</value></data>
+  <data name="Cli_HelpVipOptions" xml:space="preserve"><value>      --vip-signed FILE | --vip-chained FILE (requires signed; mutually exclusive with Digest/Oplus)</value></data>
 </root>

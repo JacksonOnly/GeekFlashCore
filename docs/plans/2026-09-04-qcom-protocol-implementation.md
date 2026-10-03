@@ -21,6 +21,14 @@
 - `D:\Code\CSharp\GeekFlashTool\GeekFlashTool\Services\FirehoseClientService.cs`
 - `D:\Code\CSharp\QnQcLIB\QnQcLIB\Qcom\Firehose.cs`
 
+## 2026-10-03 当前审查结果
+
+- 用户确认保留 Pt 分区映射，将指定 Rector 包计数/NOP/Digest 行为完善到 Legacy；特殊声明、截断、完整日志错误后确认与单次 XML 重放有意保留。计数器从新 Firehose 会话创建即统计 Configure/探测，存储回退不归零。
+- 已修复非 XML 伪 ACK、协商 Payload 上限、模式互斥、USB 生命周期/未配置状态/短读总预算、RAW NAK/取消/超时失效、重连缓存、Configure 同步异步与显式存储约束、异常关闭锁释放、诊断脱敏与日志洪流；CLI 有界发现、可取消资源输入、参数校验和失败保留原输出已完成。
+- 本次证据：66/66 本地 Release 模拟/纯内存测试、Release 构建 0 警告/错误、资源键及 diff 检查通过；百万窗口预验证分配 48,000,248→168 字节，1/32 MiB RAW 流式分配基本持平。旧历史测试未在当前 worktree 重建，不能视为本次完整回归。
+- 独立审查 5 个 Important 已修复并 RED→GREEN。关键提交 `499feb9`（Legacy）、`f5b0075`（CLI）、`2272b95`（USB）、`e47f4b5`（审查修正）；详细记录见 `2026-10-03-qcom-legacy-audit-design.md`、`2026-10-03-qcom-legacy-audit-implementation.md`，使用说明见 `../cli-qcom.md`。
+- 下一步：真实 Loader/NOP handler/USB 分包和取消延迟矩阵。当前没有硬件读写或吞吐证据，分支和管理 worktree 保留，未合并或推送。
+
 ## 执行规则
 
 - 测试工程固定放在 `D:\Code\CSharp\GeekFlashCore\.tests`，不得加入 Git；每次提交前执行 `git status --short --ignored .tests` 确认其为 ignored。

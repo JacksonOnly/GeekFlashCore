@@ -383,6 +383,8 @@
 
 ## 进度
 
+- 2026-10-03 CA-01～04：按用户指定文件 3 成功抓包对齐 Legacy bootstrap，Verify EnableVip=0 且无 ping；声明更名 chimerais 并保持抓包空白，Digest/Verify/Sign/sha/Configure 黄金包长度为 8144/93/4096/95/190。sha256init 已知完整 log-only -1 在最多 1500 ms 后有界兼容；未知错误（包括伴随 ACK）、畸形/空 response、NAK、RAW、静默、半帧和重新等表仍失败，Digest/Verify/Sign 认证不放宽。Legacy 初始 UFS、显式配置/回退保留，Pt 及运行期 Rector 换表不变。诊断日志即时发布并隐藏 spaced HEX。最终 144 项完整 Release 本地回归通过（16 秒），Release 构建 0 警告/0 错误，help/资源/diff/ignored 检查通过；设计与交付见 `2026-10-03-oplus-capture-alignment-design.md`、`2026-10-03-oplus-capture-alignment-implementation.md`。本轮未连接硬件；声明重命名后的接受情况待重新进入 EDL 后实测。
+
 - 2026-10-03 IR-01～04：根据用户 Sign 等待退出与二次连接静默日志，CLI 默认无限资源等待（脚本仍 15000 ms），保留 Ctrl+C/迟到释放，明确区分有限资源超时与取消并补充等待耗时日志。显式 --oplus-resume 仅用于已运行且等待第一张 Digest 的 Loader，跳过 Sahara/启动日志，Pt/Legacy 同步异步首包 Digest；每实例一次，失败后不盲目重用。122 项完整 Release 本地测试（含 16 秒手动等待）、Release 构建通过；设计、进度和恢复条件见 `2026-10-03-oplus-input-resume-design.md`、`2026-10-03-oplus-input-resume-implementation.md`。没有本轮硬件连接/读写证据，设备自身等待时限和实机续接待验证。
 
 - 2026-10-03 SI-01～02：按用户追加要求完善 CLI Sahara 信息：连接上传前、info、probe-sahara 显示完整 PkHash 与厂商/芯片名称，序列号及 MSM/OEM/Model/SBL/SoC HW 等身份字段使用 HEX 并保留 64 位；诊断日志身份字段同步 HEX、Hash 仍只记录长度。目标 7 项及完整 105 项 Release 回归通过，构建无警告/错误，资源键及差异检查通过。实现与恢复记录见 `2026-10-03-cli-sahara-identity.md`，新版 EXE 已构建；本轮未做实机验证。

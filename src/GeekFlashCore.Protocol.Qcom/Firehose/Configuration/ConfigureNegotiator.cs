@@ -35,7 +35,7 @@ public sealed class ConfigureNegotiator
         configuration.Validate();
         IVendorFirehoseStrategy strategy = VendorStrategyResolver.ForVendor(vendor);
 
-        ConfigureState state = ConfigureState.Create(configuration);
+        ConfigureState state = ConfigureState.Create(configuration, _session.PreferredInitialStorage);
         var attemptedStorage = new HashSet<FirehoseStorage>();
         var seenStates = new HashSet<ConfigureState>();
         FirehoseNakException? lastNak = null;
@@ -97,7 +97,7 @@ public sealed class ConfigureNegotiator
         configuration.Validate();
         IVendorFirehoseStrategy strategy = VendorStrategyResolver.ForVendor(vendor);
 
-        ConfigureState state = ConfigureState.Create(configuration);
+        ConfigureState state = ConfigureState.Create(configuration, _session.PreferredInitialStorage);
         var attemptedStorage = new HashSet<FirehoseStorage>();
         var seenStates = new HashSet<ConfigureState>();
         FirehoseNakException? lastNak = null;

@@ -23,13 +23,13 @@ internal sealed record ConfigureState
     public ulong MinVersionSupported { get; init; }
     public DateTime BuildDate { get; init; }
 
-    public static ConfigureState Create(FirehoseConfiguration configuration) => new()
+    public static ConfigureState Create(FirehoseConfiguration configuration, FirehoseStorage preferredStorage = FirehoseStorage.Emmc) => new()
     {
         Storage = configuration.MemoryName == FirehoseStorage.None
-            ? FirehoseStorage.Emmc
+            ? preferredStorage
             : configuration.MemoryName,
         SectorSizeInBytes = configuration.MemoryName == FirehoseStorage.None
-            ? 512
+            ? DefaultSectorSize(preferredStorage)
             : configuration.SectorSizeInBytes,
         MaxPayloadSizeToTargetInBytes = configuration.MaxPayloadSizeToTargetInBytes,
         MaxPayloadSizeToTargetInBytesSupported = configuration.MaxPayloadSizeToTargetInBytes,

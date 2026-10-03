@@ -38,7 +38,8 @@ internal static class FirehoseResponseParser
             }
             else if (name.SequenceEqual(ResponseTag))
             {
-                responseAttributes = elementAttributes;
+                // An empty response is a malformed reply, not a log-only packet.
+                responseAttributes = elementAttributes ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             }
             else if (!name.SequenceEqual(DataTag))
             {

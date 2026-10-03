@@ -3,6 +3,7 @@ using System.Xml;
 using System.Diagnostics;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Internals;
+using GeekFlashCore.Protocol.Qcom.Vendors.Oplus;
 
 namespace GeekFlashCore.Protocol.Qcom.Firehose;
 
@@ -12,6 +13,7 @@ internal sealed class FirehoseCommandExecutor
     private readonly FirehoseCmdSender _sender;
     private OplusDigestConfiguration? _legacy;
     private Action? _legacyPacketSent;
+    internal bool UsesLegacyBootstrap => _legacy is not null;
 
     internal void ConfigureLegacy(OplusDigestConfiguration configuration, Action packetSent)
     {
@@ -47,9 +49,10 @@ internal sealed class FirehoseCommandExecutor
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
-        string xml = command.Build();
+        string xml = UsesLegacyBootstrap && command is ConfigureCommand configure
+            ? OplusConfigureCommand.BuildCaptured(configure) : command.Build();
         ValidateXml(xml);
-        SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute), commandSent);
+        SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute, UsesLegacyBootstrap && command is ConfigureCommand), commandSent);
         bool publishDeviceText = command is not (PeekCommand or PokeCommand or GetSha256DigestCommand);
         return ValidateResponse(_receiver.Receive(publishDeviceText, cancellationToken), expectedRawMode, publishDeviceText);
     }
@@ -66,15 +69,17 @@ internal sealed class FirehoseCommandExecutor
         return ValidateResponse(_receiver.Receive(cancellationToken: cancellationToken), expectedRawMode);
     }
 
-    private static string ApplyXmlDeclarationAttribute(string xml, string? attribute)
+    private static string ApplyXmlDeclarationAttribute(string xml, string? attribute, bool captured = false)
     {
         if (string.IsNullOrWhiteSpace(attribute))
             return xml;
         const string declarationEnd = "?>";
         int end = xml.IndexOf(declarationEnd, StringComparison.Ordinal);
         if (end < 0)
-            return $"<?xml version=\"1.0\" encoding=\"UTF-8\" {attribute}?>" + xml;
-        return xml[..end] + " " + attribute + declarationEnd + xml[(end + declarationEnd.Length)..];
+            return $"<?xml version=\"1.0\" encoding=\"UTF-8\" {attribute}{(captured ? " " : "")}?>" + xml;
+        if (!captured)
+            return xml[..end] + " " + attribute + declarationEnd + xml[(end + declarationEnd.Length)..];
+        return xml[..end].TrimEnd() + " " + attribute + " " + declarationEnd + xml[(end + declarationEnd.Length)..];
     }
 
     public FirehoseCommandResult SendRaw(
@@ -142,14 +147,48 @@ internal sealed class FirehoseCommandExecutor
 
     internal FirehoseCommandResult BeginOplusVerify(string? declarationAttribute, CancellationToken cancellationToken)
     {
-        const string xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data><verify value=\"ping\" EnableVip=\"1\"/></data>";
+        string xml = UsesLegacyBootstrap
+            ? "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data><verify EnableVip=\"0\"/></data>"
+            : "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data><verify value=\"ping\" EnableVip=\"1\"/></data>";
         cancellationToken.ThrowIfCancellationRequested();
-        SendXml(ApplyXmlDeclarationAttribute(xml, declarationAttribute), null);
-        FirehoseCommandResult result = ToResult(_receiver.Receive(cancellationToken: cancellationToken));
+        SendXml(ApplyXmlDeclarationAttribute(xml, declarationAttribute, UsesLegacyBootstrap), null);
+        FirehoseCommandResult result = ToResult(_receiver.Receive(cancellationToken: cancellationToken, rejectOplusRestart: true));
         ThrowIfNak(result);
         // Reference loaders can omit rawmode or set it true; either ACK is a
         // request for the following 4096-byte Sign, never permission to send XML.
         return result;
+    }
+
+    internal bool InitializeOplusSha256(string? declarationAttribute, CancellationToken cancellationToken)
+    {
+        const string xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data><sha256init Verbose=\"1\"/></data>";
+        if (!UsesLegacyBootstrap)
+        {
+            ExecuteXml(xml, expectedRawMode: false, declarationAttribute, cancellationToken: cancellationToken);
+            return false;
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        SendXml(ApplyXmlDeclarationAttribute(xml, declarationAttribute, captured: true), null);
+        FirehoseResponse? response = _receiver.ReceiveOplusInitialization(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (response is null) throw new TimeoutException(Strings.Qcom_OplusSha256InitUnconfirmed);
+        if (response.RawMode) throw new FirehoseProtocolException(Strings.Qcom_FirehoseRawModeUnexpected);
+        FirehoseCommandResult result = ToResult(response);
+        // Optional receives use empty attributes for completed log-only replies.
+        // This single captured error is compatibility evidence, never a synthetic ACK.
+        ThrowIfNak(result);
+        if (response.Logs.Any(static log =>
+                log.Message.Contains("VIP is enabled", StringComparison.OrdinalIgnoreCase) ||
+                (log.Level == FirehoseLogLevel.Error && log.Message.Trim() != "Failed to run the last command -1")))
+            throw new FirehoseProtocolException(Strings.Qcom_OplusSha256InitUnconfirmed);
+        if (response.Attributes.ContainsKey("value"))
+        {
+            return false;
+        }
+        if (response.Logs.Any(static log =>
+                log.Level == FirehoseLogLevel.Error && log.Message.Trim() == "Failed to run the last command -1"))
+            return true;
+        throw new FirehoseProtocolException(Strings.Qcom_OplusSha256InitUnconfirmed);
     }
 
     internal FirehoseCommandResult ReadOplusRejectionDetails(FirehoseCommandResult result, int timeout,

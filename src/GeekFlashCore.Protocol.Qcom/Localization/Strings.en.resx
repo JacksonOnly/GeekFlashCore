@@ -520,7 +520,7 @@ Current {0}, expected {1}</value>
   <data name="Qcom_OplusSignRejected" xml:space="preserve"><value>Oplus Sign verification failed. Re-enter EDL and check the Digest and Sign.</value></data>
   <data name="Qcom_LogOplusDigestBootstrap" xml:space="preserve"><value>Oplus startup: sending the Digest signed table.</value></data>
   <data name="Qcom_LogOplusVerify" xml:space="preserve"><value>Oplus startup: sending verify followed by the 4096-byte Sign.</value></data>
-  <data name="Qcom_LogOplusVerified" xml:space="preserve"><value>Oplus Sign verification and sha256init succeeded; continuing storage configuration.</value></data>
+  <data name="Qcom_LogOplusVerified" xml:space="preserve"><value>Oplus Sign verified and initialization handled; continuing storage configuration.</value></data>
   <data name="Qcom_LogOplusSignRejected" xml:space="preserve"><value>Oplus Sign verification failed; requesting one manual replacement.</value></data>
   <data name="Qcom_LogStartupWait" xml:space="preserve"><value>Waiting for Firehose startup logs, budget {TimeoutMilliseconds} ms.</value></data>
   <data name="Qcom_LogResponseTiming" xml:space="preserve"><value>Firehose response: status={Status} rawmode={RawMode} elapsed={ElapsedMilliseconds:F1} ms budget={TimeoutMilliseconds} ms.</value></data>
@@ -529,4 +529,8 @@ Current {0}, expected {1}</value>
   <data name="Qcom_ResourceRequestTimedOut" xml:space="preserve"><value>Resource request exceeded {0} ms; manual input can use an unlimited resource budget (-1).</value></data>
   <data name="Qcom_LogOplusResume" xml:space="preserve"><value>Resuming an Oplus loader explicitly declared to await its initial Digest: skip Sahara/startup logs and send Digest first. This mode is unsuitable after RAW interruption or authentication.</value></data>
   <data name="Qcom_LogOplusSilent" xml:space="preserve"><value>Passive Oplus detection did not receive a complete protocol prefix. A running loader may not replay logs; use CLI --oplus-resume only when it is known to await its initial Digest, otherwise re-enter EDL.</value></data>
+  <data name="Qcom_OplusSha256InitUnconfirmed" xml:space="preserve"><value>Oplus sha256init received neither a complete ACK nor the known compatibility response.</value></data>
+  <data name="Qcom_LogOplusSha256Compatibility" xml:space="preserve"><value>Oplus sha256init returned only the known complete error log without ACK; continuing Configure according to the reference flow after verified Sign.</value></data>
+  <data name="Qcom_OplusVerifyRestarted" xml:space="preserve"><value>Oplus Verify was rejected and the device is awaiting Digest again; Sign was not sent. Check resources and re-enter EDL.</value></data>
+  <data name="Qcom_DeviceHashMismatch" xml:space="preserve"><value>The device reports a packet Hash mismatch (original Hash omitted).</value></data>
 </root>

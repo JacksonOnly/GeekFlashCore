@@ -22,12 +22,14 @@ internal sealed class FirehoseWireReader : IDisposable
     public FirehoseWireReader(ITransport transport) =>
         _transport = transport ?? throw new ArgumentNullException(nameof(transport));
 
-    public FirehoseResponse ReadResponse(int timeoutMilliseconds, CancellationToken cancellationToken = default)
+    public FirehoseResponse ReadResponse(int timeoutMilliseconds, CancellationToken cancellationToken = default,
+        Action<FirehoseResponseLog>? publishLog = null)
     {
         ThrowIfDisposed();
         if (_queuedResponse is { } queued)
         {
             _queuedResponse = null;
+            foreach (FirehoseResponseLog log in queued.Logs) publishLog?.Invoke(log);
             return queued;
         }
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
@@ -42,13 +44,16 @@ internal sealed class FirehoseWireReader : IDisposable
                 throw new FirehoseProtocolException(Strings.Firehose_ResponseNotXml);
             AddPacketBudget(ref responseBytes, packet.Length);
 
-            if (FirehoseResponseParser.TryParsePacket(
+            int firstLog = logs.Count;
+            bool complete = FirehoseResponseParser.TryParsePacket(
                     packet,
                     logs,
                     out var status,
                     out rawMode,
                     out var attributes,
-                    out var payloadElements))
+                    out var payloadElements);
+            for (int index = firstLog; index < logs.Count; index++) publishLog?.Invoke(logs[index]);
+            if (complete)
                 return new FirehoseResponse(
                     logs,
                     attributes ?? new Dictionary<string, string>(),
@@ -95,7 +100,8 @@ internal sealed class FirehoseWireReader : IDisposable
         return _transport.Read(destination, timeoutMilliseconds);
     }
 
-    internal FirehoseResponse? ReadOptionalResponse(int timeoutMilliseconds, CancellationToken cancellationToken)
+    internal FirehoseResponse? ReadOptionalResponse(int timeoutMilliseconds, CancellationToken cancellationToken,
+        Action<FirehoseResponseLog>? publishLog = null)
     {
         ThrowIfDisposed();
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
@@ -109,8 +115,11 @@ internal sealed class FirehoseWireReader : IDisposable
                 ReadOnlySpan<byte> packet = ReadXmlPacket(GetRemainingMilliseconds(deadline), out bool raw);
                 if (raw) throw new FirehoseProtocolException(Strings.Firehose_ResponseNotXml);
                 AddPacketBudget(ref responseBytes, packet.Length);
-                if (FirehoseResponseParser.TryParsePacket(packet, logs, out var status, out raw,
-                        out var attributes, out var elements))
+                int firstLog = logs.Count;
+                bool complete = FirehoseResponseParser.TryParsePacket(packet, logs, out var status, out raw,
+                        out var attributes, out var elements);
+                for (int index = firstLog; index < logs.Count; index++) publishLog?.Invoke(logs[index]);
+                if (complete)
                     return new FirehoseResponse(logs, attributes!, status, raw, elements);
                 _xmlBuffer.Clear();
             }

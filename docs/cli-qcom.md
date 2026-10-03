@@ -35,6 +35,12 @@ Sahara 探测成功后、Loader 上传前会输出完整身份信息；`info` �
 
 两种 Oplus 模式均在 Configure 和存储查询前执行：启动日志 → Digest → verify XML → Sign（零填充至 4096 字节）→ verify passed → sha256init → Configure。Digest 失败、Sign 超时或半帧均立即中止连接，不发送其他命令。
 
+Legacy 初始化按用户提供的正常抓包发送 `<verify EnableVip="0"/>`，不带 `value="ping"`；Verify、sha256init 和 Configure 的声明为 `<?xml version="1.0" encoding="UTF-8" chimerais="power" ?>`，保留结尾空格。Pt 保持其原有参考线路的 `verify value="ping" EnableVip="1"` 和分区映射。
+
+Legacy 在 Sign 已确认后发送 sha256init，最多等待 1500 ms（若 read timeout 更短则使用更短预算）。抓包中该命令只有完整 `ERROR: Failed to run the last command -1` 日志、没有 ACK，随后继续 Configure；此特例有意保留并记录 Warning。纯静默、其他错误、NAK、RAW、半帧和设备重新等表均中止。此例外不适用于 Digest、Verify、Sign 或 Pt 的 sha256init。
+
+Legacy 自动配置从 UFS 开始，默认 Configure 依次发送 ZlpAwareHost=1、SkipWrite=0、SkipStorageInit=0、MaxPayloadSizeToTargetInBytes=1048576、MemoryName=ufs；协商上限和非默认显式配置仍有效，UFS 被完整 NAK 拒绝时仍可有界回退。普通线路/Pt 的原有默认配置保持。Digest 使用文件精确长度，不按启动提示中的 8192 强行填充；Sign 零填充到 4096 字节。
+
 Pt 保持按分区 Digest 索引映射和权限校验。只指定 `--oplus-digest` 时，默认选择 Pt；`--oplus-sign` 可选，未指定时根据 Loader/启动日志中的 SM 芯片名匹配参考内置 Sign。匹配不到、文件无效或设备拒绝时需要交互选择二进制 Sign 文件。脚本建议显式指定 Sign，无法交互时会失败：
 
 ```powershell
@@ -82,6 +88,8 @@ geekflash --loader programmer.elf --oplus-mode OplusDigestLegacy --oplus-digest 
 指定的文件以追加方式写入，每个事件立即刷新，单文件达到 16 MiB 后继续写同目录带运行标识的分段文件。日志不包含完整 Sign、Digest、认证载荷或自定义 XML，但保留已知签名失败状态和错误码。读取在线日志的工具需要允许共享写入。日志目录/文件保持 Git ignored；若路径不可写，CLI 会在连接设备之前报错。
 
 手动输入另外记录等待开始、耗时、完成或取消，不记录输入内容。资源预算超时和用户取消分别记录；显式续接和静默探测失败也会说明当前状态与恢复条件。
+
+设备完整日志逐帧落盘，等待 ACK 超时不会丢掉先前错误；明确的 Hash mismatch 状态可见，连续和带空格的 Hash 字节串均隐藏。Verify 后收到设备重新等待签名表的提示时立即报认证失败，不发送 Sign；sha256init 的已知 log-only 兼容路径明确注明未收到 ACK。
 
 ## 文件读取
 

@@ -46,6 +46,7 @@ public sealed class FirehoseSession : IDisposable
     }
 
     public FirehoseSessionState State => (FirehoseSessionState)Volatile.Read(ref _state);
+    internal FirehoseStorage PreferredInitialStorage => _executor.UsesLegacyBootstrap ? FirehoseStorage.Ufs : FirehoseStorage.Emmc;
 
     internal void SetBeforeCommand(Action<FirehoseSession, CancellationToken>? callback) =>
         _beforeCommand = callback;
@@ -363,6 +364,17 @@ public sealed class FirehoseSession : IDisposable
     }
 
     internal void ResetLegacyPacketCount() => _legacyCounter?.Reset();
+
+    internal void InitializeOplusSha256(CancellationToken cancellationToken)
+    {
+        using OperationLease operation = EnterCommand();
+        try
+        {
+            if (_executor.InitializeOplusSha256(_xmlDeclarationAttribute, cancellationToken))
+                Log.Warning(Strings.Qcom_LogOplusSha256Compatibility);
+        }
+        catch { SetState(FirehoseSessionState.Faulted); throw; }
+    }
 
     internal FirehoseCommandResult ReadOplusRejectionDetails(FirehoseCommandResult result, int timeout,
         CancellationToken cancellationToken)

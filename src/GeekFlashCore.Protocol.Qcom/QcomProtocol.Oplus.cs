@@ -120,7 +120,7 @@ public sealed partial class QcomProtocol
                 }
             }
             needsTable = false;
-            _firehose!.ExecuteXml("<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data><sha256init Verbose=\"1\"/></data>", cancellationToken: ct);
+            _firehose!.InitializeOplusSha256(ct);
             Log.Information(Strings.Qcom_LogOplusVerified);
             _oplusAuthenticated = true;
             return true;

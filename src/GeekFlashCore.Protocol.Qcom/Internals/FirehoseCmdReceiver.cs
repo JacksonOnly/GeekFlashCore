@@ -12,6 +12,8 @@ internal sealed class FirehoseCmdReceiver : IDisposable
     private readonly FirehoseWireReader _reader;
     private int _readTimeoutMilliseconds;
     private readonly ILogger _logger;
+    private readonly Action<FirehoseResponseLog> _publishLog;
+    private readonly Action<FirehoseResponseLog> _publishOplusVerifyLog;
 
     public FirehoseCmdReceiver(ILogger logger, ITransport transport, int readTimeoutMilliseconds)
     {
@@ -21,6 +23,8 @@ internal sealed class FirehoseCmdReceiver : IDisposable
         _reader = new FirehoseWireReader(transport);
         _readTimeoutMilliseconds = readTimeoutMilliseconds;
         _logger = logger;
+        _publishLog = PublishLog;
+        _publishOplusVerifyLog = PublishOplusVerifyLog;
     }
 
     public FirehoseResponse ReceiveStartupLog(int? timeoutMilliseconds = null)
@@ -40,11 +44,13 @@ internal sealed class FirehoseCmdReceiver : IDisposable
         return response;
     }
 
-    public FirehoseResponse Receive(bool publishLogs = true, CancellationToken cancellationToken = default)
+    public FirehoseResponse Receive(bool publishLogs = true, CancellationToken cancellationToken = default,
+        bool rejectOplusRestart = false)
     {
         long started = Stopwatch.GetTimestamp();
         FirehoseResponse response;
-        try { response = _reader.ReadResponse(_readTimeoutMilliseconds, cancellationToken); }
+        try { response = _reader.ReadResponse(_readTimeoutMilliseconds, cancellationToken,
+            rejectOplusRestart ? _publishOplusVerifyLog : publishLogs ? _publishLog : null); }
         catch (Exception exception)
         {
             _logger.Debug(Strings.Qcom_LogResponseInterrupted, exception.GetType().Name,
@@ -53,7 +59,6 @@ internal sealed class FirehoseCmdReceiver : IDisposable
         }
         _logger.Debug(Strings.Qcom_LogResponseTiming, response.Status, response.RawMode,
             Stopwatch.GetElapsedTime(started).TotalMilliseconds, _readTimeoutMilliseconds);
-        if (publishLogs) PublishLogs(response);
         if (HasDiagnosticAttributes(response) && _logger.IsEnabled(LogEventLevel.Debug))
         {
             _logger.Debug(Strings.Qcom_LogFirehoseResponseAttributes,
@@ -69,12 +74,15 @@ internal sealed class FirehoseCmdReceiver : IDisposable
     internal FirehoseResponse? ReceiveOptional(int timeout, CancellationToken cancellationToken)
     {
         long started = Stopwatch.GetTimestamp();
-        FirehoseResponse? response = _reader.ReadOptionalResponse(timeout, cancellationToken);
-        if (response is not null) PublishLogs(response);
-        _logger.Debug(Strings.Qcom_LogResponseTiming, response?.Status, response?.RawMode,
+        FirehoseResponse? response = _reader.ReadOptionalResponse(timeout, cancellationToken, _publishLog);
+        _logger.Debug(Strings.Qcom_LogResponseTiming,
+            response?.Attributes.ContainsKey("value") == true ? response.Status : null, response?.RawMode,
             Stopwatch.GetElapsedTime(started).TotalMilliseconds, timeout);
         return response;
     }
+
+    internal FirehoseResponse? ReceiveOplusInitialization(CancellationToken cancellationToken) =>
+        ReceiveOptional(Math.Min(1500, _readTimeoutMilliseconds), cancellationToken);
 
     internal FirehoseResponse ReceiveWithin(int timeout, CancellationToken cancellationToken) =>
         _reader.ReadResponse(timeout, cancellationToken);
@@ -148,10 +156,11 @@ internal sealed class FirehoseCmdReceiver : IDisposable
         }
     }
 
-    private void PublishLogs(FirehoseResponse response)
+    private void PublishOplusVerifyLog(FirehoseResponseLog log)
     {
-        foreach (FirehoseResponseLog log in response.Logs)
-            PublishLog(log);
+        PublishLog(log);
+        if (log.Message.Contains("VIP is enabled, receiving the signed table", StringComparison.OrdinalIgnoreCase))
+            throw new QcomAuthenticationException(Strings.Qcom_OplusVerifyRestarted);
     }
 
     private void PublishLog(FirehoseResponseLog log)

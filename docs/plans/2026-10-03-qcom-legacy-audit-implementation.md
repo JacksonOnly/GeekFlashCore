@@ -96,6 +96,7 @@ Interfaces：可取消单输入通道；新增 connect/resource/device-wait/Lega
 - [x] QA-D（2026-10-03）：最终 RAW NAK 和末块读取取消 2 项 RED→GREEN；普通 XML 等待传入取消 token。复现 Configure 同步/异步在 storage-open-failed + payload 调整同时出现时选错存储，统一 UFS 回退，1 项 RED→GREEN。提前 NAK 仅写第一块且不可继续、资源超时后迟到结果释放回归通过。累计 29 项本地测试通过，Release 0 警告/错误、diff check 通过。
 - 审查裁定：Sahara 按设备请求上传，分包/Configure/LUN 查询已有有界单次等待；不添加可能中断正常大镜像的统一读写总时限。同步阻塞 I/O 的取消最多等当前单次超时，持续有有效进度的操作由调用方 token 控制；CLI 明示各超时用途。Configure 是有限次数回退，多 LUN 有最大数量，累计连接耗时可能超过 ConnectTimeout（该字段用于探测）。没有硬件证据，不宣称真机验证或吞吐提升。
 - [x] QA-D：连接/实际读写路径修复与回归。
+- [x] QA-D 补充（2026-10-03）：模拟真实编排 ConnectAsync → 分片 RAW 取消 → Cleanup → ConnectAsync 复现重连读到旧 pending RAW 的失败，清理 QcomSessionTransport 前缀/溢出缓存后 GREEN。同一测试验证 TargetInfo 清空、旧块视图代数失效、新视图读回 512 字节；Pt 跨分区映射/未覆盖范围回归通过。使用模拟传输，非硬件测试。
 - [ ] QA-E：CLI 完善。
 - [ ] QA-F：完整验证、独立提交和风险收尾。
 

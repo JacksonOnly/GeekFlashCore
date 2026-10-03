@@ -910,6 +910,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         _sahara?.Dispose(); _sahara = null;
         _startup = null; _programmer = null; _targetInfo = null;
         _vipPolicy = null; _onePlusAuthentication = null;
+        if (_wire is QcomSessionTransport sessionTransport) sessionTransport.DiscardBuffered();
         if (hadFirehose && _wire is not null)
             _firehose = new FirehoseSession(_wire, _options.ReadTimeoutMilliseconds);
         else

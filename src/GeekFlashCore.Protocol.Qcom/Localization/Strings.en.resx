@@ -507,4 +507,9 @@ Current {0}, expected {1}</value>
   <data name="Progress_Reading" xml:space="preserve"><value>Reading</value></data>
   <data name="Progress_Uploading" xml:space="preserve"><value>Uploading Loader</value></data>
   <data name="Firehose_ResponseNotXml" xml:space="preserve"><value>The Firehose command did not receive a valid XML response.</value></data>
+  <data name="Firehose_OptionalResponseIncomplete" xml:space="preserve"><value>An incomplete XML response arrived within the Digest reply window.</value></data>
+  <data name="Qcom_LegacyNopRequired" xml:space="preserve"><value>The Legacy confirmation command must be a single NOP.</value></data>
+  <data name="Qcom_LegacyNopUnconfirmed" xml:space="preserve"><value>The Legacy Digest did not receive a correlated NOP handler and ACK.</value></data>
+  <data name="Qcom_LegacyPolicyAlreadyAttached" xml:space="preserve"><value>The Legacy policy is attached to another session.</value></data>
+  <data name="Qcom_LegacyPacketCountInvalid" xml:space="preserve"><value>The Legacy packet count exceeds the table trigger position. Reconnect the device.</value></data>
 </root>

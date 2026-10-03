@@ -92,7 +92,8 @@ Interfaces：可取消单输入通道；新增 connect/resource/device-wait/Lega
 - [x] 用户确认设计（2026-10-03）。
 - [x] QA-A：ACK、Payload、模式互斥（2026-10-03；3 项缺陷 RED→GREEN，正常 ACK 1 项通过；Release 构建 0 警告/错误，diff check 通过）。CLI Legacy 测试仍保留已知失败，等待 QA-E。
 - [x] QA-B：USB 生命周期和预算（2026-10-03；首次端点发现、Open/Close/Open、失败释放并重试、慢分片总预算 4 项 RED→GREEN；使用可控 IUsbContext/IUsbDevice 和端点，未连接硬件）。
-- [ ] QA-C：Rector Legacy 线路。
+- [x] QA-C：Rector Legacy 线路（2026-10-03；首批 12 项测试 9 RED/3 既有失败路径通过，迁移后 15 项全部通过，累计 24 项本地测试通过）。已覆盖 51/52/53/54 边界、日志错误与 handler 关联、Digest NAK/半帧、签名单次重放、读取不自动刷新、无 Pt 索引、Sparse RAW/FILL/skip 和缺省 rawmode。Legacy 资源安装前的 Configure/探测计数由 InitialPacketCount 表达，安装后所有 XML/完整输出载荷共享计数；未主动发送初始签名表，按 Rector 只在边界或签名 NAK 发送。
+- QA-D 进行中：新复现最终 Raw NAK 仍恢复 Started、末块读取取消后继续等 ACK 两项失败，待下一独立修复；不计入 QA-C 已通过集合。
 - [ ] QA-D：连接/实际读写路径修复与回归。
 - [ ] QA-E：CLI 完善。
 - [ ] QA-F：完整验证、独立提交和风险收尾。

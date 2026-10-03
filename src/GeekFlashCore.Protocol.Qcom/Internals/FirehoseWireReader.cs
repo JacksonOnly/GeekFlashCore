@@ -22,7 +22,7 @@ internal sealed class FirehoseWireReader : IDisposable
     public FirehoseWireReader(ITransport transport) =>
         _transport = transport ?? throw new ArgumentNullException(nameof(transport));
 
-    public FirehoseResponse ReadResponse(int timeoutMilliseconds)
+    public FirehoseResponse ReadResponse(int timeoutMilliseconds, CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
         if (_queuedResponse is { } queued)
@@ -35,6 +35,7 @@ internal sealed class FirehoseWireReader : IDisposable
 
         while (true)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ReadOnlySpan<byte> packet = ReadXmlPacket(GetRemainingMilliseconds(deadline), out bool rawMode);
             if (rawMode)
                 throw new FirehoseProtocolException(Strings.Firehose_ResponseNotXml);
@@ -87,14 +88,52 @@ internal sealed class FirehoseWireReader : IDisposable
         return _transport.Read(destination, timeoutMilliseconds);
     }
 
+    internal FirehoseResponse? ReadOptionalResponse(int timeoutMilliseconds, CancellationToken cancellationToken)
+    {
+        ThrowIfDisposed();
+        long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
+        var logs = new List<FirehoseResponseLog>();
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                ReadOnlySpan<byte> packet = ReadXmlPacket(GetRemainingMilliseconds(deadline), out bool raw);
+                if (raw) throw new FirehoseProtocolException(Strings.Firehose_ResponseNotXml);
+                if (FirehoseResponseParser.TryParsePacket(packet, logs, out var status, out raw,
+                        out var attributes, out var elements))
+                    return new FirehoseResponse(logs, attributes!, status, raw, elements);
+                _xmlBuffer.Clear();
+            }
+            catch (TimeoutException)
+            {
+                if (_xmlBuffer.WrittenCount > 0)
+                    throw new FirehoseProtocolException(Strings.Firehose_OptionalResponseIncomplete);
+                return logs.Count == 0 ? null : new FirehoseResponse(logs,
+                    new Dictionary<string, string>(), FirehoseResponseStatus.Ack, false);
+            }
+        }
+    }
+
+    internal void DiscardBuffered()
+    {
+        _queuedResponse = null;
+        _xmlBuffer.Clear();
+        ReturnCarry();
+    }
+
     private ReadOnlySpan<byte> ReadXmlPacket(int timeoutMilliseconds, out bool rawMode)
     {
         _xmlBuffer.Clear();
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
 
-        Span<byte> prefix = _xmlBuffer.GetSpan(XmlProbeLength)[..XmlProbeLength];
-        ReadExact(prefix, GetRemainingMilliseconds(deadline));
-        _xmlBuffer.Advance(prefix.Length);
+        while (_xmlBuffer.WrittenCount < XmlProbeLength)
+        {
+            Span<byte> prefix = _xmlBuffer.GetSpan(XmlProbeLength)[..(XmlProbeLength - _xmlBuffer.WrittenCount)];
+            int read = ReadSome(prefix, GetRemainingMilliseconds(deadline));
+            if (read <= 0) throw new EndOfStreamException(Strings.Firehose_TransportClosedReadingXml);
+            _xmlBuffer.Advance(read);
+        }
 
         if (!LooksLikeXml(_xmlBuffer.WrittenSpan))
         {

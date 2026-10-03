@@ -62,6 +62,12 @@ internal sealed class QcomSessionTransport(ITransport transport, byte[] prefix, 
         _pending = combined;
         _pendingOffset = 0;
     }
-    public void Flush() => transport.Flush();
+    public void Flush()
+    {
+        transport.Flush();
+        _offset = prefix.Length;
+        _pending = null;
+        _pendingOffset = 0;
+    }
     public void Dispose() { }
 }

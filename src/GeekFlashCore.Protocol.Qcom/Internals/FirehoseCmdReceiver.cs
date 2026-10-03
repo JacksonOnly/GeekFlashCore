@@ -30,9 +30,9 @@ internal sealed class FirehoseCmdReceiver : IDisposable
         return response;
     }
 
-    public FirehoseResponse Receive(bool publishLogs = true)
+    public FirehoseResponse Receive(bool publishLogs = true, CancellationToken cancellationToken = default)
     {
-        FirehoseResponse response = _reader.ReadResponse(_readTimeoutMilliseconds);
+        FirehoseResponse response = _reader.ReadResponse(_readTimeoutMilliseconds, cancellationToken);
         if (publishLogs) PublishLogs(response);
         if (HasDiagnosticAttributes(response) && _logger.IsEnabled(LogEventLevel.Debug))
         {
@@ -45,6 +45,14 @@ internal sealed class FirehoseCmdReceiver : IDisposable
     }
 
     public FirehoseResponse? PollResponse() => _reader.PollResponse();
+
+    internal FirehoseResponse? ReceiveOptional(int timeout, CancellationToken cancellationToken) =>
+        _reader.ReadOptionalResponse(timeout, cancellationToken);
+
+    internal FirehoseResponse ReceiveWithin(int timeout, CancellationToken cancellationToken) =>
+        _reader.ReadResponse(timeout, cancellationToken);
+
+    internal void DiscardBuffered() => _reader.DiscardBuffered();
 
     internal void SetReadTimeout(int milliseconds)
     {

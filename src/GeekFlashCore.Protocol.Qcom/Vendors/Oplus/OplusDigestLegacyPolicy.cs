@@ -6,19 +6,31 @@ using GeekFlashCore.Protocol.Qcom.Firehose.Storage;
 
 namespace GeekFlashCore.Protocol.Qcom.Vendors.Oplus;
 
-/// <summary>Per-session Legacy Digest mapping, fixed sector windows and bounded XML recovery.</summary>
+/// <summary>Rector Legacy packet counting, numeric sector windows and bounded signature recovery.</summary>
 public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
 {
-    private readonly OplusDigestPtPolicy _mapping;
     private readonly IDataSource _digest;
     private readonly long _digestLength;
     private readonly int _fixedSectorCount;
     private readonly int _transferBufferSize;
     private readonly OplusDigestCommandCounter _counter;
+    private readonly OplusDigestConfiguration _configuration;
+    private readonly string _nopXml;
+    private FirehoseSession? _attachedSession;
 
     /// <param name="digest">A reopenable source retained by the caller for the entire session.</param>
     public OplusDigestLegacyPolicy(OplusDigestIndex index, IDataSource digest,
         OplusDigestConfiguration configuration, int transferBufferSize)
+        : this(digest, configuration, transferBufferSize)
+    {
+        ArgumentNullException.ThrowIfNull(index);
+    }
+
+    /// <summary>Creates a Legacy flow from an opaque signed table, without Pt partition metadata.</summary>
+    /// <param name="digest">A reopenable source owned by the caller for the entire session.</param>
+    /// <param name="configuration">The packet capacity, initial count and exact confirmation NOP.</param>
+    /// <param name="transferBufferSize">The negotiated outgoing payload limit.</param>
+    public OplusDigestLegacyPolicy(IDataSource digest, OplusDigestConfiguration configuration, int transferBufferSize)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         configuration.Validate();
@@ -28,18 +40,29 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
         if (digest.Length is <= 0 or > OplusDigestParser.MaximumDigestLength)
             throw new OplusDigestException(Strings.Qcom_OplusLegacyLengthInvalid);
         if (transferBufferSize <= 0) throw new ArgumentOutOfRangeException(nameof(transferBufferSize));
-        _mapping = new OplusDigestPtPolicy(index);
         _digest = digest;
         _digestLength = digest.Length;
         _fixedSectorCount = configuration.FixedSectorCount;
         _transferBufferSize = transferBufferSize;
-        _counter = new OplusDigestCommandCounter(configuration.MaxCommandsBeforeDigest);
+        _configuration = configuration;
+        _nopXml = configuration.NopXml ?? FirehoseLegacyXml.DefaultNop;
+        FirehoseLegacyXml.ValidateNop(_nopXml);
+        _counter = new OplusDigestCommandCounter(configuration.MaxCommandsBeforeDigest, configuration.InitialPacketCount);
+    }
+
+    internal void Attach(FirehoseSession session)
+    {
+        if (ReferenceEquals(_attachedSession, session)) return;
+        if (_attachedSession is not null) throw new InvalidOperationException(Strings.Qcom_LegacyPolicyAlreadyAttached);
+        session.ConfigureLegacyWire(_configuration, _counter.CommandSent);
+        _attachedSession = session;
     }
 
     public IReadOnlyList<FirehoseStorageRange> Map(uint physicalPartitionNumber, long startSector,
         long sectorCount, bool write, string? label = null, string? fileName = null) =>
-        new FixedRanges(_mapping.Map(physicalPartitionNumber, startSector, sectorCount, write, label, fileName),
-            _fixedSectorCount);
+        _fixedSectorCount == 0
+            ? [new FirehoseStorageRange(startSector, sectorCount, label, fileName)]
+            : new FixedRanges([new FirehoseStorageRange(startSector, sectorCount, label, fileName)], _fixedSectorCount);
 
     public FirehoseCommandResult ExecuteCommand(FirehoseSession session, BaseCommand command,
         CancellationToken cancellationToken)
@@ -47,44 +70,59 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(command);
         cancellationToken.ThrowIfCancellationRequested();
-        if (_counter.RequiresDigest) Refresh(session, cancellationToken);
+        Attach(session);
+        if (command is not ProgramCommand)
+            return session.Execute(command, expectedRawMode: true, cancellationToken: cancellationToken);
+        CheckDigest(session, cancellationToken);
         try
         {
             FirehoseCommandResult result = session.Execute(
                 command,
                 expectedRawMode: true,
                 cancellationToken: cancellationToken);
-            _counter.CommandSent();
             return result;
         }
         catch (FirehoseNakException exception) when (!exception.Result.RawMode && IsSignatureFailure(exception.Result))
         {
-            // QnQcLIB counts the XML write even when the response is a NAK.
-            _counter.CommandSent();
-            Refresh(session, cancellationToken, includeNopPreamble: false);
+            Refresh(session, cancellationToken);
             // Deliberately outside the try: a second NAK is returned immediately, without recovery.
-        }
-        catch (FirehoseNakException)
-        {
-            _counter.CommandSent();
-            throw;
         }
         cancellationToken.ThrowIfCancellationRequested();
         FirehoseCommandResult replay = session.Execute(
             command,
             expectedRawMode: true,
             cancellationToken: cancellationToken);
-        _counter.CommandSent();
         return replay;
     }
 
     public void CommandCompleted()
     {
-        // The counter advances when the XML command is sent, before raw data
-        // and its final ACK, matching QnQcLIB's Legacy semantics.
+        // The wire executor counts XML and complete outgoing payloads before ACKs.
     }
 
-    private void Refresh(FirehoseSession session, CancellationToken cancellationToken, bool includeNopPreamble = true)
+    private void CheckDigest(FirehoseSession session, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (_counter.Current > _counter.Trigger)
+                throw new OplusDigestException(Strings.Qcom_LegacyPacketCountInvalid);
+            if (!_counter.RequiresDigest) return;
+            while (_counter.Current < _counter.Trigger)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try { session.ExecuteLegacyNop(_nopXml, cancellationToken); }
+                catch (FirehoseNakException exception) when (_counter.Current == _counter.Trigger &&
+                    !exception.Result.RawMode && IsDigestRequested(exception.Result))
+                {
+                    // Rector intentionally accepts the table-trigger NAK at max_count + 1.
+                }
+            }
+            Refresh(session, cancellationToken);
+        }
+        catch { session.Invalidate(); throw; }
+    }
+
+    private void Refresh(FirehoseSession session, CancellationToken cancellationToken)
     {
         try
         {
@@ -93,16 +131,14 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
                 throw new OplusDigestException(Strings.Qcom_OplusLegacyStreamMissing);
             if (!source.CanRead || _digest.Length != _digestLength)
                 throw new OplusDigestException(Strings.Qcom_OplusLegacySourceChanged);
-            if (includeNopPreamble)
-            {
-                session.Execute(new NopCommand(), cancellationToken: cancellationToken);
-                cancellationToken.ThrowIfCancellationRequested();
-                session.Execute(new NopCommand(), cancellationToken: cancellationToken);
-            }
-            session.SendDigest(source, _digestLength, _transferBufferSize, cancellationToken);
+            FirehoseCommandResult? response = session.SendLegacyDigest(source, _digestLength, _transferBufferSize,
+                _configuration.DigestResponseTimeoutMilliseconds, cancellationToken);
+            bool independentAck = response?.Attributes.TryGetValue("value", out string? value) == true &&
+                string.Equals(value, "ACK", StringComparison.OrdinalIgnoreCase);
+            if (independentAck) _counter.Reset();
             cancellationToken.ThrowIfCancellationRequested();
-            session.Execute(new NopCommand(), cancellationToken: cancellationToken);
-            _counter.Reset();
+            session.ConfirmLegacyNop(_nopXml, requireHandler: !independentAck, cancellationToken);
+            if (!independentAck) _counter.Reset(1);
         }
         catch
         {
@@ -112,7 +148,10 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
     }
 
     private static bool IsSignatureFailure(FirehoseCommandResult result) => result.Logs.Any(log =>
-        log.Message.Contains("Verifying signature failed with", StringComparison.OrdinalIgnoreCase));
+        log.Message.Contains("Verifying signature failed with", StringComparison.Ordinal));
+
+    private static bool IsDigestRequested(FirehoseCommandResult result) => IsSignatureFailure(result) || result.Logs.Any(log =>
+        log.Message.Contains("Hash of new table doesn't match the expected hash", StringComparison.Ordinal));
 
     // Window enumeration remains constant-memory even when a mapped entry spans a large image.
     private sealed class FixedRanges : IReadOnlyList<FirehoseStorageRange>

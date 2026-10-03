@@ -610,12 +610,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             new OplusDigestResourceRequest(TargetInfo!, _options.OplusDigest.Mode), token), ct).ConfigureAwait(false);
         IDataSource digest = response.Digest ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
         int bufferSize = FirehosePayloadLimits.GetTransferBufferSize(result.Configuration);
-        OplusDigestIndex index = new OplusDigestParser().Parse(digest);
-        using (Stream stream = digest.OpenStream() ?? throw new QcomResourceException(Strings.Qcom_InvalidResource))
-            _firehose!.SendDigest(stream, digest.Length, bufferSize, ct);
-        IFirehoseStoragePolicy policy = _options.OplusDigest.Mode == OplusDigestMode.OplusDigestLegacy
-            ? new OplusDigestLegacyPolicy(index, digest, _options.OplusDigest, bufferSize)
-            : new OplusDigestPtPolicy(index);
+        IFirehoseStoragePolicy policy = CreateOplusPolicy(digest, bufferSize, ct);
         SetStorage(result, policy);
     }
 
@@ -633,13 +628,18 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             new OplusDigestResourceRequest(TargetInfo!, _options.OplusDigest.Mode), token));
         IDataSource digest = response.Digest ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
         int bufferSize = FirehosePayloadLimits.GetTransferBufferSize(result.Configuration);
-        OplusDigestIndex index = new OplusDigestParser().Parse(digest);
-        using (Stream stream = digest.OpenStream() ?? throw new QcomResourceException(Strings.Qcom_InvalidResource))
-            _firehose!.SendDigest(stream, digest.Length, bufferSize);
-        IFirehoseStoragePolicy policy = _options.OplusDigest.Mode == OplusDigestMode.OplusDigestLegacy
-            ? new OplusDigestLegacyPolicy(index, digest, _options.OplusDigest, bufferSize)
-            : new OplusDigestPtPolicy(index);
+        IFirehoseStoragePolicy policy = CreateOplusPolicy(digest, bufferSize, CancellationToken.None);
         SetStorage(result, policy);
+    }
+
+    private IFirehoseStoragePolicy CreateOplusPolicy(IDataSource digest, int bufferSize, CancellationToken cancellationToken)
+    {
+        if (_options.OplusDigest.Mode == OplusDigestMode.OplusDigestLegacy)
+            return new OplusDigestLegacyPolicy(digest, _options.OplusDigest, bufferSize);
+        OplusDigestIndex index = new OplusDigestParser().Parse(digest);
+        using Stream stream = digest.OpenStream() ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
+        _firehose!.SendDigest(stream, digest.Length, bufferSize, cancellationToken);
+        return new OplusDigestPtPolicy(index);
     }
 
     private async ValueTask SendGenericDigestAsync(CancellationToken ct)

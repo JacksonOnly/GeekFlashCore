@@ -21,6 +21,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
     {
         _policy = policy;
         _session = session ?? throw new ArgumentNullException(nameof(session));
+        if (policy is Vendors.Oplus.OplusDigestLegacyPolicy legacy) legacy.Attach(session);
         ArgumentNullException.ThrowIfNull(configuration);
         FirehoseStorage storage = configuration.Storage != FirehoseStorage.None
             ? configuration.Storage

@@ -27,7 +27,9 @@ internal readonly struct FirehoseCmdSender
         SendXml(xml);
     }
 
-    public void SendXml(string xml, Action? packetSent = null)
+    public void Flush() => _transport.Flush();
+
+    public void SendXml(string xml, Action? packetSent = null, int? maximumWireLength = null)
     {
         ArgumentNullException.ThrowIfNull(xml);
 
@@ -42,7 +44,7 @@ internal readonly struct FirehoseCmdSender
         try
         {
             int bytesWritten = Encoding.UTF8.GetBytes(xml, buffer);
-            _transport.Write(buffer[..bytesWritten]);
+            _transport.Write(buffer[..Math.Min(bytesWritten, maximumWireLength ?? bytesWritten)]);
             packetSent?.Invoke();
             _logger.Debug(Strings.Qcom_LogSendXml, bytesWritten);
         }

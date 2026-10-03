@@ -29,17 +29,37 @@ public sealed record FirehoseConfiguration
 
 public sealed record OplusDigestConfiguration
 {
+    /// <summary>Selects partition mapping or the Rector packet-counted Legacy flow.</summary>
     public OplusDigestMode Mode { get; init; }
+    /// <summary>Maximum sectors per transfer; zero keeps the request unsegmented.</summary>
     public int FixedSectorCount { get; init; }
-    public int MaxCommandsBeforeDigest { get; init; }
+    /// <summary>Legacy table packet capacity. Counts XML and complete outgoing payloads, not transport chunks.</summary>
+    public int MaxCommandsBeforeDigest { get; init; } = 53;
+    /// <summary>Packet count supplied by a host resuming its own table state.</summary>
+    public uint InitialPacketCount { get; init; }
+    /// <summary>Exact confirmation NOP; null selects the compatible built-in NOP.</summary>
+    public string? NopXml { get; init; }
+    /// <summary>Legacy wire XML truncation limit retained from Rector.</summary>
+    public int MaximumXmlSendSize { get; init; } = 4096;
+    /// <summary>Independent Digest reply window, including partial XML.</summary>
+    public int DigestResponseTimeoutMilliseconds { get; init; } = 1000;
 
     public void Validate()
     {
+        if (!Enum.IsDefined(Mode)) throw new ArgumentOutOfRangeException(nameof(Mode));
         if (Mode != OplusDigestMode.OplusDigestLegacy)
             return;
-        if (FixedSectorCount <= 0)
+        if (FixedSectorCount < 0)
             throw new ArgumentOutOfRangeException(nameof(FixedSectorCount));
-        if (MaxCommandsBeforeDigest < 2)
+        if (MaxCommandsBeforeDigest < 4)
             throw new ArgumentOutOfRangeException(nameof(MaxCommandsBeforeDigest));
+        if (InitialPacketCount > (long)MaxCommandsBeforeDigest + 1)
+            throw new ArgumentOutOfRangeException(nameof(InitialPacketCount));
+        if (MaximumXmlSendSize is < 1 or > FirehoseConstants.MaximumXmlPacketSize)
+            throw new ArgumentOutOfRangeException(nameof(MaximumXmlSendSize));
+        if (DigestResponseTimeoutMilliseconds <= 0)
+            throw new ArgumentOutOfRangeException(nameof(DigestResponseTimeoutMilliseconds));
+        if (NopXml?.Length > FirehoseConstants.MaximumXmlPacketSize)
+            throw new ArgumentOutOfRangeException(nameof(NopXml));
     }
 }

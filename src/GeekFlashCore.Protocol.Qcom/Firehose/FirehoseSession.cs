@@ -54,6 +54,36 @@ public sealed class FirehoseSession : IDisposable
     internal void SetXmlDeclarationAttribute(string? attribute) =>
         _xmlDeclarationAttribute = attribute;
 
+    internal void ConfigureLegacyWire(OplusDigestConfiguration configuration, Action packetSent) =>
+        _executor.ConfigureLegacy(configuration, packetSent);
+
+    internal FirehoseCommandResult? SendLegacyDigest(Stream source, long length, int bufferSize,
+        int timeout, CancellationToken cancellationToken)
+    {
+        using OperationLease operation = EnterCommand();
+        try { return _executor.SendLegacyDigest(source, length, bufferSize, timeout, cancellationToken); }
+        catch { SetState(FirehoseSessionState.Faulted); throw; }
+    }
+
+    internal FirehoseCommandResult ConfirmLegacyNop(string xml, bool requireHandler, CancellationToken cancellationToken)
+    {
+        using OperationLease operation = EnterCommand();
+        try { return _executor.ConfirmLegacyNop(xml, requireHandler, _defaultReadTimeoutMilliseconds, cancellationToken); }
+        catch { SetState(FirehoseSessionState.Faulted); throw; }
+    }
+
+    internal FirehoseCommandResult ExecuteLegacyNop(string xml, CancellationToken cancellationToken)
+    {
+        using OperationLease operation = EnterCommand();
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return _executor.ExecuteXml(xml, expectedRawMode: false);
+        }
+        catch (FirehoseNakException exception) { CompleteNak(exception, State); throw; }
+        catch { SetState(FirehoseSessionState.Faulted); throw; }
+    }
+
     public FirehoseResponse Start(int? startupTimeoutMilliseconds = null)
     {
         using OperationLease _ = Enter(FirehoseSessionState.Created);

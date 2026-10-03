@@ -404,4 +404,9 @@
   <data name="Progress_Reading" xml:space="preserve"><value>读取</value></data>
   <data name="Progress_Uploading" xml:space="preserve"><value>上传 Loader</value></data>
   <data name="Firehose_ResponseNotXml" xml:space="preserve"><value>Firehose 命令未收到有效的 XML 响应。</value></data>
+  <data name="Firehose_OptionalResponseIncomplete" xml:space="preserve"><value>Digest 回复窗口内收到不完整的 XML 响应。</value></data>
+  <data name="Qcom_LegacyNopRequired" xml:space="preserve"><value>Legacy 确认命令必须是单个 NOP。</value></data>
+  <data name="Qcom_LegacyNopUnconfirmed" xml:space="preserve"><value>Legacy Digest 未收到关联的 NOP handler 和 ACK 确认。</value></data>
+  <data name="Qcom_LegacyPolicyAlreadyAttached" xml:space="preserve"><value>Legacy 策略已绑定到另一个会话。</value></data>
+  <data name="Qcom_LegacyPacketCountInvalid" xml:space="preserve"><value>Legacy 包计数超过换表触发位置，需要重新连接。</value></data>
 </root>

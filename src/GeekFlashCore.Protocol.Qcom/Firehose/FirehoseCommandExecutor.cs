@@ -1,5 +1,6 @@
 using System.Text;
 using System.Xml;
+using System.Diagnostics;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Internals;
 
@@ -9,6 +10,25 @@ internal sealed class FirehoseCommandExecutor
 {
     private readonly FirehoseCmdReceiver _receiver;
     private readonly FirehoseCmdSender _sender;
+    private OplusDigestConfiguration? _legacy;
+    private Action? _legacyPacketSent;
+
+    internal void ConfigureLegacy(OplusDigestConfiguration configuration, Action packetSent)
+    {
+        FirehoseLegacyXml.ValidateNop(configuration.NopXml ?? FirehoseLegacyXml.DefaultNop);
+        _legacy = configuration;
+        _legacyPacketSent = packetSent;
+    }
+
+    private void SendXml(string xml, Action? commandSent, bool flush = true)
+    {
+        if (_legacy is not null && flush)
+        {
+            _sender.Flush();
+            _receiver.DiscardBuffered();
+        }
+        _sender.SendXml(xml, () => { commandSent?.Invoke(); _legacyPacketSent?.Invoke(); }, _legacy?.MaximumXmlSendSize);
+    }
 
     public FirehoseCommandExecutor(FirehoseCmdSender sender, FirehoseCmdReceiver receiver)
     {
@@ -28,7 +48,7 @@ internal sealed class FirehoseCommandExecutor
         ArgumentNullException.ThrowIfNull(command);
         string xml = command.Build();
         ValidateXml(xml);
-        _sender.SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute), commandSent);
+        SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute), commandSent);
         bool publishDeviceText = command is not (PeekCommand or PokeCommand or GetSha256DigestCommand);
         return ValidateResponse(_receiver.Receive(publishDeviceText), expectedRawMode, publishDeviceText);
     }
@@ -39,8 +59,8 @@ internal sealed class FirehoseCommandExecutor
         string? xmlDeclarationAttribute = null,
         Action? commandSent = null)
     {
-        ValidateXml(xml);
-        _sender.SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute), commandSent);
+        ValidateXml(_legacy is null ? xml : FirehoseLegacyXml.ForValidation(xml));
+        SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute), commandSent);
         return ValidateResponse(_receiver.Receive(), expectedRawMode);
     }
 
@@ -62,7 +82,9 @@ internal sealed class FirehoseCommandExecutor
         Action? packetSent)
     {
         _sender.SendRaw(bufferSize, source, cancellationToken, () => CheckRawResponse(packetSent));
-        return CompleteRawTransfer(_receiver.Receive(), source.Length);
+        _legacyPacketSent?.Invoke();
+        cancellationToken.ThrowIfCancellationRequested();
+        return CompleteRawTransfer(_receiver.Receive(cancellationToken: cancellationToken), source.Length);
     }
 
     public FirehoseCommandResult SendRaw(
@@ -86,7 +108,43 @@ internal sealed class FirehoseCommandExecutor
             cancellationToken,
             computeDigest,
             () => CheckRawResponse(packetSent));
-        return CompleteRawTransfer(_receiver.Receive(), wireLength) with { Sha256Digest = digest };
+        _legacyPacketSent?.Invoke();
+        cancellationToken.ThrowIfCancellationRequested();
+        return CompleteRawTransfer(_receiver.Receive(cancellationToken: cancellationToken), wireLength) with { Sha256Digest = digest };
+    }
+
+    internal FirehoseCommandResult? SendLegacyDigest(Stream source, long length, int bufferSize,
+        int timeout, CancellationToken cancellationToken)
+    {
+        _sender.SendRaw(bufferSize, source, length, length, 0, cancellationToken: cancellationToken);
+        _legacyPacketSent?.Invoke();
+        FirehoseResponse? response = _receiver.ReceiveOptional(timeout, cancellationToken);
+        if (response is null) return null;
+        FirehoseCommandResult result = ToResult(response);
+        ThrowIfNak(result);
+        if (result.RawMode) throw new FirehoseProtocolException(Strings.Qcom_FirehoseRawModeUnexpected);
+        return result;
+    }
+
+    internal FirehoseCommandResult ConfirmLegacyNop(string xml, bool requireHandler, int timeout,
+        CancellationToken cancellationToken)
+    {
+        FirehoseLegacyXml.ValidateNop(xml);
+        cancellationToken.ThrowIfCancellationRequested();
+        SendXml(xml, null, flush: !requireHandler);
+        long started = Stopwatch.GetTimestamp();
+        bool handler = !requireHandler;
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            int remaining = timeout - (int)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            if (remaining <= 0) throw new TimeoutException(Strings.Qcom_LegacyNopUnconfirmed);
+            FirehoseCommandResult result = ToResult(_receiver.ReceiveWithin(remaining, cancellationToken));
+            ThrowIfNak(result);
+            if (result.RawMode) throw new FirehoseProtocolException(Strings.Qcom_FirehoseRawModeUnexpected);
+            handler |= result.Logs.Any(static log => log.Message.Contains("Calling handler for nop", StringComparison.Ordinal));
+            if (handler) return result;
+        }
     }
 
     private void CheckRawResponse(Action? packetSent)
@@ -113,12 +171,14 @@ internal sealed class FirehoseCommandExecutor
             _receiver.ReceiveRaw(bufferSize, length, destination, progress, cancellationToken),
             length);
 
-    private static FirehoseCommandResult ValidateResponse(FirehoseResponse response, bool expectedRawMode, bool publishDeviceText = true)
+    private FirehoseCommandResult ValidateResponse(FirehoseResponse response, bool expectedRawMode, bool publishDeviceText = true)
     {
         FirehoseCommandResult result = ToResult(response);
         if (!publishDeviceText && !result.IsSuccess)
             throw new FirehoseNakException(Strings.Qcom_FirehoseCommandRejected, result);
         ThrowIfNak(result);
+        if (_legacy is not null && expectedRawMode && !result.Attributes.ContainsKey("rawmode"))
+            result = result with { RawMode = true };
         if (result.RawMode != expectedRawMode)
         {
             throw new FirehoseProtocolException(
@@ -157,7 +217,7 @@ internal sealed class FirehoseCommandExecutor
         throw new FirehoseNakException(message, result);
     }
 
-    private static void ValidateXml(string xml)
+    internal static void ValidateXml(string xml)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(xml);
         if (Encoding.UTF8.GetByteCount(xml) > FirehoseConstants.MaximumXmlPacketSize)

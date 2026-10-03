@@ -12,8 +12,12 @@ internal sealed record CliOptions
     public string? VipSigned { get; init; }
     public string? VipChained { get; init; }
     public string? OplusDigest { get; init; }
+    public string? OplusSign { get; init; }
+    public string? LogFile { get; init; }
     public string? OnePlusProjectId { get; init; }
     public OplusDigestMode OplusMode { get; init; }
+    public OplusDigestMode EffectiveOplusMode => OplusMode == OplusDigestMode.None && !string.IsNullOrWhiteSpace(OplusDigest)
+        ? OplusDigestMode.OplusDigestPt : OplusMode;
     public QcomVendorKind Vendor { get; init; } = QcomVendorKind.Auto;
     public QcomAuthenticationKind? AuthenticationKind { get; init; }
     public bool Verbose { get; init; }
@@ -21,12 +25,6 @@ internal sealed record CliOptions
     public int ConnectTimeout { get; init; } = QcomProtocolOptions.DefaultConnectTimeoutMilliseconds;
     public int ResourceTimeout { get; init; } = QcomProtocolOptions.DefaultResourceRequestTimeoutMilliseconds;
     public int DeviceWaitTimeout { get; init; } = 30_000;
-    public int LegacyMaxPackets { get; init; } = 53;
-    public uint LegacyInitialPackets { get; init; }
-    public int LegacyFixedSectors { get; init; }
-    public int LegacyDigestTimeout { get; init; } = 1000;
-    public int LegacyXmlLimit { get; init; } = 4096;
-    public string? LegacyNop { get; init; }
     public int ReadTimeout { get; init; } = QcomProtocolOptions.DefaultReadTimeoutMilliseconds;
     public int WriteTimeout { get; init; } = QcomProtocolOptions.DefaultWriteTimeoutMilliseconds;
     public string Command { get; init; } = "interactive";
@@ -45,6 +43,11 @@ internal sealed record CliOptions
             throw new ArgumentException(Localization.Strings.Cli_UsbFormatInvalid);
         if (VipChained is not null && VipSigned is null)
             throw new ArgumentException(Localization.Strings.Cli_VipSignedRequired);
+        if (OplusSign is not null && OplusMode == OplusDigestMode.None && OplusDigest is null)
+            throw new ArgumentException(Localization.Strings.Cli_OplusSignNeedsMode);
+        if (NonInteractive && OplusMode == OplusDigestMode.OplusDigestLegacy &&
+            (string.IsNullOrWhiteSpace(OplusDigest) || string.IsNullOrWhiteSpace(OplusSign)))
+            throw new ArgumentException(Localization.Strings.Cli_LegacyResourcesRequired);
         QcomProtocolHostAdapter.ValidateOptions(this);
     }
 }

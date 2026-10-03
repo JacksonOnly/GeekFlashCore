@@ -30,17 +30,37 @@ internal sealed class ConsoleSaharaImageProvider(ConsoleUi ui, string? configure
     }
 }
 
-internal sealed class ConsoleOplusDigestProvider(ConsoleUi ui, string? configuredPath) : IOplusDigestProvider
+internal sealed class ConsoleOplusDigestProvider(ConsoleUi ui, string? configuredPath, string? configuredSign = null) : IOplusDigestProvider
 {
+    private string? _digestPath = configuredPath;
     public async ValueTask<OplusDigestResourceResponse> ResolveAsync(OplusDigestResourceRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        string? path = ConsolePath.Normalize(configuredPath ??
+        string? path = ConsolePath.Normalize(_digestPath ??
             await ui.AskOptionalAsync(Strings.FormatCli_OplusDigestPrompt(request.Mode), cancellationToken).ConfigureAwait(false));
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             throw new FileNotFoundException(Strings.Cli_OplusDigestMissing, path);
-        return new OplusDigestResourceResponse(new FileDataSource(path));
+        _digestPath = path;
+        if (request.PreviousSignRejected) ui.WriteLine(Strings.Cli_OplusSignRejected);
+        string? signPath = request.PreviousSignRejected ? null : ConsolePath.Normalize(configuredSign);
+        bool requireSign = request.RequireSign || request.Mode == OplusDigestMode.OplusDigestLegacy;
+        if (signPath is not null && !IsValidSignFile(signPath))
+        {
+            ui.WriteLine(Strings.Cli_OplusSignInvalid);
+            signPath = null;
+            requireSign = true;
+        }
+        if (signPath is null && requireSign)
+            signPath = ConsolePath.Normalize(await ui.AskOptionalAsync(Strings.Cli_OplusSignPrompt, cancellationToken).ConfigureAwait(false));
+        if (signPath is not null && !IsValidSignFile(signPath))
+            throw new FileNotFoundException(Strings.Cli_OplusSignInvalid, signPath);
+        if (string.IsNullOrWhiteSpace(signPath) && requireSign)
+            throw new FileNotFoundException(Strings.Cli_OplusSignMissing);
+        return new OplusDigestResourceResponse(new FileDataSource(path))
+        { Sign = signPath is null ? null : new FileDataSource(signPath) };
     }
+
+    private static bool IsValidSignFile(string path) => File.Exists(path) && new FileInfo(path).Length is > 0 and <= 4096;
 }
 
 internal sealed class ConsoleFirehoseDigestProvider(ConsoleUi ui, string? configuredPath) : IFirehoseDigestProvider

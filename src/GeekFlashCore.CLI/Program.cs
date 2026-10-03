@@ -14,10 +14,21 @@ catch (Exception exception)
     return 2;
 }
 var ui = new ConsoleUi();
+FileLogSink fileLog;
+try { fileLog = new FileLogSink(options.LogFile); }
+catch (Exception exception)
+{
+    Console.Error.WriteLine(Strings.FormatCli_LogFileFailed(exception.Message));
+    return 1;
+}
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Is(options.Verbose ? Serilog.Events.LogEventLevel.Debug : Serilog.Events.LogEventLevel.Information)
-    .WriteTo.Sink(new ConsoleLogSink(ui))
+    .MinimumLevel.Debug()
+    .WriteTo.Sink(fileLog)
+    .WriteTo.Sink(new ConsoleLogSink(ui), restrictedToMinimumLevel: options.Verbose ? Serilog.Events.LogEventLevel.Debug : Serilog.Events.LogEventLevel.Information)
     .CreateLogger();
+Log.Information(Strings.Cli_LogFilePath, fileLog.FilePath);
+Log.Debug(Strings.Cli_LogSession, options.Command, options.EffectiveOplusMode, options.ConnectTimeout,
+    options.ReadTimeout, options.WriteTimeout, options.ResourceTimeout, Environment.Version);
 using var cancellation = new CancellationTokenSource();
 Console.CancelKeyPress += (_, eventArgs) => { eventArgs.Cancel = true; cancellation.Cancel(); };
 try
@@ -26,6 +37,7 @@ try
 }
 catch (OperationCanceledException)
 {
+    Log.Warning(Strings.Cli_OperationCancelled);
     Console.Error.WriteLine(Strings.Cli_OperationCancelled);
     return 130;
 }

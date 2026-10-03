@@ -106,9 +106,18 @@
   --device-wait-timeout MS  Automatic discovery wait budget (default 30000)
   --read-timeout MS / --write-timeout MS  Per-I/O budget (default 10000)</value></data>
   <data name="Cli_HelpOptionsLegacy" xml:space="preserve"><value>  --oplus-mode OplusDigestLegacy --oplus-digest FILE
-  --legacy-max-packets N (default 53) --legacy-initial-packets N (default 0)
-  --legacy-fixed-sectors N (default 0, unsegmented) --legacy-nop XML
-  --legacy-digest-timeout MS (default 1000) --legacy-xml-limit N (default 4096)</value></data>
+  --oplus-sign FILE  Binary Sign; required for Legacy, optional for Pt, prompted when missing/rejected
+  Legacy fixed values: capacity 53, initial count 0, 256 sectors, Digest window 1000 ms, XML limit 4096, built-in NOP
+  --log-file FILE  Detailed log path; defaults to a unique file under the executable's logs directory</value></data>
   <data name="Cli_HelpQcomCommands" xml:space="preserve"><value>Interactive: interactive (default); Qualcomm commands (require corresponding device capabilities):</value></data>
   <data name="Cli_HelpVipOptions" xml:space="preserve"><value>      --vip-signed FILE | --vip-chained FILE (requires signed; mutually exclusive with Digest/Oplus)</value></data>
+  <data name="Cli_OplusSignPrompt" xml:space="preserve"><value>Enter the binary Oplus Sign file path</value></data>
+  <data name="Cli_OplusSignMissing" xml:space="preserve"><value>Oplus Sign file is missing. Specify --oplus-sign FILE or select one interactively.</value></data>
+  <data name="Cli_OplusSignRejected" xml:space="preserve"><value>Sign verification failed. Select a replacement Sign file manually.</value></data>
+  <data name="Cli_OplusSignNeedsMode" xml:space="preserve"><value>--oplus-sign requires --oplus-mode or --oplus-digest.</value></data>
+  <data name="Cli_LegacyResourcesRequired" xml:space="preserve"><value>Non-interactive Legacy mode requires --oplus-digest and --oplus-sign.</value></data>
+  <data name="Cli_LogFilePath" xml:space="preserve"><value>Detailed log: {LogFile}</value></data>
+  <data name="Cli_LogFileFailed" xml:space="preserve"><value>Cannot create the debug log: {0}</value></data>
+  <data name="Cli_LogSession" xml:space="preserve"><value>CLI session: command={Command} Oplus={OplusMode} probe={ConnectTimeout} ms read={ReadTimeout} ms write={WriteTimeout} ms resource={ResourceTimeout} ms .NET={Runtime}</value></data>
+  <data name="Cli_OplusSignInvalid" xml:space="preserve"><value>The Sign file is missing or outside the 1 to 4096 byte range. Select a valid binary Sign file.</value></data>
 </root>

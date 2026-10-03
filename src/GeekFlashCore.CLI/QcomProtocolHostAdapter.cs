@@ -26,7 +26,7 @@ internal static class QcomProtocolHostAdapter
         OplusDigestMode mode = options.OplusDigest.Mode;
         return new QcomProtocol(transport, options,
             new ConsoleSaharaImageProvider(context.Ui, context.Options.Loader),
-            mode == OplusDigestMode.None ? null : new ConsoleOplusDigestProvider(context.Ui, context.Options.OplusDigest),
+            mode == OplusDigestMode.None ? null : new ConsoleOplusDigestProvider(context.Ui, context.Options.OplusDigest, context.Options.OplusSign),
             new ConsoleAuthenticationProvider(context.Ui), null, leaveTransportOpen: true,
             firehoseDigestProvider: options.FirehoseDigest.Enabled ? new ConsoleFirehoseDigestProvider(context.Ui, context.Options.Digest) : null,
             firehoseVipProvider: options.FirehoseVip.Enabled ? new ConsoleVipProvider(context.Ui, context.Options.VipSigned, context.Options.VipChained) : null);
@@ -34,8 +34,7 @@ internal static class QcomProtocolHostAdapter
 
     private static QcomProtocolOptions CreateOptions(CliOptions input)
     {
-        OplusDigestMode mode = input.OplusMode;
-        if (!string.IsNullOrWhiteSpace(input.OplusDigest) && mode == OplusDigestMode.None) mode = OplusDigestMode.OplusDigestPt;
+        OplusDigestMode mode = input.EffectiveOplusMode;
         return new QcomProtocolOptions
         {
             VendorOverride = input.Vendor,
@@ -47,10 +46,7 @@ internal static class QcomProtocolHostAdapter
             ResourceRequestTimeoutMilliseconds = input.ResourceTimeout,
             OplusDigest = new OplusDigestConfiguration
             {
-                Mode = mode, MaxCommandsBeforeDigest = input.LegacyMaxPackets,
-                InitialPacketCount = input.LegacyInitialPackets, FixedSectorCount = input.LegacyFixedSectors,
-                NopXml = input.LegacyNop, MaximumXmlSendSize = input.LegacyXmlLimit,
-                DigestResponseTimeoutMilliseconds = input.LegacyDigestTimeout
+                Mode = mode, FixedSectorCount = 256
             },
             FirehoseDigest = new FirehoseDigestConfiguration { Enabled = !string.IsNullOrWhiteSpace(input.Digest) },
             FirehoseVip = new FirehoseVipConfiguration { Enabled = !string.IsNullOrWhiteSpace(input.VipSigned) }

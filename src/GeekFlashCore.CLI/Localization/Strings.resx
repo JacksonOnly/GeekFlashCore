@@ -106,9 +106,18 @@
   --device-wait-timeout MS  自动发现等待预算（默认 30000）
   --read-timeout MS / --write-timeout MS  单次 I/O 预算（默认 10000）</value></data>
   <data name="Cli_HelpOptionsLegacy" xml:space="preserve"><value>  --oplus-mode OplusDigestLegacy --oplus-digest FILE
-  --legacy-max-packets N（默认 53） --legacy-initial-packets N（默认 0）
-  --legacy-fixed-sectors N（默认 0，不分段） --legacy-nop XML
-  --legacy-digest-timeout MS（默认 1000） --legacy-xml-limit N（默认 4096）</value></data>
+  --oplus-sign FILE  二进制 Sign；Legacy 必须，Pt 可选，缺失/验证失败时手动选择
+  Legacy 固定：容量 53，初始计数 0，分段 256 扇区，Digest 窗口 1000 ms，XML 上限 4096，内置 NOP
+  --log-file FILE  指定详细日志路径；默认程序目录 logs 下自动生成</value></data>
   <data name="Cli_HelpQcomCommands" xml:space="preserve"><value>交互: interactive（默认）；Qualcomm 专用命令（设备需支持对应能力）：</value></data>
   <data name="Cli_HelpVipOptions" xml:space="preserve"><value>      --vip-signed FILE | --vip-chained FILE（需配合 signed；与 Digest/Oplus 互斥）</value></data>
+  <data name="Cli_OplusSignPrompt" xml:space="preserve"><value>请输入二进制 Oplus Sign 文件路径</value></data>
+  <data name="Cli_OplusSignMissing" xml:space="preserve"><value>缺少 Oplus Sign 文件；请指定 --oplus-sign FILE 或交互选择。</value></data>
+  <data name="Cli_OplusSignRejected" xml:space="preserve"><value>Sign 未通过验证，请手动选择替换 Sign 文件。</value></data>
+  <data name="Cli_OplusSignNeedsMode" xml:space="preserve"><value>--oplus-sign 需要 --oplus-mode 或 --oplus-digest。</value></data>
+  <data name="Cli_LegacyResourcesRequired" xml:space="preserve"><value>非交互 Legacy 模式必须指定 --oplus-digest 和 --oplus-sign。</value></data>
+  <data name="Cli_LogFilePath" xml:space="preserve"><value>详细日志：{LogFile}</value></data>
+  <data name="Cli_LogFileFailed" xml:space="preserve"><value>无法创建调试日志：{0}</value></data>
+  <data name="Cli_LogSession" xml:space="preserve"><value>CLI 会话：命令={Command} Oplus={OplusMode} 探测={ConnectTimeout} ms 读={ReadTimeout} ms 写={WriteTimeout} ms 资源={ResourceTimeout} ms .NET={Runtime}</value></data>
+  <data name="Cli_OplusSignInvalid" xml:space="preserve"><value>Sign 文件不存在或长度不在 1 至 4096 字节范围，请重新选择二进制 Sign 文件。</value></data>
 </root>

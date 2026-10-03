@@ -37,11 +37,7 @@ internal sealed class FirehoseWireReader : IDisposable
         {
             ReadOnlySpan<byte> packet = ReadXmlPacket(GetRemainingMilliseconds(deadline), out bool rawMode);
             if (rawMode)
-                return new FirehoseResponse(
-                    logs,
-                    new Dictionary<string, string>(),
-                    FirehoseResponseStatus.Ack,
-                    true);
+                throw new FirehoseProtocolException(Strings.Firehose_ResponseNotXml);
 
             if (FirehoseResponseParser.TryParsePacket(
                     packet,

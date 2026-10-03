@@ -375,6 +375,8 @@
 
 ## 进度
 
+- 2026-10-03 QA-00：用户要求再次审查联机/读写/超时、完善 CLI，并指定 `QnQcLIB_Rector` 作为兼容参考；用户确认保留 Pt 分区映射，将参考行为完善到 Legacy。新方案和恢复进度见 `2026-10-03-qcom-legacy-audit-design.md` 与 `2026-10-03-qcom-legacy-audit-implementation.md`（设计待确认，生产代码尚未修改）。当前工作树无历史 `.tests`，新增 5 项模拟护栏，1 通过、4 失败，复现非 XML 被当作 Raw ACK、发送超过协商 Payload、VIP/Oplus 缺少互斥及 CLI Legacy 零配置。NuGet 还原和 Release 基线构建通过，0 警告/0 错误；USB 初始化、资源输入与设备等待问题已作静态记录，未做真实设备验证。本次无新增提交。
+
 - [x] 完成参考项目首轮分析。
 - [x] 完成并批准总体设计。
 - [x] 固化设计文档。

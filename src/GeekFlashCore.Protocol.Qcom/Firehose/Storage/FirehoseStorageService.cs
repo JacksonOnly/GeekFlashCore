@@ -496,15 +496,7 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
         }
     }
 
-    private int GetTransferBufferSize()
-    {
-        ulong value = _configuration.MaxPayloadSizeToTargetInBytesSupported > 0
-            ? _configuration.MaxPayloadSizeToTargetInBytesSupported
-            : _configuration.MaxPayloadSizeToTargetInBytes;
-        if (value is 0 or > int.MaxValue)
-            throw new ArgumentOutOfRangeException(nameof(_configuration));
-        return checked((int)value);
-    }
+    private int GetTransferBufferSize() => FirehosePayloadLimits.GetTransferBufferSize(_configuration);
 
     private static ReadCommand CreateReadCommand(FirehoseReadRequest request) => new()
     {

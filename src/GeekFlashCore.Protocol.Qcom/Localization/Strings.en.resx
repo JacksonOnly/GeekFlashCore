@@ -506,4 +506,5 @@ Current {0}, expected {1}</value>
   <data name="Progress_Writing" xml:space="preserve"><value>Writing</value></data>
   <data name="Progress_Reading" xml:space="preserve"><value>Reading</value></data>
   <data name="Progress_Uploading" xml:space="preserve"><value>Uploading Loader</value></data>
+  <data name="Firehose_ResponseNotXml" xml:space="preserve"><value>The Firehose command did not receive a valid XML response.</value></data>
 </root>

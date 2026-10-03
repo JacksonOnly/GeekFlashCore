@@ -8,4 +8,5 @@
   <data name="GenericDigestAndVipConflict" xml:space="preserve"><value>通用 Firehose Digest 与 Firehose VIP 不能同时启用。</value></data>
   <data name="VipFrameCapacitiesPositive" xml:space="preserve"><value>VIP 帧容量必须为正数。</value></data>
   <data name="ProgramSourceLargerThanTarget" xml:space="preserve"><value>源数据大于目标范围。</value></data>
+  <data name="VipAndOplusConflict" xml:space="preserve"><value>Firehose VIP 与 Oplus Digest 模式不能同时启用。</value></data>
 </root>

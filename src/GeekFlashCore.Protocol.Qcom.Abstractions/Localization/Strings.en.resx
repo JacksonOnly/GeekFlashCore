@@ -8,4 +8,5 @@
   <data name="GenericDigestAndVipConflict" xml:space="preserve"><value>Generic Firehose Digest and Firehose VIP cannot be enabled together.</value></data>
   <data name="VipFrameCapacitiesPositive" xml:space="preserve"><value>VIP frame capacities must be positive.</value></data>
   <data name="ProgramSourceLargerThanTarget" xml:space="preserve"><value>The source is larger than the target range.</value></data>
+  <data name="VipAndOplusConflict" xml:space="preserve"><value>Firehose VIP and Oplus Digest modes cannot be enabled together.</value></data>
 </root>

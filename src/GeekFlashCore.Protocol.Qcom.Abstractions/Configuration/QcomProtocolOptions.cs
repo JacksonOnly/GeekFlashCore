@@ -45,6 +45,8 @@ public sealed record QcomProtocolOptions
             throw new ArgumentException(Strings.GenericDigestAndOplusConflict);
         if (FirehoseDigest.Enabled && FirehoseVip.Enabled)
             throw new ArgumentException(Strings.GenericDigestAndVipConflict);
+        if (FirehoseVip.Enabled && OplusDigest.Mode != OplusDigestMode.None)
+            throw new ArgumentException(Strings.VipAndOplusConflict);
     }
 
     private static void ValidateTimeout(int value, string name)

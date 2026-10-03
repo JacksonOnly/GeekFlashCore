@@ -609,9 +609,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         var response = await _resourceResolver.ResolveAsync(token => _digestProvider.ResolveAsync(
             new OplusDigestResourceRequest(TargetInfo!, _options.OplusDigest.Mode), token), ct).ConfigureAwait(false);
         IDataSource digest = response.Digest ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
-        int bufferSize = checked((int)(result.Configuration.MaxPayloadSizeToTargetInBytesSupported > 0
-            ? result.Configuration.MaxPayloadSizeToTargetInBytesSupported
-            : result.Configuration.MaxPayloadSizeToTargetInBytes));
+        int bufferSize = FirehosePayloadLimits.GetTransferBufferSize(result.Configuration);
         OplusDigestIndex index = new OplusDigestParser().Parse(digest);
         using (Stream stream = digest.OpenStream() ?? throw new QcomResourceException(Strings.Qcom_InvalidResource))
             _firehose!.SendDigest(stream, digest.Length, bufferSize, ct);
@@ -634,9 +632,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         var response = _resourceResolver.Resolve(token => _digestProvider.ResolveAsync(
             new OplusDigestResourceRequest(TargetInfo!, _options.OplusDigest.Mode), token));
         IDataSource digest = response.Digest ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
-        int bufferSize = checked((int)(result.Configuration.MaxPayloadSizeToTargetInBytesSupported > 0
-            ? result.Configuration.MaxPayloadSizeToTargetInBytesSupported
-            : result.Configuration.MaxPayloadSizeToTargetInBytes));
+        int bufferSize = FirehosePayloadLimits.GetTransferBufferSize(result.Configuration);
         OplusDigestIndex index = new OplusDigestParser().Parse(digest);
         using (Stream stream = digest.OpenStream() ?? throw new QcomResourceException(Strings.Qcom_InvalidResource))
             _firehose!.SendDigest(stream, digest.Length, bufferSize);

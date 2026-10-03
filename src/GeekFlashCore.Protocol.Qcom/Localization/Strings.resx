@@ -403,4 +403,5 @@
   <data name="Progress_Writing" xml:space="preserve"><value>写入</value></data>
   <data name="Progress_Reading" xml:space="preserve"><value>读取</value></data>
   <data name="Progress_Uploading" xml:space="preserve"><value>上传 Loader</value></data>
+  <data name="Firehose_ResponseNotXml" xml:space="preserve"><value>Firehose 命令未收到有效的 XML 响应。</value></data>
 </root>

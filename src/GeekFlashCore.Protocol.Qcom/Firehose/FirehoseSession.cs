@@ -78,7 +78,7 @@ public sealed class FirehoseSession : IDisposable
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return _executor.ExecuteXml(xml, expectedRawMode: false);
+            return _executor.ExecuteXml(xml, expectedRawMode: false, cancellationToken: cancellationToken);
         }
         catch (FirehoseNakException exception) { CompleteNak(exception, State); throw; }
         catch { SetState(FirehoseSessionState.Faulted); throw; }
@@ -156,7 +156,8 @@ public sealed class FirehoseSession : IDisposable
                 command,
                 expectedRawMode,
                 _xmlDeclarationAttribute,
-                _commandSent);
+                _commandSent,
+                cancellationToken);
             CompleteCommand(command is ConfigureCommand, result, initialState);
             return result;
         }
@@ -193,7 +194,8 @@ public sealed class FirehoseSession : IDisposable
                 xml,
                 expectedRawMode,
                 _xmlDeclarationAttribute,
-                _commandSent);
+                _commandSent,
+                cancellationToken);
             CompleteCommand(configured: false, result, initialState);
             return result;
         }
@@ -240,11 +242,6 @@ public sealed class FirehoseSession : IDisposable
             SetState(_stateBeforeRaw);
             return result;
         }
-        catch (FirehoseNakException exception)
-        {
-            CompleteNak(exception, _stateBeforeRaw);
-            throw;
-        }
         catch
         {
             SetState(FirehoseSessionState.Faulted);
@@ -288,11 +285,6 @@ public sealed class FirehoseSession : IDisposable
             SetState(_stateBeforeRaw);
             return result;
         }
-        catch (FirehoseNakException exception)
-        {
-            CompleteNak(exception, _stateBeforeRaw);
-            throw;
-        }
         catch
         {
             SetState(FirehoseSessionState.Faulted);
@@ -326,11 +318,6 @@ public sealed class FirehoseSession : IDisposable
         {
             return _executor.SendRaw(source, length, length, bufferSize, 0, null, cancellationToken, false, null);
         }
-        catch (FirehoseNakException exception)
-        {
-            CompleteNak(exception, State);
-            throw;
-        }
         catch
         {
             SetState(FirehoseSessionState.Faulted);
@@ -361,11 +348,6 @@ public sealed class FirehoseSession : IDisposable
             FirehoseCommandResult result = operation();
             SetState(_stateBeforeRaw);
             return result;
-        }
-        catch (FirehoseNakException exception)
-        {
-            CompleteNak(exception, _stateBeforeRaw);
-            throw;
         }
         catch
         {

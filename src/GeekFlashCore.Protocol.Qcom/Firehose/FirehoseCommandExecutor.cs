@@ -43,25 +43,27 @@ internal sealed class FirehoseCommandExecutor
         BaseCommand command,
         bool expectedRawMode,
         string? xmlDeclarationAttribute = null,
-        Action? commandSent = null)
+        Action? commandSent = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
         string xml = command.Build();
         ValidateXml(xml);
         SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute), commandSent);
         bool publishDeviceText = command is not (PeekCommand or PokeCommand or GetSha256DigestCommand);
-        return ValidateResponse(_receiver.Receive(publishDeviceText), expectedRawMode, publishDeviceText);
+        return ValidateResponse(_receiver.Receive(publishDeviceText, cancellationToken), expectedRawMode, publishDeviceText);
     }
 
     public FirehoseCommandResult ExecuteXml(
         string xml,
         bool expectedRawMode,
         string? xmlDeclarationAttribute = null,
-        Action? commandSent = null)
+        Action? commandSent = null,
+        CancellationToken cancellationToken = default)
     {
         ValidateXml(_legacy is null ? xml : FirehoseLegacyXml.ForValidation(xml));
         SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute), commandSent);
-        return ValidateResponse(_receiver.Receive(), expectedRawMode);
+        return ValidateResponse(_receiver.Receive(cancellationToken: cancellationToken), expectedRawMode);
     }
 
     private static string ApplyXmlDeclarationAttribute(string xml, string? attribute)

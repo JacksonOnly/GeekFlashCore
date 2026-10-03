@@ -77,7 +77,8 @@ internal sealed class FirehoseCmdReceiver : IDisposable
             progress?.Report(completed);
         }
 
-        return Receive();
+        cancellationToken.ThrowIfCancellationRequested();
+        return Receive(cancellationToken: cancellationToken);
     }
 
     public FirehoseResponse ReceiveRaw(
@@ -111,7 +112,8 @@ internal sealed class FirehoseCmdReceiver : IDisposable
                 progress?.Report(completed);
             }
 
-            return Receive();
+            cancellationToken.ThrowIfCancellationRequested();
+            return Receive(cancellationToken: cancellationToken);
         }
         finally
         {

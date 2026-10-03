@@ -93,8 +93,9 @@ Interfaces：可取消单输入通道；新增 connect/resource/device-wait/Lega
 - [x] QA-A：ACK、Payload、模式互斥（2026-10-03；3 项缺陷 RED→GREEN，正常 ACK 1 项通过；Release 构建 0 警告/错误，diff check 通过）。CLI Legacy 测试仍保留已知失败，等待 QA-E。
 - [x] QA-B：USB 生命周期和预算（2026-10-03；首次端点发现、Open/Close/Open、失败释放并重试、慢分片总预算 4 项 RED→GREEN；使用可控 IUsbContext/IUsbDevice 和端点，未连接硬件）。
 - [x] QA-C：Rector Legacy 线路（2026-10-03；首批 12 项测试 9 RED/3 既有失败路径通过，迁移后 15 项全部通过，累计 24 项本地测试通过）。已覆盖 51/52/53/54 边界、日志错误与 handler 关联、Digest NAK/半帧、签名单次重放、读取不自动刷新、无 Pt 索引、Sparse RAW/FILL/skip 和缺省 rawmode。Legacy 资源安装前的 Configure/探测计数由 InitialPacketCount 表达，安装后所有 XML/完整输出载荷共享计数；未主动发送初始签名表，按 Rector 只在边界或签名 NAK 发送。
-- QA-D 进行中：新复现最终 Raw NAK 仍恢复 Started、末块读取取消后继续等 ACK 两项失败，待下一独立修复；不计入 QA-C 已通过集合。
-- [ ] QA-D：连接/实际读写路径修复与回归。
+- [x] QA-D（2026-10-03）：最终 RAW NAK 和末块读取取消 2 项 RED→GREEN；普通 XML 等待传入取消 token。复现 Configure 同步/异步在 storage-open-failed + payload 调整同时出现时选错存储，统一 UFS 回退，1 项 RED→GREEN。提前 NAK 仅写第一块且不可继续、资源超时后迟到结果释放回归通过。累计 29 项本地测试通过，Release 0 警告/错误、diff check 通过。
+- 审查裁定：Sahara 按设备请求上传，分包/Configure/LUN 查询已有有界单次等待；不添加可能中断正常大镜像的统一读写总时限。同步阻塞 I/O 的取消最多等当前单次超时，持续有有效进度的操作由调用方 token 控制；CLI 明示各超时用途。Configure 是有限次数回退，多 LUN 有最大数量，累计连接耗时可能超过 ConnectTimeout（该字段用于探测）。没有硬件证据，不宣称真机验证或吞吐提升。
+- [x] QA-D：连接/实际读写路径修复与回归。
 - [ ] QA-E：CLI 完善。
 - [ ] QA-F：完整验证、独立提交和风险收尾。
 

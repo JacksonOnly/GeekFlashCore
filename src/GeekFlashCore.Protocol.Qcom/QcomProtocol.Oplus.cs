@@ -106,16 +106,18 @@ public sealed partial class QcomProtocol
             {
                 result = exception.Result;
             }
-            if (!result.IsSuccess || !result.Logs.Any(static log =>
-                    log.Message.Contains("verify passed", StringComparison.OrdinalIgnoreCase)))
+            if (!IsOplusSignVerified(result))
             {
                 // Loaders can announce the next signed-table receive after the NAK.
                 // Drain that bounded XML tail before prompting; never Flush it away.
                 result = _firehose!.ReadOplusRejectionDetails(result,
                     _options.OplusDigest.DigestResponseTimeoutMilliseconds, ct);
-                needsTable = result.Logs.Any(static log =>
-                    log.Message.Contains("VIP is enabled", StringComparison.OrdinalIgnoreCase));
-                return false;
+                if (!IsOplusSignVerified(result))
+                {
+                    needsTable = result.Logs.Any(static log =>
+                        log.Message.Contains("VIP is enabled", StringComparison.OrdinalIgnoreCase));
+                    return false;
+                }
             }
             needsTable = false;
             _firehose!.ExecuteXml("<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data><sha256init Verbose=\"1\"/></data>", cancellationToken: ct);
@@ -125,4 +127,7 @@ public sealed partial class QcomProtocol
         }
         finally { CryptographicOperations.ZeroMemory(sign); }
     }
+
+    private static bool IsOplusSignVerified(FirehoseCommandResult result) => result.IsSuccess &&
+        result.Logs.Any(static log => log.Message.Contains("verify passed", StringComparison.OrdinalIgnoreCase));
 }

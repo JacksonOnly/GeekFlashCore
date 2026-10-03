@@ -17,4 +17,5 @@
   <data name="LibUsbManager_DeviceNotFound" xml:space="preserve"><value>No USB device found for VID={0}, PID={1}.</value></data>
   <data name="LibUsbTransport_DeviceMissing" xml:space="preserve"><value>No matching USB device was found.</value></data>
   <data name="LibUsbTransport_BulkInterfaceMissing" xml:space="preserve"><value>No USB interface with bulk input and output endpoints was found.</value></data>
+  <data name="LibUsbTransport_ConfigurationFailed" xml:space="preserve"><value>Unable to set the USB device configuration.</value></data>
 </root>

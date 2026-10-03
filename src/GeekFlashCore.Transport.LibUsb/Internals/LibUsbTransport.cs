@@ -378,14 +378,24 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
 
     private void ConfigureDevice()
     {
+        int activeConfiguration;
         try
         {
-            _ = _device.Configuration;
+            activeConfiguration = _device.Configuration;
         }
         catch
         {
-            if (_device.Configs.Count > 0)
-                _device.SetConfiguration(_device.Configs[0].ConfigurationValue);
+            activeConfiguration = 0;
+        }
+        if (activeConfiguration == 0)
+        {
+            var configuration = _device.Configs.FirstOrDefault(config => config.Interfaces.Any(face =>
+                (_requestedInterface < 0 || face.Number == _requestedInterface) && HasBulkPair(face)));
+            if (configuration is null)
+                throw new InvalidOperationException(Strings.LibUsbTransport_BulkInterfaceMissing);
+            _device.SetConfiguration(configuration.ConfigurationValue);
+            if (_device.Configuration != configuration.ConfigurationValue)
+                throw new InvalidOperationException(Strings.LibUsbTransport_ConfigurationFailed);
         }
 
         int selectedInterface = _requestedInterface >= 0 ? _requestedInterface : FindFirstInterfaceNumber();
@@ -406,9 +416,7 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
                 continue;
             foreach (var usbInterface in config.Interfaces)
             {
-                if (usbInterface.Class is ClassCode.Data or ClassCode.VendorSpec &&
-                    usbInterface.Endpoints.Any(static e => (e.Attributes & 3) == (byte)EndpointType.Bulk && (e.EndpointAddress & 0x80) != 0) &&
-                    usbInterface.Endpoints.Any(static e => (e.Attributes & 3) == (byte)EndpointType.Bulk && (e.EndpointAddress & 0x80) == 0))
+                if (usbInterface.Class is ClassCode.Data or ClassCode.VendorSpec && HasBulkPair(usbInterface))
                 {
                     return usbInterface.Number;
                 }
@@ -417,6 +425,10 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
 
         return -1;
     }
+
+    private static bool HasBulkPair(LibUsbDotNet.Info.UsbInterfaceInfo face) =>
+        face.Endpoints.Any(static e => (e.Attributes & 3) == (byte)EndpointType.Bulk && (e.EndpointAddress & 0x80) != 0) &&
+        face.Endpoints.Any(static e => (e.Attributes & 3) == (byte)EndpointType.Bulk && (e.EndpointAddress & 0x80) == 0);
 
     private void CloseCore()
     {

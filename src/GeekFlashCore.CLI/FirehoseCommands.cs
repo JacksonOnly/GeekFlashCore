@@ -1,6 +1,7 @@
 using GeekFlashCore.CLI.Localization;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
+using Serilog;
 using static GeekFlashCore.CLI.CommandSyntax;
 
 namespace GeekFlashCore.CLI;
@@ -72,17 +73,32 @@ internal static class FirehoseCommands
         ["firmwarewrite"] = FirmwareWrite
     };
 
+    private static readonly IReadOnlyList<string> ImplementedCommands = Handlers.Keys
+        .Concat(["program", "read", "erase"]).Order(StringComparer.OrdinalIgnoreCase).ToArray();
+
+    private static IReadOnlyList<string> ReportedCommands(IQcomProtocol protocol) =>
+        protocol.TargetInfo?.Firehose?.BasicDevCharacteristics?.SupportedFunctions ?? [];
+
     internal static IReadOnlyList<string> MappedCommands(IQcomProtocol protocol) =>
-        (protocol.TargetInfo?.Firehose?.BasicDevCharacteristics?.SupportedFunctions ?? [])
+        ReportedCommands(protocol)
         .Select(x => x.ToLowerInvariant())
         .Where(x => Handlers.ContainsKey(x) || x is "program" or "read" or "erase")
         .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToArray();
 
+    // Local implementations are candidates for explicit execution, not device capability evidence.
+    internal static IReadOnlyList<string> AvailableCommands(IQcomProtocol protocol) =>
+        ReportedCommands(protocol).Count == 0 ? ImplementedCommands : MappedCommands(protocol);
+
     public static void PrintMapping(IProtocol protocol, ConsoleUi ui)
     {
         if (protocol is not IQcomProtocol qcom || !qcom.IsConnected) return;
-        var mapped = MappedCommands(qcom);
-        ui.WriteLine(Strings.FormatCli_CommandsMapped(mapped.Count));
+        var mapped = AvailableCommands(qcom);
+        if (ReportedCommands(qcom).Count == 0)
+        {
+            Log.Warning(Strings.Cli_CommandListUnknown);
+            ui.WriteLine(Strings.FormatCli_LocalCommandsAvailable(mapped.Count));
+        }
+        else ui.WriteLine(Strings.FormatCli_CommandsMapped(mapped.Count));
         if (mapped.Count > 0) ui.WriteLine(Strings.Cli_FirehoseUsage);
         foreach (string command in mapped)
         {
@@ -109,7 +125,8 @@ internal static class FirehoseCommands
     {
         if (!protocol.IsConnected) throw new InvalidOperationException(Strings.Cli_ReconnectRequired);
         string wire = command switch { "write" => "program", "reboot" => "power", _ => command };
-        if (!(protocol.TargetInfo?.Firehose?.BasicDevCharacteristics?.SupportedFunctions ?? []).Contains(wire, StringComparer.OrdinalIgnoreCase))
+        var reported = ReportedCommands(protocol);
+        if (!(reported.Count == 0 ? ImplementedCommands : reported).Contains(wire, StringComparer.OrdinalIgnoreCase))
             throw new NotSupportedException(Strings.FormatCli_CommandNotSupported(wire));
     }
 

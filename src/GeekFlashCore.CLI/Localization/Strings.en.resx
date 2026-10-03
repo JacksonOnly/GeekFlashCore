@@ -15,6 +15,8 @@
   <data name="Cli_StorageNotConfigured" xml:space="preserve"><value>Storage is not configured.</value></data>
   <data name="Cli_CommandsMapped" xml:space="preserve"><value>Mapped {0} Firehose commands:</value></data>
   <data name="Cli_NoCommandEvidence" xml:space="preserve"><value>The device did not report any mappable commands.</value></data>
+  <data name="Cli_CommandListUnknown" xml:space="preserve"><value>The device did not report a Firehose command list. Explicitly requested CLI commands can run; device responses determine support.</value></data>
+  <data name="Cli_LocalCommandsAvailable" xml:space="preserve"><value>CLI implements {0} Firehose commands (device capabilities unconfirmed):</value></data>
   <data name="Cli_CommandNotSupported" xml:space="preserve"><value>The device did not declare support for command {0}.</value></data>
   <data name="Cli_DigestMissing" xml:space="preserve"><value>The response does not contain a SHA256 digest.</value></data>
   <data name="Cli_ConnectedHelp" xml:space="preserve"><value>Connected to {0}. Type help for common usage or exit to quit.</value></data>

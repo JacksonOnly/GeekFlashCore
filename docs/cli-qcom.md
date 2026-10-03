@@ -91,6 +91,10 @@ geekflash --loader programmer.elf --oplus-mode OplusDigestLegacy --oplus-digest 
 
 设备完整日志逐帧落盘，等待 ACK 超时不会丢掉先前错误；明确的 Hash mismatch 状态可见，连续和带空格的 Hash 字节串均隐藏。Verify 后收到设备重新等待签名表的提示时立即报认证失败，不发送 Sign；sha256init 的已知 log-only 兼容路径明确注明未收到 ACK。
 
+## 命令列表与执行
+
+Loader 报告非空 SupportedFunctions 时，CLI 展示已实现命令与设备报告列表的交集，并检查命令是否在报告列表内。VIP/Oplus Loader 可能在启动时只报告等待签名表，未输出命令列表；此时能力状态为“未确认”，CLI 展示自己的实现列表并允许显式执行 `partitions`、`read`、`write` 等命令，结果以设备 ACK/NAK 和实际读写为准。缺失列表不再导致“设备未声明支持 read”的本地误拦截，也不会额外发送探测包或给设备信息填充虚构能力。断开或失效会话仍须重连。
+
 ## 文件读取
 
 ```powershell

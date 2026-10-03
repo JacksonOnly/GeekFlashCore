@@ -383,6 +383,8 @@
 
 ## 进度
 
+- 2026-10-03 CE-01～02：用户新日志已确认 Legacy Sign/初始化/六 LUN 查询成功，但 partitions all 被 CLI 空 SupportedFunctions 拦截，尚未发送 read。修复缺失列表表示未知，允许用户显式执行已实现命令；非空列表仍检查，断线/未知命令仍拒绝，展示本地候选而不虚构设备支持，不添加探测包。目标测试 13 RED/5 GREEN→19 GREEN，完整 163/163 Release 本地回归通过（16 秒），Release 构建 0 警告/0 错误，双语资源/help/diff/ignored 检查通过。范围和恢复记录见 `2026-10-03-cli-command-evidence-fix.md`；用户日志提供启动真机证据，GPT/实际读写真机结果仍待复测，代理本轮未连接硬件。
+
 - 2026-10-03 CA-01～04：按用户指定文件 3 成功抓包对齐 Legacy bootstrap，Verify EnableVip=0 且无 ping；声明更名 chimerais 并保持抓包空白，Digest/Verify/Sign/sha/Configure 黄金包长度为 8144/93/4096/95/190。sha256init 已知完整 log-only -1 在最多 1500 ms 后有界兼容；未知错误（包括伴随 ACK）、畸形/空 response、NAK、RAW、静默、半帧和重新等表仍失败，Digest/Verify/Sign 认证不放宽。Legacy 初始 UFS、显式配置/回退保留，Pt 及运行期 Rector 换表不变。诊断日志即时发布并隐藏 spaced HEX。最终 144 项完整 Release 本地回归通过（16 秒），Release 构建 0 警告/0 错误，help/资源/diff/ignored 检查通过；设计与交付见 `2026-10-03-oplus-capture-alignment-design.md`、`2026-10-03-oplus-capture-alignment-implementation.md`。本轮未连接硬件；声明重命名后的接受情况待重新进入 EDL 后实测。
 
 - 2026-10-03 IR-01～04：根据用户 Sign 等待退出与二次连接静默日志，CLI 默认无限资源等待（脚本仍 15000 ms），保留 Ctrl+C/迟到释放，明确区分有限资源超时与取消并补充等待耗时日志。显式 --oplus-resume 仅用于已运行且等待第一张 Digest 的 Loader，跳过 Sahara/启动日志，Pt/Legacy 同步异步首包 Digest；每实例一次，失败后不盲目重用。122 项完整 Release 本地测试（含 16 秒手动等待）、Release 构建通过；设计、进度和恢复条件见 `2026-10-03-oplus-input-resume-design.md`、`2026-10-03-oplus-input-resume-implementation.md`。没有本轮硬件连接/读写证据，设备自身等待时限和实机续接待验证。

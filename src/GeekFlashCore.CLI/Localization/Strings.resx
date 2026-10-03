@@ -15,6 +15,8 @@
   <data name="Cli_StorageNotConfigured" xml:space="preserve"><value>存储尚未配置。</value></data>
   <data name="Cli_CommandsMapped" xml:space="preserve"><value>Firehose 命令映射成功，共 {0} 项：</value></data>
   <data name="Cli_NoCommandEvidence" xml:space="preserve"><value>设备没有报告可映射的命令。</value></data>
+  <data name="Cli_CommandListUnknown" xml:space="preserve"><value>设备未报告 Firehose 命令列表；可以显式执行 CLI 已实现的命令，是否支持以设备响应为准。</value></data>
+  <data name="Cli_LocalCommandsAvailable" xml:space="preserve"><value>CLI 已实现 {0} 项 Firehose 命令（设备能力未确认）：</value></data>
   <data name="Cli_CommandNotSupported" xml:space="preserve"><value>设备未声明支持命令 {0}。</value></data>
   <data name="Cli_DigestMissing" xml:space="preserve"><value>响应没有包含 SHA256 摘要。</value></data>
   <data name="Cli_ConnectedHelp" xml:space="preserve"><value>已联机到 {0}。输入 help 查看通用用法，exit 退出。</value></data>

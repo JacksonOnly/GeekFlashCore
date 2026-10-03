@@ -10,7 +10,7 @@ public sealed partial class QcomProtocol
 {
     private async ValueTask PrepareOplusAsync(CancellationToken ct)
     {
-        if (_options.OplusDigest.Mode == OplusDigestMode.None) return;
+        if (_options.OplusDigest.Mode == OplusDigestMode.None || _oplusAuthenticated) return;
         string? builtIn = GetBuiltInOplusSign();
         bool tableRequired = true;
         for (int attempt = 0; attempt < 2; attempt++)
@@ -26,7 +26,7 @@ public sealed partial class QcomProtocol
 
     private void PrepareOplus()
     {
-        if (_options.OplusDigest.Mode == OplusDigestMode.None) return;
+        if (_options.OplusDigest.Mode == OplusDigestMode.None || _oplusAuthenticated) return;
         string? builtIn = GetBuiltInOplusSign();
         bool tableRequired = true;
         for (int attempt = 0; attempt < 2; attempt++)
@@ -120,6 +120,7 @@ public sealed partial class QcomProtocol
             needsTable = false;
             _firehose!.ExecuteXml("<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data><sha256init Verbose=\"1\"/></data>", cancellationToken: ct);
             Log.Information(Strings.Qcom_LogOplusVerified);
+            _oplusAuthenticated = true;
             return true;
         }
         finally { CryptographicOperations.ZeroMemory(sign); }

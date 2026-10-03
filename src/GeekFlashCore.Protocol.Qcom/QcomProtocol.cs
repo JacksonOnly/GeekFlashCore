@@ -49,6 +49,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private FirehoseVipTransferPolicy? _vipPolicy;
     private IDataSource? _oplusDigest;
     private OplusDigestIndex? _oplusIndex;
+    private bool _oplusAuthenticated;
     private OnePlusAuthenticationContext? _onePlusAuthentication;
 
     public QcomProtocol(ITransport transport, QcomProtocolOptions? options = null,
@@ -909,6 +910,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         _startup = null; _programmer = null; _targetInfo = null;
         _vipPolicy = null; _onePlusAuthentication = null;
         _oplusDigest = null; _oplusIndex = null;
+        _oplusAuthenticated = false;
         if (_wire is QcomSessionTransport sessionTransport) sessionTransport.DiscardBuffered();
         if (hadFirehose && _wire is not null)
             _firehose = CreateFirehoseSession(_wire);

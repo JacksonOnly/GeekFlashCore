@@ -91,7 +91,7 @@ Interfaces：可取消单输入通道；新增 connect/resource/device-wait/Lega
 - [x] 设计草案与测试矩阵已保存，`git diff --check` 通过；生产代码未修改。
 - [x] 用户确认设计（2026-10-03）。
 - [x] QA-A：ACK、Payload、模式互斥（2026-10-03；3 项缺陷 RED→GREEN，正常 ACK 1 项通过；Release 构建 0 警告/错误，diff check 通过）。CLI Legacy 测试仍保留已知失败，等待 QA-E。
-- [ ] QA-B：USB 生命周期和预算。
+- [x] QA-B：USB 生命周期和预算（2026-10-03；首次端点发现、Open/Close/Open、失败释放并重试、慢分片总预算 4 项 RED→GREEN；使用可控 IUsbContext/IUsbDevice 和端点，未连接硬件）。
 - [ ] QA-C：Rector Legacy 线路。
 - [ ] QA-D：连接/实际读写路径修复与回归。
 - [ ] QA-E：CLI 完善。

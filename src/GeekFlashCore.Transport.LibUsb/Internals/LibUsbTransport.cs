@@ -12,7 +12,7 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
         get
         {
             lock (_sync)
-                return !_disposed && !_context.IsDisposed && _opened && _device.IsOpen;
+                return !_disposed && _opened && _device.IsOpen;
         }
     }
 
@@ -23,24 +23,46 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
     private bool _disposed;
     private bool _opened;
 
-    private readonly UsbContext _context;
+    private readonly IUsbContext _context;
     private readonly int _bufferSize;
-    private int _claimedInterface;
+    private readonly int _requestedInterface;
+    private int _claimedInterface = -1;
+    private readonly ReadEndpointID? _requestedReadEndpoint;
+    private readonly WriteEndpointID? _requestedWriteEndpoint;
     private ReadEndpointID? _readEndpointId;
     private WriteEndpointID? _writeEndpointId;
     private readonly int _readTimeout;
     private readonly int _writeTimeout;
     public LibUsbTransport(UsbDeviceFinder finder, int claimedInterface = -1, int bufferSize = 8192, ReadEndpointID? readEndpointId = null,
         WriteEndpointID? writeEndpointId = null, int readTimeout = 1000, int writeTimeout = 1000)
+        : this(new UsbContext(), finder, claimedInterface, bufferSize, readEndpointId, writeEndpointId, readTimeout, writeTimeout)
     {
-        _context = new UsbContext();
-        _device = _context.Find(finder);
-        _claimedInterface = claimedInterface;
+    }
+
+    internal LibUsbTransport(IUsbContext context, UsbDeviceFinder finder, int claimedInterface = -1,
+        int bufferSize = 8192, ReadEndpointID? readEndpointId = null, WriteEndpointID? writeEndpointId = null,
+        int readTimeout = 1000, int writeTimeout = 1000)
+    {
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        try
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(bufferSize);
+            ValidateTimeout(readTimeout);
+            ValidateTimeout(writeTimeout);
+            _device = _context.Find(finder) ?? throw new InvalidOperationException(
+                Strings.LibUsbTransport_DeviceMissing);
+        }
+        catch
+        {
+            _context.Dispose();
+            throw;
+        }
+        _requestedInterface = claimedInterface;
         _bufferSize = bufferSize;
         _readTimeout = readTimeout;
         _writeTimeout = writeTimeout;
-        _readEndpointId = readEndpointId;
-        _writeEndpointId = writeEndpointId;
+        _requestedReadEndpoint = readEndpointId;
+        _requestedWriteEndpoint = writeEndpointId;
     }
 
     public void Open()
@@ -76,13 +98,16 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
 
     private void GetEndpointId(out ReadEndpointID? readEndpointId, out WriteEndpointID? writeEndpointId)
     {
-        EnsureOpen();
-        readEndpointId = null;
-        writeEndpointId = null;
+        if (!_device.IsOpen)
+            throw new InvalidOperationException(Strings.LibUsbTransport_NotOpen);
+        readEndpointId = _requestedReadEndpoint;
+        writeEndpointId = _requestedWriteEndpoint;
         lock (_sync)
         {
             foreach (var usbConfigInfo in _device.Configs)
             {
+                if (usbConfigInfo.ConfigurationValue != _device.Configuration)
+                    continue;
                 foreach (var usbInterfaceInfo in usbConfigInfo.Interfaces)
                 {
                     if (usbInterfaceInfo.Number != _claimedInterface)
@@ -92,14 +117,16 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
                         foreach (var usbEndpointInfo in usbInterfaceInfo.Endpoints)
                         {
                             const byte USB_ENDPOINT_DIR_MASK = 0x80;
+                            if ((usbEndpointInfo.Attributes & 3) != (byte)EndpointType.Bulk)
+                                continue;
                             var address = usbEndpointInfo.EndpointAddress;
                             switch ((EndpointDirection)(address & USB_ENDPOINT_DIR_MASK))
                             {
                                 case EndpointDirection.In:
-                                    _readEndpointId = (ReadEndpointID)address;
+                                    readEndpointId ??= (ReadEndpointID)address;
                                     break;
                                 case EndpointDirection.Out:
-                                    _writeEndpointId = (WriteEndpointID)address;
+                                    writeEndpointId ??= (WriteEndpointID)address;
                                     break;
                             }
                         }
@@ -133,7 +160,8 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
             finally
             {
                 _disposed = true;
-                _device.Dispose();
+                try { _device.Dispose(); }
+                finally { _context.Dispose(); }
             }
         }
     }
@@ -198,10 +226,14 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
                 return 0;
 
             int timeout = ValidateTimeout(timeoutInMilliseconds ?? _readTimeout);
+            long deadline = Environment.TickCount64 + timeout;
             int totalRead = 0;
             while (totalRead < destination.Length)
             {
-                Error error = reader.Read(destination[totalRead..], timeout, out int transferLength);
+                int remaining = timeout == 0 ? 0 : checked((int)Math.Max(0, deadline - Environment.TickCount64));
+                if (timeout > 0 && remaining == 0)
+                    throw new TimeoutException(Strings.FormatLibUsbTransport_TransferTimedOut("USB read", timeout));
+                Error error = reader.Read(destination[totalRead..], remaining, out int transferLength);
                 ThrowTransferError(error, "USB read", timeout);
                 if (transferLength <= 0)
                     throw new EndOfStreamException(Strings.LibUsbTransport_ZeroByteRead);
@@ -356,18 +388,13 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
                 _device.SetConfiguration(_device.Configs[0].ConfigurationValue);
         }
 
-        if (_claimedInterface < 0)
-        {
-            _claimedInterface = FindFirstInterfaceNumber();
-        }
-
-        if (_claimedInterface < 0)
-        {
-            return;
-        }
-        if (!_device.ClaimInterface(_claimedInterface))
+        int selectedInterface = _requestedInterface >= 0 ? _requestedInterface : FindFirstInterfaceNumber();
+        if (selectedInterface < 0)
+            throw new InvalidOperationException(Strings.LibUsbTransport_BulkInterfaceMissing);
+        if (!_device.ClaimInterface(selectedInterface))
             throw new InvalidOperationException(
-                Strings.FormatLibUsbTransport_InterfaceClaimFailed(_claimedInterface));
+                Strings.FormatLibUsbTransport_InterfaceClaimFailed(selectedInterface));
+        _claimedInterface = selectedInterface;
     }
 
     private int FindFirstInterfaceNumber()
@@ -379,7 +406,9 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
                 continue;
             foreach (var usbInterface in config.Interfaces)
             {
-                if (usbInterface.Class == ClassCode.Data)
+                if (usbInterface.Class is ClassCode.Data or ClassCode.VendorSpec &&
+                    usbInterface.Endpoints.Any(static e => (e.Attributes & 3) == (byte)EndpointType.Bulk && (e.EndpointAddress & 0x80) != 0) &&
+                    usbInterface.Endpoints.Any(static e => (e.Attributes & 3) == (byte)EndpointType.Bulk && (e.EndpointAddress & 0x80) == 0))
                 {
                     return usbInterface.Number;
                 }
@@ -409,7 +438,6 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
         if (_device.IsOpen)
             _device.Close();
 
-        _context.Dispose();
         _opened = false;
     }
 

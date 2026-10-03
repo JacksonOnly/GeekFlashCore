@@ -320,7 +320,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             if (LooksLikeXml(prefix))
             {
                 _wire = new QcomSessionTransport(Transport, prefix, _options.ReadTimeoutMilliseconds);
-                _firehose = new FirehoseSession(_wire, _options.ReadTimeoutMilliseconds);
+                _firehose = CreateFirehoseSession(_wire);
                 break;
             }
 
@@ -350,7 +350,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         try
         {
             _wire = new QcomSessionTransport(Transport, [], _options.ReadTimeoutMilliseconds);
-            _firehose = new FirehoseSession(_wire, _options.ReadTimeoutMilliseconds);
+            _firehose = CreateFirehoseSession(_wire);
             if (_firehose.TryProbe(GetProtocolProbeTimeout(), out _startup))
                 return true;
         }
@@ -416,7 +416,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         if (images.Count == 0) throw new QcomResourceException(Strings.Qcom_InvalidResource);
         ct.ThrowIfCancellationRequested();
         _sahara!.UploadImageCancelable(images, null, progress, ct);
-        _firehose = new FirehoseSession(_wire!, _options.ReadTimeoutMilliseconds);
+        _firehose = CreateFirehoseSession(_wire!);
         _targetInfo = _targetInfo! with
         {
             ProgrammerCaHash = _programmer?.RootCaHash,
@@ -424,6 +424,17 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             ProgrammerSupportedCommands = _programmer?.SupportedCommands ?? new HashSet<string>(),
             OemName = _programmer?.OemName, SocName = _programmer?.SocName
         };
+    }
+
+    private FirehoseSession CreateFirehoseSession(ITransport wire)
+    {
+        var session = new FirehoseSession(wire, _options.ReadTimeoutMilliseconds);
+        if (_options.OplusDigest.Mode == OplusDigestMode.OplusDigestLegacy)
+        {
+            session.ConfigureLegacyWire(_options.OplusDigest);
+            session.SetXmlDeclarationAttribute("chimerais=\"power\"");
+        }
+        return session;
     }
 
     private void StartFirehose()
@@ -443,7 +454,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             {
                 // A programmer that is already in Firehose mode may not replay startup logs.
                 _firehose.Dispose();
-                _firehose = new FirehoseSession(_wire!, _options.ReadTimeoutMilliseconds);
+                _firehose = CreateFirehoseSession(_wire!);
                 _firehose.SetXmlDeclarationAttribute(
                     _options.OplusDigest.Mode == OplusDigestMode.OplusDigestLegacy
                         ? "chimerais=\"power\""
@@ -488,12 +499,13 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         if (configured.Configuration.Storage != FirehoseStorage.Emmc)
             return false;
 
-        if (exception.Message.Contains("Failed to open the SDCC Device", StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        return exception.Result.Logs.Any(log =>
-            log.Message.Contains("Failed to open the SDCC Device", StringComparison.OrdinalIgnoreCase));
+        return NakEvidence(exception).Any(message =>
+            message.Contains("Failed to open the SDCC Device", StringComparison.OrdinalIgnoreCase));
     }
+
+    private static IEnumerable<string> NakEvidence(FirehoseNakException exception) =>
+        exception.Result.Logs.Select(static log => log.Message)
+            .Append(exception.Result.Attributes.TryGetValue("reason", out string? reason) ? reason : exception.Message);
 
     private static bool TryGetStorageSectorSize(
         FirehoseConfiguration requested,
@@ -504,8 +516,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         if (requested.MemoryName != FirehoseStorage.None)
             return false;
 
-        IEnumerable<string> messages = exception.Result.Logs.Select(static log => log.Message)
-            .Append(exception.Message);
+        IEnumerable<string> messages = NakEvidence(exception);
         foreach (string message in messages)
         {
             if (message.Contains("device sector size (512)", StringComparison.OrdinalIgnoreCase) ||
@@ -912,7 +923,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         _vipPolicy = null; _onePlusAuthentication = null;
         if (_wire is QcomSessionTransport sessionTransport) sessionTransport.DiscardBuffered();
         if (hadFirehose && _wire is not null)
-            _firehose = new FirehoseSession(_wire, _options.ReadTimeoutMilliseconds);
+            _firehose = CreateFirehoseSession(_wire);
         else
             _wire = null;
         if (Transport.IsOpen) Transport.Close();
@@ -924,8 +935,9 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         try
         {
             if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-            _lifetime.Cancel(); Cleanup();
-            if (!_leaveTransportOpen) Transport.Dispose();
+            _lifetime.Cancel();
+            try { Cleanup(); }
+            finally { if (!_leaveTransportOpen) Transport.Dispose(); }
         }
         finally { _gate.Release(); }
         GC.SuppressFinalize(this);
@@ -935,7 +947,11 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         _lifetime.Cancel();
         await _gate.WaitAsync().ConfigureAwait(false);
-        try { Cleanup(); if (!_leaveTransportOpen) Transport.Dispose(); }
+        try
+        {
+            try { Cleanup(); }
+            finally { if (!_leaveTransportOpen) Transport.Dispose(); }
+        }
         finally { _gate.Release(); }
         GC.SuppressFinalize(this);
     }
@@ -943,8 +959,8 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     {
         public void Dispose()
         {
-            if (owner._firehose?.State == FirehoseSessionState.Faulted) owner.Cleanup();
-            owner._gate.Release();
+            try { if (owner._firehose?.State == FirehoseSessionState.Faulted) owner.Cleanup(); }
+            finally { owner._gate.Release(); }
         }
     }
     private static IProgress<long>? ProgramProgress(IProgress<ProgressRecord>? progress) =>

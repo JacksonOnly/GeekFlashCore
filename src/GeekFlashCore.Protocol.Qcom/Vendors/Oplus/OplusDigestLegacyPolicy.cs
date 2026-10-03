@@ -13,7 +13,7 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
     private readonly long _digestLength;
     private readonly int _fixedSectorCount;
     private readonly int _transferBufferSize;
-    private readonly OplusDigestCommandCounter _counter;
+    private OplusDigestCommandCounter _counter;
     private readonly OplusDigestConfiguration _configuration;
     private readonly string _nopXml;
     private FirehoseSession? _attachedSession;
@@ -54,7 +54,7 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
     {
         if (ReferenceEquals(_attachedSession, session)) return;
         if (_attachedSession is not null) throw new InvalidOperationException(Strings.Qcom_LegacyPolicyAlreadyAttached);
-        session.ConfigureLegacyWire(_configuration, _counter.CommandSent);
+        _counter = session.ConfigureLegacyWire(_configuration, _counter);
         _attachedSession = session;
     }
 
@@ -154,7 +154,7 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
         log.Message.Contains("Hash of new table doesn't match the expected hash", StringComparison.Ordinal));
 
     // Window enumeration remains constant-memory even when a mapped entry spans a large image.
-    private sealed class FixedRanges : IReadOnlyList<FirehoseStorageRange>
+    private sealed class FixedRanges : IReadOnlyList<FirehoseStorageRange>, IValidatedFirehoseRangeSequence
     {
         private readonly IReadOnlyList<FirehoseStorageRange> _ranges;
         private readonly int _sectors;
@@ -172,6 +172,9 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
         }
 
         public int Count { get; }
+
+        public void ValidateCoverage(long startSector, long sectorCount) =>
+            FirehoseStorageRangeValidator.Validate(_ranges, startSector, sectorCount);
 
         public FirehoseStorageRange this[int index]
         {

@@ -512,4 +512,7 @@ Current {0}, expected {1}</value>
   <data name="Qcom_LegacyNopUnconfirmed" xml:space="preserve"><value>The Legacy Digest did not receive a correlated NOP handler and ACK.</value></data>
   <data name="Qcom_LegacyPolicyAlreadyAttached" xml:space="preserve"><value>The Legacy policy is attached to another session.</value></data>
   <data name="Qcom_LegacyPacketCountInvalid" xml:space="preserve"><value>The Legacy packet count exceeds the table trigger position. Reconnect the device.</value></data>
+  <data name="Qcom_DeviceTextRedacted" xml:space="preserve"><value>Device diagnostic contains sensitive material or XML and was hidden.</value></data>
+  <data name="Qcom_DeviceTextTruncated" xml:space="preserve"><value>{0}… (truncated)</value></data>
+  <data name="Firehose_XmlResponseTooLarge" xml:space="preserve"><value>Combined Firehose response XML exceeds {0} bytes.</value></data>
 </root>

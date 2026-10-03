@@ -212,11 +212,9 @@ internal sealed class FirehoseCommandExecutor
         if (result.Status == FirehoseResponseStatus.Ack)
             return;
 
-        string message = result.Logs.LastOrDefault(static log => log.Level == FirehoseLogLevel.Error)?.Message
-                         ?? result.Logs.LastOrDefault()?.Message
-                         ?? (result.Attributes.TryGetValue("reason", out string? reason) ? reason : null)
-                         ?? Strings.Qcom_FirehoseCommandRejected;
-        throw new FirehoseNakException(message, result);
+        // Preserve device text in Result for internal compatibility decisions;
+        // exception messages are also printed by hosts and must never echo it.
+        throw new FirehoseNakException(Strings.Qcom_FirehoseCommandRejected, result);
     }
 
     internal static void ValidateXml(string xml)

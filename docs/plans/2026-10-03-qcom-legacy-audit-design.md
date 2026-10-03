@@ -36,6 +36,7 @@
 
 1. Digest 是可重开、流式发送的签名表。Legacy 不以 Pt 分区表解析成功作为前置条件；Pt 继续解析、映射和校验权限。Legacy 读写按请求的真实扇区范围分段，0 表示参考中的不分段。
 2. 每个已发送 XML 计 1 次，每个完整普通/RAW/FILL 数据发送计 1 次；串口分块不重复计数。XML NAK 仍计数，数据传输在发送完成、最终 ACK 前计数。空洞没有数据发送。
+   计数器归 Firehose 会话持有，创建会话时注入 InitialPacketCount，早于探测/Configure；资源或策略重建、存储回退不得重新注入。InitialPacketCount 只表示 Core 开始前的设备状态，Core 不能让宿主估算自己的动态重试次数（QA-F 独立审查修正）。
 3. 会话保留计数，自动换表/签名补发仅在启用 Legacy 的写入操作内生效；读取、NOP、通用 XML、patch 不因历史配置触发自动 Digest。操作结束即撤销写入开关，防止污染后续调用。
 4. 以参考 `check_digest` 当前代码为准：剩余位置 <=2 时，用调用方 NOP 补到 `max_count+1` 后发 Digest。max_count=53、当前 51/52/53/54 对应 3/2/1/0 次边界 NOP；Digest 计在第 55 次。不要改成固定两次 NOP。
 5. 触发位置完整 NAK 若日志包含参考 `digest_requested` 识别的换表 Hash/签名请求，继续发 Digest；其他 NAK、半帧、RawMode 错误立即失败。

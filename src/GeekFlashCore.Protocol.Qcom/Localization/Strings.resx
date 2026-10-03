@@ -409,4 +409,7 @@
   <data name="Qcom_LegacyNopUnconfirmed" xml:space="preserve"><value>Legacy Digest 未收到关联的 NOP handler 和 ACK 确认。</value></data>
   <data name="Qcom_LegacyPolicyAlreadyAttached" xml:space="preserve"><value>Legacy 策略已绑定到另一个会话。</value></data>
   <data name="Qcom_LegacyPacketCountInvalid" xml:space="preserve"><value>Legacy 包计数超过换表触发位置，需要重新连接。</value></data>
+  <data name="Qcom_DeviceTextRedacted" xml:space="preserve"><value>设备诊断包含敏感材料或 XML，已隐藏。</value></data>
+  <data name="Qcom_DeviceTextTruncated" xml:space="preserve"><value>{0}…（已截断）</value></data>
+  <data name="Firehose_XmlResponseTooLarge" xml:space="preserve"><value>Firehose 响应累计 XML 超过 {0} 字节。</value></data>
 </root>

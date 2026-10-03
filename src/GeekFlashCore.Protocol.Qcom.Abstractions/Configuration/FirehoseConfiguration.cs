@@ -39,7 +39,7 @@ public sealed record OplusDigestConfiguration
     public int FixedSectorCount { get; init; }
     /// <summary>Legacy table packet capacity. Counts XML and complete outgoing payloads, not transport chunks.</summary>
     public int MaxCommandsBeforeDigest { get; init; } = 53;
-    /// <summary>Packet count supplied by a host resuming its own table state.</summary>
+    /// <summary>Device table count before the first packet of a new Firehose session. Core counts its own probes and Configure retries.</summary>
     public uint InitialPacketCount { get; init; }
     /// <summary>Exact confirmation NOP; null selects the compatible built-in NOP.</summary>
     public string? NopXml { get; init; }

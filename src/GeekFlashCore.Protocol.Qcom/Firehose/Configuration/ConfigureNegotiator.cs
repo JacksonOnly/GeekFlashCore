@@ -66,7 +66,7 @@ public sealed class ConfigureNegotiator
 
                 ConfigureEvidence evidence = ConfigureEvidenceParser.Parse(exception.Result);
                 ConfigureState next = state.Apply(evidence);
-                if (state.ManualStorage && (next.Storage != state.Storage || evidence.UnsupportedStorage is not null || next == state))
+                if (state.ManualStorage && (next.Storage != state.Storage || evidence.UnsupportedStorage is not null || evidence.StorageOpenFailed || next == state))
                     throw Failure(Strings.Qcom_ExplicitStorageRejected, exception);
                 if (evidence.UnsupportedStorage is not null || evidence.StorageOpenFailed || next == state)
                 {
@@ -131,7 +131,7 @@ public sealed class ConfigureNegotiator
 
                 ConfigureEvidence evidence = ConfigureEvidenceParser.Parse(exception.Result);
                 ConfigureState next = state.Apply(evidence);
-                if (state.ManualStorage && (next.Storage != state.Storage || evidence.UnsupportedStorage is not null || next == state))
+                if (state.ManualStorage && (next.Storage != state.Storage || evidence.UnsupportedStorage is not null || evidence.StorageOpenFailed || next == state))
                     throw Failure(Strings.Qcom_ExplicitStorageRejected, exception);
                 if (evidence.UnsupportedStorage is not null || evidence.StorageOpenFailed || next == state)
                 {

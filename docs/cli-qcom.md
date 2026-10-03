@@ -42,13 +42,13 @@ geekflash --port COM7 --loader programmer.elf --oplus-mode OplusDigestLegacy --o
 | Legacy 参数 | 默认 | 说明 |
 | --- | ---: | --- |
 | `--legacy-max-packets` | 53 | 表容量，最小 4；原 API `MaxCommandsBeforeDigest` 现按包解释 |
-| `--legacy-initial-packets` | 0 | 安装 Legacy 策略时的设备表计数快照；宿主自行衔接此前 Configure/探测计数 |
+| `--legacy-initial-packets` | 0 | 新 Firehose 会话发送第一包前的设备表计数快照；Core 自动累计自己的探测、Configure、重试和存储查询 |
 | `--legacy-fixed-sectors` | 0 | 每个 program 的最大扇区数，0 表示不强制分段 |
 | `--legacy-digest-timeout` | 1000 | Digest 独立回复窗口，半帧不能延长窗口 |
 | `--legacy-xml-limit` | 4096 | 参考线路的 XML 字节截断上限 |
 | `--legacy-nop` | 内置兼容 NOP | 一个安全的 `<data><nop .../></data>`；原文本按字节发送 |
 
-安装策略后，每条 XML 和每次完整输出数据传输各计 1；串口/USB 分块不重复计数，Sparse 空洞不计数据包。自动换表只由 Legacy program 写入触发，读、NOP、patch 和通用 XML 不自动刷新。容量 53 时，计数 51/52/53/54 分别先发 3/2/1/0 个 NOP，再发第 55 包 Digest。独立 ACK 后确认 NOP 计为 1；没有独立 ACK 则保留队列，需 handler 日志和完整成功响应关联确认。
+从新会话开始，每条 XML 和每次完整输出数据传输各计 1；策略安装和存储回退复用同一计数器。串口/USB 分块不重复计数，Sparse 空洞不计数据包。自动换表只由 Legacy program 写入触发，读、NOP、patch 和通用 XML 不自动刷新。容量 53 时，计数 51/52/53/54 分别先发 3/2/1/0 个 NOP，再发第 55 包 Digest。独立 ACK 后确认 NOP 计为 1；没有独立 ACK 则保留队列，需 handler 日志和完整成功响应关联确认。
 
 参考源码中的完整日志错误后继续确认、声明特殊属性、XML 截断和 Flush 顺序均有意保留；未知 NAK、半帧和 RAW 错误会让会话失效。签名失败只重发当前 XML 一次，不重放 RAW。普通 Digest、VIP、Oplus 三种线路互斥。
 

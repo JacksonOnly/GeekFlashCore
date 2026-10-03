@@ -92,7 +92,7 @@ Interfaces：可取消单输入通道；新增 connect/resource/device-wait/Lega
 - [x] 用户确认设计（2026-10-03）。
 - [x] QA-A：ACK、Payload、模式互斥（2026-10-03；3 项缺陷 RED→GREEN，正常 ACK 1 项通过；Release 构建 0 警告/错误，diff check 通过）。CLI Legacy 测试仍保留已知失败，等待 QA-E。
 - [x] QA-B：USB 生命周期和预算（2026-10-03；首次端点发现、Open/Close/Open、失败释放并重试、慢分片总预算 4 项 RED→GREEN；使用可控 IUsbContext/IUsbDevice 和端点，未连接硬件）。
-- [x] QA-C：Rector Legacy 线路（2026-10-03；首批 12 项测试 9 RED/3 既有失败路径通过，迁移后 15 项全部通过，累计 24 项本地测试通过）。已覆盖 51/52/53/54 边界、日志错误与 handler 关联、Digest NAK/半帧、签名单次重放、读取不自动刷新、无 Pt 索引、Sparse RAW/FILL/skip 和缺省 rawmode。Legacy 资源安装前的 Configure/探测计数由 InitialPacketCount 表达，安装后所有 XML/完整输出载荷共享计数；未主动发送初始签名表，按 Rector 只在边界或签名 NAK 发送。
+- [x] QA-C：Rector Legacy 线路（2026-10-03；首批 12 项测试 9 RED/3 既有失败路径通过，迁移后 15 项全部通过，累计 24 项本地测试通过）。已覆盖 51/52/53/54 边界、日志错误与 handler 关联、Digest NAK/半帧、签名单次重放、读取不自动刷新、无 Pt 索引、Sparse RAW/FILL/skip 和缺省 rawmode。首轮安装前计数快照裁定已由 QA-F 撤销，最终计数归会话，从探测/Configure 前开始；未主动发送初始签名表，按 Rector 只在边界或签名 NAK 发送。
 - [x] QA-D（2026-10-03）：最终 RAW NAK 和末块读取取消 2 项 RED→GREEN；普通 XML 等待传入取消 token。复现 Configure 同步/异步在 storage-open-failed + payload 调整同时出现时选错存储，统一 UFS 回退，1 项 RED→GREEN。提前 NAK 仅写第一块且不可继续、资源超时后迟到结果释放回归通过。累计 29 项本地测试通过，Release 0 警告/错误、diff check 通过。
 - 审查裁定：Sahara 按设备请求上传，分包/Configure/LUN 查询已有有界单次等待；不添加可能中断正常大镜像的统一读写总时限。同步阻塞 I/O 的取消最多等当前单次超时，持续有有效进度的操作由调用方 token 控制；CLI 明示各超时用途。Configure 是有限次数回退，多 LUN 有最大数量，累计连接耗时可能超过 ConnectTimeout（该字段用于探测）。没有硬件证据，不宣称真机验证或吞吐提升。
 - [x] QA-D：连接/实际读写路径修复与回归。
@@ -102,6 +102,9 @@ Interfaces：可取消单输入通道；新增 connect/resource/device-wait/Lega
 - [ ] QA-F：完整验证、独立提交和风险收尾。
 - [x] QA-F 性能（2026-10-03）：百万扇区固定窗口预验证分配 48,000,248 字节，测试 RED；只对 Core 内部窗口序列校验基础覆盖和算术后降为 168 字节，GREEN。外部策略仍逐段防御性验证。RAW 流式发送 1 MiB/32 MiB 分配为 0/24 字节（池预热、本地 sink，不代表设备吞吐）。
 - [x] QA-F 独立审查 USB（2026-10-03）：Configuration=0 表示未配置，模拟首次 Open 成功/失败清理 2 项 RED→GREEN；先选择带目标 bulk 接口的有效配置并验证设置结果，再声明接口。未使用硬件。
+- [x] QA-F 独立审查 Core（2026-10-03）：review `37ee307..f5b0075` 无 Critical、5 Important；已逐项修复。会话计数在 Configure 前挂载并跨 storage fallback 保留（2 项 RED→GREEN，新增 reason-only 证据回归、完整连接后连续 26 次写入在正确边界换表）；显式 Emmc 复合 NAK 禁止切换 UFS（sync/async 1 项 RED→GREEN）；完整日志 CRLF 允许、CRLF+半帧拒绝（1 RED→GREEN、1 失败路径回归）；USB 未配置 2 RED→GREEN；日志 sink 验证 Token/签名/XML 和展示长度 4 RED→GREEN。展示脱敏不修改协议内部 Result，NAK reason 内部匹配保留。
+- [x] QA-F 故障和洪流（2026-10-03）：有效 XML 日志帧累计超过 1 MiB 不再持续积累；日志洪流 1 项 RED→GREEN。RAW 异常后 Close 抛错仍释放会话锁，Dispose 清理失败仍释放自有 transport，2 项 RED→GREEN。读取超时失效/重连旧视图回归通过。当前 66 项本次本地测试全部通过；不冒充旧历史测试或硬件验证。
+- 审查裁定：撤销“宿主估算安装前 Configure 计数”，InitialPacketCount 只注入新会话一次；后续命令用同一共享计数。异常 Message 改为安全资源摘要，设备原文保留在领域 Result 供内部回退匹配，宿主自行打印 Result 时需遵守同样的敏感数据约束。
 
 ## 未决风险与恢复位置
 

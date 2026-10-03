@@ -32,6 +32,7 @@ internal sealed class FirehoseWireReader : IDisposable
         }
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
         var logs = new List<FirehoseResponseLog>(4);
+        int responseBytes = 0;
 
         while (true)
         {
@@ -39,6 +40,7 @@ internal sealed class FirehoseWireReader : IDisposable
             ReadOnlySpan<byte> packet = ReadXmlPacket(GetRemainingMilliseconds(deadline), out bool rawMode);
             if (rawMode)
                 throw new FirehoseProtocolException(Strings.Firehose_ResponseNotXml);
+            AddPacketBudget(ref responseBytes, packet.Length);
 
             if (FirehoseResponseParser.TryParsePacket(
                     packet,
@@ -61,12 +63,14 @@ internal sealed class FirehoseWireReader : IDisposable
         ThrowIfDisposed();
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
         var logs = new List<FirehoseResponseLog>(16);
+        int responseBytes = 0;
 
         while (true)
         {
             ReadOnlySpan<byte> packet = ReadXmlPacket(GetRemainingMilliseconds(deadline), out bool rawMode);
             if (rawMode)
                 throw new InvalidDataException(Strings.Firehose_StartupDataNotXml);
+            AddPacketBudget(ref responseBytes, packet.Length);
 
             FirehoseResponseParser.ParseLogs(packet, logs);
             if (logs.Exists(static log =>
@@ -93,6 +97,7 @@ internal sealed class FirehoseWireReader : IDisposable
         ThrowIfDisposed();
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
         var logs = new List<FirehoseResponseLog>();
+        int responseBytes = 0;
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -100,6 +105,7 @@ internal sealed class FirehoseWireReader : IDisposable
             {
                 ReadOnlySpan<byte> packet = ReadXmlPacket(GetRemainingMilliseconds(deadline), out bool raw);
                 if (raw) throw new FirehoseProtocolException(Strings.Firehose_ResponseNotXml);
+                AddPacketBudget(ref responseBytes, packet.Length);
                 if (FirehoseResponseParser.TryParsePacket(packet, logs, out var status, out raw,
                         out var attributes, out var elements))
                     return new FirehoseResponse(logs, attributes!, status, raw, elements);
@@ -107,7 +113,7 @@ internal sealed class FirehoseWireReader : IDisposable
             }
             catch (TimeoutException)
             {
-                if (_xmlBuffer.WrittenCount > 0)
+                if (!IsXmlWhitespace(_xmlBuffer.WrittenSpan))
                     throw new FirehoseProtocolException(Strings.Firehose_OptionalResponseIncomplete);
                 return logs.Count == 0 ? null : new FirehoseResponse(logs,
                     new Dictionary<string, string>(), FirehoseResponseStatus.Ack, false);
@@ -131,6 +137,16 @@ internal sealed class FirehoseWireReader : IDisposable
         {
             Span<byte> prefix = _xmlBuffer.GetSpan(XmlProbeLength)[..(XmlProbeLength - _xmlBuffer.WrittenCount)];
             int read = ReadSome(prefix, GetRemainingMilliseconds(deadline));
+            if (read <= 0) throw new EndOfStreamException(Strings.Firehose_TransportClosedReadingXml);
+            _xmlBuffer.Advance(read);
+        }
+
+        while (IsXmlWhitespace(_xmlBuffer.WrittenSpan))
+        {
+            if (_xmlBuffer.WrittenCount >= FirehoseConstants.MaximumXmlPacketSize)
+                throw new InvalidDataException(Strings.FormatFirehose_XmlPacketTooLarge(FirehoseConstants.MaximumXmlPacketSize));
+            int count = Math.Min(32, FirehoseConstants.MaximumXmlPacketSize - _xmlBuffer.WrittenCount);
+            int read = ReadSome(_xmlBuffer.GetSpan(count)[..count], GetRemainingMilliseconds(deadline));
             if (read <= 0) throw new EndOfStreamException(Strings.Firehose_TransportClosedReadingXml);
             _xmlBuffer.Advance(read);
         }
@@ -176,13 +192,6 @@ internal sealed class FirehoseWireReader : IDisposable
         }
     }
 
-    private void ReadExact(Span<byte> destination, int timeoutMilliseconds)
-    {
-        int copied = CopyCarryTo(destination);
-        if (copied < destination.Length)
-            _transport.ReadExact(destination[copied..], timeoutMilliseconds);
-    }
-
     private int ReadSome(Span<byte> destination, int timeoutMilliseconds)
     {
         int copied = CopyCarryTo(destination);
@@ -198,6 +207,21 @@ internal sealed class FirehoseWireReader : IDisposable
         if (prefix.Length >= 3 && prefix[0] == 0xEF && prefix[1] == 0xBB && prefix[2] == 0xBF) offset = 3;
         while (offset < prefix.Length && prefix[offset] is (byte)' ' or (byte)'\t' or (byte)'\r' or (byte)'\n') offset++;
         return offset < prefix.Length && prefix[offset] == (byte)'<';
+    }
+
+    private static bool IsXmlWhitespace(ReadOnlySpan<byte> prefix)
+    {
+        if (prefix.Length >= 3 && prefix[0] == 0xEF && prefix[1] == 0xBB && prefix[2] == 0xBF) prefix = prefix[3..];
+        foreach (byte value in prefix)
+            if (value is not ((byte)' ' or (byte)'\t' or (byte)'\r' or (byte)'\n')) return false;
+        return true;
+    }
+
+    private static void AddPacketBudget(ref int consumed, int length)
+    {
+        consumed = checked(consumed + length);
+        if (consumed > FirehoseConstants.MaximumXmlPacketSize)
+            throw new InvalidDataException(Strings.FormatFirehose_XmlResponseTooLarge(FirehoseConstants.MaximumXmlPacketSize));
     }
 
     private int CopyCarryTo(Span<byte> destination)

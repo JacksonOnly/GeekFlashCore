@@ -1,6 +1,7 @@
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Internals;
 using GeekFlashCore.Protocol.Qcom.Vendors;
+using GeekFlashCore.Protocol.Qcom.Vendors.Oplus;
 using GeekFlashCore.Transport.Abstractions;
 using Serilog;
 
@@ -29,6 +30,7 @@ public sealed class FirehoseSession : IDisposable
     private Action<FirehoseSession, CancellationToken>? _beforeCommand;
     private Action? _commandSent;
     private string? _xmlDeclarationAttribute;
+    private OplusDigestCommandCounter? _legacyCounter;
 
     public FirehoseSession(ITransport transport, int readTimeoutMilliseconds)
     {
@@ -54,8 +56,15 @@ public sealed class FirehoseSession : IDisposable
     internal void SetXmlDeclarationAttribute(string? attribute) =>
         _xmlDeclarationAttribute = attribute;
 
-    internal void ConfigureLegacyWire(OplusDigestConfiguration configuration, Action packetSent) =>
-        _executor.ConfigureLegacy(configuration, packetSent);
+    internal OplusDigestCommandCounter ConfigureLegacyWire(OplusDigestConfiguration configuration,
+        OplusDigestCommandCounter? counter = null)
+    {
+        if (_legacyCounter is not null) return _legacyCounter;
+        _legacyCounter = counter ?? new OplusDigestCommandCounter(configuration.MaxCommandsBeforeDigest,
+            configuration.InitialPacketCount);
+        _executor.ConfigureLegacy(configuration, _legacyCounter.CommandSent);
+        return _legacyCounter;
+    }
 
     internal FirehoseCommandResult? SendLegacyDigest(Stream source, long length, int bufferSize,
         int timeout, CancellationToken cancellationToken)

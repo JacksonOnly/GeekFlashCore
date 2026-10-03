@@ -125,26 +125,27 @@ internal sealed class FirehoseCmdReceiver : IDisposable
     {
         foreach (FirehoseResponseLog log in response.Logs)
         {
+            string message = QcomDeviceText.ForDisplay(log.Message);
             if (log.Level == FirehoseLogLevel.Info &&
                 log.Message.StartsWith("Calling handler for ", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.Debug(Strings.Qcom_LogDeviceMessage, log.Message);
+                _logger.Debug(Strings.Qcom_LogDeviceMessage, message);
                 continue;
             }
 
             switch (log.Level)
             {
                 case FirehoseLogLevel.Error:
-                _logger.Error(Strings.Qcom_LogDeviceMessage, log.Message);
+                _logger.Error(Strings.Qcom_LogDeviceMessage, message);
                     break;
                 case FirehoseLogLevel.Warn:
-                _logger.Warning(Strings.Qcom_LogDeviceMessage, log.Message);
+                _logger.Warning(Strings.Qcom_LogDeviceMessage, message);
                     break;
                 case FirehoseLogLevel.Debug:
-                _logger.Debug(Strings.Qcom_LogDeviceMessage, log.Message);
+                _logger.Debug(Strings.Qcom_LogDeviceMessage, message);
                     break;
                 default:
-                _logger.Information(Strings.Qcom_LogDeviceMessage, log.Message);
+                _logger.Information(Strings.Qcom_LogDeviceMessage, message);
                     break;
             }
         }

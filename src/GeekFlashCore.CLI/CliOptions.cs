@@ -17,6 +17,7 @@ internal sealed record CliOptions
     public string? LogFile { get; init; }
     public string? OnePlusProjectId { get; init; }
     public OplusDigestMode OplusMode { get; init; }
+    public bool HasExplicitOplusMode { get; init; }
     public OplusDigestMode EffectiveOplusMode => OplusMode == OplusDigestMode.None && !string.IsNullOrWhiteSpace(OplusDigest)
         ? OplusDigestMode.OplusDigestPt : OplusMode;
     public QcomVendorKind Vendor { get; init; } = QcomVendorKind.Auto;

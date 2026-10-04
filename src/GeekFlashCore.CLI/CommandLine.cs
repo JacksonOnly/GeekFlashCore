@@ -32,7 +32,7 @@ internal static class CommandLine
                     "--loader" => builder with { Loader = value }, "--digest" => builder with { Digest = value }, "--vip-signed" => builder with { VipSigned = value },
                     "--vip-chained" => builder with { VipChained = value }, "--oplus-digest" => builder with { OplusDigest = value },
                     "--oplus-sign" => builder with { OplusSign = value }, "--log-file" => builder with { LogFile = value },
-                    "--oplus-mode" => builder with { OplusMode = Enum.Parse<OplusDigestMode>(value, true) }, "--vendor" => builder with { Vendor = Enum.Parse<QcomVendorKind>(value, true) },
+                    "--oplus-mode" => builder with { OplusMode = Enum.Parse<OplusDigestMode>(value, true), HasExplicitOplusMode = true }, "--vendor" => builder with { Vendor = Enum.Parse<QcomVendorKind>(value, true) },
                     "--oneplus-projid" => builder with { OnePlusProjectId = value },
                     "--auth" => builder with { AuthenticationKind = ParseAuthentication(value) },
                     "--read-timeout" => builder with { ReadTimeout = int.Parse(value) }, "--write-timeout" => builder with { WriteTimeout = int.Parse(value) },

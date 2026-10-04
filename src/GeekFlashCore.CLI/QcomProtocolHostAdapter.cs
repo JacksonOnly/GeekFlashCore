@@ -18,7 +18,42 @@ internal static class QcomProtocolHostAdapter
         Create,
         [],
         static (protocol, ui) => ui.PrintTargetInfo(((IQcomProtocol)protocol).TargetInfo),
-        new CommandSet());
+        new CommandSet(),
+        SelectConnectionOptionsAsync);
+
+    private static async ValueTask<CliOptions> SelectConnectionOptionsAsync(ProtocolHostContext context, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        CliOptions input = context.Options;
+        if (input.EffectiveOplusMode != OplusDigestMode.None)
+        {
+            if (input.Command == "interactive" && !input.NonInteractive && context.Ui.CanPrompt && !input.OplusResume)
+                context.Ui.WriteLine(Strings.Cli_OplusFreshConnection);
+            return input;
+        }
+        if (input.Command != "interactive" || input.NonInteractive || !context.Ui.CanPrompt ||
+            input.HasExplicitOplusMode ||
+            !string.IsNullOrWhiteSpace(input.Digest) || !string.IsNullOrWhiteSpace(input.VipSigned)) return input;
+
+        context.Ui.WriteLine(Strings.Cli_ConnectionModeChoices);
+        while (true)
+        {
+            string answer = await context.Ui.AskAsync(Strings.Cli_ConnectionModePrompt, ct, "1").ConfigureAwait(false);
+            OplusDigestMode? mode = answer.Trim().ToLowerInvariant() switch
+            {
+                "1" or "none" => OplusDigestMode.None,
+                "2" or "oplusdigestpt" => OplusDigestMode.OplusDigestPt,
+                "3" or "oplusdigestlegacy" => OplusDigestMode.OplusDigestLegacy,
+                _ => null
+            };
+            if (mode is null) { context.Ui.WriteLine(Strings.Cli_ConnectionModeInvalid); continue; }
+            var selected = input with { OplusMode = mode.Value, HasExplicitOplusMode = true };
+            selected.Validate();
+            Serilog.Log.ForContext("UserPresentation", true).Information(Strings.Cli_LogConnectionModeSelected, mode.Value);
+            if (mode != OplusDigestMode.None) context.Ui.WriteLine(Strings.Cli_OplusFreshConnection);
+            return selected;
+        }
+    }
 
     private static IProtocol Create(ProtocolHostContext context, ITransport transport)
     {

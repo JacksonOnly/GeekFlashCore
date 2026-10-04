@@ -81,6 +81,12 @@ RAW 中断或未知状态仍应重新进入 EDL，再使用普通带 Loader 的�
 
 ## 调试文件日志
 
+直接运行 `geekflash` 时，在设备发现后、连接和上传前选择连接模式：`1` 普通 Firehose（回车默认）、`2` Oplus DigestPt、`3` Oplus DigestLegacy。错误选择可重输，Ctrl+C 取消。已指定 `--oplus-mode`、Oplus Digest、普通 Digest 或 VIP 参数时按参数执行；非交互、重定向和单次命令不增加模式提问。
+
+Loader 启动日志使用 `--read-timeout` 的总预算（默认 10000 ms），不再用 250 ms 探测窗口代替。刚上传 Loader，或已收到任何启动字节（含半帧）时，等待失败也不发送 NOP；读到 VIP 等待签名表却没有所需模式/资源时，直接说明资源问题。只有未上传 Loader、完全静默的普通会话保留短 NOP 探测回退。
+
+设备已进入 Loader 后通常不会重新发送 Sahara HELLO，关闭 CLI 再运行 `--oplus-mode` 不能使其回到 Sahara。若上次已经出现 signature/authentication 失败，应重新进入 EDL 再连接；仅确认 Loader 仍在等待首张 Digest 时，才使用既有 `--oplus-resume`。CLI 不自动判断或重放表。
+
 默认在可执行程序所在目录的 `logs` 中生成每次运行唯一的日志文件，并在启动时打印完整路径。不需要 `--verbose`，文件也包含 Debug 级别的命令名、发送字节数、响应状态/rawmode、读取预算、耗时、阶段顺序和完整异常堆栈；`--verbose` 只控制控制台详情。
 
 ```powershell

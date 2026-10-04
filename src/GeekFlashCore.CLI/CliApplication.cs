@@ -128,7 +128,12 @@ internal sealed class CliApplication
     {
         TransportResolution resolution = await _transportResolver.ResolveAsync(options, ct, requested).ConfigureAwait(false);
         ProtocolRegistration registration = requested ?? resolution.Registration;
-        try { return (registration.Factory(new ProtocolHostContext(_ui, options), resolution.Transport), resolution.Transport, registration); }
+        try
+        {
+            if (registration.PrepareOptionsAsync is { } prepare)
+                options = await prepare(new ProtocolHostContext(_ui, options), ct).ConfigureAwait(false);
+            return (registration.Factory(new ProtocolHostContext(_ui, options), resolution.Transport), resolution.Transport, registration);
+        }
         catch { resolution.Transport.Dispose(); throw; }
     }
 

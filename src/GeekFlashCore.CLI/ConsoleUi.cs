@@ -17,6 +17,7 @@ internal sealed class ConsoleUi
     private static readonly Serilog.Formatting.Display.MessageTemplateTextFormatter MessageFormatter =
         new("{Message:lj}", System.Globalization.CultureInfo.InvariantCulture);
     public bool AllowPrompts { get; set; } = true;
+    internal bool CanPrompt => AllowPrompts && _input.CanPrompt;
     public string? LogFilePath { get; set; }
     public bool SuppressDiagnosticLogs
     {

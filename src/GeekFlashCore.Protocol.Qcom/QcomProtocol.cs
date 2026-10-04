@@ -33,6 +33,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private readonly IFirehoseVipProvider? _firehoseVipProvider;
     private readonly IVendorAuthenticationProvider? _authenticationProvider;
     private readonly IFirehoseConfigurationProvider? _configurationProvider;
+    private readonly IVendorSelectionProvider? _vendorSelectionProvider;
     private readonly IQcomProgrammerInspector _inspector;
     private readonly QcomResourceResolver _resourceResolver;
     private readonly bool _leaveTransportOpen;
@@ -53,6 +54,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private OplusDigestIndex? _oplusIndex;
     private bool _oplusAuthenticated;
     private OnePlusAuthenticationContext? _onePlusAuthentication;
+    private QcomVendorKind? _selectedVendor;
 
     public QcomProtocol(ITransport transport, QcomProtocolOptions? options = null,
         ISaharaImageProvider? imageProvider = null, IOplusDigestProvider? digestProvider = null,
@@ -61,6 +63,21 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         bool leaveTransportOpen = false, IQcomProgrammerInspector? programmerInspector = null,
         IFirehoseDigestProvider? firehoseDigestProvider = null,
         IFirehoseVipProvider? firehoseVipProvider = null)
+        : this(transport, options, imageProvider, digestProvider, authenticationProvider,
+            configurationProvider, leaveTransportOpen, programmerInspector, firehoseDigestProvider,
+            firehoseVipProvider, null)
+    {
+    }
+
+    /// <summary>Creates a serialized session with an optional host vendor selection provider.</summary>
+    public QcomProtocol(ITransport transport, QcomProtocolOptions? options,
+        ISaharaImageProvider? imageProvider, IOplusDigestProvider? digestProvider,
+        IVendorAuthenticationProvider? authenticationProvider,
+        IFirehoseConfigurationProvider? configurationProvider,
+        bool leaveTransportOpen, IQcomProgrammerInspector? programmerInspector,
+        IFirehoseDigestProvider? firehoseDigestProvider,
+        IFirehoseVipProvider? firehoseVipProvider,
+        IVendorSelectionProvider? vendorSelectionProvider)
     {
         Transport = transport ?? throw new ArgumentNullException(nameof(transport));
         _options = options ?? new QcomProtocolOptions();
@@ -75,6 +92,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         _firehoseVipProvider = firehoseVipProvider;
         _authenticationProvider = authenticationProvider;
         _configurationProvider = configurationProvider;
+        _vendorSelectionProvider = vendorSelectionProvider;
         _leaveTransportOpen = leaveTransportOpen;
         _inspector = programmerInspector ?? new QcomLoaderInspector();
     }
@@ -107,6 +125,9 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
                 UploadCore(response.Entries.ToArray(), progress, ct);
             }
             StartFirehose();
+            if (NeedsVendorSelection)
+                ApplyVendorSelection(await _resourceResolver.ResolveAsync(token => _vendorSelectionProvider!.ResolveAsync(
+                    new VendorSelectionRequest(TargetInfo!), token), ct).ConfigureAwait(false));
             await PrepareOplusAsync(ct).ConfigureAwait(false);
             await PrepareVipAsync(ct).ConfigureAwait(false);
             FirehoseConfiguration configuration = _options.Firehose;
@@ -186,6 +207,9 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             else if (!Transport.IsOpen) Transport.Open();
             if (_sahara is not null && _firehose is null) throw new InvalidOperationException(Strings.Qcom_InvalidSessionState);
             StartFirehose();
+            if (NeedsVendorSelection)
+                ApplyVendorSelection(_resourceResolver.Resolve(token => _vendorSelectionProvider!.ResolveAsync(
+                    new VendorSelectionRequest(TargetInfo!), token)));
             PrepareOplus();
             PrepareVip();
             FirehoseConfiguration configuration = _options.Firehose;
@@ -488,10 +512,11 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
                     throw;
             }
         }
-        var vendor = VendorStrategyResolver.Resolve(_options.VendorOverride, _startup?.Logs.Select(x => x.Message), _programmer?.Vendor ?? QcomVendorKind.Generic);
+        var vendor = VendorStrategyResolver.Resolve(_options.VendorOverride, _startup?.Logs.Select(x => x.Message),
+            _programmer?.Vendor ?? QcomVendorKind.Generic, VendorStrategyResolver.DetectSaharaVendor(_targetInfo?.Sahara));
         _targetInfo = (_targetInfo ?? new QcomTargetInfo()) with
         {
-            Vendor = vendor.Vendor,
+            Vendor = _selectedVendor ?? vendor.Vendor,
             SecureBoot = SecureBootEvaluator.Evaluate((_targetInfo?.Sahara?.CaHash ?? ReadOnlyMemory<byte>.Empty).Span, (_programmer?.RootCaHash ?? ReadOnlyMemory<byte>.Empty).Span, _programmer is not null),
             Firehose = new FirehoseTargetInfo
             {
@@ -502,6 +527,17 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
                 })
             }
         };
+    }
+
+    private bool NeedsVendorSelection => _vendorSelectionProvider is not null && _selectedVendor is null &&
+        _options.VendorOverride == QcomVendorKind.Auto && _targetInfo!.Vendor == QcomVendorKind.Generic;
+
+    private void ApplyVendorSelection(VendorSelectionResponse response)
+    {
+        if (!Enum.IsDefined(response.Vendor) || response.Vendor == QcomVendorKind.Auto)
+            throw new QcomResourceException(Strings.Qcom_InvalidResource);
+        _targetInfo = _targetInfo! with { Vendor = response.Vendor };
+        _selectedVendor = response.Vendor;
     }
 
     private FirehoseConfiguration LimitConfiguration(FirehoseConfiguration configuration)
@@ -926,6 +962,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         _firehose?.Dispose(); _firehose = null;
         _sahara?.Dispose(); _sahara = null;
         _startup = null; _programmer = null; _targetInfo = null;
+        _selectedVendor = null;
         _vipPolicy = null; _onePlusAuthentication = null;
         _oplusDigest = null; _oplusIndex = null;
         _oplusAuthenticated = false;

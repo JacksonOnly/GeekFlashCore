@@ -131,7 +131,7 @@ public sealed class QcomLoaderInspector : IQcomProgrammerInspector
         };
     }
 
-    private static QcomVendorKind MapVendor(QualcommOemType vendor) => vendor switch
+    internal static QcomVendorKind MapVendor(QualcommOemType vendor) => vendor switch
     {
         QualcommOemType.Qualcomm => QcomVendorKind.Qualcomm,
         QualcommOemType.Xiaomi or QualcommOemType.BlackShark => QcomVendorKind.Xiaomi,

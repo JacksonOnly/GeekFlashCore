@@ -12,25 +12,33 @@ public static class VendorStrategyResolver
 {
 
     public static IVendorFirehoseStrategy Resolve(
+        QcomVendorKind explicitOverride, IEnumerable<string>? runtimeEvidence, QcomVendorKind programmerHint) =>
+        Resolve(explicitOverride, runtimeEvidence, programmerHint, QcomVendorKind.Generic);
+
+    /// <summary>Resolves explicit configuration, runtime evidence, programmer and Sahara hints in that order.</summary>
+    public static IVendorFirehoseStrategy Resolve(
         QcomVendorKind explicitOverride,
         IEnumerable<string>? runtimeEvidence,
-        QcomVendorKind programmerHint)
+        QcomVendorKind programmerHint,
+        QcomVendorKind saharaHint)
     {
-        QcomVendorKind? runtime = DetectRuntimeVendor(runtimeEvidence);
+        QcomVendorKind? runtime = DetectRuntimeVendor(runtimeEvidence, programmerHint, saharaHint);
         return ForVendor(QcomEvidenceMerger.ResolveVendor(explicitOverride, runtime, programmerHint));
     }
 
-    public static QcomVendorKind? DetectRuntimeVendor(IEnumerable<string>? evidence)
-    {
-        if (evidence is null)
-            return null;
+    public static QcomVendorKind? DetectRuntimeVendor(IEnumerable<string>? evidence) =>
+        DetectRuntimeVendor(evidence, QcomVendorKind.Generic, QcomVendorKind.Generic);
 
+    /// <summary>Detects a runtime vendor, then uses known programmer and Sahara hints; returns null when unresolved.</summary>
+    public static QcomVendorKind? DetectRuntimeVendor(IEnumerable<string>? evidence,
+        QcomVendorKind programmerHint, QcomVendorKind saharaHint)
+    {
         bool nothing = false;
         bool onePlus = false;
         bool xiaomi = false;
         bool oplus = false;
         bool zte = false;
-        foreach (string? item in evidence)
+        foreach (string? item in evidence ?? [])
         {
             if (string.IsNullOrWhiteSpace(item))
                 continue;
@@ -53,8 +61,16 @@ public static class VendorStrategyResolver
         if (xiaomi) return QcomVendorKind.Xiaomi;
         if (oplus) return QcomVendorKind.Oplus;
         if (zte) return QcomVendorKind.Zte;
+        if (programmerHint is not (QcomVendorKind.Auto or QcomVendorKind.Generic) && Enum.IsDefined(programmerHint))
+            return programmerHint;
+        if (saharaHint is not (QcomVendorKind.Auto or QcomVendorKind.Generic) && Enum.IsDefined(saharaHint))
+            return saharaHint;
         return null;
     }
+
+    /// <summary>Maps the Sahara OEM identifier to the stable vendor model.</summary>
+    public static QcomVendorKind DetectSaharaVendor(SaharaTargetInfo? target) =>
+        QcomLoaderInspector.MapVendor(QcomImageUtils.Constants.QualcommMapping.GetOemType(target?.MsmHwInfo?.OemId));
 
     public static IVendorFirehoseStrategy ForVendor(QcomVendorKind vendor) => vendor switch
     {

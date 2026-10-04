@@ -473,20 +473,15 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         {
             try
             {
-                _startup = _firehose.Start(_options.OplusDigest.Mode == OplusDigestMode.None
-                    ? GetProtocolProbeTimeout() : _options.ConnectTimeoutMilliseconds);
+                _startup = _firehose.Start(_options.ReadTimeoutMilliseconds);
             }
-            catch (TimeoutException)
+            catch (TimeoutException) when (_options.OplusDigest.Mode == OplusDigestMode.None &&
+                _sahara is null && !_firehose.StartupDataReceived)
             {
-                // Sending a probe here would be consumed as the signed table by an Oplus loader.
-                if (_options.OplusDigest.Mode != OplusDigestMode.None) throw;
-                // A programmer that is already in Firehose mode may not replay startup logs.
+                // Probe only a silent, already running session. A fresh loader or any startup
+                // bytes may be waiting for a signed table and must not receive XML here.
                 _firehose.Dispose();
                 _firehose = CreateFirehoseSession(_wire!);
-                _firehose.SetXmlDeclarationAttribute(
-                    _options.OplusDigest.Mode == OplusDigestMode.OplusDigestLegacy
-                        ? "chimerais=\"power\""
-                        : null);
                 if (!_firehose.TryProbe(GetProtocolProbeTimeout(), out _startup))
                     throw;
             }

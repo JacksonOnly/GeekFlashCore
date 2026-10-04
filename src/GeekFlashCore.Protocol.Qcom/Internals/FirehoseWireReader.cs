@@ -19,6 +19,8 @@ internal sealed class FirehoseWireReader : IDisposable
     private FirehoseResponse? _queuedResponse;
     private bool _disposed;
 
+    internal bool StartupDataReceived { get; private set; }
+
     public FirehoseWireReader(ITransport transport) =>
         _transport = transport ?? throw new ArgumentNullException(nameof(transport));
 
@@ -66,13 +68,17 @@ internal sealed class FirehoseWireReader : IDisposable
     public FirehoseResponse ReadStartupLogs(int timeoutMilliseconds, Action<FirehoseResponseLog>? publishLog = null)
     {
         ThrowIfDisposed();
+        StartupDataReceived = false;
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
         var logs = new List<FirehoseResponseLog>(16);
         int responseBytes = 0;
 
         while (true)
         {
-            ReadOnlySpan<byte> packet = ReadXmlPacket(GetRemainingMilliseconds(deadline), out bool rawMode);
+            ReadOnlySpan<byte> packet;
+            bool rawMode;
+            try { packet = ReadXmlPacket(GetRemainingMilliseconds(deadline), out rawMode); }
+            finally { StartupDataReceived |= _xmlBuffer.WrittenCount > 0; }
             if (rawMode)
                 throw new InvalidDataException(Strings.Firehose_StartupDataNotXml);
             AddPacketBudget(ref responseBytes, packet.Length);

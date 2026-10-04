@@ -29,6 +29,8 @@ internal sealed class FirehoseCmdReceiver : IDisposable
         _publishOplusVerifyLog = PublishOplusVerifyLog;
     }
 
+    internal bool StartupDataReceived => _reader.StartupDataReceived;
+
     public FirehoseResponse ReceiveStartupLog(int? timeoutMilliseconds = null)
     {
         long started = Stopwatch.GetTimestamp();

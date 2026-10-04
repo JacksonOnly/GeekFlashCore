@@ -377,7 +377,7 @@ Current {0}, expected {1}</value>
   <data name="Qcom_OperationInProgress" xml:space="preserve"><value>Another session operation is in progress.</value></data>
   <data name="Qcom_AuthenticationProviderRequired" xml:space="preserve"><value>A vendor authentication provider is required.</value></data>
   <data name="Qcom_GptEntryArrayExceedsRange" xml:space="preserve"><value>The GPT entry array exceeds the bounded read range.</value></data>
-  <data name="Qcom_FirehoseVipTablesRequired" xml:space="preserve"><value>The Firehose programmer requires VIP tables.</value></data>
+  <data name="Qcom_FirehoseVipTablesRequired" xml:space="preserve"><value>The loader is waiting for a signed table. Configure VIP tables or select the matching Oplus Digest mode before reconnecting.</value></data>
   <data name="Qcom_FirehoseVipProviderRequired" xml:space="preserve"><value>The Firehose VIP provider is required.</value></data>
   <data name="Qcom_FirehoseVipNotAnnounced" xml:space="preserve"><value>The Firehose programmer did not announce VIP support.</value></data>
   <data name="Qcom_UnsupportedFirehoseCommand" xml:space="preserve"><value>The Firehose command is not supported.</value></data>

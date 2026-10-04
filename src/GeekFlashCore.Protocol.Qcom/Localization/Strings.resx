@@ -274,7 +274,7 @@
   <data name="Qcom_OperationInProgress" xml:space="preserve"><value>另一个会话操作正在进行。</value></data>
   <data name="Qcom_AuthenticationProviderRequired" xml:space="preserve"><value>需要提供厂商认证资源提供器。</value></data>
   <data name="Qcom_GptEntryArrayExceedsRange" xml:space="preserve"><value>GPT 条目数组超出有界读取范围。</value></data>
-  <data name="Qcom_FirehoseVipTablesRequired" xml:space="preserve"><value>当前 Firehose programmer 要求 VIP 表。</value></data>
+  <data name="Qcom_FirehoseVipTablesRequired" xml:space="preserve"><value>Loader 正在等待签名表。请配置 VIP 表，或选择匹配的 Oplus Digest 模式后重新连接。</value></data>
   <data name="Qcom_FirehoseVipProviderRequired" xml:space="preserve"><value>需要提供 Firehose VIP 资源提供器。</value></data>
   <data name="Qcom_FirehoseVipNotAnnounced" xml:space="preserve"><value>Firehose programmer 未宣布支持 VIP。</value></data>
   <data name="Qcom_UnsupportedFirehoseCommand" xml:space="preserve"><value>不支持的 Firehose 命令。</value></data>

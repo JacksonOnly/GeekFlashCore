@@ -87,6 +87,8 @@ public sealed class FirehoseSession : IDisposable
         catch { SetState(FirehoseSessionState.Faulted); throw; }
     }
 
+    internal bool StartupDataReceived => _executor.StartupDataReceived;
+
     public FirehoseResponse Start(int? startupTimeoutMilliseconds = null)
     {
         using OperationLease _ = Enter(FirehoseSessionState.Created);

@@ -67,25 +67,38 @@ internal sealed class CliApplication
             _ui.WriteLine(Strings.Cli_Connecting);
             await protocol.ConnectAsync(_progress, ct).ConfigureAwait(false);
             _ui.WriteLine(Strings.FormatCli_ConnectedHelp(connection.Registration.DisplayName));
-            while (!ct.IsCancellationRequested)
-            {
-                _ui.Write("geekflash> ");
-                string line = await _ui.ReadInputAsync(ct).ConfigureAwait(false) ?? "exit";
-                if (line.Equals("exit", StringComparison.OrdinalIgnoreCase) || line.Equals("quit", StringComparison.OrdinalIgnoreCase)) break;
-                try
-                {
-                    var parsed = CommandLine.Parse(Tokenize(line));
-                    if (parsed.Command.Equals("interactive", StringComparison.OrdinalIgnoreCase)) continue;
-                    await ExecuteCommandAsync(protocol, connection.Registration, parsed, _progress, ct).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-                catch (OperationCanceledException) { _ui.ShowCancelled(); }
-                catch (Exception exception) { _ui.LogException(exception); }
-            }
-            return 0;
+            return await ReadCommandsAsync(protocol, connection.Registration, ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException) { _ui.ShowCancelled(); return 130; }
         catch (Exception exception) { _ui.LogException(exception); return 1; }
+    }
+
+    private async Task<int> ReadCommandsAsync(IProtocol protocol, ProtocolRegistration registration, CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            _ui.Write("geekflash> ");
+            string line = await _ui.ReadInputAsync(ct).ConfigureAwait(false) ?? "exit";
+            if (line.Equals("exit", StringComparison.OrdinalIgnoreCase) || line.Equals("quit", StringComparison.OrdinalIgnoreCase)) break;
+            try
+            {
+                var parsed = CommandLine.Parse(Tokenize(line));
+                if (parsed.Command.Equals("interactive", StringComparison.OrdinalIgnoreCase)) continue;
+                int result = await ExecuteCommandAsync(protocol, registration, parsed, _progress, ct).ConfigureAwait(false);
+                bool endsSession = parsed.Command is "reboot" or "power" ||
+                    parsed.Command == "qcom" && parsed.Arguments.Length > 0 &&
+                    parsed.Arguments[0].Equals("power", StringComparison.OrdinalIgnoreCase);
+                if (result == 0 && endsSession)
+                {
+                    _ui.WriteLine(Strings.Cli_SessionEnded);
+                    return 0;
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (OperationCanceledException) { _ui.ShowCancelled(); }
+            catch (Exception exception) { _ui.LogException(exception); }
+        }
+        return 0;
     }
 
     private async Task<int> ExecuteCommandAsync(IProtocol protocol, ProtocolRegistration registration, CliOptions options, IProgress<ProgressRecord> progress, CancellationToken ct)

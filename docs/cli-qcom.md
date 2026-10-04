@@ -67,7 +67,9 @@ geekflash --port COM77 --oplus-mode OplusDigestLegacy --oplus-digest "D:\刷机\
 
 Sign 可通过提示手动输入，也可加 `--oplus-sign FILE`。续接跳过 Sahara 和启动日志，不重新上传 Loader，首包是 Digest，之后 Verify → Sign → sha256init → Configure。Pt 同样支持；缺少芯片信息时要求手动 Sign。Core 对应 `OplusDigestConfiguration.ResumeAwaitingDigest`，每个协议实例仅允许一次，认证/RAW 失败后再次 `connect` 不会盲目续接。
 
-这不是任意中断恢复。已经发送认证数据、RAW 中断、已配置或状态未知时，请重新进入 EDL，再使用普通带 Loader 的连接命令。普通 Oplus 静默探测会输出状态说明，不发送 NOP 或 Sahara reset。
+显式续接的首个 Digest 若被原 XML 会话完整 NAK 拒绝、报告 data Hash mismatch，且随后完整 XML 明确表示设备已转入签名表接收，新版会重新打开同一 Digest 并发送一次；这对应 `bug.txt` 中第一次拒绝、第二次相同命令成功的情况。只有不超过 8192 字节的完整单包初始 Digest 可以使用此恢复；旧的启动提示不算新的接收状态证据。第二次仍失败、无接收状态提示、RAW、半帧、静默或取消均停止，不发送 Verify/Sign，不发送额外 NOP/reset。
+
+RAW 中断或未知状态仍应重新进入 EDL，再使用普通带 Loader 的连接命令。普通 Oplus 静默探测只输出状态说明；上述恢复仅用于显式续接的首次初始化，不用于已认证会话的重配置或一般读写。
 
 ### Legacy 包计数
 

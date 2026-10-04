@@ -35,7 +35,7 @@ public sealed record OplusDigestConfiguration
 {
     /// <summary>Selects partition mapping or the Rector packet-counted Legacy flow.</summary>
     public OplusDigestMode Mode { get; init; }
-    /// <summary>Explicitly resume a running Oplus loader waiting for its initial Digest once per protocol instance; skip Sahara detection and startup replay. Never use after RAW interruption or authentication.</summary>
+    /// <summary>Explicitly resume a running Oplus loader waiting for its initial Digest once per protocol instance; skip Sahara detection and startup replay. A rejected single-packet initial Digest may be resent once only after complete XML confirms a transition to signed-table receive. Never use after RAW interruption.</summary>
     public bool ResumeAwaitingDigest { get; init; }
     /// <summary>Maximum sectors per transfer; zero keeps the request unsegmented.</summary>
     public int FixedSectorCount { get; init; } = 256;

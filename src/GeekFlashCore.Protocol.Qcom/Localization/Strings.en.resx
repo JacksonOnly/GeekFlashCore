@@ -527,7 +527,7 @@ Current {0}, expected {1}</value>
   <data name="Qcom_LogWireCommand" xml:space="preserve"><value>Firehose send: command={CommandName} bytes={ByteCount}.</value></data>
   <data name="Qcom_LogResponseInterrupted" xml:space="preserve"><value>Firehose receive interrupted: exception={ExceptionType} elapsed={ElapsedMilliseconds:F1} ms budget={TimeoutMilliseconds} ms.</value></data>
   <data name="Qcom_ResourceRequestTimedOut" xml:space="preserve"><value>Resource request exceeded {0} ms; manual input can use an unlimited resource budget (-1).</value></data>
-  <data name="Qcom_LogOplusResume" xml:space="preserve"><value>Resuming an Oplus loader explicitly declared to await its initial Digest: skip Sahara/startup logs and send Digest first. This mode is unsuitable after RAW interruption or authentication.</value></data>
+  <data name="Qcom_LogOplusResume" xml:space="preserve"><value>Resuming an Oplus loader explicitly declared to await its initial Digest: skip Sahara/startup logs and send Digest first. One resend requires complete responses confirming signed-table receive after the first rejection; RAW interruption is unsupported.</value></data>
   <data name="Qcom_LogOplusSilent" xml:space="preserve"><value>Passive Oplus detection did not receive a complete protocol prefix. A running loader may not replay logs; use CLI --oplus-resume only when it is known to await its initial Digest, otherwise re-enter EDL.</value></data>
   <data name="Qcom_OplusSha256InitUnconfirmed" xml:space="preserve"><value>Oplus sha256init received neither a complete ACK nor the known compatibility response.</value></data>
   <data name="Qcom_LogOplusSha256Compatibility" xml:space="preserve"><value>Oplus sha256init returned only the known complete error log without ACK; continuing Configure according to the reference flow after verified Sign.</value></data>
@@ -536,4 +536,5 @@ Current {0}, expected {1}</value>
   <data name="Qcom_DeviceTableHashMismatch" xml:space="preserve"><value>The device reports a new Digest table Hash mismatch (original Hash omitted); re-enter EDL before reconnecting.</value></data>
   <data name="Qcom_LogLegacyPacketCount" xml:space="preserve"><value>Legacy table packet count: {PacketCount}, capacity {TableCapacity}.</value></data>
   <data name="Qcom_LogLegacyDigestBoundary" xml:space="preserve"><value>Legacy table boundary: sent {PacketCount}, capacity {TableCapacity}, remaining {Remaining}; padding and refreshing according to the reference flow.</value></data>
+  <data name="Qcom_LogOplusResumeDigestRetry" xml:space="preserve"><value>The initial Digest of explicit Oplus resume was rejected by the XML session; complete responses confirm signed-table receive. Resending the same Digest once.</value></data>
 </root>

@@ -342,6 +342,56 @@ public sealed class FirehoseSession : IDisposable
         }
     }
 
+    // False is a complete, explicitly observed transition to signed-table receive;
+    // the caller may reopen and send the same initial table once under its resume policy.
+    internal bool TrySendOplusInitialDigest(Stream source, long length, int bufferSize,
+        bool allowResumeRecovery, int rejectionTimeout, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (!source.CanRead) throw new ArgumentException(Strings.Qcom_DigestSourceNotReadable, nameof(source));
+        if (length is <= 0 or > FirehoseConstants.MaximumRawTransferLength)
+            throw new ArgumentOutOfRangeException(nameof(length));
+        if (bufferSize <= 0) throw new ArgumentOutOfRangeException(nameof(bufferSize));
+        using OperationLease operation = EnterCommand();
+        try
+        {
+            try
+            {
+                _executor.SendRaw(source, length, length, bufferSize, 0, null, cancellationToken, false, null);
+                return true;
+            }
+            catch (FirehoseNakException exception) when (allowResumeRecovery && length <= bufferSize &&
+                !exception.Result.RawMode && exception.Result.Attributes.TryGetValue("value", out string? value) &&
+                string.Equals(value, "NAK", StringComparison.OrdinalIgnoreCase) &&
+                exception.Result.Logs.Any(static log =>
+                    log.Message.Contains("Hash of data doesn't match the expected hash", StringComparison.Ordinal)))
+            {
+                FirehoseCommandResult rejected = _executor.ReadOplusRejectionDetails(exception.Result,
+                    rejectionTimeout, cancellationToken);
+                bool mismatchSeen = false;
+                bool awaitingTable = false;
+                foreach (FirehoseResponseLog log in rejected.Logs)
+                {
+                    if (log.Message.Contains("Hash of data doesn't match the expected hash", StringComparison.Ordinal))
+                    {
+                        mismatchSeen = true;
+                        awaitingTable = false;
+                    }
+                    else if (mismatchSeen && log.Message.Contains("VIP is enabled, receiving the signed table", StringComparison.OrdinalIgnoreCase))
+                        awaitingTable = true;
+                }
+                // A startup banner preceding the rejection is stale evidence. Only a
+                // waiting-state log after the last mismatch permits a second table.
+                if (!awaitingTable)
+                    throw;
+                cancellationToken.ThrowIfCancellationRequested();
+                Log.Warning(Strings.Qcom_LogOplusResumeDigestRetry);
+                return false;
+            }
+        }
+        catch { SetState(FirehoseSessionState.Faulted); throw; }
+    }
+
     internal void Invalidate() => SetState(FirehoseSessionState.Faulted);
 
     internal FirehoseCommandResult SendOplusSign(ReadOnlySpan<byte> signature, CancellationToken cancellationToken)

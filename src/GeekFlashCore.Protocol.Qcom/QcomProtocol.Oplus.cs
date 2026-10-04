@@ -17,7 +17,8 @@ public sealed partial class QcomProtocol
         {
             OplusDigestResourceResponse resource = await _resourceResolver.ResolveAsync(token =>
                 RequireOplusProvider().ResolveAsync(OplusRequest(builtIn, attempt), token), ct).ConfigureAwait(false);
-            if (PrepareAndVerifyOplus(resource, attempt == 0 ? builtIn : null, tableRequired, ct,
+            if (PrepareAndVerifyOplus(resource, attempt == 0 ? builtIn : null, tableRequired,
+                    attempt == 0 && _options.OplusDigest.ResumeAwaitingDigest, ct,
                     out tableRequired)) return;
             if (attempt == 0) Log.Warning(Strings.Qcom_LogOplusSignRejected);
         }
@@ -33,7 +34,8 @@ public sealed partial class QcomProtocol
         {
             OplusDigestResourceResponse resource = _resourceResolver.Resolve(token =>
                 RequireOplusProvider().ResolveAsync(OplusRequest(builtIn, attempt), token));
-            if (PrepareAndVerifyOplus(resource, attempt == 0 ? builtIn : null, tableRequired, _lifetime.Token,
+            if (PrepareAndVerifyOplus(resource, attempt == 0 ? builtIn : null, tableRequired,
+                    attempt == 0 && _options.OplusDigest.ResumeAwaitingDigest, _lifetime.Token,
                     out tableRequired)) return;
             if (attempt == 0) Log.Warning(Strings.Qcom_LogOplusSignRejected);
         }
@@ -54,7 +56,7 @@ public sealed partial class QcomProtocol
         };
 
     private bool PrepareAndVerifyOplus(OplusDigestResourceResponse resource, string? builtIn,
-        bool sendTable, CancellationToken ct, out bool needsTable)
+        bool sendTable, bool allowResumeRecovery, CancellationToken ct, out bool needsTable)
     {
         ct.ThrowIfCancellationRequested();
         byte[] sign = new byte[4096];
@@ -90,9 +92,19 @@ public sealed partial class QcomProtocol
             if (sendTable)
             {
                 Log.Information(Strings.Qcom_LogOplusDigestBootstrap);
-                using Stream stream = _oplusDigest.OpenStream() ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
-                _firehose!.SendDigest(stream, _oplusDigest.Length, 8192, ct);
-                _firehose.ResetLegacyPacketCount();
+                long length = _oplusDigest.Length;
+                for (int tableAttempt = 0; tableAttempt < 2; tableAttempt++)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    if (_oplusDigest.Length != length)
+                        throw new QcomResourceException(Strings.Qcom_OplusLegacySourceChanged);
+                    using Stream stream = _oplusDigest.OpenStream() ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
+                    if (_firehose!.TrySendOplusInitialDigest(stream, length, 8192,
+                            allowResumeRecovery: allowResumeRecovery && tableAttempt == 0,
+                            _options.OplusDigest.DigestResponseTimeoutMilliseconds, ct))
+                        break;
+                }
+                _firehose!.ResetLegacyPacketCount();
             }
 
             Log.Information(Strings.Qcom_LogOplusVerify);

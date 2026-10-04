@@ -424,7 +424,7 @@
   <data name="Qcom_LogWireCommand" xml:space="preserve"><value>Firehose 发送：命令={CommandName} 字节数={ByteCount}。</value></data>
   <data name="Qcom_LogResponseInterrupted" xml:space="preserve"><value>Firehose 接收中断：异常={ExceptionType} 耗时={ElapsedMilliseconds:F1} ms 预算={TimeoutMilliseconds} ms。</value></data>
   <data name="Qcom_ResourceRequestTimedOut" xml:space="preserve"><value>资源请求超过 {0} ms；手动输入可使用无限资源预算 (-1)。</value></data>
-  <data name="Qcom_LogOplusResume" xml:space="preserve"><value>按调用方声明续接等待第一张 Digest 的 Oplus Loader：跳过 Sahara/启动日志，首包发送 Digest。此模式不适用于 RAW 中断或已认证会话。</value></data>
+  <data name="Qcom_LogOplusResume" xml:space="preserve"><value>按调用方声明续接等待第一张 Digest 的 Oplus Loader：跳过 Sahara/启动日志，首包发送 Digest。仅在首次拒绝后完整响应确认转入签名表接收时允许重发一次；RAW 中断不适用。</value></data>
   <data name="Qcom_LogOplusSilent" xml:space="preserve"><value>Oplus 被动探测未收到完整协议前缀。Loader 可能已运行且不重播日志；仅确认仍在等待第一张 Digest 时可使用 CLI --oplus-resume，否则请重新进入 EDL。</value></data>
   <data name="Qcom_OplusSha256InitUnconfirmed" xml:space="preserve"><value>Oplus sha256init 未获得完整 ACK 或已知的兼容响应。</value></data>
   <data name="Qcom_LogOplusSha256Compatibility" xml:space="preserve"><value>Oplus sha256init 仅返回已知完整错误日志，未返回 ACK；按已验证 Sign 后的参考线路继续 Configure。</value></data>
@@ -433,4 +433,5 @@
   <data name="Qcom_DeviceTableHashMismatch" xml:space="preserve"><value>设备报告新 Digest 表 Hash 校验不匹配（原始 Hash 已隐藏）；请重新进入 EDL 后连接。</value></data>
   <data name="Qcom_LogLegacyPacketCount" xml:space="preserve"><value>Legacy 表包计数：{PacketCount}，容量 {TableCapacity}。</value></data>
   <data name="Qcom_LogLegacyDigestBoundary" xml:space="preserve"><value>Legacy 表边界：已发送 {PacketCount}，容量 {TableCapacity}，剩余 {Remaining}；按参考线路补位并换表。</value></data>
+  <data name="Qcom_LogOplusResumeDigestRetry" xml:space="preserve"><value>显式 Oplus 续接的首个 Digest 被 XML 会话拒绝，完整响应已确认设备转入签名表接收；重新发送同一 Digest 一次。</value></data>
 </root>

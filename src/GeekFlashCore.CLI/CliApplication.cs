@@ -130,8 +130,6 @@ internal sealed class CliApplication
         ProtocolRegistration registration = requested ?? resolution.Registration;
         try
         {
-            if (registration.PrepareOptionsAsync is { } prepare)
-                options = await prepare(new ProtocolHostContext(_ui, options), ct).ConfigureAwait(false);
             return (registration.Factory(new ProtocolHostContext(_ui, options), resolution.Transport), resolution.Transport, registration);
         }
         catch { resolution.Transport.Dispose(); throw; }

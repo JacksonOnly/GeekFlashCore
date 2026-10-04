@@ -35,8 +35,7 @@ internal sealed record ProtocolRegistration(
     Func<ProtocolHostContext, GeekFlashCore.Transport.Abstractions.ITransport, IProtocol> Factory,
     IReadOnlyList<IProtocolCommandHandler> CommandHandlers,
     Action<IProtocol, ConsoleUi>? InfoPresenter = null,
-    IProtocolCommandSet? CommandSet = null,
-    Func<ProtocolHostContext, CancellationToken, ValueTask<CliOptions>>? PrepareOptionsAsync = null);
+    IProtocolCommandSet? CommandSet = null);
 
 internal static class ProtocolRegistry
 {

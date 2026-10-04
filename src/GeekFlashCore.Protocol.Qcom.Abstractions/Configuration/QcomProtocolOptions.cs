@@ -23,6 +23,8 @@ public sealed record QcomProtocolOptions
     public FirehoseDigestConfiguration FirehoseDigest { get; init; } = new();
     public FirehoseVipConfiguration FirehoseVip { get; init; } = new();
     public OplusDigestConfiguration OplusDigest { get; init; } = new();
+    /// <summary>Request Pt/Legacy selection after VIP startup only when both Sahara and Loader identify Oplus.</summary>
+    public bool AllowOplusModeSelection { get; init; }
 
     public void Validate()
     {

@@ -1,5 +1,12 @@
 # Qualcomm Protocol Implementation Plan
 
+### OP-UX-02（2026-10-04）：启动后选择与会话退出
+
+- 用户最新要求替代 BOOT-04 的前置菜单：上传后根据 VIP、Sahara OEM 和已解析 Loader 厂商共同判断，再选择 Pt/Legacy。两种模式均手动提供 Digest/Sign，Oplus 内置 Sign 停用，Legacy Hash+ACK 继续发送逻辑保留。
+- 用户样本中的 Xiaomi 认证约 2 ms，主要等待来自菜单与路径输入；新增认证耗时诊断，并依据明确 UFS 启动证据避免先尝试 eMMC。成功 reboot/power 后结束 CLI 会话，失败不误退出。
+- 验证：本地 Qcom/CLI 联合回归 259/259；Release 构建 0 警告/0 错误；资源键与差异检查通过。真实 Loader 只读解析成功，协议证据为模拟传输，未进行硬件操作。
+- 详细方案、合并结果与待复测边界见 `2026-10-04-oplus-selection-design.md` 和 `2026-10-04-oplus-selection-implementation.md`。
+
 > **执行要求：** 后续会话应先阅读本计划和同目录设计文档，再从“进度”中第一个未完成任务继续。每项功能使用测试先行，小步提交。
 
 **目标：** 完成可独立复用的 Qualcomm Sahara/Firehose 协议栈，兼容 GeekFlashTool 的厂商逻辑，并吸收 QnQcLIB 的安全、高性能 Sparse 与 Oplus Digest 行为。

@@ -26,6 +26,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private const int DefaultProtocolProbeTimeoutMilliseconds = 250;
     private bool _resumeAwaitingDigestUsed;
     private readonly QcomProtocolOptions _options;
+    private OplusDigestConfiguration _oplusConfiguration;
     private readonly ISaharaImageProvider? _imageProvider;
     private readonly IOplusDigestProvider? _digestProvider;
     private readonly IFirehoseDigestProvider? _firehoseDigestProvider;
@@ -64,6 +65,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         Transport = transport ?? throw new ArgumentNullException(nameof(transport));
         _options = options ?? new QcomProtocolOptions();
         _options.Validate();
+        _oplusConfiguration = _options.OplusDigest;
         _resourceResolver = new QcomResourceResolver(
             _options.ResourceRequestTimeoutMilliseconds,
             _lifetime.Token);
@@ -454,9 +456,9 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private FirehoseSession CreateFirehoseSession(ITransport wire)
     {
         var session = new FirehoseSession(wire, _options.ReadTimeoutMilliseconds);
-        if (_options.OplusDigest.Mode == OplusDigestMode.OplusDigestLegacy)
+        if (_oplusConfiguration.Mode == OplusDigestMode.OplusDigestLegacy)
         {
-            session.ConfigureLegacyWire(_options.OplusDigest);
+            session.ConfigureLegacyWire(_oplusConfiguration);
             session.SetXmlDeclarationAttribute("chimerais=\"power\"");
         }
         return session;
@@ -466,7 +468,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     {
         if (_firehose is null) throw new InvalidOperationException(Strings.Qcom_InvalidSessionState);
         _firehose.SetXmlDeclarationAttribute(
-            _options.OplusDigest.Mode == OplusDigestMode.OplusDigestLegacy
+            _oplusConfiguration.Mode == OplusDigestMode.OplusDigestLegacy
                 ? "chimerais=\"power\""
                 : null);
         if (_firehose.State == FirehoseSessionState.Created)
@@ -475,7 +477,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             {
                 _startup = _firehose.Start(_options.ReadTimeoutMilliseconds);
             }
-            catch (TimeoutException) when (_options.OplusDigest.Mode == OplusDigestMode.None &&
+            catch (TimeoutException) when (_oplusConfiguration.Mode == OplusDigestMode.None &&
                 _sahara is null && !_firehose.StartupDataReceived)
             {
                 // Probe only a silent, already running session. A fresh loader or any startup
@@ -638,7 +640,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
 
     private void InitializeStorage(FirehoseConfigureResult result)
     {
-        if (_options.OplusDigest.Mode == OplusDigestMode.None)
+        if (_oplusConfiguration.Mode == OplusDigestMode.None)
         {
             SetStorage(result);
             return;
@@ -646,8 +648,8 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
 
         IDataSource digest = _oplusDigest ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
         int bufferSize = FirehosePayloadLimits.GetTransferBufferSize(result.Configuration);
-        IFirehoseStoragePolicy policy = _options.OplusDigest.Mode == OplusDigestMode.OplusDigestLegacy
-            ? new OplusDigestLegacyPolicy(digest, _options.OplusDigest, bufferSize)
+        IFirehoseStoragePolicy policy = _oplusConfiguration.Mode == OplusDigestMode.OplusDigestLegacy
+            ? new OplusDigestLegacyPolicy(digest, _oplusConfiguration, bufferSize)
             : new OplusDigestPtPolicy(_oplusIndex ?? throw new QcomResourceException(Strings.Qcom_InvalidResource));
         SetStorage(result, policy);
     }
@@ -691,7 +693,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
 
     private async ValueTask PrepareVipAsync(CancellationToken ct)
     {
-        if (_options.OplusDigest.Mode != OplusDigestMode.None) return;
+        if (_oplusConfiguration.Mode != OplusDigestMode.None) return;
         bool announced = _startup?.Logs.Any(log =>
             log.Message.Contains("VIP is enabled, receiving the signed table", StringComparison.OrdinalIgnoreCase)) == true;
         if (!_options.FirehoseVip.Enabled)
@@ -714,7 +716,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
 
     private void PrepareVip()
     {
-        if (_options.OplusDigest.Mode != OplusDigestMode.None) return;
+        if (_oplusConfiguration.Mode != OplusDigestMode.None) return;
         bool announced = _startup?.Logs.Any(log =>
             log.Message.Contains("VIP is enabled, receiving the signed table", StringComparison.OrdinalIgnoreCase)) == true;
         if (!_options.FirehoseVip.Enabled)
@@ -924,6 +926,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         _vipPolicy = null; _onePlusAuthentication = null;
         _oplusDigest = null; _oplusIndex = null;
         _oplusAuthenticated = false;
+        _oplusConfiguration = _options.OplusDigest;
         if (_wire is QcomSessionTransport sessionTransport) sessionTransport.DiscardBuffered();
         if (hadFirehose && _wire is not null)
             _firehose = CreateFirehoseSession(_wire);

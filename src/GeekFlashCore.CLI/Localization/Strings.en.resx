@@ -111,7 +111,7 @@ Loader build time: {2}    Reported commands: {3}</value></data>
   --device-wait-timeout MS  Automatic discovery wait budget (default 30000)
   --read-timeout MS / --write-timeout MS  Per-I/O budget (default 10000; read also covers loader startup)</value></data>
   <data name="Cli_HelpOptionsLegacy" xml:space="preserve"><value>  --oplus-mode OplusDigestLegacy --oplus-digest FILE
-  --oplus-sign FILE  Binary Sign; required for Legacy, optional for Pt, prompted when missing/rejected
+  --oplus-sign FILE  Binary Sign; required for both Pt and Legacy, prompted when missing/rejected
   --oplus-resume  Resume a running loader awaiting its initial Digest; skip Sahara and startup logs
   Legacy fixed values: capacity 53, initial count 0, 256 sectors, Digest window 1000 ms, XML limit 4096, built-in NOP
   --log-file FILE  Detailed log path; defaults to a unique file under the executable's logs directory</value></data>
@@ -120,7 +120,7 @@ Loader build time: {2}    Reported commands: {3}</value></data>
   <data name="Cli_OplusSignPrompt" xml:space="preserve"><value>Oplus Sign file path (leave blank to cancel)</value></data>
   <data name="Cli_OplusSignRejected" xml:space="preserve"><value>Sign verification failed. Select a replacement Sign file manually.</value></data>
   <data name="Cli_OplusSignNeedsMode" xml:space="preserve"><value>--oplus-sign requires --oplus-mode or --oplus-digest.</value></data>
-  <data name="Cli_LegacyResourcesRequired" xml:space="preserve"><value>Non-interactive Legacy mode requires --oplus-digest and --oplus-sign.</value></data>
+  <data name="Cli_OplusResourcesRequired" xml:space="preserve"><value>Non-interactive Oplus mode requires --oplus-digest and --oplus-sign.</value></data>
   <data name="Cli_LogFilePath" xml:space="preserve"><value>Detailed log: {LogFile}</value></data>
   <data name="Cli_LogFileFailed" xml:space="preserve"><value>Cannot create the debug log: {0}</value></data>
   <data name="Cli_LogSession" xml:space="preserve"><value>CLI session: command={Command} Oplus={OplusMode} probe={ConnectTimeout} ms read={ReadTimeout} ms write={WriteTimeout} ms resource={ResourceTimeout} ms .NET={Runtime}</value></data>
@@ -133,7 +133,7 @@ Loader build time: {2}    Reported commands: {3}</value></data>
   <data name="Cli_Connecting" xml:space="preserve"><value>Connecting to device…</value></data>
   <data name="Cli_LoadingProgrammer" xml:space="preserve"><value>Uploading Loader…</value></data>
   <data name="Cli_OplusLegacyResources" xml:space="preserve"><value>Oplus Legacy requires Digest and Sign files. Input has no time limit; Ctrl+C cancels.</value></data>
-  <data name="Cli_OplusPtResources" xml:space="preserve"><value>Oplus Pt requires Digest. Sign is matched by chip; select it manually if unavailable or rejected.</value></data>
+  <data name="Cli_OplusPtResources" xml:space="preserve"><value>Oplus Pt requires Digest and Sign files. Input has no time limit; Ctrl+C cancels.</value></data>
   <data name="Cli_OplusVerifying" xml:space="preserve"><value>Resources ready. Verifying Oplus Sign and initializing storage…</value></data>
   <data name="Cli_ResponseTimedOut" xml:space="preserve"><value>The device response timed out. Check the connection and selected mode; see the file log for diagnostics.</value></data>
   <data name="Cli_DeviceRejected" xml:space="preserve"><value>The device rejected this command. See the file log for details.</value></data>
@@ -147,12 +147,11 @@ Loader build time: {2}    Reported commands: {3}</value></data>
   <data name="Cli_SaharaMemoryDebug" xml:space="preserve"><value>memory debug mode</value></data>
   <data name="Cli_HelpHint" xml:space="preserve"><value>Run geekflash help for usage.</value></data>
   <data name="Cli_LogStorageOperation" xml:space="preserve"><value>CLI {Command}: partition={Partition} LUN={Lun} start sector={StartSector} sector count={SectorCount} file={FilePath}.</value></data>
-  <data name="Cli_ConnectionModeChoices" xml:space="preserve"><value>Connection mode:
-  1. Standard Firehose
-  2. Oplus DigestPt (partition mapping)
-  3. Oplus DigestLegacy (Digest + Sign)</value></data>
-  <data name="Cli_ConnectionModePrompt" xml:space="preserve"><value>Select 1 / 2 / 3</value></data>
-  <data name="Cli_ConnectionModeInvalid" xml:space="preserve"><value>Enter 1, 2 or 3.</value></data>
-  <data name="Cli_OplusFreshConnection" xml:space="preserve"><value>Oplus: connect from a fresh EDL session. Use --oplus-resume only when the uploaded loader is confirmed to be waiting for its first Digest.</value></data>
+  <data name="Cli_OplusModeChoices" xml:space="preserve"><value>Both the device and Loader identify Oplus; startup reports VIP enabled.
+  1. Oplus DigestLegacy (Digest + Sign)
+  2. Oplus DigestPt (partition mapping)</value></data>
+  <data name="Cli_OplusModePrompt" xml:space="preserve"><value>Select 1 / 2 (blank cancels)</value></data>
+  <data name="Cli_OplusModeInvalid" xml:space="preserve"><value>Enter 1 or 2.</value></data>
   <data name="Cli_LogConnectionModeSelected" xml:space="preserve"><value>CLI connection mode selected: {OplusMode}.</value></data>
+  <data name="Cli_SessionEnded" xml:space="preserve"><value>Operation succeeded. The device session has ended; exiting.</value></data>
 </root>

@@ -52,9 +52,9 @@ internal sealed record CliOptions
             throw new ArgumentException(Localization.Strings.Cli_VipSignedRequired);
         if (OplusSign is not null && OplusMode == OplusDigestMode.None && OplusDigest is null)
             throw new ArgumentException(Localization.Strings.Cli_OplusSignNeedsMode);
-        if (NonInteractive && OplusMode == OplusDigestMode.OplusDigestLegacy &&
+        if (NonInteractive && EffectiveOplusMode != OplusDigestMode.None &&
             (string.IsNullOrWhiteSpace(OplusDigest) || string.IsNullOrWhiteSpace(OplusSign)))
-            throw new ArgumentException(Localization.Strings.Cli_LegacyResourcesRequired);
+            throw new ArgumentException(Localization.Strings.Cli_OplusResourcesRequired);
         QcomProtocolHostAdapter.ValidateOptions(this);
     }
 }

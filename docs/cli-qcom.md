@@ -2,6 +2,8 @@
 
 CLI 可执行文件为 `geekflash`，构建目标为 .NET 10；协议库仍为 .NET 8。先运行 `geekflash --help` 查看命令，`geekflash devices` 只枚举设备。
 
+交互会话中 `reboot system|download|poweroff` 成功后直接退出 CLI，并正常释放会话和传输；`power reset|reset_to_edl|off` 及 `qcom power` 同样退出。失败或参数错误不会触发成功退出。
+
 ## 连接与资源
 
 ```powershell
@@ -41,7 +43,7 @@ Legacy 在 Sign 已确认后发送 sha256init，最多等待 1500 ms（若 read 
 
 Legacy 自动配置从 UFS 开始，默认 Configure 依次发送 ZlpAwareHost=1、SkipWrite=0、SkipStorageInit=0、MaxPayloadSizeToTargetInBytes=1048576、MemoryName=ufs；协商上限和非默认显式配置仍有效，UFS 被完整 NAK 拒绝时仍可有界回退。普通线路/Pt 的原有默认配置保持。Digest 使用文件精确长度，不按启动提示中的 8192 强行填充；Sign 零填充到 4096 字节。
 
-Pt 保持按分区 Digest 索引映射和权限校验。只指定 `--oplus-digest` 时，默认选择 Pt；`--oplus-sign` 可选，未指定时根据 Loader/启动日志中的 SM 芯片名匹配参考内置 Sign。匹配不到、文件无效或设备拒绝时需要交互选择二进制 Sign 文件。脚本建议显式指定 Sign，无法交互时会失败：
+Pt 保持按分区 Digest 索引映射和权限校验。只指定 `--oplus-digest` 时，默认选择 Pt；Pt 和 Legacy 均要求提供二进制 Sign，内置 Oplus Sign 查找已停用。使用 `--oplus-sign` 指定文件，或在缺失、文件无效、设备拒绝时交互选择；无法交互且缺少文件会失败：
 
 ```powershell
 geekflash --port COM7 --loader programmer.elf --oplus-digest Digest.bin --oplus-sign Sign.bin --non-interactive info
@@ -75,13 +77,15 @@ RAW 中断或未知状态仍应重新进入 EDL，再使用普通带 Loader 的�
 
 初始 Digest 被确认后计数归零，每条 XML 和每次完整输出数据传输各计 1（包括 verify、Sign、sha256init）；策略安装和存储回退复用同一计数器及已认证资源。串口/USB 分块不重复计数，Sparse 空洞与设备输入 RAW 不计输出数据包。Legacy 完成初始化后，读取/GPT、program、NOP、patch、storageinfo 和通用 XML 共用表边界检查，避免只读操作耗尽签名表。容量 53 时，计数 51/52/53/54 分别先发 3/2/1/0 个 NOP，再发第 55 包 Digest。独立 ACK 后确认 NOP 计为 1；没有独立 ACK 则保留队列，需 handler 日志和完整成功响应关联确认。Rector 公开 read 默认未开启 Digest；此处按用户实机 53 包耗尽证据将其底层算法应用到本项目已认证 Legacy 会话。
 
-完整且可恢复的 Sign 验证失败最多允许一次手动替换；读取 NAK 后续提示的预算为 1000 ms。如果设备再次进入签名表接收状态，先重发原 Digest，再发 verify 和新的 Sign。替换后仍失败需要重新进入 EDL。自动芯片表来自参考项目，不能保证所有 Loader 都接受。
+完整且可恢复的 Sign 验证失败最多允许一次手动替换；读取 NAK 后续提示的预算为 1000 ms。如果设备再次进入签名表接收状态，先重发原 Digest，再发 verify 和新的 Sign。替换后仍失败需要重新进入 EDL。
 
 参考源码中的完整日志错误后继续确认、声明特殊属性、XML 截断和 Flush 顺序均有意保留；未知 NAK、半帧和 RAW 错误会让会话失效。签名失败只重发当前 XML 一次，不重放 RAW。普通 Digest、VIP、Oplus 三种线路互斥。
 
 ## 调试文件日志
 
-直接运行 `geekflash` 时，在设备发现后、连接和上传前选择连接模式：`1` 普通 Firehose（回车默认）、`2` Oplus DigestPt、`3` Oplus DigestLegacy。错误选择可重输，Ctrl+C 取消。已指定 `--oplus-mode`、Oplus Digest、普通 Digest 或 VIP 参数时按参数执行；非交互、重定向和单次命令不增加模式提问。
+直接运行 `geekflash` 时不再预先询问模式。上传 Loader 并读取启动日志后，只有 VIP 已启用、Sahara OEM 属于 Oplus、解析的 Loader 也属于 Oplus/OnePlus，才提示 `1` Oplus DigestLegacy、`2` Oplus DigestPt，再选择 Digest 和 Sign 文件。错误选择可重输，留空或 Ctrl+C 取消；文件参数有效时直接使用。普通设备无需选择模式。显式 `--oplus-mode`、Oplus Digest、普通 Digest 或 VIP 参数优先；非交互、重定向不增加模式提问。身份未知或已运行的 Loader 无法自动满足这些条件，需显式指定模式。
+
+启动日志明确以 `ufs:` 报告存储时，自动配置从 UFS 开始，避免先配置 eMMC、存储查询失败后再切换的多余命令；显式存储类型不覆盖，无证据仍沿用原有协商与回退。详细文件日志记录每次小米内置认证的通过状态和耗时，不记录签名内容；控制台仍只显示必要的联机阶段。
 
 Loader 启动日志使用 `--read-timeout` 的总预算（默认 10000 ms），不再用 250 ms 探测窗口代替。刚上传 Loader，或已收到任何启动字节（含半帧）时，等待失败也不发送 NOP；读到 VIP 等待签名表却没有所需模式/资源时，直接说明资源问题。只有未上传 Loader、完全静默的普通会话保留短 NOP 探测回退。
 
@@ -99,7 +103,7 @@ geekflash --loader programmer.elf --oplus-mode OplusDigestLegacy --oplus-digest 
 
 Sahara 阶段完成显示“设备识别完成”，与 Firehose 连接成功区分。信息使用“序列号”“MSM ID”等标签，HEX 和完整 PkHash 保留。Loader 由设备分段请求，确认完成时进度为 100%，数量显示实际发送字节，不因文件中未被请求的尾部显示 99.4%。
 
-交互选择 Loader、Digest 或 Sign 时，无效文件路径可直接重新输入；必需文件留空取消，Ctrl+C 可随时取消。Legacy 提示需要 Digest 和 Sign；Pt 没有显式 Sign 时仍先按芯片匹配，只有缺失或拒绝时要求手动选择。输入预算及脚本行为沿用原配置。
+交互选择 Loader、Digest 或 Sign 时，无效文件路径可直接重新输入；必需文件留空取消，Ctrl+C 可随时取消。Pt 和 Legacy 均提示需要 Digest 和 Sign，未指定文件时要求手动选择。输入预算及脚本行为沿用原配置。
 
 手动输入另外记录等待开始、耗时、完成或取消，不记录输入内容。资源预算超时和用户取消分别记录；显式续接和静默探测失败也会说明当前状态与恢复条件。
 

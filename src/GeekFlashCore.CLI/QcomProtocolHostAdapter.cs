@@ -18,50 +18,16 @@ internal static class QcomProtocolHostAdapter
         Create,
         [],
         static (protocol, ui) => ui.PrintTargetInfo(((IQcomProtocol)protocol).TargetInfo),
-        new CommandSet(),
-        SelectConnectionOptionsAsync);
-
-    private static async ValueTask<CliOptions> SelectConnectionOptionsAsync(ProtocolHostContext context, CancellationToken ct)
-    {
-        ct.ThrowIfCancellationRequested();
-        CliOptions input = context.Options;
-        if (input.EffectiveOplusMode != OplusDigestMode.None)
-        {
-            if (input.Command == "interactive" && !input.NonInteractive && context.Ui.CanPrompt && !input.OplusResume)
-                context.Ui.WriteLine(Strings.Cli_OplusFreshConnection);
-            return input;
-        }
-        if (input.Command != "interactive" || input.NonInteractive || !context.Ui.CanPrompt ||
-            input.HasExplicitOplusMode ||
-            !string.IsNullOrWhiteSpace(input.Digest) || !string.IsNullOrWhiteSpace(input.VipSigned)) return input;
-
-        context.Ui.WriteLine(Strings.Cli_ConnectionModeChoices);
-        while (true)
-        {
-            string answer = await context.Ui.AskAsync(Strings.Cli_ConnectionModePrompt, ct, "1").ConfigureAwait(false);
-            OplusDigestMode? mode = answer.Trim().ToLowerInvariant() switch
-            {
-                "1" or "none" => OplusDigestMode.None,
-                "2" or "oplusdigestpt" => OplusDigestMode.OplusDigestPt,
-                "3" or "oplusdigestlegacy" => OplusDigestMode.OplusDigestLegacy,
-                _ => null
-            };
-            if (mode is null) { context.Ui.WriteLine(Strings.Cli_ConnectionModeInvalid); continue; }
-            var selected = input with { OplusMode = mode.Value, HasExplicitOplusMode = true };
-            selected.Validate();
-            Serilog.Log.ForContext("UserPresentation", true).Information(Strings.Cli_LogConnectionModeSelected, mode.Value);
-            if (mode != OplusDigestMode.None) context.Ui.WriteLine(Strings.Cli_OplusFreshConnection);
-            return selected;
-        }
-    }
+        new CommandSet());
 
     private static IProtocol Create(ProtocolHostContext context, ITransport transport)
     {
         QcomProtocolOptions options = CreateOptions(context.Options);
+        options = options with { AllowOplusModeSelection = options.AllowOplusModeSelection && context.Ui.CanPrompt };
         OplusDigestMode mode = options.OplusDigest.Mode;
         return new QcomProtocol(transport, options,
             new ConsoleSaharaImageProvider(context.Ui, context.Options.Loader),
-            mode == OplusDigestMode.None ? null : new ConsoleOplusDigestProvider(context.Ui, context.Options.OplusDigest, context.Options.OplusSign),
+            mode == OplusDigestMode.None && !options.AllowOplusModeSelection ? null : new ConsoleOplusDigestProvider(context.Ui, context.Options.OplusDigest, context.Options.OplusSign),
             new ConsoleAuthenticationProvider(context.Ui), null, leaveTransportOpen: true,
             firehoseDigestProvider: options.FirehoseDigest.Enabled ? new ConsoleFirehoseDigestProvider(context.Ui, context.Options.Digest) : null,
             firehoseVipProvider: options.FirehoseVip.Enabled ? new ConsoleVipProvider(context.Ui, context.Options.VipSigned, context.Options.VipChained) : null);
@@ -79,6 +45,8 @@ internal static class QcomProtocolHostAdapter
             WriteTimeoutMilliseconds = input.WriteTimeout,
             ConnectTimeoutMilliseconds = input.ConnectTimeout,
             ResourceRequestTimeoutMilliseconds = input.EffectiveResourceTimeout,
+            AllowOplusModeSelection = mode == OplusDigestMode.None && !input.NonInteractive && !input.HasExplicitOplusMode &&
+                string.IsNullOrWhiteSpace(input.Digest) && string.IsNullOrWhiteSpace(input.VipSigned),
             OplusDigest = new OplusDigestConfiguration
             {
                 Mode = mode, FixedSectorCount = 256, ResumeAwaitingDigest = input.OplusResume

@@ -19,4 +19,6 @@ public sealed record OplusDigestResourceResponse(
 {
     /// <summary>Caller-owned binary Sign, up to 4096 bytes. Core pads it to 4096 bytes on the wire.</summary>
     public IDataSource? Sign { get; init; }
+    /// <summary>Pt or Legacy chosen by the host when the request Mode is None; explicit modes cannot be overridden.</summary>
+    public OplusDigestMode? SelectedMode { get; init; }
 }

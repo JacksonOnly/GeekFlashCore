@@ -404,6 +404,8 @@
 
 ## 进度
 
+- 2026-10-04 VB-01～04：厂商判断加入已接受 Loader 与 Sahara OEM 辅助，仍未知时通过可选 IVendorSelectionProvider 由 CLI 选择，非交互要求 --vendor，保留旧公共签名及旧宿主 Generic 默认；选择在配置/认证前，无新探测包。CLI 新增只读 browse/browse-image，组合 LP→EROFS/Ext 嵌套路径、返回/分页/文件读取、通配搜索和保留目录的流式原子导出。当前工作树本轮 53/53 Release 本地测试通过（历史 .tests 缺失，未声称历史全量回归），解决方案 Release 构建 0 警告/0 错误，实际 EXE 合成 Super/Ext/EROFS 脚本读取与搜索导出通过，双语资源/diff/ignored 检查通过；64 MiB 合成 Ext 文件导出分配约 138 KB，无总文件物化。设计、测试证据和恢复入口见 `2026-10-04-vendor-browser-design.md`、`2026-10-04-vendor-browser-implementation.md` 及 docs/cli-qcom.md。无本轮硬件证据，EDL 随机读性能和真实文件系统方言待验证。
+
 - 2026-10-04 RR-01～02：用户指定 logs/bug.txt 显示显式 resume 首个 Digest 在已收 10 包 XML 会话被拒绝，随后转签名表接收，第二次同命令成功。现仅在显式续接首轮初始化、完整单包 Digest/NAK/data Hash mismatch 和拒绝之后的新签名表提示下允许同一资源重开一次；旧 banner、多包中断、未知响应、RAW、半帧、静默、取消和再次拒绝仍失败，不额外 NOP/reset。测试先行 5 RED/6 GREEN，修复旧 banner 误判后 11 GREEN，后补边界/资源释放，完整 197/197 Release 本地测试通过（16 秒），Release 构建 0 警告/0 错误，资源/diff/ignored 检查通过。恢复条件与未决硬件风险见 `2026-10-04-oplus-resume-rejection-recovery.md`，新版位于原 EXE 路径。
 
 - 2026-10-04 LR-01～03：按用户新抓包确认只读会话 53 包后被当作新表而拒绝。已将 Rector 底层 NOP 补位/表确认算法覆盖到已认证 Legacy 后续 XML（Rector 公开 read 默认关闭 Digest，差异明确记录），跨读取/分段/GPT和一般命令共享计数，前置失败/取消保持失效，写入签名重放不接管前置失败。完整 182/182 Release 本地测试通过（16 秒），独立输出与原目录解决方案 Release 构建均 0 警告/0 错误；未终止用户锁定输出的 CLI 进程。设计、进度和硬件风险见 `2026-10-03-legacy-read-table-design.md`、`2026-10-03-legacy-read-table-implementation.md`。后续显式续接日志作为独立恢复修复继续。

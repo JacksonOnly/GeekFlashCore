@@ -166,6 +166,8 @@ Configure 使用有界状态机实现，保留 GeekFlashTool 的顺序和兼容�
 
 策略选择同时使用 Loader 静态信息和 Firehose 运行时证据。运行时证据可纠正静态 OEM/SoC 推断。原始自定义 XML 只通过受控接口提供，默认进行长度、属性和状态检查。
 
+2026-10-04 补充：顺序为显式配置 → Firehose 证据 → 已接受 Loader 厂商 → Sahara OEM。均未知时，可选 `IVendorSelectionProvider` 在配置/认证前请求宿主选择，资源预算、取消及迟到观察复用门面解析器；CLI 必须选择（非交互使用 --vendor），旧宿主未提供该接口时维持 Generic 默认。选择仅在当前会话保留，断开/失效后清除。同步门面的资源等待仍使用已有有界机制，不下沉到同步协议层。
+
 ## 8. Oplus Digest
 
 公开模式名称固定为：

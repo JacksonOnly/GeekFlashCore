@@ -55,6 +55,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private bool _oplusAuthenticated;
     private OnePlusAuthenticationContext? _onePlusAuthentication;
     private QcomVendorKind? _selectedVendor;
+    private bool _firehoseAfterSaharaProbe;
 
     public QcomProtocol(ITransport transport, QcomProtocolOptions? options = null,
         ISaharaImageProvider? imageProvider = null, IOplusDigestProvider? digestProvider = null,
@@ -335,6 +336,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         bool allowRecovery = probeFirehoseOnTimeout && _options.ProbeFirehoseOnSaharaTimeout &&
             _options.OplusDigest.Mode == OplusDigestMode.None;
         Exception? lastException = null;
+        bool helloProbeSent = false;
         for (int attempt = 0; attempt < MaxProtocolDetectionAttempts; attempt++)
         {
             byte[] prefix = new byte[8];
@@ -353,7 +355,10 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
                     throw;
                 }
                 if (attempt == 0)
+                {
                     SendSaharaHelloProbe();
+                    helloProbeSent = true;
+                }
                 else if (attempt == 1 && TryDetectRunningFirehose())
                     break;
                 else
@@ -372,6 +377,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             {
                 _wire = new QcomSessionTransport(Transport, prefix, _options.ReadTimeoutMilliseconds);
                 _firehose = CreateFirehoseSession(_wire);
+                _firehoseAfterSaharaProbe = helloProbeSent;
                 break;
             }
 
@@ -499,7 +505,23 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         {
             try
             {
-                _startup = _firehose.Start(_options.ReadTimeoutMilliseconds);
+                _startup = _firehoseAfterSaharaProbe
+                    ? _firehose.StartAfterSaharaProbe(_options.ReadTimeoutMilliseconds, _options.ConnectTimeoutMilliseconds)
+                    : _firehose.Start(_options.ReadTimeoutMilliseconds);
+                _firehoseAfterSaharaProbe = false;
+                if (_startup.Status == FirehoseResponseStatus.Nak)
+                {
+                    // A complete XML rejection of our binary wake-up identifies Firehose,
+                    // but only a fresh NOP ACK confirms that the session can accept commands.
+                    FirehoseResponse rejected = _startup;
+                    Log.Warning(Strings.Qcom_LogFirehoseProbeRejected);
+                    _firehose.Dispose();
+                    _firehose = CreateFirehoseSession(_wire!);
+                    if (!_firehose.TryProbe(_options.ConnectTimeoutMilliseconds, out var confirmed))
+                        throw new QcomProtocolException(Strings.Qcom_FirehoseResumeUnconfirmed);
+                    _startup = new FirehoseResponse(rejected.Logs.Concat(confirmed!.Logs).ToArray(),
+                        confirmed.Attributes, confirmed.Status, confirmed.RawMode, confirmed.PayloadElements);
+                }
             }
             catch (TimeoutException) when (_oplusConfiguration.Mode == OplusDigestMode.None &&
                 _sahara is null && !_firehose.StartupDataReceived)
@@ -963,6 +985,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         _sahara?.Dispose(); _sahara = null;
         _startup = null; _programmer = null; _targetInfo = null;
         _selectedVendor = null;
+        _firehoseAfterSaharaProbe = false;
         _vipPolicy = null; _onePlusAuthentication = null;
         _oplusDigest = null; _oplusIndex = null;
         _oplusAuthenticated = false;

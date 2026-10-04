@@ -31,12 +31,12 @@ internal sealed class FirehoseCmdReceiver : IDisposable
 
     internal bool StartupDataReceived => _reader.StartupDataReceived;
 
-    public FirehoseResponse ReceiveStartupLog(int? timeoutMilliseconds = null)
+    public FirehoseResponse ReceiveStartupLog(int? timeoutMilliseconds = null, int? probeRejectionTimeoutMilliseconds = null)
     {
         long started = Stopwatch.GetTimestamp();
         _logger.Debug(Strings.Qcom_LogStartupWait, timeoutMilliseconds ?? _readTimeoutMilliseconds);
         FirehoseResponse response;
-        try { response = _reader.ReadStartupLogs(timeoutMilliseconds ?? _readTimeoutMilliseconds, PublishLog); }
+        try { response = _reader.ReadStartupLogs(timeoutMilliseconds ?? _readTimeoutMilliseconds, PublishLog, probeRejectionTimeoutMilliseconds); }
         catch (Exception exception)
         {
             _logger.Debug(Strings.Qcom_LogResponseInterrupted, exception.GetType().Name,

@@ -89,12 +89,18 @@ public sealed class FirehoseSession : IDisposable
 
     internal bool StartupDataReceived => _executor.StartupDataReceived;
 
-    public FirehoseResponse Start(int? startupTimeoutMilliseconds = null)
+    public FirehoseResponse Start(int? startupTimeoutMilliseconds = null) =>
+        StartCore(startupTimeoutMilliseconds, null);
+
+    internal FirehoseResponse StartAfterSaharaProbe(int startupTimeoutMilliseconds, int probeRejectionTimeoutMilliseconds) =>
+        StartCore(startupTimeoutMilliseconds, probeRejectionTimeoutMilliseconds);
+
+    private FirehoseResponse StartCore(int? startupTimeoutMilliseconds, int? probeRejectionTimeoutMilliseconds)
     {
         using OperationLease _ = Enter(FirehoseSessionState.Created);
         try
         {
-            FirehoseResponse response = _executor.ReceiveStartupLogs(startupTimeoutMilliseconds);
+            FirehoseResponse response = _executor.ReceiveStartupLogs(startupTimeoutMilliseconds, probeRejectionTimeoutMilliseconds);
             SetState(FirehoseSessionState.Started);
             return response;
         }

@@ -1,5 +1,10 @@
 # Qualcomm Protocol Implementation Plan
 
+### FH-01（2026-10-04）：已运行 Firehose 的探测拒绝
+
+- 用户 23:28 日志确认 Sahara 唤醒包后设备返回完整 XML 解析错误，却仍等待 Loader 启动结束标记十秒并超时。只对已发送该唤醒包、未上传 Loader 的普通模式，收集完整拒绝响应并要求 NOP ACK 后续接配置；半帧、RAW、VIP、新 Loader 和 Oplus 首表保护保留。
+- 续接目标测试 14/14，原有测试加续接测试 67/67；Release 解决方案构建零警告零错误，diff 检查通过。新增字节读取回归已复现，下一步 FH-02 修复 browse super 对齐错误。详细证据和风险见 `2026-10-04-firehose-resume-byte-read-fixes.md`；本轮未进行硬件操作。
+
 ### OP-UX-02（2026-10-04）：启动后选择与会话退出
 
 - 用户最新要求替代 BOOT-04 的前置菜单：上传后根据 VIP、Sahara OEM 和已解析 Loader 厂商共同判断，再选择 Pt/Legacy。两种模式均手动提供 Digest/Sign，Oplus 内置 Sign 停用，Legacy Hash+ACK 继续发送逻辑保留。

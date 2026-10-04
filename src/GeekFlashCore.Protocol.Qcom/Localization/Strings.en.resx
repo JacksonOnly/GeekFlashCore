@@ -537,4 +537,6 @@ Current {0}, expected {1}</value>
   <data name="Qcom_LogOplusResumeDigestRetry" xml:space="preserve"><value>The initial Digest of explicit Oplus resume was rejected by the XML session; complete responses confirm signed-table receive. Resending the same Digest once.</value></data>
   <data name="Progress_SaharaReady" xml:space="preserve"><value>Device identified</value></data>
   <data name="Qcom_LogXiaomiAuthenticationAttempt" xml:space="preserve"><value>Xiaomi built-in authentication attempt {Attempt}: accepted={Accepted}, elapsed {ElapsedMilliseconds:F1} ms.</value></data>
+  <data name="Qcom_LogFirehoseProbeRejected" xml:space="preserve"><value>The device rejected the Sahara wake-up packet with complete XML; confirming the running Firehose session with NOP.</value></data>
+  <data name="Qcom_FirehoseResumeUnconfirmed" xml:space="preserve"><value>The device returned a Firehose response, but NOP was not confirmed. Check the device state and reconnect.</value></data>
 </root>

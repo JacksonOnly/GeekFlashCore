@@ -65,27 +65,38 @@ internal sealed class FirehoseWireReader : IDisposable
         }
     }
 
-    public FirehoseResponse ReadStartupLogs(int timeoutMilliseconds, Action<FirehoseResponseLog>? publishLog = null)
+    public FirehoseResponse ReadStartupLogs(int timeoutMilliseconds, Action<FirehoseResponseLog>? publishLog = null,
+        int? probeRejectionTimeoutMilliseconds = null)
     {
         ThrowIfDisposed();
         StartupDataReceived = false;
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
         var logs = new List<FirehoseResponseLog>(16);
         int responseBytes = 0;
+        bool probeRejected = false;
 
         while (true)
         {
             ReadOnlySpan<byte> packet;
             bool rawMode;
             try { packet = ReadXmlPacket(GetRemainingMilliseconds(deadline), out rawMode); }
+            catch (TimeoutException) when (probeRejected && IsXmlWhitespace(_xmlBuffer.WrittenSpan))
+            {
+                // Drain complete diagnostic packets and an optional NAK before confirming
+                // with NOP. Never discard a partial packet or unfinished loader startup.
+                return new FirehoseResponse(logs, new Dictionary<string, string>(), FirehoseResponseStatus.Nak, false);
+            }
             finally { StartupDataReceived |= _xmlBuffer.WrittenCount > 0; }
             if (rawMode)
                 throw new InvalidDataException(Strings.Firehose_StartupDataNotXml);
             AddPacketBudget(ref responseBytes, packet.Length);
 
             int firstLog = logs.Count;
-            FirehoseResponseParser.ParseLogs(packet, logs);
+            bool complete = FirehoseResponseParser.TryParsePacket(packet, logs, out _,
+                out rawMode, out var attributes, out var elements);
             for (int index = firstLog; index < logs.Count; index++) publishLog?.Invoke(logs[index]);
+            if (probeRejectionTimeoutMilliseconds is not null && complete && rawMode)
+                throw new FirehoseProtocolException(Strings.Qcom_FirehoseRawModeUnexpected);
             if (logs.Exists(static log =>
                     log.Message.Contains("End of supported functions", StringComparison.Ordinal) ||
                     log.Message.Contains("VIP is enabled", StringComparison.OrdinalIgnoreCase)))
@@ -94,6 +105,14 @@ internal sealed class FirehoseWireReader : IDisposable
                     new Dictionary<string, string>(),
                     FirehoseResponseStatus.Ack,
                     false);
+            if (probeRejectionTimeoutMilliseconds is { } rejectionTimeout && !probeRejected &&
+                logs.Exists(static log => log.Message.Contains("Failed to parse xml", StringComparison.OrdinalIgnoreCase)))
+            {
+                probeRejected = true;
+                deadline = Math.Min(deadline, Stopwatch.GetTimestamp() + MillisecondsToTimestamp(rejectionTimeout));
+            }
+            if (probeRejected && complete && !rawMode)
+                return new FirehoseResponse(logs, attributes!, FirehoseResponseStatus.Nak, false, elements);
         }
     }
 

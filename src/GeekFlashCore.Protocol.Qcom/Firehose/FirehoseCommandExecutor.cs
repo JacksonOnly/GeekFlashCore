@@ -40,8 +40,8 @@ internal sealed class FirehoseCommandExecutor
 
     internal bool StartupDataReceived => _receiver.StartupDataReceived;
 
-    public FirehoseResponse ReceiveStartupLogs(int? timeoutMilliseconds = null) =>
-        _receiver.ReceiveStartupLog(timeoutMilliseconds);
+    public FirehoseResponse ReceiveStartupLogs(int? timeoutMilliseconds = null, int? probeRejectionTimeoutMilliseconds = null) =>
+        _receiver.ReceiveStartupLog(timeoutMilliseconds, probeRejectionTimeoutMilliseconds);
 
     public FirehoseCommandResult Execute(
         BaseCommand command,

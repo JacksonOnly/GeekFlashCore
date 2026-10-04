@@ -433,4 +433,5 @@
   <data name="Qcom_LogLegacyDigestBoundary" xml:space="preserve"><value>Legacy 表边界：已发送 {PacketCount}，容量 {TableCapacity}，剩余 {Remaining}；按参考线路补位并换表。</value></data>
   <data name="Qcom_LogOplusResumeDigestRetry" xml:space="preserve"><value>显式 Oplus 续接的首个 Digest 被 XML 会话拒绝，完整响应已确认设备转入签名表接收；重新发送同一 Digest 一次。</value></data>
   <data name="Progress_SaharaReady" xml:space="preserve"><value>设备识别完成</value></data>
+  <data name="Qcom_LogXiaomiAuthenticationAttempt" xml:space="preserve"><value>小米内置认证尝试 {Attempt}：通过={Accepted}，耗时 {ElapsedMilliseconds:F1} ms。</value></data>
 </root>

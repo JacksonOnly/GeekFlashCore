@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Diagnostics;
+using Serilog;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Firehose;
 
@@ -58,12 +60,17 @@ public sealed class XiaomiAuthentication
         {
             cancellationToken.ThrowIfCancellationRequested();
             byte[] signature = DecodeBuiltInSignature(BuiltInSignatures[index], index);
+            long started = Stopwatch.GetTimestamp();
+            bool accepted = false;
             try
             {
                 FirehoseCommandResult result = Authenticate(signature);
                 if (result.IsSuccess && result.Logs.Any(static log =>
                         log.Message.Contains("authenticated", StringComparison.OrdinalIgnoreCase)))
+                {
+                    accepted = true;
                     return true;
+                }
             }
             catch (FirehoseNakException exception) when (!exception.Result.RawMode)
             {
@@ -85,6 +92,8 @@ public sealed class XiaomiAuthentication
             finally
             {
                 CryptographicOperations.ZeroMemory(signature);
+                Log.ForContext<XiaomiAuthentication>().Information(Strings.Qcom_LogXiaomiAuthenticationAttempt,
+                    index + 1, accepted, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
             }
         }
 

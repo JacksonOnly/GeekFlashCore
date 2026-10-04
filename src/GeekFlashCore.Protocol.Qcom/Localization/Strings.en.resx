@@ -536,4 +536,5 @@ Current {0}, expected {1}</value>
   <data name="Qcom_LogLegacyDigestBoundary" xml:space="preserve"><value>Legacy table boundary: sent {PacketCount}, capacity {TableCapacity}, remaining {Remaining}; padding and refreshing according to the reference flow.</value></data>
   <data name="Qcom_LogOplusResumeDigestRetry" xml:space="preserve"><value>The initial Digest of explicit Oplus resume was rejected by the XML session; complete responses confirm signed-table receive. Resending the same Digest once.</value></data>
   <data name="Progress_SaharaReady" xml:space="preserve"><value>Device identified</value></data>
+  <data name="Qcom_LogXiaomiAuthenticationAttempt" xml:space="preserve"><value>Xiaomi built-in authentication attempt {Attempt}: accepted={Accepted}, elapsed {ElapsedMilliseconds:F1} ms.</value></data>
 </root>

@@ -507,6 +507,9 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private FirehoseConfiguration LimitConfiguration(FirehoseConfiguration configuration)
     {
         configuration.Validate();
+        if (configuration.MemoryName == FirehoseStorage.None && _startup?.Logs.Any(static log =>
+                log.Message.TrimStart().StartsWith("ufs:", StringComparison.OrdinalIgnoreCase)) == true)
+            configuration = CreateUfsFallbackConfiguration(configuration);
         return configuration with { MaxPayloadSizeToTargetInBytes = QcomEvidenceMerger.ResolveMaxPayload(
             Math.Min(configuration.MaxPayloadSizeToTargetInBytes, _options.Firehose.MaxPayloadSizeToTargetInBytes), null, _programmer?.MaxPayloadSizeToTargetInBytesSupported) };
     }

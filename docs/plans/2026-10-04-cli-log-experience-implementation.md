@@ -23,8 +23,11 @@
 - 完整当前工作区 Qcom/CLI 本地测试：204/204 通过，16 秒；包括新增 7 项及现有 bootstrap、Pt、Legacy 换表、输入取消、资源释放、USB 等测试。旧身份展示断言随文案更新，HEX 与完整 Hash 值断言保留。
 - Release 解决方案构建：0 警告、0 错误。中英文 CLI/Qcom 资源键一致、无重复；git diff --check 通过；.tests、日志、bin/obj、temp ignored 且未被跟踪。
 - 生产差异确认只有展示/日志、文件选择和无调用内部方法清理；真实设备 I/O 未执行。用户已授权提交并合并本地主分支，不推送远端。
+- 合并后主工作区 Release 构建（含依赖还原）：0 警告、0 错误；CLI help 冒烟通过。主工作区 Qualcomm 251/251、CLI 55/55、Android Lp 55/55、Core 9/9 全部通过，未跳过测试。
+- 主工作区历史测试首次运行时，CLI 40/55 失败、Qualcomm 11/250 失败；核实为早期反射构造方式、显示断言、超时异常类型、Legacy 计数及预读夹具失配。仅在 ignored .tests 迁移夹具与断言：保留 HEX/Hash、迟到资源释放、短预算失效、输出不截断、NOP 顺序、XML 重放一次、RAW NAK 后失效等验证；补充 API 零分段参数有效的断言。生产代码没有为旧测试改变线路；Legacy Hash 诊断加 ACK 继续发送仍由当前工作区回归覆盖。
 
 ## 合并与风险
 
-- 合并前本地 main 位于 D:/Code/CSharp/GeekFlashCore，工作区干净，是当前分支祖先，可快进合并。合并结果和主工作区构建将在完成后补记。
+- 生产提交：0312508（refactor(cli): streamline logs and oplus resource selection）。本地 main 位于 D:/Code/CSharp/GeekFlashCore，已从 37ee307 快进合并到该提交；功能分支 codex/qcom-legacy-audit 保留。两个工作区跟踪文件均干净，未推送远端；本记录补记后再快进同步文档。
+- 主工作区及 C:/Users/a1375/.codex/worktrees/93f8/GeekFlashCore 的 src/GeekFlashCore.CLI/bin/Release/net10.0/geekflash.exe 均已更新；日志默认位于各自程序目录 logs 下，可用 --log-file 指定路径。
 - 真实 Loader 延迟、正确资源组合及终端显示需要用户复测；bug1.txt 中 Legacy Hash 诊断不作为缺陷处理。其他 UI 宿主可按 DeviceDiagnostic 和级别筛选，当前仓库没有单独桌面 UI 工程。

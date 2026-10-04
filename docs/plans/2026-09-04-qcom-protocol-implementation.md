@@ -34,7 +34,7 @@
 - 用户澄清：bug1.txt 的最终取消不是缺陷，Legacy Hash 诊断后 ACK 继续发送为要求保留的参考行为，本轮不改线路。默认控制台采用宿主阶段/进度与简短错误，完整堆栈和脱敏设备诊断进入文件；verbose 在分区读写期间也保持静默。
 - Sahara 标签、模式与安全启动本地化，完整 PkHash 和 HEX ID 保留；识别阶段与联机完成区分，确认完成的 Loader 进度显示实际字节和 100%。错误资源路径可重选，Pt 自动 Sign 和 Legacy 必须 Sign 的规则不变。
 - 删除三个零调用内部方法、重复 Sahara/Firehose 发送日志、无用依赖和资源键，保留公共 API、兼容注释与所有权保护。完整本地测试 204/204，Release 构建 0 警告/错误，资源与 diff 检查通过。
-- 合并前 main 工作区干净且为分支祖先；按用户授权提交后快进合并，结果补记到 `2026-10-04-cli-log-experience-implementation.md`。硬件线路未复测，下一步是用户使用正确资源组合验证新版 CLI。
+- 生产提交 0312508，已按用户授权快进合并到 D:/Code/CSharp/GeekFlashCore 的本地 main，未推送。主工作区 Release 构建通过；迁移 ignored 历史夹具后 Qualcomm 251/251、CLI 55/55、Android Lp 55/55、Core 9/9 全部通过，无跳过；详情见 `2026-10-04-cli-log-experience-implementation.md`。两个工作区的 CLI 均已更新，硬件线路未复测，下一步是用户使用正确资源组合验证新版 CLI。
 
 ## 执行规则
 

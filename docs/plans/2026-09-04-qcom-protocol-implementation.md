@@ -1,9 +1,10 @@
 # Qualcomm Protocol Implementation Plan
 
-### FH-01（2026-10-04）：已运行 Firehose 的探测拒绝
+### FH-01/FH-02（2026-10-04）：Firehose 续接与浏览器字节读取
 
 - 用户 23:28 日志确认 Sahara 唤醒包后设备返回完整 XML 解析错误，却仍等待 Loader 启动结束标记十秒并超时。只对已发送该唤醒包、未上传 Loader 的普通模式，收集完整拒绝响应并要求 NOP ACK 后续接配置；半帧、RAW、VIP、新 Loader 和 Oplus 首表保护保留。
-- 续接目标测试 14/14，原有测试加续接测试 67/67；Release 解决方案构建零警告零错误，diff 检查通过。新增字节读取回归已复现，下一步 FH-02 修复 browse super 对齐错误。详细证据和风险见 `2026-10-04-firehose-resume-byte-read-fixes.md`；本轮未进行硬件操作。
+- browse super 的 LP 魔数/文件系统小范围读取现在通过 FirehoseBlockDevice 头/中/尾扇区适配，512/4096 字节扇区下嵌套 Ext/EROFS、返回、搜索和导出通过；只读、写入对齐、EOF 与旧句柄保护保留，新增池化缓冲有 65536 字节上限并清零归还。
+- 当前完整本地回归 74/74（53 既有 + 21 本轮），Release 解决方案构建零警告零错误，资源/diff 检查通过；新 EXE 合成镜像导航与导出冒烟退出 0。续接提交 4632cb6；字节读取独立提交。详细证据和风险见 `2026-10-04-firehose-resume-byte-read-fixes.md`；本轮未进行硬件操作，下一步用户重启已更新 CLI 进行真机连接与小文件复测。
 
 ### OP-UX-02（2026-10-04）：启动后选择与会话退出
 

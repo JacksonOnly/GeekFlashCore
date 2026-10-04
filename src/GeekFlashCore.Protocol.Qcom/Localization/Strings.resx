@@ -436,4 +436,5 @@
   <data name="Qcom_LogXiaomiAuthenticationAttempt" xml:space="preserve"><value>小米内置认证尝试 {Attempt}：通过={Accepted}，耗时 {ElapsedMilliseconds:F1} ms。</value></data>
   <data name="Qcom_LogFirehoseProbeRejected" xml:space="preserve"><value>设备以完整 XML 拒绝 Sahara 唤醒包，正在通过 NOP 确认已运行的 Firehose 会话。</value></data>
   <data name="Qcom_FirehoseResumeUnconfirmed" xml:space="preserve"><value>设备已返回 Firehose 响应，但 NOP 未确认成功；请检查设备状态后重新连接。</value></data>
+  <data name="Qcom_ByteReadSectorTooLarge" xml:space="preserve"><value>Firehose 字节读取不支持超过 65536 字节的逻辑扇区。</value></data>
 </root>

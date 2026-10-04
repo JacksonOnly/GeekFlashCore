@@ -18,6 +18,8 @@
 
 ## 测试、提交与风险
 
+2026-10-04 FH-01 补充：用户 23:28 日志提供了一个可区分的例外。普通模式在自己发送 Sahara 唤醒包后识别到 Firehose 的完整 XML 解析错误，该响应属于探测拒绝；可有界收集完整诊断/可选 NAK，再以 NOP ACK 确认续接。一般启动日志、半帧、新上传 Loader、RAW 与 VIP/Oplus 首表仍不启用该入口。实现与证据见 `2026-10-04-firehose-resume-byte-read-fixes.md`。
+
 1. 先用模拟分片/延迟启动验证超过 250 ms 的普通/VIP/Oplus marker，sync/async 行为一致；完整日志、半帧和新上传静默均禁止 NOP，既有普通静默回退保留。
 2. 测试模式选择、错误输入重选、默认普通、显式及非交互跳过、取消；保持 Legacy Hash 诊断加 ACK 的既有回归。
 3. 当前完整测试、主工作区历史回归、Release 构建、资源键和 git diff --check。测试仅在 ignored .tests，真实设备日志与模拟证据分开。

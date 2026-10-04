@@ -11,4 +11,7 @@
 - 测试先行证据：停用内置 Sign 前，已知芯片 Pt 新期望有 2 项失败；追加脚本 Pt 必需资源/重启退出测试在实现前 6 项失败。修复后完整本地 Qcom/CLI 联合测试 259/259 通过（约 19 秒）。
 - 验证：Release 解决方案构建 0 警告/0 错误；CLI help 显示 Pt/Legacy 均需 Sign；中英文资源键 CLI 137、Qcom 253 完全对应；git diff --check 通过，.tests 无被跟踪文件。
 - 证据边界：晚选择测试在上传后的边界注入 Sahara/Loader 身份，验证同步与异步启动、线路顺序、签名替换、取消、无效模式、缺失身份、会话重置和 UFS 配置；真实 SM4350.elf 与 Xiaomi SM8250 Loader 仅只读解析，均成功识别 Programmer 和对应厂商，未与硬件通信。
-- 待交付：整理提交、本地主分支快进与合并后测试/构建。风险：未知 OEM/无法解析的 Loader 需显式模式；晚选择及 UFS 首次配置仍需用户真机复测。
+- 提交：5487919 feat(qcom): select Oplus flow after loader startup；897e530 fix(cli): exit after successful device reboot；c245e31 perf(qcom): use startup storage evidence and time auth。
+- 合并：本地 main 在 D:/Code/CSharp/GeekFlashCore 由 83c620a 快进到 c245e31。合并后既有 Qcom 测试 251/251、CLI 测试 55/55 通过，Release 解决方案构建 0 警告/0 错误；工作分支新增/更新夹具的联合测试为 259/259。两处 CLI 输出均已构建；Pt 非交互缺少 Sign 的 exe 冒烟在设备发现前退出码 2。
+- 工作区：生产代码和必要文档已提交；.tests、日志、staging patch 与 bin/obj 均 ignored，无被跟踪测试/构建产物，差异检查通过。仅本地合并，未推送。
+- 风险与后续：未知 OEM/无法解析的 Loader 需显式模式；晚选择及 UFS 首次配置仍需用户真机复测。未操作设备、未再次读取/写入 persist，也没有更改 Legacy Hash+ACK 继续逻辑。

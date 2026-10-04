@@ -4,7 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
-  <data name="Cli_NoPartitions" xml:space="preserve"><value>No partitions were read. Check the GPT diagnostic logs for each LUN above.</value></data>
+  <data name="Cli_NoPartitions" xml:space="preserve"><value>No partitions were read. See the file log for GPT diagnostics.</value></data>
   <data name="Cli_CommandUnsuccessful" xml:space="preserve"><value>Command {0} did not complete successfully.</value></data>
   <data name="Cli_LogCommandFailed" xml:space="preserve"><value>Command failed: {Message}</value></data>
   <data name="Cli_Usage" xml:space="preserve"><value>Usage: {0}</value></data>
@@ -65,9 +65,9 @@
   <data name="Cli_OperationCancelled" xml:space="preserve"><value>Operation cancelled.</value></data>
   <data name="Cli_CommandFailed" xml:space="preserve"><value>Failed: {0}</value></data>
   <data name="Cli_QcomWaitingForDevice" xml:space="preserve"><value>Waiting for a Qualcomm EDL USB device...</value></data>
-  <data name="Cli_SaharaProgrammerPrompt" xml:space="preserve"><value>Sahara programmer path</value></data>
+  <data name="Cli_SaharaProgrammerPrompt" xml:space="preserve"><value>Loader file path (leave blank to cancel)</value></data>
   <data name="Cli_SaharaProgrammerMissing" xml:space="preserve"><value>The Sahara programmer file was not found.</value></data>
-  <data name="Cli_OplusDigestPrompt" xml:space="preserve"><value>Oplus Digest ({0}) path</value></data>
+  <data name="Cli_OplusDigestPrompt" xml:space="preserve"><value>{0} Digest file path (leave blank to cancel)</value></data>
   <data name="Cli_OplusDigestMissing" xml:space="preserve"><value>The Oplus Digest file was not found.</value></data>
   <data name="Cli_FirehoseDigestPrompt" xml:space="preserve"><value>Firehose Digest path</value></data>
   <data name="Cli_FirehoseDigestMissing" xml:space="preserve"><value>The Firehose Digest file was not found.</value></data>
@@ -80,20 +80,22 @@
   <data name="Cli_AuthenticationCancelled" xml:space="preserve"><value>Authentication was cancelled by the user.</value></data>
   <data name="Cli_AuthenticationPayloadInvalid" xml:space="preserve"><value>The authentication payload must be hexadecimal.</value></data>
   <data name="Cli_InfoProtocol" xml:space="preserve"><value>Protocol: {0}</value></data>
-  <data name="Cli_InfoVendor" xml:space="preserve"><value>Vendor protocol strategy: {0}</value></data>
-  <data name="Cli_InfoHardware" xml:space="preserve"><value>Manufacturer: {0}, Chip: {1}, SecureBoot: {2}</value></data>
-  <data name="Cli_InfoSahara" xml:space="preserve"><value>Sahara: version={0}, min={1}, packet={2}, mode={3}</value></data>
-  <data name="Cli_InfoSaharaIdentity" xml:space="preserve"><value>  serial={0}, sbl={1}</value></data>
-  <data name="Cli_InfoSaharaPkHash" xml:space="preserve"><value>  PkHash={0}</value></data>
-  <data name="Cli_InfoHardwareIds" xml:space="preserve"><value>  msmId={0}, oemId={1}, modelId={2}, antiRollback={3}, socHwVersion={4}</value></data>
-  <data name="Cli_InfoFirehose" xml:space="preserve"><value>Firehose: target={0}, ufs={1}, storage={2}, sector={3}, payload={4}</value></data>
-  <data name="Cli_InfoFirehoseDevice" xml:space="preserve"><value>  chip={0}, serial={1}, build={2}, functions={3}</value></data>
-  <data name="Cli_InfoStorage" xml:space="preserve"><value>  {0} lun={1} blocks={2} size={3} capacity={4}</value></data>
+  <data name="Cli_InfoVendor" xml:space="preserve"><value>Communication strategy: {0}</value></data>
+  <data name="Cli_InfoHardware" xml:space="preserve"><value>Manufacturer: {0}    Chip: {1}    Secure boot: {2}</value></data>
+  <data name="Cli_InfoSahara" xml:space="preserve"><value>Sahara: v{0} (minimum v{1}), maximum packet {2} bytes, {3}</value></data>
+  <data name="Cli_InfoSaharaIdentity" xml:space="preserve"><value>Serial: {0}    SBL version: {1}</value></data>
+  <data name="Cli_InfoSaharaPkHash" xml:space="preserve"><value>PkHash: {0}</value></data>
+  <data name="Cli_InfoHardwareIds" xml:space="preserve"><value>MSM ID: {0}    OEM ID: {1}    Model ID: {2}
+Anti-rollback version: {3}    SoC hardware version: {4}</value></data>
+  <data name="Cli_InfoFirehose" xml:space="preserve"><value>Firehose: {0}    Storage model: {1}
+Storage: {2}    Sector: {3} bytes    Maximum payload: {4} bytes</value></data>
+  <data name="Cli_InfoFirehoseDevice" xml:space="preserve"><value>Chip: {0}    Serial: {1}
+Loader build time: {2}    Reported commands: {3}</value></data>
+  <data name="Cli_InfoStorage" xml:space="preserve"><value>  {0} LUN {1}: {2} blocks × {3} bytes, capacity {4}</value></data>
   <data name="Cli_StorageInfoLine" xml:space="preserve"><value>Storage={0} lun={1} blocks={2} sector={3} capacity={4}</value></data>
   <data name="Cli_PartitionLine" xml:space="preserve"><value>{0} lun={1} start={2} offset={3} length={4}</value></data>
   <data name="Cli_UnknownValue" xml:space="preserve"><value>unknown</value></data>
   <data name="Cli_UsbDeviceFallback" xml:space="preserve"><value>USB device</value></data>
-  <data name="Cli_SaharaProbeResult" xml:space="preserve"><value>Sahara v{0}, mode={1}, packet={2}</value></data>
   <data name="Cli_XmlResult" xml:space="preserve"><value>XML: {0}</value></data>
   <data name="Cli_TimeoutMustBePositive" xml:space="preserve"><value>Timeouts must be positive milliseconds; only --resource-timeout accepts -1 (unlimited).</value></data>
   <data name="Cli_EnumInvalid" xml:space="preserve"><value>Invalid vendor, authentication kind, or Oplus mode.</value></data>
@@ -115,8 +117,7 @@
   --log-file FILE  Detailed log path; defaults to a unique file under the executable's logs directory</value></data>
   <data name="Cli_HelpQcomCommands" xml:space="preserve"><value>Interactive: interactive (default); Qualcomm commands (require corresponding device capabilities):</value></data>
   <data name="Cli_HelpVipOptions" xml:space="preserve"><value>      --vip-signed FILE | --vip-chained FILE (requires signed; mutually exclusive with Digest/Oplus)</value></data>
-  <data name="Cli_OplusSignPrompt" xml:space="preserve"><value>Enter the binary Oplus Sign file path</value></data>
-  <data name="Cli_OplusSignMissing" xml:space="preserve"><value>Oplus Sign file is missing. Specify --oplus-sign FILE or select one interactively.</value></data>
+  <data name="Cli_OplusSignPrompt" xml:space="preserve"><value>Oplus Sign file path (leave blank to cancel)</value></data>
   <data name="Cli_OplusSignRejected" xml:space="preserve"><value>Sign verification failed. Select a replacement Sign file manually.</value></data>
   <data name="Cli_OplusSignNeedsMode" xml:space="preserve"><value>--oplus-sign requires --oplus-mode or --oplus-digest.</value></data>
   <data name="Cli_LegacyResourcesRequired" xml:space="preserve"><value>Non-interactive Legacy mode requires --oplus-digest and --oplus-sign.</value></data>
@@ -128,4 +129,22 @@
   <data name="Cli_LogInputWait" xml:space="preserve"><value>Waiting for manual input: {Prompt}; press Ctrl+C to cancel.</value></data>
   <data name="Cli_LogInputReceived" xml:space="preserve"><value>Manual input received after {ElapsedMilliseconds:F1} ms (input content omitted).</value></data>
   <data name="Cli_LogInputCancelled" xml:space="preserve"><value>Manual input wait cancelled after {ElapsedMilliseconds:F1} ms.</value></data>
+  <data name="Cli_LogLocation" xml:space="preserve"><value>Detailed log: {0}</value></data>
+  <data name="Cli_Connecting" xml:space="preserve"><value>Connecting to device…</value></data>
+  <data name="Cli_LoadingProgrammer" xml:space="preserve"><value>Uploading Loader…</value></data>
+  <data name="Cli_OplusLegacyResources" xml:space="preserve"><value>Oplus Legacy requires Digest and Sign files. Input has no time limit; Ctrl+C cancels.</value></data>
+  <data name="Cli_OplusPtResources" xml:space="preserve"><value>Oplus Pt requires Digest. Sign is matched by chip; select it manually if unavailable or rejected.</value></data>
+  <data name="Cli_OplusVerifying" xml:space="preserve"><value>Resources ready. Verifying Oplus Sign and initializing storage…</value></data>
+  <data name="Cli_ResponseTimedOut" xml:space="preserve"><value>The device response timed out. Check the connection and selected mode; see the file log for diagnostics.</value></data>
+  <data name="Cli_DeviceRejected" xml:space="preserve"><value>The device rejected this command. See the file log for details.</value></data>
+  <data name="Cli_OperationFailed" xml:space="preserve"><value>The operation could not be completed. See the file log for details.</value></data>
+  <data name="Cli_Enabled" xml:space="preserve"><value>enabled</value></data>
+  <data name="Cli_Disabled" xml:space="preserve"><value>disabled</value></data>
+  <data name="Cli_GenericStrategy" xml:space="preserve"><value>generic</value></data>
+  <data name="Cli_SaharaCommandMode" xml:space="preserve"><value>command mode</value></data>
+  <data name="Cli_SaharaImagePending" xml:space="preserve"><value>waiting for image upload</value></data>
+  <data name="Cli_SaharaImageComplete" xml:space="preserve"><value>image upload complete</value></data>
+  <data name="Cli_SaharaMemoryDebug" xml:space="preserve"><value>memory debug mode</value></data>
+  <data name="Cli_HelpHint" xml:space="preserve"><value>Run geekflash help for usage.</value></data>
+  <data name="Cli_LogStorageOperation" xml:space="preserve"><value>CLI {Command}: partition={Partition} LUN={Lun} start sector={StartSector} sector count={SectorCount} file={FilePath}.</value></data>
 </root>

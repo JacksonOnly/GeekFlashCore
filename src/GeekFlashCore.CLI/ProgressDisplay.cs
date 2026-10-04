@@ -34,12 +34,12 @@ internal sealed class ProgressDisplay(TimeProvider clock)
         long current = Math.Max(0, record.Current);
         bool knownTotal = record.Total > 0 || completed && record.Total == 0;
         if (knownTotal) current = Math.Min(current, record.Total);
-        double ratio = record.Total > 0 ? Math.Clamp((double)current / record.Total, 0, 1) : completed ? 1 : 0;
+        double ratio = completed ? 1 : record.Total > 0 ? Math.Clamp((double)current / record.Total, 0, 1) : 0;
         string percent = knownTotal ? (ratio * 100).ToString("F1", CultureInfo.InvariantCulture) + "%" : "--%";
         double seconds = Math.Max(0, clock.GetElapsedTime(_started, now).TotalSeconds);
         string elapsed = Duration(seconds);
         string quantity = record.Unit == ProgressUnit.Bytes
-            ? $"{Size(current)} / {(knownTotal ? Size(record.Total) : "?")}"
+            ? completed ? Size(current) : $"{Size(current)} / {(knownTotal ? Size(record.Total) : "?")}"
             : $"{current} / {(knownTotal ? record.Total.ToString(CultureInfo.InvariantCulture) : "?")}";
         string time = completed ? Strings.FormatCli_ProgressDuration(elapsed) : Strings.FormatCli_ProgressElapsed(elapsed);
         string details = $"{percent} {quantity}";

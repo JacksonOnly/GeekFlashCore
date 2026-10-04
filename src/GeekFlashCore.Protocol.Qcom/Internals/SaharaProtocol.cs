@@ -63,8 +63,8 @@ internal class SaharaProtocol : IDisposable
         progress?.Report(new ProgressRecord(3, 2, Strings.Progress_ReadingTargetInfo));
         ReadTargetInfo();
         IsConnected = true;
-        progress?.Report(new ProgressRecord(3, 3, Strings.Progress_Connected));
-        _logger.Information(Strings.Qcom_LogTargetInfo, FormatTargetInfo(TargetInfo));
+        progress?.Report(new ProgressRecord(3, 3, Strings.Progress_SaharaReady));
+        _logger.Debug(Strings.Qcom_LogTargetInfo, FormatTargetInfo(TargetInfo));
     }
 
     public void UploadImage(
@@ -643,7 +643,7 @@ internal class SaharaProtocol : IDisposable
             }
             catch (Exception e) when (e is TimeoutException or InvalidDataException or ArgumentException)
             {
-                _logger.Error(e, Strings.Qcom_LogHelloReceiveFailed);
+                _logger.Debug(e, Strings.Qcom_LogHelloReceiveFailed);
                 _transport.Flush();
                 if (isReset)
                     _sender.SendResetStateMachineRequest();

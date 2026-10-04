@@ -23,9 +23,9 @@ internal sealed class ConsoleSaharaImageProvider(ConsoleUi ui, string? configure
     {
         cancellationToken.ThrowIfCancellationRequested();
         ui.PrintTargetInfo(new QcomTargetInfo { Sahara = request.TargetInfo });
-        string? path = ConsolePath.Normalize(configuredPath ?? await ui.AskOptionalAsync(Strings.Cli_SaharaProgrammerPrompt, cancellationToken).ConfigureAwait(false));
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
-            throw new FileNotFoundException(Strings.Cli_SaharaProgrammerMissing, path);
+        string path = (await ui.SelectFileAsync(Strings.Cli_SaharaProgrammerPrompt, configuredPath,
+            Strings.Cli_SaharaProgrammerMissing, cancellationToken).ConfigureAwait(false))!;
+        ui.WriteLine(Strings.Cli_LoadingProgrammer);
         var source = new FileDataSource(path);
         return new SaharaImageEntryResponse([new SaharaImageEntry(13, source.Length, source)]);
     }
@@ -34,29 +34,28 @@ internal sealed class ConsoleSaharaImageProvider(ConsoleUi ui, string? configure
 internal sealed class ConsoleOplusDigestProvider(ConsoleUi ui, string? configuredPath, string? configuredSign = null) : IOplusDigestProvider
 {
     private string? _digestPath = configuredPath;
+    private string? _signPath = configuredSign;
+    private bool _explained;
     public async ValueTask<OplusDigestResourceResponse> ResolveAsync(OplusDigestResourceRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        string? path = ConsolePath.Normalize(_digestPath ??
-            await ui.AskOptionalAsync(Strings.FormatCli_OplusDigestPrompt(request.Mode), cancellationToken).ConfigureAwait(false));
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
-            throw new FileNotFoundException(Strings.Cli_OplusDigestMissing, path);
+        if (!_explained)
+        {
+            ui.WriteLine(request.Mode == OplusDigestMode.OplusDigestLegacy
+                ? Strings.Cli_OplusLegacyResources : Strings.Cli_OplusPtResources);
+            _explained = true;
+        }
+        string path = (await ui.SelectFileAsync(Strings.FormatCli_OplusDigestPrompt(request.Mode), _digestPath,
+            Strings.Cli_OplusDigestMissing, cancellationToken).ConfigureAwait(false))!;
         _digestPath = path;
         if (request.PreviousSignRejected) ui.WriteLine(Strings.Cli_OplusSignRejected);
-        string? signPath = request.PreviousSignRejected ? null : ConsolePath.Normalize(configuredSign);
+        string? signPath = request.PreviousSignRejected ? null : ConsolePath.Normalize(_signPath);
         bool requireSign = request.RequireSign || request.Mode == OplusDigestMode.OplusDigestLegacy;
-        if (signPath is not null && !IsValidSignFile(signPath))
-        {
-            ui.WriteLine(Strings.Cli_OplusSignInvalid);
-            signPath = null;
-            requireSign = true;
-        }
-        if (signPath is null && requireSign)
-            signPath = ConsolePath.Normalize(await ui.AskOptionalAsync(Strings.Cli_OplusSignPrompt, cancellationToken).ConfigureAwait(false));
-        if (signPath is not null && !IsValidSignFile(signPath))
-            throw new FileNotFoundException(Strings.Cli_OplusSignInvalid, signPath);
-        if (string.IsNullOrWhiteSpace(signPath) && requireSign)
-            throw new FileNotFoundException(Strings.Cli_OplusSignMissing);
+        if (signPath is not null || requireSign)
+            signPath = await ui.SelectFileAsync(Strings.Cli_OplusSignPrompt, signPath,
+                Strings.Cli_OplusSignInvalid, cancellationToken, IsValidSignFile).ConfigureAwait(false);
+        _signPath = signPath;
+        ui.WriteLine(Strings.Cli_OplusVerifying);
         return new OplusDigestResourceResponse(new FileDataSource(path))
         { Sign = signPath is null ? null : new FileDataSource(signPath) };
     }
@@ -69,9 +68,8 @@ internal sealed class ConsoleFirehoseDigestProvider(ConsoleUi ui, string? config
     public async ValueTask<FirehoseDigestResourceResponse> ResolveAsync(FirehoseDigestResourceRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        string? path = ConsolePath.Normalize(configuredPath ?? await ui.AskOptionalAsync(Strings.Cli_FirehoseDigestPrompt, cancellationToken).ConfigureAwait(false));
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
-            throw new FileNotFoundException(Strings.Cli_FirehoseDigestMissing, path);
+        string path = (await ui.SelectFileAsync(Strings.Cli_FirehoseDigestPrompt, configuredPath,
+            Strings.Cli_FirehoseDigestMissing, cancellationToken).ConfigureAwait(false))!;
         return new FirehoseDigestResourceResponse(new FileDataSource(path));
     }
 }
@@ -81,14 +79,13 @@ internal sealed class ConsoleVipProvider(ConsoleUi ui, string? signedPath, strin
     public async ValueTask<FirehoseVipResourceResponse> ResolveAsync(FirehoseVipResourceRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        string? signed = ConsolePath.Normalize(signedPath ?? await ui.AskOptionalAsync(Strings.Cli_VipSignedPrompt, cancellationToken).ConfigureAwait(false));
-        if (string.IsNullOrWhiteSpace(signed) || !File.Exists(signed))
-            throw new FileNotFoundException(Strings.Cli_VipSignedMissing, signed);
+        string signed = (await ui.SelectFileAsync(Strings.Cli_VipSignedPrompt, signedPath,
+            Strings.Cli_VipSignedMissing, cancellationToken).ConfigureAwait(false))!;
         var chained = new List<IDataSource>();
-        string? path = ConsolePath.Normalize(chainedPath ?? await ui.AskOptionalAsync(Strings.Cli_VipChainedPrompt, cancellationToken).ConfigureAwait(false));
+        string? path = await ui.SelectFileAsync(Strings.Cli_VipChainedPrompt, chainedPath,
+            Strings.Cli_VipChainedMissing, cancellationToken, optional: true).ConfigureAwait(false);
         if (!string.IsNullOrWhiteSpace(path))
         {
-            if (!File.Exists(path)) throw new FileNotFoundException(Strings.Cli_VipChainedMissing, path);
             chained.Add(new FileDataSource(path));
         }
         return new FirehoseVipResourceResponse(new FileDataSource(signed), chained);

@@ -12,6 +12,7 @@ internal sealed class FirehoseCmdReceiver : IDisposable
     private readonly FirehoseWireReader _reader;
     private int _readTimeoutMilliseconds;
     private readonly ILogger _logger;
+    private readonly ILogger _deviceLogger;
     private readonly Action<FirehoseResponseLog> _publishLog;
     private readonly Action<FirehoseResponseLog> _publishOplusVerifyLog;
 
@@ -23,6 +24,7 @@ internal sealed class FirehoseCmdReceiver : IDisposable
         _reader = new FirehoseWireReader(transport);
         _readTimeoutMilliseconds = readTimeoutMilliseconds;
         _logger = logger;
+        _deviceLogger = logger.ForContext("DeviceDiagnostic", true);
         _publishLog = PublishLog;
         _publishOplusVerifyLog = PublishOplusVerifyLog;
     }
@@ -165,29 +167,16 @@ internal sealed class FirehoseCmdReceiver : IDisposable
 
     private void PublishLog(FirehoseResponseLog log)
     {
-            string message = QcomDeviceText.ForDisplay(log.Message);
-            if (log.Level == FirehoseLogLevel.Info &&
-                log.Message.StartsWith("Calling handler for ", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.Debug(Strings.Qcom_LogDeviceMessage, message);
-                return;
-            }
-
-            switch (log.Level)
-            {
-                case FirehoseLogLevel.Error:
-                _logger.Error(Strings.Qcom_LogDeviceMessage, message);
-                    break;
-                case FirehoseLogLevel.Warn:
-                _logger.Warning(Strings.Qcom_LogDeviceMessage, message);
-                    break;
-                case FirehoseLogLevel.Debug:
-                _logger.Debug(Strings.Qcom_LogDeviceMessage, message);
-                    break;
-                default:
-                _logger.Information(Strings.Qcom_LogDeviceMessage, message);
-                    break;
-            }
+        string message = QcomDeviceText.ForDisplay(log.Message);
+        LogEventLevel level = log.Level switch
+        {
+            FirehoseLogLevel.Error => LogEventLevel.Error,
+            FirehoseLogLevel.Warn => LogEventLevel.Warning,
+            _ => LogEventLevel.Debug
+        };
+        _deviceLogger.ForContext("DeviceLogLevel", log.Level)
+            .ForContext("DeviceTextLength", log.Message.Length)
+            .Write(level, Strings.Qcom_LogDeviceMessage, message);
     }
 
     private static bool HasDiagnosticAttributes(FirehoseResponse response)

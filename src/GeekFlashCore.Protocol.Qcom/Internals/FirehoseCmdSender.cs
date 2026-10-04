@@ -21,14 +21,6 @@ internal readonly struct FirehoseCmdSender
         _transport = transport;
     }
 
-    public void SendCommand<T>(T command) where T : BaseCommand
-    {
-        ArgumentNullException.ThrowIfNull(command);
-        string xml = command.Build();
-        _logger.Debug(Strings.Qcom_LogSendCommand, typeof(T).Name, xml.Length);
-        SendXml(xml);
-    }
-
     public void Flush() => _transport.Flush();
 
     public void SendXml(string xml, Action? packetSent = null, int? maximumWireLength = null)
@@ -50,7 +42,6 @@ internal readonly struct FirehoseCmdSender
                 _logger.Debug(Strings.Qcom_LogWireCommand, GetCommandName(xml), Math.Min(bytesWritten, maximumWireLength ?? bytesWritten));
             _transport.Write(buffer[..Math.Min(bytesWritten, maximumWireLength ?? bytesWritten)]);
             packetSent?.Invoke();
-            _logger.Debug(Strings.Qcom_LogSendXml, bytesWritten);
         }
         finally
         {

@@ -4,7 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
-  <data name="Cli_NoPartitions" xml:space="preserve"><value>未读取到任何分区，请检查上方各 LUN 的 GPT 诊断日志。</value></data>
+  <data name="Cli_NoPartitions" xml:space="preserve"><value>未读取到分区，GPT 诊断见文件日志。</value></data>
   <data name="Cli_CommandUnsuccessful" xml:space="preserve"><value>命令 {0} 未成功完成。</value></data>
   <data name="Cli_LogCommandFailed" xml:space="preserve"><value>命令执行失败：{Message}</value></data>
   <data name="Cli_Usage" xml:space="preserve"><value>用法：{0}</value></data>
@@ -65,9 +65,9 @@
   <data name="Cli_OperationCancelled" xml:space="preserve"><value>操作已取消。</value></data>
   <data name="Cli_CommandFailed" xml:space="preserve"><value>失败: {0}</value></data>
   <data name="Cli_QcomWaitingForDevice" xml:space="preserve"><value>等待 Qualcomm EDL USB 设备热插拔...</value></data>
-  <data name="Cli_SaharaProgrammerPrompt" xml:space="preserve"><value>Sahara programmer 路径</value></data>
+  <data name="Cli_SaharaProgrammerPrompt" xml:space="preserve"><value>Loader 文件路径（留空取消）</value></data>
   <data name="Cli_SaharaProgrammerMissing" xml:space="preserve"><value>找不到 Sahara programmer 文件。</value></data>
-  <data name="Cli_OplusDigestPrompt" xml:space="preserve"><value>Oplus Digest ({0}) 路径</value></data>
+  <data name="Cli_OplusDigestPrompt" xml:space="preserve"><value>{0} 的 Digest 文件路径（留空取消）</value></data>
   <data name="Cli_OplusDigestMissing" xml:space="preserve"><value>找不到 Oplus Digest 文件。</value></data>
   <data name="Cli_FirehoseDigestPrompt" xml:space="preserve"><value>Firehose Digest 路径</value></data>
   <data name="Cli_FirehoseDigestMissing" xml:space="preserve"><value>找不到 Firehose Digest 文件。</value></data>
@@ -79,21 +79,23 @@
   <data name="Cli_AuthenticationPayloadPrompt" xml:space="preserve"><value>认证 payload</value></data>
   <data name="Cli_AuthenticationCancelled" xml:space="preserve"><value>用户取消认证。</value></data>
   <data name="Cli_AuthenticationPayloadInvalid" xml:space="preserve"><value>认证 payload 必须是十六进制。</value></data>
-  <data name="Cli_InfoProtocol" xml:space="preserve"><value>协议: {0}</value></data>
-  <data name="Cli_InfoVendor" xml:space="preserve"><value>厂商协议策略: {0}</value></data>
-  <data name="Cli_InfoHardware" xml:space="preserve"><value>厂商: {0}, 芯片: {1}, SecureBoot: {2}</value></data>
-  <data name="Cli_InfoSahara" xml:space="preserve"><value>Sahara: version={0}, min={1}, packet={2}, mode={3}</value></data>
-  <data name="Cli_InfoSaharaIdentity" xml:space="preserve"><value>  serial={0}, sbl={1}</value></data>
-  <data name="Cli_InfoSaharaPkHash" xml:space="preserve"><value>  PkHash={0}</value></data>
-  <data name="Cli_InfoHardwareIds" xml:space="preserve"><value>  msmId={0}, oemId={1}, modelId={2}, antiRollback={3}, socHwVersion={4}</value></data>
-  <data name="Cli_InfoFirehose" xml:space="preserve"><value>Firehose: target={0}, ufs={1}, storage={2}, sector={3}, payload={4}</value></data>
-  <data name="Cli_InfoFirehoseDevice" xml:space="preserve"><value>  chip={0}, serial={1}, build={2}, functions={3}</value></data>
-  <data name="Cli_InfoStorage" xml:space="preserve"><value>  {0} lun={1} blocks={2} size={3} capacity={4}</value></data>
+  <data name="Cli_InfoProtocol" xml:space="preserve"><value>通信协议：{0}</value></data>
+  <data name="Cli_InfoVendor" xml:space="preserve"><value>通信策略：{0}</value></data>
+  <data name="Cli_InfoHardware" xml:space="preserve"><value>厂商：{0}    芯片：{1}    安全启动：{2}</value></data>
+  <data name="Cli_InfoSahara" xml:space="preserve"><value>Sahara：v{0}（最低 v{1}），最大包 {2} 字节，{3}</value></data>
+  <data name="Cli_InfoSaharaIdentity" xml:space="preserve"><value>序列号：{0}    SBL 版本：{1}</value></data>
+  <data name="Cli_InfoSaharaPkHash" xml:space="preserve"><value>PkHash：{0}</value></data>
+  <data name="Cli_InfoHardwareIds" xml:space="preserve"><value>MSM ID：{0}    OEM ID：{1}    型号 ID：{2}
+防回滚版本：{3}    SoC 硬件版本：{4}</value></data>
+  <data name="Cli_InfoFirehose" xml:space="preserve"><value>Firehose：{0}    存储型号：{1}
+存储类型：{2}    扇区：{3} 字节    最大传输块：{4} 字节</value></data>
+  <data name="Cli_InfoFirehoseDevice" xml:space="preserve"><value>芯片：{0}    序列号：{1}
+Loader 构建时间：{2}    已报告命令：{3} 项</value></data>
+  <data name="Cli_InfoStorage" xml:space="preserve"><value>  {0} LUN {1}：{2} 块 × {3} 字节，容量 {4}</value></data>
   <data name="Cli_StorageInfoLine" xml:space="preserve"><value>存储={0} lun={1} 块数={2} 扇区大小={3} 容量={4}</value></data>
   <data name="Cli_PartitionLine" xml:space="preserve"><value>{0} lun={1} 起始扇区={2} 偏移={3} 长度={4}</value></data>
   <data name="Cli_UnknownValue" xml:space="preserve"><value>未知</value></data>
   <data name="Cli_UsbDeviceFallback" xml:space="preserve"><value>USB 设备</value></data>
-  <data name="Cli_SaharaProbeResult" xml:space="preserve"><value>Sahara v{0}, mode={1}, packet={2}</value></data>
   <data name="Cli_XmlResult" xml:space="preserve"><value>XML: {0}</value></data>
   <data name="Cli_TimeoutMustBePositive" xml:space="preserve"><value>超时参数必须为正毫秒数；仅 --resource-timeout 可以是 -1（无限等待）。</value></data>
   <data name="Cli_EnumInvalid" xml:space="preserve"><value>厂商、认证或 Oplus 模式无效。</value></data>
@@ -115,8 +117,7 @@
   --log-file FILE  指定详细日志路径；默认程序目录 logs 下自动生成</value></data>
   <data name="Cli_HelpQcomCommands" xml:space="preserve"><value>交互: interactive（默认）；Qualcomm 专用命令（设备需支持对应能力）：</value></data>
   <data name="Cli_HelpVipOptions" xml:space="preserve"><value>      --vip-signed FILE | --vip-chained FILE（需配合 signed；与 Digest/Oplus 互斥）</value></data>
-  <data name="Cli_OplusSignPrompt" xml:space="preserve"><value>请输入二进制 Oplus Sign 文件路径</value></data>
-  <data name="Cli_OplusSignMissing" xml:space="preserve"><value>缺少 Oplus Sign 文件；请指定 --oplus-sign FILE 或交互选择。</value></data>
+  <data name="Cli_OplusSignPrompt" xml:space="preserve"><value>Oplus Sign 文件路径（留空取消）</value></data>
   <data name="Cli_OplusSignRejected" xml:space="preserve"><value>Sign 未通过验证，请手动选择替换 Sign 文件。</value></data>
   <data name="Cli_OplusSignNeedsMode" xml:space="preserve"><value>--oplus-sign 需要 --oplus-mode 或 --oplus-digest。</value></data>
   <data name="Cli_LegacyResourcesRequired" xml:space="preserve"><value>非交互 Legacy 模式必须指定 --oplus-digest 和 --oplus-sign。</value></data>
@@ -128,4 +129,22 @@
   <data name="Cli_LogInputWait" xml:space="preserve"><value>等待手动输入：{Prompt}；可按 Ctrl+C 取消。</value></data>
   <data name="Cli_LogInputReceived" xml:space="preserve"><value>手动输入已收到，等待 {ElapsedMilliseconds:F1} ms（不记录输入内容）。</value></data>
   <data name="Cli_LogInputCancelled" xml:space="preserve"><value>手动输入等待被取消，已等待 {ElapsedMilliseconds:F1} ms。</value></data>
+  <data name="Cli_LogLocation" xml:space="preserve"><value>详细日志：{0}</value></data>
+  <data name="Cli_Connecting" xml:space="preserve"><value>正在连接设备…</value></data>
+  <data name="Cli_LoadingProgrammer" xml:space="preserve"><value>正在上传 Loader…</value></data>
+  <data name="Cli_OplusLegacyResources" xml:space="preserve"><value>Oplus Legacy：需要 Digest 和 Sign 文件。输入不限时，Ctrl+C 取消。</value></data>
+  <data name="Cli_OplusPtResources" xml:space="preserve"><value>Oplus Pt：需要 Digest；Sign 按芯片自动匹配，缺失或验证失败时手动选择。</value></data>
+  <data name="Cli_OplusVerifying" xml:space="preserve"><value>资源已就绪，正在验证 Oplus Sign 并初始化存储…</value></data>
+  <data name="Cli_ResponseTimedOut" xml:space="preserve"><value>设备响应超时。请检查连接和所选模式；诊断信息见文件日志。</value></data>
+  <data name="Cli_DeviceRejected" xml:space="preserve"><value>设备拒绝了此命令，原因见文件日志。</value></data>
+  <data name="Cli_OperationFailed" xml:space="preserve"><value>操作未完成，原因见文件日志。</value></data>
+  <data name="Cli_Enabled" xml:space="preserve"><value>已启用</value></data>
+  <data name="Cli_Disabled" xml:space="preserve"><value>已关闭</value></data>
+  <data name="Cli_GenericStrategy" xml:space="preserve"><value>通用</value></data>
+  <data name="Cli_SaharaCommandMode" xml:space="preserve"><value>命令模式</value></data>
+  <data name="Cli_SaharaImagePending" xml:space="preserve"><value>等待镜像上传</value></data>
+  <data name="Cli_SaharaImageComplete" xml:space="preserve"><value>镜像上传完成</value></data>
+  <data name="Cli_SaharaMemoryDebug" xml:space="preserve"><value>内存调试模式</value></data>
+  <data name="Cli_HelpHint" xml:space="preserve"><value>输入 geekflash help 查看用法。</value></data>
+  <data name="Cli_LogStorageOperation" xml:space="preserve"><value>CLI {Command}：分区={Partition} LUN={Lun} 起始扇区={StartSector} 扇区数={SectorCount} 文件={FilePath}。</value></data>
 </root>

@@ -87,18 +87,6 @@ public sealed class FirehoseSession : IDisposable
         catch { SetState(FirehoseSessionState.Faulted); throw; }
     }
 
-    internal FirehoseCommandResult ExecuteLegacyNop(string xml, CancellationToken cancellationToken)
-    {
-        using OperationLease operation = EnterCommand();
-        try
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return _executor.ExecuteXml(xml, expectedRawMode: false, cancellationToken: cancellationToken);
-        }
-        catch (FirehoseNakException exception) { CompleteNak(exception, State); throw; }
-        catch { SetState(FirehoseSessionState.Faulted); throw; }
-    }
-
     public FirehoseResponse Start(int? startupTimeoutMilliseconds = null)
     {
         using OperationLease _ = Enter(FirehoseSessionState.Created);

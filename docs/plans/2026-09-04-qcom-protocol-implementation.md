@@ -29,6 +29,13 @@
 - 独立审查 5 个 Important 已修复并 RED→GREEN。关键提交 `499feb9`（Legacy）、`f5b0075`（CLI）、`2272b95`（USB）、`e47f4b5`（审查修正）；详细记录见 `2026-10-03-qcom-legacy-audit-design.md`、`2026-10-03-qcom-legacy-audit-implementation.md`，使用说明见 `../cli-qcom.md`。
 - 下一步：真实 Loader/NOP handler/USB 分包和取消延迟矩阵。当前没有硬件读写或吞吐证据，分支和管理 worktree 保留，未合并或推送。
 
+## 2026-10-04 LOG-01：日志与 Oplus 操作体验
+
+- 用户澄清：bug1.txt 的最终取消不是缺陷，Legacy Hash 诊断后 ACK 继续发送为要求保留的参考行为，本轮不改线路。默认控制台采用宿主阶段/进度与简短错误，完整堆栈和脱敏设备诊断进入文件；verbose 在分区读写期间也保持静默。
+- Sahara 标签、模式与安全启动本地化，完整 PkHash 和 HEX ID 保留；识别阶段与联机完成区分，确认完成的 Loader 进度显示实际字节和 100%。错误资源路径可重选，Pt 自动 Sign 和 Legacy 必须 Sign 的规则不变。
+- 删除三个零调用内部方法、重复 Sahara/Firehose 发送日志、无用依赖和资源键，保留公共 API、兼容注释与所有权保护。完整本地测试 204/204，Release 构建 0 警告/错误，资源与 diff 检查通过。
+- 合并前 main 工作区干净且为分支祖先；按用户授权提交后快进合并，结果补记到 `2026-10-04-cli-log-experience-implementation.md`。硬件线路未复测，下一步是用户使用正确资源组合验证新版 CLI。
+
 ## 执行规则
 
 - 测试工程固定放在 `D:\Code\CSharp\GeekFlashCore\.tests`，不得加入 Git；每次提交前执行 `git status --short --ignored .tests` 确认其为 ignored。

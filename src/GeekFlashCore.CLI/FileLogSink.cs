@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Diagnostics;
 using System.Text;
 using Serilog.Core;
 using Serilog.Events;
@@ -6,16 +7,17 @@ using Serilog.Formatting.Display;
 
 namespace GeekFlashCore.CLI;
 
-/// <summary>Per-run debug log, flushed after each event so failed connections remain diagnosable.</summary>
 internal sealed class FileLogSink : ILogEventSink, IDisposable
 {
     private readonly object _gate = new();
     private readonly MessageTemplateTextFormatter _formatter = new(
-        "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}", CultureInfo.InvariantCulture);
+        "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}", CultureInfo.InvariantCulture);
     private readonly long _maximumFileBytes;
     private readonly string _runId = $"{DateTime.Now:yyyyMMdd-HHmmss-fff}-{Guid.NewGuid():N}";
     private StreamWriter _writer;
     private int _part;
+    private int _bufferedEvents;
+    private long _lastFlush = Stopwatch.GetTimestamp();
     private bool _disposed;
 
     public FileLogSink(string? path = null, long maximumFileBytes = 16 * 1024 * 1024)
@@ -43,7 +45,13 @@ internal sealed class FileLogSink : ILogEventSink, IDisposable
                 _writer = Open(next);
             }
             _formatter.Format(logEvent, _writer);
-            _writer.Flush();
+            if (++_bufferedEvents >= 64 || logEvent.Level >= LogEventLevel.Information ||
+                Stopwatch.GetElapsedTime(_lastFlush).TotalMilliseconds >= 250)
+            {
+                _writer.Flush();
+                _bufferedEvents = 0;
+                _lastFlush = Stopwatch.GetTimestamp();
+            }
         }
     }
 

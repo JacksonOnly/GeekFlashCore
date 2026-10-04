@@ -2,7 +2,6 @@ using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.CLI.Localization;
 using GeekFlashCore.Transport.Abstractions;
 using GeekFlashCore.UsbWatcher;
-using Serilog;
 
 namespace GeekFlashCore.CLI;
 
@@ -23,6 +22,8 @@ internal sealed class CliApplication
         options.Validate();
         _ui.AllowPrompts = !options.NonInteractive;
         _ui.WriteBanner();
+        if (options.Command != "help" && _ui.LogFilePath is not null)
+            _ui.WriteLine(Strings.FormatCli_LogLocation(_ui.LogFilePath));
         ProtocolRegistration? requestedRegistration = null;
         if (!string.IsNullOrWhiteSpace(options.Protocol) && !ProtocolRegistry.TryResolve(options.Protocol, out requestedRegistration))
             throw new ArgumentException(
@@ -48,11 +49,11 @@ internal sealed class CliApplication
             if (special is not null && !special.RequiresConnection(options.Arguments))
                 return await special.ExecuteAsync(protocol, options.Arguments, _ui, progress, ct).ConfigureAwait(false);
 
+            _ui.WriteLine(Strings.Cli_Connecting);
             await protocol.ConnectAsync(progress, ct).ConfigureAwait(false);
-            connection.Registration.CommandSet?.PrintHelp(protocol, _ui);
             return await ExecuteCommandAsync(protocol, connection.Registration, options, progress, ct).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) { Log.Warning(Strings.Cli_OperationCancelled); return 130; }
+        catch (OperationCanceledException) { _ui.ShowCancelled(); return 130; }
         catch (Exception exception) { _ui.LogException(exception); return 1; }
     }
 
@@ -63,9 +64,9 @@ internal sealed class CliApplication
         await using var protocol = connection.Protocol;
         try
         {
+            _ui.WriteLine(Strings.Cli_Connecting);
             await protocol.ConnectAsync(_progress, ct).ConfigureAwait(false);
             _ui.WriteLine(Strings.FormatCli_ConnectedHelp(connection.Registration.DisplayName));
-            connection.Registration.CommandSet?.PrintHelp(protocol, _ui);
             while (!ct.IsCancellationRequested)
             {
                 _ui.Write("geekflash> ");
@@ -78,11 +79,12 @@ internal sealed class CliApplication
                     await ExecuteCommandAsync(protocol, connection.Registration, parsed, _progress, ct).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                catch (OperationCanceledException) { _ui.ShowCancelled(); }
                 catch (Exception exception) { _ui.LogException(exception); }
             }
             return 0;
         }
-        catch (OperationCanceledException) { Log.Warning(Strings.Cli_OperationCancelled); return 130; }
+        catch (OperationCanceledException) { _ui.ShowCancelled(); return 130; }
         catch (Exception exception) { _ui.LogException(exception); return 1; }
     }
 
@@ -101,10 +103,9 @@ internal sealed class CliApplication
         switch (options.Command.ToLowerInvariant())
         {
             case "connect":
-                bool wasConnected = protocol.IsConnected;
+                _ui.WriteLine(Strings.Cli_Connecting);
                 await protocol.ConnectAsync(progress, ct).ConfigureAwait(false);
                 _ui.WriteLine(Strings.FormatCli_ConnectedHelp(registration.DisplayName));
-                if (!wasConnected) registration.CommandSet?.PrintHelp(protocol, _ui);
                 return 0;
             case "info":
                 registration.InfoPresenter?.Invoke(protocol, _ui);

@@ -1,7 +1,6 @@
 using GeekFlashCore.CLI.Localization;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
-using Serilog;
 using static GeekFlashCore.CLI.CommandSyntax;
 
 namespace GeekFlashCore.CLI;
@@ -95,7 +94,7 @@ internal static class FirehoseCommands
         var mapped = AvailableCommands(qcom);
         if (ReportedCommands(qcom).Count == 0)
         {
-            Log.Warning(Strings.Cli_CommandListUnknown);
+            ui.WriteLine(Strings.Cli_CommandListUnknown);
             ui.WriteLine(Strings.FormatCli_LocalCommandsAvailable(mapped.Count));
         }
         else ui.WriteLine(Strings.FormatCli_CommandsMapped(mapped.Count));
@@ -130,14 +129,12 @@ internal static class FirehoseCommands
             throw new NotSupportedException(Strings.FormatCli_CommandNotSupported(wire));
     }
 
-    public static bool Handles(string command) => Handlers.ContainsKey(command);
     public static async Task ExecuteAsync(IQcomProtocol protocol, string command, string[] args, ConsoleUi ui, CancellationToken ct)
     {
         if (command != "configure" || protocol.IsConnected) Require(protocol, command);
         ct.ThrowIfCancellationRequested();
         await Handlers[command](protocol, args, ui, ct);
         ui.WriteLine(Strings.FormatCli_CommandCompleted(command));
-        if (command == "configure") PrintMapping(protocol, ui);
     }
 
     private static Task Nop(IQcomProtocol p, string[] a, ConsoleUi ui, CancellationToken ct)

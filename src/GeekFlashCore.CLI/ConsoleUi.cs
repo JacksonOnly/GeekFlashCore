@@ -11,9 +11,18 @@ internal sealed class ConsoleUi
 {
     private readonly object _gate = new();
     private int _progressRows;
+    private volatile bool _suppressDiagnosticLogs;
     private readonly ProgressDisplay _progress = new(TimeProvider.System);
     private readonly ConsoleInputReader _input;
+    private static readonly Serilog.Formatting.Display.MessageTemplateTextFormatter MessageFormatter =
+        new("{Message:lj}", System.Globalization.CultureInfo.InvariantCulture);
     public bool AllowPrompts { get; set; } = true;
+    public string? LogFilePath { get; set; }
+    public bool SuppressDiagnosticLogs
+    {
+        get => _suppressDiagnosticLogs;
+        set => _suppressDiagnosticLogs = value;
+    }
 
     public ConsoleUi(TextReader? input = null) => _input = new ConsoleInputReader(input);
 
@@ -72,6 +81,30 @@ internal sealed class ConsoleUi
 
     public Task<string?> ReadInputAsync(CancellationToken cancellationToken) => _input.ReadAsync(false, cancellationToken);
 
+    public async Task<string?> SelectFileAsync(string prompt, string? configuredPath, string invalidMessage,
+        CancellationToken cancellationToken, Func<string, bool>? validate = null, bool optional = false)
+    {
+        string? path = ConsolePath.Normalize(configuredPath);
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!string.IsNullOrWhiteSpace(path) && File.Exists(path) && (validate?.Invoke(path) ?? true))
+                return path;
+            if (!AllowPrompts || !_input.CanPrompt)
+            {
+                if (optional && string.IsNullOrWhiteSpace(path)) return null;
+                throw new FileNotFoundException(invalidMessage, path);
+            }
+            if (!string.IsNullOrWhiteSpace(path)) WriteLine(invalidMessage);
+            path = ConsolePath.Normalize(await AskOptionalAsync(prompt, cancellationToken).ConfigureAwait(false));
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                if (optional) return null;
+                throw new OperationCanceledException(Strings.Cli_OperationCancelled);
+            }
+        }
+    }
+
     public void Report(ProgressRecord record)
     {
         lock (_gate)
@@ -100,11 +133,12 @@ internal sealed class ConsoleUi
             string unknown = Strings.Cli_UnknownValue;
             var names = SaharaIdentityDisplay.Names(info);
             Console.WriteLine(Strings.FormatCli_InfoProtocol("QualcommEdl"));
-            Console.WriteLine(Strings.FormatCli_InfoVendor(info.Vendor));
+            Console.WriteLine(Strings.FormatCli_InfoVendor(info.Vendor == QcomVendorKind.Generic
+                ? Strings.Cli_GenericStrategy : info.Vendor.ToString()));
             Console.WriteLine(Strings.FormatCli_InfoHardware(
                 names.Oem,
                 names.Soc,
-                info.SecureBoot));
+                SaharaIdentityDisplay.SecureBoot(info.SecureBoot)));
             if (info.Sahara is not null)
             {
                 var sahara = info.Sahara;
@@ -113,7 +147,7 @@ internal sealed class ConsoleUi
                     sahara.Version,
                     sahara.MinimumVersionSupported,
                     sahara.MaximumPacketSizeSupported,
-                    sahara.Mode));
+                    SaharaIdentityDisplay.Mode(sahara.Mode)));
                 Console.WriteLine(Strings.FormatCli_InfoSaharaIdentity(
                     SaharaIdentityDisplay.Hex(sahara.Serial),
                     SaharaIdentityDisplay.Hex(sahara.SblVersion)));
@@ -166,15 +200,33 @@ internal sealed class ConsoleUi
     }
 
     internal static string FormatBytes(decimal bytes)
+        => $"{bytes.ToString("0", System.Globalization.CultureInfo.InvariantCulture)} Bytes ({ProgressDisplay.Size(bytes)})";
+
+    public void LogException(Exception exception)
     {
-        string[] units = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB"];
-        decimal value = bytes;
-        int unit = 0;
-        while (value >= 1024 && unit < units.Length - 1) { value /= 1024; unit++; }
-        return $"{bytes.ToString("0", System.Globalization.CultureInfo.InvariantCulture)} Bytes ({value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} {units[unit]})";
+        Log.Error(exception, Strings.Cli_LogCommandFailed, exception.Message);
+        string message = exception switch
+        {
+            TimeoutException => Strings.Cli_ResponseTimedOut,
+            FirehoseNakException => Strings.Cli_DeviceRejected,
+            ArgumentException or FileNotFoundException or InvalidOperationException or QcomResourceException =>
+                exception.Message.Replace('\r', ' ').Replace('\n', ' '),
+            _ => Strings.Cli_OperationFailed
+        };
+        if (message.Length > 240) message = message[..240];
+        lock (_gate)
+        {
+            ClearProgressUnsafe();
+            Console.Error.WriteLine(Strings.FormatCli_CommandFailed(message));
+            if (LogFilePath is not null) Console.Error.WriteLine(Strings.FormatCli_LogLocation(LogFilePath));
+        }
     }
 
-    public void LogException(Exception exception) => Log.Error(exception, Strings.Cli_LogCommandFailed, exception.Message);
+    public void ShowCancelled()
+    {
+        Log.ForContext("UserPresentation", true).Information(Strings.Cli_OperationCancelled);
+        WriteLine(Strings.Cli_OperationCancelled);
+    }
 
     internal void WriteLog(LogEvent logEvent)
     {
@@ -182,8 +234,6 @@ internal sealed class ConsoleUi
         {
             ClearProgressUnsafe();
             string line = $"[{logEvent.Timestamp.LocalDateTime:HH:mm:ss} {FormatLevel(logEvent.Level)}] {RenderMessage(logEvent)}";
-            if (logEvent.Exception is not null)
-                line += Environment.NewLine + logEvent.Exception;
             Console.Error.WriteLine(line);
         }
     }
@@ -202,7 +252,7 @@ internal sealed class ConsoleUi
     private static string RenderMessage(LogEvent logEvent)
     {
         using var writer = new StringWriter(System.Globalization.CultureInfo.InvariantCulture);
-        new Serilog.Formatting.Display.MessageTemplateTextFormatter("{Message:lj}", System.Globalization.CultureInfo.InvariantCulture).Format(logEvent, writer);
+        MessageFormatter.Format(logEvent, writer);
         return writer.ToString();
     }
 }

@@ -56,7 +56,6 @@ internal readonly struct SaharaPacketReceiver
             BinaryPrimitives.ReadUInt32LittleEndian(buffer[32..]),
             BinaryPrimitives.ReadUInt32LittleEndian(buffer[36..])
         );
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaHelloRequest));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadHelloResponse(out SaharaHelloResponse response, int length)
@@ -76,7 +75,6 @@ internal readonly struct SaharaPacketReceiver
             BinaryPrimitives.ReadUInt32LittleEndian(buffer[32..]),
             BinaryPrimitives.ReadUInt32LittleEndian(buffer[36..])
         );
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaHelloResponse));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadExecuteRequest(out SaharaExecuteRequest request, int length)
@@ -87,7 +85,6 @@ internal readonly struct SaharaPacketReceiver
         (
             (SaharaExecuteCommand)BinaryPrimitives.ReadUInt32LittleEndian(buffer)
         );
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaExecuteRequest));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadExecuteResponse(out SaharaExecuteResponse response, int length)
@@ -99,7 +96,6 @@ internal readonly struct SaharaPacketReceiver
             (SaharaExecuteCommand)BinaryPrimitives.ReadUInt32LittleEndian(buffer),
             BinaryPrimitives.ReadUInt32LittleEndian(buffer[4..])
         );
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaExecuteResponse));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadExecuteDataResponse(out SaharaExecuteDataResponse response, int length)
@@ -110,7 +106,6 @@ internal readonly struct SaharaPacketReceiver
         (
             (SaharaExecuteCommand)BinaryPrimitives.ReadUInt32LittleEndian(buffer)
         );
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaExecuteDataResponse));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadReadData32BitRequest(out SaharaReadData32BitRequest request, int length)
@@ -123,7 +118,6 @@ internal readonly struct SaharaPacketReceiver
             BinaryPrimitives.ReadUInt32LittleEndian(buffer[4..]),
             BinaryPrimitives.ReadUInt32LittleEndian(buffer[8..])
         );
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaReadData32BitRequest));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadReadData64BitRequest(out SaharaReadData64BitRequest request, int length)
@@ -136,7 +130,6 @@ internal readonly struct SaharaPacketReceiver
             BinaryPrimitives.ReadUInt64LittleEndian(buffer[8..]),
             BinaryPrimitives.ReadUInt64LittleEndian(buffer[16..])
         );
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaReadData64BitRequest));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadEndImageTxResponse(out SaharaEndImageTxResponse response, int length)
@@ -148,14 +141,12 @@ internal readonly struct SaharaPacketReceiver
             BinaryPrimitives.ReadUInt32LittleEndian(buffer),
             (SaharaStatus)BinaryPrimitives.ReadUInt32LittleEndian(buffer[4..])
         );
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaEndImageTxResponse));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadDoneRequest(out SaharaDoneRequest request, int length)
     {
         ValidateBodyLength(length, SaharaDoneRequest.Length);
         request = new SaharaDoneRequest();
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaDoneRequest));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadDoneResponse(out SaharaDoneResponse response, int length)
@@ -166,28 +157,24 @@ internal readonly struct SaharaPacketReceiver
         (
             (SaharaMode)BinaryPrimitives.ReadUInt32LittleEndian(buffer)
         );
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaDoneResponse));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadResetRequest(out SaharaResetRequest request, int length)
     {
         ValidateBodyLength(length, SaharaResetRequest.Length);
         request = new SaharaResetRequest();
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaResetRequest));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadResetResponse(out SaharaResetResponse response, int length)
     {
         ValidateBodyLength(length, SaharaResetResponse.Length);
         response = new SaharaResetResponse();
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaResetResponse));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadResetStateMachineRequest(out SaharaResetStateMachineRequest request, int length)
     {
         ValidateBodyLength(length, SaharaResetStateMachineRequest.Length);
         request = new SaharaResetStateMachineRequest();
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaResetStateMachineRequest));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadMemoryDebug32BitRequest(out SaharaMemoryDebug32BitRequest request, int length)
@@ -199,7 +186,6 @@ internal readonly struct SaharaPacketReceiver
             BinaryPrimitives.ReadUInt32LittleEndian(buffer),
             BinaryPrimitives.ReadUInt32LittleEndian(buffer[4..])
         );
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaMemoryDebug32BitRequest));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadMemoryDebug64BitRequest(out SaharaMemoryDebug64BitRequest request, int length)
@@ -211,7 +197,6 @@ internal readonly struct SaharaPacketReceiver
             BinaryPrimitives.ReadUInt64LittleEndian(buffer),
             BinaryPrimitives.ReadUInt64LittleEndian(buffer[8..])
         );
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaMemoryDebug64BitRequest));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadMemoryRead32BitRequest(out SaharaMemoryRead32BitRequest request, int length)
@@ -223,7 +208,6 @@ internal readonly struct SaharaPacketReceiver
             BinaryPrimitives.ReadUInt32LittleEndian(buffer),
             BinaryPrimitives.ReadUInt32LittleEndian(buffer[4..])
         );
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaMemoryRead32BitRequest));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadMemoryRead64BitRequest(out SaharaMemoryRead64BitRequest request, int length)
@@ -235,14 +219,12 @@ internal readonly struct SaharaPacketReceiver
             BinaryPrimitives.ReadUInt64LittleEndian(buffer),
             BinaryPrimitives.ReadUInt64LittleEndian(buffer[8..])
         );
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaMemoryRead64BitRequest));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadReadyResponse(out SaharaReadyResponse response, int length)
     {
         ValidateBodyLength(length, SaharaReadyResponse.Length);
         response = new SaharaReadyResponse();
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaReadyResponse));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ReadSwitchModeRequest(out SaharaSwitchModeRequest request, int length)
@@ -253,7 +235,6 @@ internal readonly struct SaharaPacketReceiver
         (
             (SaharaMode)BinaryPrimitives.ReadUInt32LittleEndian(buffer)
         );
-        _logger.Debug(Strings.Qcom_LogSaharaReceivePacket, nameof(SaharaSwitchModeRequest));
     }
 
     private void ReadBody(Span<byte> buffer, int actualBodyLength, int packetLength)

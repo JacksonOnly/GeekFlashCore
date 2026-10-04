@@ -10,7 +10,7 @@ try
 catch (Exception exception)
 {
     Console.Error.WriteLine(Strings.FormatCli_ArgumentError(exception.Message));
-    CommandLine.PrintHelp();
+    Console.Error.WriteLine(Strings.Cli_HelpHint);
     return 2;
 }
 var ui = new ConsoleUi();
@@ -24,9 +24,10 @@ catch (Exception exception)
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .WriteTo.Sink(fileLog)
-    .WriteTo.Sink(new ConsoleLogSink(ui), restrictedToMinimumLevel: options.Verbose ? Serilog.Events.LogEventLevel.Debug : Serilog.Events.LogEventLevel.Information)
+    .WriteTo.Sink(new ConsoleLogSink(ui, options.Verbose))
     .CreateLogger();
-Log.Information(Strings.Cli_LogFilePath, fileLog.FilePath);
+ui.LogFilePath = fileLog.FilePath;
+Log.ForContext("UserPresentation", true).Information(Strings.Cli_LogFilePath, fileLog.FilePath);
 Log.Debug(Strings.Cli_LogSession, options.Command, options.EffectiveOplusMode, options.ConnectTimeout,
     options.ReadTimeout, options.WriteTimeout, options.EffectiveResourceTimeout, Environment.Version);
 using var cancellation = new CancellationTokenSource();
@@ -37,13 +38,12 @@ try
 }
 catch (OperationCanceledException)
 {
-    Log.Warning(Strings.Cli_OperationCancelled);
+    ui.ShowCancelled();
     return 130;
 }
 catch (Exception exception)
 {
-    Log.Error(exception, Strings.Cli_LogCommandFailed, exception.Message);
-    Console.Error.WriteLine(Strings.FormatCli_CommandFailed(exception.Message));
+    ui.LogException(exception);
     return 1;
 }
 finally

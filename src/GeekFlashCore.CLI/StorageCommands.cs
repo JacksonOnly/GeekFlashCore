@@ -9,6 +9,15 @@ internal static class StorageCommands
     public static async Task ExecuteAsync(IProtocol protocol, string command, string[] args, ConsoleUi ui,
         IProgress<ProgressRecord> progress, CancellationToken ct)
     {
+        bool previous = ui.SuppressDiagnosticLogs;
+        ui.SuppressDiagnosticLogs = true;
+        try { await ExecuteCoreAsync(protocol, command, args, ui, progress, ct).ConfigureAwait(false); }
+        finally { ui.SuppressDiagnosticLogs = previous; }
+    }
+
+    private static async Task ExecuteCoreAsync(IProtocol protocol, string command, string[] args, ConsoleUi ui,
+        IProgress<ProgressRecord> progress, CancellationToken ct)
+    {
         if (command == "partitions")
         {
             if (protocol is IQcomProtocol partitionDevice) FirehoseCommands.Require(partitionDevice, "read");
@@ -20,7 +29,11 @@ internal static class StorageCommands
                 uint lun = CommandSyntax.Lun(args[0]);
                 partitions = (await protocol.GetPartitionsAsync(progress, ct)).Where(x => PartitionLun(x) == lun).ToArray();
             }
-            if (partitions.Count == 0) Serilog.Log.Warning(Strings.Cli_NoPartitions);
+            if (partitions.Count == 0)
+            {
+                Serilog.Log.Warning(Strings.Cli_NoPartitions);
+                ui.WriteLine(Strings.Cli_NoPartitions);
+            }
             foreach (var item in partitions)
                 ui.WriteLine(Strings.FormatCli_PartitionLine(
                     (item.Name ?? string.Empty).PadRight(32),
@@ -36,13 +49,17 @@ internal static class StorageCommands
         {
             FirehoseCommands.Require(device, command == "write" ? "program" : command);
         }
+        string? file = command == "erase" ? null : ConsolePath.Normalize(
+            args[0].Equals("sector", StringComparison.OrdinalIgnoreCase) ? args[4] : args[1]);
+        Serilog.Log.Information(Strings.Cli_LogStorageOperation, command, (target as PartitionTarget)?.Name,
+            target is SectorTarget sectors ? sectors.PhysicalPartitionNumber : (target as PartitionTarget)?.PhysicalPartitionNumber,
+            (target as SectorTarget)?.StartSector, (target as SectorTarget)?.SectorCount, file);
         if (command == "erase")
         {
             if (!await protocol.EraseAsync(target, progress, ct)) throw new InvalidOperationException(Strings.FormatCli_CommandUnsuccessful(command));
         }
         else
         {
-            string file = ConsolePath.Normalize(args[0].Equals("sector", StringComparison.OrdinalIgnoreCase) ? args[4] : args[1])!;
             if (command == "read")
             {
                 // Resolve named partitions before creating the output, so an invalid name cannot truncate a file.
@@ -60,10 +77,10 @@ internal static class StorageCommands
                             SectorCount = length / SectorSize(protocol), SectorSize = SectorSize(protocol) };
                     }
                 }
-                await AtomicReadOutput.WriteAsync(file, stream => protocol.ReadAsync(
+                await AtomicReadOutput.WriteAsync(file!, stream => protocol.ReadAsync(
                     new ReadDestination { Target = target, OutputStream = stream, OwnsStream = false }, progress, ct), ct);
             }
-            else await protocol.WriteAsync(new WriteSource { Source = new FileDataSource(file), Target = target }, progress, ct);
+            else await protocol.WriteAsync(new WriteSource { Source = new FileDataSource(file!), Target = target }, progress, ct);
         }
         ui.WriteLine(Strings.FormatCli_CommandCompleted(command));
     }

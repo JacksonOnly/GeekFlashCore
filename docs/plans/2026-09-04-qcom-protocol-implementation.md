@@ -1,5 +1,11 @@
 # Qualcomm Protocol Implementation Plan
 
+### FIND-01（2026-10-04）：首个搜索结果停止与安全取消
+
+- 用户真机已完成 Firehose 续接、Super→Ext 和 build.prop 定位；find 打印首个结果后继续遍历，后续 RAW 超时导致失效。CLI 现在默认首个匹配/导出后停止，find --all 保留全量行为。
+- 搜索中的 Ctrl+C 仅取消本次搜索，完整读取当前 RAW 与 ACK 后返回当前浏览器目录；搜索令牌不传给 Firehose，结束时移除取消范围并恢复浏览器操作令牌。真实超时/断连仍失效，程序级取消保持传播。代码范围仅 CLI，使用文档与中英资源已同步。
+- 当前完整本地测试 89/89（新增 15），Release 构建零警告零错误；包含 RAW 分片中取消后继续 ls/find/NOP、搜索导出保留原文件、--all 与默认首个范围。详细证据与后续真机风险见 `2026-10-04-browser-find-stop.md`。
+
 ### FH-01/FH-02（2026-10-04）：Firehose 续接与浏览器字节读取
 
 - 用户 23:28 日志确认 Sahara 唤醒包后设备返回完整 XML 解析错误，却仍等待 Loader 启动结束标记十秒并超时。只对已发送该唤醒包、未上传 Loader 的普通模式，收集完整拒绝响应并要求 NOP ACK 后续接配置；半帧、RAW、VIP、新 Loader 和 Oplus 首表保护保留。

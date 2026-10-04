@@ -78,26 +78,7 @@ internal static class BrowserCommands
                             await ExportAsync(session, session.Resolve(tokens[1], ct), tokens[2], ui, ct).ConfigureAwait(false);
                             break;
                         case "find":
-                            if (tokens.Length is < 2 or > 4) throw new CommandUsageException(Strings.Cli_BrowserHelp);
-                            string start = tokens.Length > 2 ? tokens[2] : ".";
-                            BrowserNode root = session.Resolve(start, ct);
-                            int found = 0;
-                            var outputs = new HashSet<string>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
-                            foreach (var match in session.Find(tokens[1], start, ct))
-                            {
-                                ui.WriteLine(match.Path);
-                                found++;
-                                if (tokens.Length > 3)
-                                {
-                                    string relative = root.IsDirectory ? match.Path[(root.Path.TrimEnd('/').Length + 1)..] : match.Name;
-                                    string destination = BrowserPath.ExportDestination(ConsolePath.Normalize(tokens[3])!, relative);
-                                    if (!outputs.Add(destination)) throw new IOException(Strings.Cli_BrowserOutputCollision);
-                                    BrowserSession.RejectLinkedAncestors(destination);
-                                    Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-                                    await ExportAsync(session, match, destination, ui, ct).ConfigureAwait(false);
-                                }
-                            }
-                            ui.WriteLine(Strings.FormatCli_BrowserFound(found));
+                            await FindAsync(session, tokens, ui, ct, connected).ConfigureAwait(false);
                             break;
                         default:
                             Require(tokens, 1);
@@ -124,6 +105,48 @@ internal static class BrowserCommands
             }
         }
         finally { ui.SuppressDiagnosticLogs = previous; }
+    }
+
+    private static async Task FindAsync(BrowserSession session, string[] tokens, ConsoleUi ui, CancellationToken ct,
+        Func<bool>? connected)
+    {
+        bool all = tokens.Length > 1 && tokens[1].Equals("--all", StringComparison.OrdinalIgnoreCase);
+        int first = all ? 2 : 1;
+        int arguments = tokens.Length - first;
+        if (arguments is < 1 or > 3) throw new CommandUsageException(Strings.Cli_BrowserHelp);
+        string start = arguments > 1 ? tokens[first + 1] : ".";
+        int found = 0;
+        using var search = ui.BeginSearch(ct);
+        try
+        {
+            ui.WriteLine(Strings.Cli_BrowserSearching);
+            BrowserNode root = session.Resolve(start, search.Token);
+            var outputs = new HashSet<string>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+            foreach (var match in session.Find(tokens[first], start, search.Token))
+            {
+                search.Token.ThrowIfCancellationRequested();
+                ui.WriteLine(match.Path);
+                found++;
+                if (arguments > 2)
+                {
+                    string relative = root.IsDirectory ? match.Path[(root.Path.TrimEnd('/').Length + 1)..] : match.Name;
+                    string destination = BrowserPath.ExportDestination(ConsolePath.Normalize(tokens[first + 2])!, relative);
+                    if (!outputs.Add(destination)) throw new IOException(Strings.Cli_BrowserOutputCollision);
+                    BrowserSession.RejectLinkedAncestors(destination);
+                    Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                    await ExportAsync(session, match, destination, ui, search.Token).ConfigureAwait(false);
+                }
+                if (!all) break;
+            }
+            search.Token.ThrowIfCancellationRequested();
+            ui.WriteLine(Strings.FormatCli_BrowserFound(found));
+        }
+        catch (OperationCanceledException) when (search.Token.IsCancellationRequested && !ct.IsCancellationRequested &&
+            connected?.Invoke() != false)
+        {
+            ui.WriteLine(Strings.FormatCli_BrowserSearchCancelled(found));
+        }
+        finally { session.SetOperationToken(ct); }
     }
 
     private static async Task ExportAsync(BrowserSession session, BrowserNode node, string output, ConsoleUi ui, CancellationToken ct)

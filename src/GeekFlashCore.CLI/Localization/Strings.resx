@@ -158,7 +158,7 @@ Loader 构建时间：{2}    已报告命令：{3} 项</value></data>
   <data name="Cli_VendorUnknown" xml:space="preserve"><value>启动日志、Loader 和 Sahara 未匹配厂商，请选择通信策略：</value></data>
   <data name="Cli_VendorPrompt" xml:space="preserve"><value>厂商编号或名称（留空取消）</value></data>
   <data name="Cli_VendorInvalid" xml:space="preserve"><value>请选择列表中的厂商，不能选择 Auto。</value></data>
-  <data name="Cli_BrowserHelp" xml:space="preserve"><value>资源浏览器：ls [path] [page]（每页 50 项，page 从 0 开始）、cd &lt;path&gt;、up、pwd、read &lt;path&gt; &lt;输出文件&gt;、find &lt;通配符&gt; [path] [输出目录]、exit。也可输入编号或路径进入；文件路径可触发导出。路径使用 /，不跟随符号链接。</value></data>
+  <data name="Cli_BrowserHelp" xml:space="preserve"><value>资源浏览器：ls [path] [page]（每页 50 项，page 从 0 开始）、cd &lt;path&gt;、up、pwd、read &lt;path&gt; &lt;输出文件&gt;、find [--all] &lt;通配符&gt; [path] [输出目录]、exit。find 默认找到第一个文件后停止，--all 搜索全部；搜索中 Ctrl+C 取消本次搜索，等待当前读取完成后返回浏览器。也可输入编号或路径进入；文件路径可触发导出。路径使用 /，不跟随符号链接。</value></data>
   <data name="Cli_BrowserInvalidPath" xml:space="preserve"><value>路径或文件名无效，或输出路径含链接。</value></data>
   <data name="Cli_BrowserLimit" xml:space="preserve"><value>浏览操作超过挂载、目录深度或条目数量上限。</value></data>
   <data name="Cli_BrowserNotDirectory" xml:space="preserve"><value>该节点不是可浏览的目录。</value></data>
@@ -175,4 +175,7 @@ Loader 构建时间：{2}    已报告命令：{3} 项</value></data>
   <data name="Cli_BrowserNextPage" xml:space="preserve"><value>更多条目：ls . {0}</value></data>
   <data name="Cli_BrowserExportProgress" xml:space="preserve"><value>正在导出文件</value></data>
   <data name="Cli_BrowserCleanupFailed" xml:space="preserve"><value>释放挂载资源失败。</value></data>
+  <data name="Cli_BrowserSearching" xml:space="preserve"><value>正在搜索；按 Ctrl+C 可取消本次搜索，等待当前读取完成后返回浏览器。</value></data>
+  <data name="Cli_BrowserSearchCancelled" xml:space="preserve"><value>搜索已取消，已找到 {0} 个文件。可继续浏览。</value></data>
+  <data name="Cli_BrowserSearchAlreadyActive" xml:space="preserve"><value>已有搜索正在进行。</value></data>
 </root>

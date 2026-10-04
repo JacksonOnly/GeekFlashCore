@@ -21,6 +21,8 @@ internal sealed class BrowserSession(int slot = 0, ILpBlockDeviceResolver? resol
     internal BrowserRoot Root { get; } = new();
     internal BrowserNode Current { get; private set; } = null!;
 
+    internal void SetOperationToken(CancellationToken ct) => _operationToken = ct;
+
     internal void AddMount(string name, Func<IReadableBlockDevice> open)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -227,7 +229,11 @@ internal sealed class BrowserSession(int slot = 0, ILpBlockDeviceResolver? resol
         {
             ObjectDisposedException.ThrowIf(session._disposed, session);
             session._operationToken.ThrowIfCancellationRequested();
-            return device.ReadAt(offset, destination);
+            // The search token never reaches Firehose RAW I/O. Finish the complete
+            // underlying byte read and its ACK before observing a requested stop.
+            int read = device.ReadAt(offset, destination);
+            session._operationToken.ThrowIfCancellationRequested();
+            return read;
         }
         public void Dispose() => device.Dispose();
     }

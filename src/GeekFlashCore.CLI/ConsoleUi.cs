@@ -10,6 +10,8 @@ namespace GeekFlashCore.CLI;
 internal sealed class ConsoleUi
 {
     private readonly object _gate = new();
+    private readonly object _searchGate = new();
+    private SearchCancellation? _searchCancellation;
     private int _progressRows;
     private volatile bool _suppressDiagnosticLogs;
     private readonly ProgressDisplay _progress = new(TimeProvider.System);
@@ -26,6 +28,41 @@ internal sealed class ConsoleUi
     }
 
     public ConsoleUi(TextReader? input = null) => _input = new ConsoleInputReader(input);
+
+    internal SearchCancellation BeginSearch(CancellationToken applicationToken)
+    {
+        lock (_searchGate)
+        {
+            if (_searchCancellation is not null) throw new InvalidOperationException(Strings.Cli_BrowserSearchAlreadyActive);
+            return _searchCancellation = new SearchCancellation(this, applicationToken);
+        }
+    }
+
+    internal bool TryCancelSearch()
+    {
+        lock (_searchGate)
+        {
+            if (_searchCancellation is null) return false;
+            _searchCancellation.Cancel();
+            return true;
+        }
+    }
+
+    internal sealed class SearchCancellation(ConsoleUi owner, CancellationToken applicationToken) : IDisposable
+    {
+        private readonly CancellationTokenSource _cancellation = CancellationTokenSource.CreateLinkedTokenSource(applicationToken);
+        internal CancellationToken Token => _cancellation.Token;
+        internal void Cancel() => _cancellation.Cancel();
+        public void Dispose()
+        {
+            lock (owner._searchGate)
+            {
+                if (!ReferenceEquals(owner._searchCancellation, this)) return;
+                owner._searchCancellation = null;
+                _cancellation.Dispose();
+            }
+        }
+    }
 
     public void WriteBanner() => WriteLine(Strings.Cli_Banner);
 

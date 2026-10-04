@@ -25,3 +25,5 @@ git ls-files .tests
 未决风险与恢复位置：无本轮硬件证据，设备随机读性能、同步 I/O 取消延迟、实际 EROFS 压缩/Ext 方言与厂商回退均待验证；合成夹具覆盖 EROFS FlatPlain/Inline 和 Ext direct/holes，不能代表所有真实镜像。默认 LP slot 0，活动槽不自动推测。本地单文件入口不解析 Sparse、不接多设备 LP 外部源；均有明确使用范围。搜索一次性批量导出不是目录事务，已成功文件在后续失败时保留；输出目录链接的并发替换竞态无法由预检查完全排除。下一步在真实设备运行 browse super，进入目标槽位，先导出一个小文件/搜索小目录并核对数据和 EDL 延迟；入口见 docs/cli-qcom.md 与同日设计。
 
 2026-10-04 FH-02 补充：用户 23:29 真机日志确认 FirehoseBlockDevice 拒绝 LP 魔数的 4 字节读取，原 MemoryDevice 夹具未覆盖该约束。已在核心块设备加入有界扇区适配；新增 512/4096 字节扇区真实 FirehoseBlockDevice 加模拟传输的嵌套导航/搜索/导出回归通过，当前完整本地测试 74/74，Release 构建与资源/diff 检查通过。新版本目录 CLI 已重建；修复后真机仍待复测。详细进度见 `2026-10-04-firehose-resume-byte-read-fixes.md`。
+
+2026-10-04 FIND-01 补充：用户 23:43 真机日志确认续接与 Super→Ext 浏览已工作，build.prop 首个结果后的全量遍历遇 RAW 超时。find 现默认首个匹配/导出即停止，--all 才全量；搜索中 Ctrl+C 使用独立取消范围，在完整同步字节读取与 ACK 后返回浏览器，结束时恢复操作令牌。15 项新增回归及当前完整 89/89 通过，Release 构建通过；协议通信错误仍保持失效规则，不将超时隐藏为取消。详见 `2026-10-04-browser-find-stop.md`。

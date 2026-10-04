@@ -31,7 +31,11 @@ Log.ForContext("UserPresentation", true).Information(Strings.Cli_LogFilePath, fi
 Log.Debug(Strings.Cli_LogSession, options.Command, options.EffectiveOplusMode, options.ConnectTimeout,
     options.ReadTimeout, options.WriteTimeout, options.EffectiveResourceTimeout, Environment.Version);
 using var cancellation = new CancellationTokenSource();
-Console.CancelKeyPress += (_, eventArgs) => { eventArgs.Cancel = true; cancellation.Cancel(); };
+Console.CancelKeyPress += (_, eventArgs) =>
+{
+    eventArgs.Cancel = true;
+    if (!ui.TryCancelSearch()) cancellation.Cancel();
+};
 try
 {
     return await new CliApplication(ui).RunAsync(options, cancellation.Token);

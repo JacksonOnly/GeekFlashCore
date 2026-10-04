@@ -28,6 +28,7 @@ public sealed class FirehoseSession : IDisposable
     private int _state = (int)FirehoseSessionState.Created;
     private FirehoseSessionState _stateBeforeRaw;
     private Action<FirehoseSession, CancellationToken>? _beforeCommand;
+    private Action<FirehoseSession, FirehoseCommandExecutor, CancellationToken>? _legacyBeforeCommand;
     private Action? _commandSent;
     private string? _xmlDeclarationAttribute;
     private OplusDigestCommandCounter? _legacyCounter;
@@ -47,9 +48,13 @@ public sealed class FirehoseSession : IDisposable
 
     public FirehoseSessionState State => (FirehoseSessionState)Volatile.Read(ref _state);
     internal FirehoseStorage PreferredInitialStorage => _executor.UsesLegacyBootstrap ? FirehoseStorage.Ufs : FirehoseStorage.Emmc;
+    internal int LegacyConfirmationTimeout => _defaultReadTimeoutMilliseconds;
 
     internal void SetBeforeCommand(Action<FirehoseSession, CancellationToken>? callback) =>
         _beforeCommand = callback;
+
+    internal void SetLegacyBeforeCommand(Action<FirehoseSession, FirehoseCommandExecutor, CancellationToken> callback) =>
+        _legacyBeforeCommand = callback;
 
     internal void SetCommandSent(Action? callback) =>
         _commandSent = callback;
@@ -159,6 +164,7 @@ public sealed class FirehoseSession : IDisposable
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+            _legacyBeforeCommand?.Invoke(this, _executor, cancellationToken);
             _beforeCommand?.Invoke(this, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             mainCommandMayHaveChangedWire = true;
@@ -171,7 +177,7 @@ public sealed class FirehoseSession : IDisposable
             CompleteCommand(command is ConfigureCommand, result, initialState);
             return result;
         }
-        catch (OperationCanceledException) when (!mainCommandMayHaveChangedWire)
+        catch (OperationCanceledException) when (!mainCommandMayHaveChangedWire && State != FirehoseSessionState.Faulted)
         {
             SetState(initialState);
             throw;
@@ -197,6 +203,7 @@ public sealed class FirehoseSession : IDisposable
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+            _legacyBeforeCommand?.Invoke(this, _executor, cancellationToken);
             _beforeCommand?.Invoke(this, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             mainCommandMayHaveChangedWire = true;
@@ -218,7 +225,7 @@ public sealed class FirehoseSession : IDisposable
             CompleteNak(exception, initialState);
             throw;
         }
-        catch (OperationCanceledException) when (!mainCommandMayHaveChangedWire)
+        catch (OperationCanceledException) when (!mainCommandMayHaveChangedWire && State != FirehoseSessionState.Faulted)
         {
             SetState(initialState);
             throw;
@@ -504,7 +511,10 @@ public sealed class FirehoseSession : IDisposable
     }
 
     private void CompleteNak(FirehoseNakException exception, FirehoseSessionState commandState) =>
-        SetState(exception.Result.RawMode ? FirehoseSessionState.Faulted : commandState);
+        SetState(State == FirehoseSessionState.Faulted || exception.Result.RawMode ||
+                 (_legacyCounter is not null && exception.Result.Logs.Any(static log =>
+                     log.Message.Contains("Hash of new table doesn't match the expected hash", StringComparison.Ordinal)))
+            ? FirehoseSessionState.Faulted : commandState);
 
     private readonly struct OperationLease : IDisposable
     {

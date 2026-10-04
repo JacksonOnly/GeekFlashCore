@@ -383,6 +383,8 @@
 
 ## 进度
 
+- 2026-10-04 LR-01～03：按用户新抓包确认只读会话 53 包后被当作新表而拒绝。已将 Rector 底层 NOP 补位/表确认算法覆盖到已认证 Legacy 后续 XML（Rector 公开 read 默认关闭 Digest，差异明确记录），跨读取/分段/GPT和一般命令共享计数，前置失败/取消保持失效，写入签名重放不接管前置失败。完整 182/182 Release 本地测试通过（16 秒），独立输出与原目录解决方案 Release 构建均 0 警告/0 错误；未终止用户锁定输出的 CLI 进程。设计、进度和硬件风险见 `2026-10-03-legacy-read-table-design.md`、`2026-10-03-legacy-read-table-implementation.md`。后续显式续接日志作为独立恢复修复继续。
+
 - 2026-10-03 CE-01～02：用户新日志已确认 Legacy Sign/初始化/六 LUN 查询成功，但 partitions all 被 CLI 空 SupportedFunctions 拦截，尚未发送 read。修复缺失列表表示未知，允许用户显式执行已实现命令；非空列表仍检查，断线/未知命令仍拒绝，展示本地候选而不虚构设备支持，不添加探测包。目标测试 13 RED/5 GREEN→19 GREEN，完整 163/163 Release 本地回归通过（16 秒），Release 构建 0 警告/0 错误，双语资源/help/diff/ignored 检查通过。范围和恢复记录见 `2026-10-03-cli-command-evidence-fix.md`；用户日志提供启动真机证据，GPT/实际读写真机结果仍待复测，代理本轮未连接硬件。
 
 - 2026-10-03 CA-01～04：按用户指定文件 3 成功抓包对齐 Legacy bootstrap，Verify EnableVip=0 且无 ping；声明更名 chimerais 并保持抓包空白，Digest/Verify/Sign/sha/Configure 黄金包长度为 8144/93/4096/95/190。sha256init 已知完整 log-only -1 在最多 1500 ms 后有界兼容；未知错误（包括伴随 ACK）、畸形/空 response、NAK、RAW、静默、半帧和重新等表仍失败，Digest/Verify/Sign 认证不放宽。Legacy 初始 UFS、显式配置/回退保留，Pt 及运行期 Rector 换表不变。诊断日志即时发布并隐藏 spaced HEX。最终 144 项完整 Release 本地回归通过（16 秒），Release 构建 0 警告/0 错误，help/资源/diff/ignored 检查通过；设计与交付见 `2026-10-03-oplus-capture-alignment-design.md`、`2026-10-03-oplus-capture-alignment-implementation.md`。本轮未连接硬件；声明重命名后的接受情况待重新进入 EDL 后实测。

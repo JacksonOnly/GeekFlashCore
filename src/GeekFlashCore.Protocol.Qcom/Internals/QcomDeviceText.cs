@@ -14,6 +14,7 @@ internal static partial class QcomDeviceText
         // Exact diagnostic allowlist: retain useful status/code, never an appended blob.
         if (SafeSignatureStatus().IsMatch(message)) return message.Trim();
         if (DataHashMismatchStatus().IsMatch(message)) return Strings.Qcom_DeviceHashMismatch;
+        if (TableHashMismatchStatus().IsMatch(message)) return Strings.Qcom_DeviceTableHashMismatch;
         if (message.IndexOfAny(['<', '>']) >= 0 ||
             SensitiveMarkers.Any(marker => message.Contains(marker, StringComparison.OrdinalIgnoreCase)) ||
             EncodedMaterial().IsMatch(message) || SpacedHexMaterial().IsMatch(message))
@@ -35,6 +36,9 @@ internal static partial class QcomDeviceText
 
     [GeneratedRegex(@"\A\s*(?:ERROR:\s*)?Hash of data doesn't match the expected hash(?: [+-]?[0-9]{1,10})?\s*\z", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex DataHashMismatchStatus();
+
+    [GeneratedRegex(@"\A\s*(?:ERROR:\s*)?Hash of new table doesn't match the expected hash(?: [+-]?[0-9]{1,10})?\s*\z", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    private static partial Regex TableHashMismatchStatus();
 
     [GeneratedRegex(@"\A\s*(?:ERROR:\s*)?(?:Verifying signature failed with [0-9]{1,10}|Authentication of signed hash failed [0-9]{1,10}|verify passed)\s*\z", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex SafeSignatureStatus();

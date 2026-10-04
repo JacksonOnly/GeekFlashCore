@@ -71,7 +71,7 @@ Sign 可通过提示手动输入，也可加 `--oplus-sign FILE`。续接跳过 
 
 ### Legacy 包计数
 
-初始 Digest 被确认后计数归零，每条 XML 和每次完整输出数据传输各计 1（包括 verify、Sign、sha256init）；策略安装和存储回退复用同一计数器及已认证资源。串口/USB 分块不重复计数，Sparse 空洞不计数据包。自动换表只由 Legacy program 写入触发，读、NOP、patch 和通用 XML 不自动刷新。容量 53 时，计数 51/52/53/54 分别先发 3/2/1/0 个 NOP，再发第 55 包 Digest。独立 ACK 后确认 NOP 计为 1；没有独立 ACK 则保留队列，需 handler 日志和完整成功响应关联确认。
+初始 Digest 被确认后计数归零，每条 XML 和每次完整输出数据传输各计 1（包括 verify、Sign、sha256init）；策略安装和存储回退复用同一计数器及已认证资源。串口/USB 分块不重复计数，Sparse 空洞与设备输入 RAW 不计输出数据包。Legacy 完成初始化后，读取/GPT、program、NOP、patch、storageinfo 和通用 XML 共用表边界检查，避免只读操作耗尽签名表。容量 53 时，计数 51/52/53/54 分别先发 3/2/1/0 个 NOP，再发第 55 包 Digest。独立 ACK 后确认 NOP 计为 1；没有独立 ACK 则保留队列，需 handler 日志和完整成功响应关联确认。Rector 公开 read 默认未开启 Digest；此处按用户实机 53 包耗尽证据将其底层算法应用到本项目已认证 Legacy 会话。
 
 完整且可恢复的 Sign 验证失败最多允许一次手动替换；读取 NAK 后续提示的预算为 1000 ms。如果设备再次进入签名表接收状态，先重发原 Digest，再发 verify 和新的 Sign。替换后仍失败需要重新进入 EDL。自动芯片表来自参考项目，不能保证所有 Loader 都接受。
 

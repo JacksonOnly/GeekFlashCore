@@ -3,6 +3,7 @@ using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Firehose;
 using GeekFlashCore.Protocol.Qcom.Firehose.Storage;
+using Serilog;
 
 namespace GeekFlashCore.Protocol.Qcom.Vendors.Oplus;
 
@@ -55,6 +56,7 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
         if (ReferenceEquals(_attachedSession, session)) return;
         if (_attachedSession is not null) throw new InvalidOperationException(Strings.Qcom_LegacyPolicyAlreadyAttached);
         _counter = session.ConfigureLegacyWire(_configuration, _counter);
+        session.SetLegacyBeforeCommand(CheckDigest);
         _attachedSession = session;
     }
 
@@ -73,7 +75,6 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
         Attach(session);
         if (command is not ProgramCommand)
             return session.Execute(command, expectedRawMode: true, cancellationToken: cancellationToken);
-        CheckDigest(session, cancellationToken);
         try
         {
             FirehoseCommandResult result = session.Execute(
@@ -82,7 +83,8 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
                 cancellationToken: cancellationToken);
             return result;
         }
-        catch (FirehoseNakException exception) when (!exception.Result.RawMode && IsSignatureFailure(exception.Result))
+        catch (FirehoseNakException exception) when (session.State != FirehoseSessionState.Faulted &&
+            !exception.Result.RawMode && IsSignatureFailure(exception.Result))
         {
             Refresh(session, cancellationToken);
             // Deliberately outside the try: a second NAK is returned immediately, without recovery.
@@ -100,29 +102,33 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
         // The wire executor counts XML and complete outgoing payloads before ACKs.
     }
 
-    private void CheckDigest(FirehoseSession session, CancellationToken cancellationToken)
+    private void CheckDigest(FirehoseSession session, FirehoseCommandExecutor executor, CancellationToken cancellationToken)
     {
         try
         {
             if (_counter.Current > _counter.Trigger)
                 throw new OplusDigestException(Strings.Qcom_LegacyPacketCountInvalid);
             if (!_counter.RequiresDigest) return;
+            Log.Debug(Strings.Qcom_LogLegacyDigestBoundary, _counter.Current, _configuration.MaxCommandsBeforeDigest,
+                _configuration.MaxCommandsBeforeDigest - _counter.Current);
             while (_counter.Current < _counter.Trigger)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                try { session.ExecuteLegacyNop(_nopXml, cancellationToken); }
+                // The session already holds its operation lease. These executor calls must
+                // bypass the public command entry and its table preflight.
+                try { executor.ExecuteXml(_nopXml, expectedRawMode: false, cancellationToken: cancellationToken); }
                 catch (FirehoseNakException exception) when (_counter.Current == _counter.Trigger &&
                     !exception.Result.RawMode && IsDigestRequested(exception.Result))
                 {
                     // Rector intentionally accepts the table-trigger NAK at max_count + 1.
                 }
             }
-            Refresh(session, cancellationToken);
+            Refresh(session, cancellationToken, executor);
         }
         catch { session.Invalidate(); throw; }
     }
 
-    private void Refresh(FirehoseSession session, CancellationToken cancellationToken)
+    private void Refresh(FirehoseSession session, CancellationToken cancellationToken, FirehoseCommandExecutor? executor = null)
     {
         try
         {
@@ -131,13 +137,17 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
                 throw new OplusDigestException(Strings.Qcom_OplusLegacyStreamMissing);
             if (!source.CanRead || _digest.Length != _digestLength)
                 throw new OplusDigestException(Strings.Qcom_OplusLegacySourceChanged);
-            FirehoseCommandResult? response = session.SendLegacyDigest(source, _digestLength, _transferBufferSize,
-                _configuration.DigestResponseTimeoutMilliseconds, cancellationToken);
+            FirehoseCommandResult? response = executor is null
+                ? session.SendLegacyDigest(source, _digestLength, _transferBufferSize,
+                    _configuration.DigestResponseTimeoutMilliseconds, cancellationToken)
+                : executor.SendLegacyDigest(source, _digestLength, _transferBufferSize,
+                    _configuration.DigestResponseTimeoutMilliseconds, cancellationToken);
             bool independentAck = response?.Attributes.TryGetValue("value", out string? value) == true &&
                 string.Equals(value, "ACK", StringComparison.OrdinalIgnoreCase);
             if (independentAck) _counter.Reset();
             cancellationToken.ThrowIfCancellationRequested();
-            session.ConfirmLegacyNop(_nopXml, requireHandler: !independentAck, cancellationToken);
+            if (executor is null) session.ConfirmLegacyNop(_nopXml, requireHandler: !independentAck, cancellationToken);
+            else executor.ConfirmLegacyNop(_nopXml, !independentAck, session.LegacyConfirmationTimeout, cancellationToken);
             if (!independentAck) _counter.Reset(1);
         }
         catch

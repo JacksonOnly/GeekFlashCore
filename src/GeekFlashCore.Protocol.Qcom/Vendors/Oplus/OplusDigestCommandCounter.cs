@@ -20,6 +20,7 @@ internal sealed class OplusDigestCommandCounter
     public void Complete()
     {
         _completed = checked(_completed + 1);
+        Serilog.Log.Debug(Strings.Qcom_LogLegacyPacketCount, _completed, _maximum);
     }
 
     public void CommandSent() => Complete();

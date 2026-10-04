@@ -10,4 +10,6 @@
 - CLI 在协议工厂创建前通过可选注册回调选普通/Pt/Legacy；默认普通，错误输入重选，显式 None/模式/资源参数、脚本和不可交互输入跳过选择。明确 Oplus 重连和 --oplus-resume 的前提，选择事件仅进入文件。
 - 完整当前本地测试 226/226 通过（18 秒，无跳过），含 Legacy Hash 诊断加 ACK 继续发送和既有 bootstrap/换表回归；Release 解决方案构建 0 警告、0 错误。CLI 137 对资源键、Qcom 252 对资源键一致且无重复；git diff --check 通过。
 - 验证命令：dotnet test .tests/GeekFlashCore.Protocol.Qcom.Tests/GeekFlashCore.Protocol.Qcom.Tests.csproj -c Release --no-restore；dotnet build GeekFlashCore.slnx -c Release --no-restore。CLI 使用说明已同步，生产差异未触及 Legacy Policy、计数、Program/RAW 或 Sign 线路；未进行真实设备 I/O。
-- 提交与主工作区合并后验证待补记。当前运行已显示认证失败，无法证明可直接续接；请重新进入 EDL 后使用正确模式/资源复测，禁止自动推断静默状态。
+- 生产提交 07a1e61（fix(qcom): wait passively for loader startup）及 d90f51f（feat(cli): select connection mode before upload），已安全快进合并到 D:/Code/CSharp/GeekFlashCore 的本地 main，未推送。
+- 合并后主工作区 Release 构建 0 警告、0 错误；Qualcomm 251/251、CLI 55/55 通过，无跳过。当前 worktree CLI help 冒烟包含启动预算说明；两处 net10.0 Release CLI 均已更新，.tests、bin/obj 与日志未被跟踪。
+- 当前运行已显示认证失败，无法证明可直接续接；请重新进入 EDL 后使用正确模式/资源复测，禁止自动推断静默状态。本轮只有用户日志和模拟传输证据，没有实际设备联机或读写验证。

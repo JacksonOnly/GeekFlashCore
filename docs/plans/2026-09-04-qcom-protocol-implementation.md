@@ -40,7 +40,7 @@
 
 - 用户 20:28 日志确认普通模式上传成功后仅等待 250 ms 即发送 NOP，随后出现 VIP 等待表和认证失败；20:31 Oplus 重连为无前缀超时，不能据此自动续接。
 - 启动改用 ReadTimeout 默认 10000 ms；已上传或收到任何启动字节时禁止 NOP 回退，完全静默的已运行普通会话保留旧探测。CLI 裸启动在创建协议前选择普通/Pt/Legacy，显式或脚本参数不增加提问。Legacy Hash 诊断加 ACK 的参考流程保持原样。
-- 新测试 22 项（21 RED→GREEN，1 既有回退通过），完整当前 226/226、Release 构建和资源/diff 检查通过；模拟启动阶段与真实设备证据分开记录。提交及合并验证见 `2026-10-04-firehose-startup-implementation.md`，硬件待重新进入 EDL 后复测。
+- 新测试 22 项（21 RED→GREEN，1 既有回退通过），完整当前 226/226、Release 构建和资源/diff 检查通过；模拟启动阶段与真实设备证据分开记录。生产提交 07a1e61、d90f51f 已快进合并本地 main，主工作区 Qualcomm 251/251、CLI 55/55 与 Release 构建通过，二进制已更新，未推送；详情见 `2026-10-04-firehose-startup-implementation.md`，硬件待重新进入 EDL 后复测。
 
 ## 执行规则
 

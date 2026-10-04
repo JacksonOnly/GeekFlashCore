@@ -154,4 +154,25 @@ Loader 构建时间：{2}    已报告命令：{3} 项</value></data>
   <data name="Cli_OplusModeInvalid" xml:space="preserve"><value>请输入 1 或 2。</value></data>
   <data name="Cli_LogConnectionModeSelected" xml:space="preserve"><value>CLI 连接模式已选择：{OplusMode}。</value></data>
   <data name="Cli_SessionEnded" xml:space="preserve"><value>操作成功，设备会话已结束，程序退出。</value></data>
+  <data name="Cli_VendorSelectionRequired" xml:space="preserve"><value>无法识别厂商，非交互模式请使用 --vendor 指定（通用设备选 Generic）。</value></data>
+  <data name="Cli_VendorUnknown" xml:space="preserve"><value>启动日志、Loader 和 Sahara 未匹配厂商，请选择通信策略：</value></data>
+  <data name="Cli_VendorPrompt" xml:space="preserve"><value>厂商编号或名称（留空取消）</value></data>
+  <data name="Cli_VendorInvalid" xml:space="preserve"><value>请选择列表中的厂商，不能选择 Auto。</value></data>
+  <data name="Cli_BrowserHelp" xml:space="preserve"><value>资源浏览器：ls [path] [page]（每页 50 项，page 从 0 开始）、cd &lt;path&gt;、up、pwd、read &lt;path&gt; &lt;输出文件&gt;、find &lt;通配符&gt; [path] [输出目录]、exit。也可输入编号或路径进入；文件路径可触发导出。路径使用 /，不跟随符号链接。</value></data>
+  <data name="Cli_BrowserInvalidPath" xml:space="preserve"><value>路径或文件名无效，或输出路径含链接。</value></data>
+  <data name="Cli_BrowserLimit" xml:space="preserve"><value>浏览操作超过挂载、目录深度或条目数量上限。</value></data>
+  <data name="Cli_BrowserNotDirectory" xml:space="preserve"><value>该节点不是可浏览的目录。</value></data>
+  <data name="Cli_BrowserNotFile" xml:space="preserve"><value>只能导出普通文件或原始分区，不能导出目录、链接或特殊文件。</value></data>
+  <data name="Cli_BrowserNotFound" xml:space="preserve"><value>找不到路径：{0}</value></data>
+  <data name="Cli_BrowserSourceOverwrite" xml:space="preserve"><value>输出文件不能覆盖正在挂载的镜像。</value></data>
+  <data name="Cli_BrowserShortRead" xml:space="preserve"><value>文件在声明长度之前结束。</value></data>
+  <data name="Cli_BrowserBlockDeviceRequired" xml:space="preserve"><value>此协议未提供可挂载的块设备接口。</value></data>
+  <data name="Cli_BrowserOutputCollision" xml:space="preserve"><value>多个搜索结果映射到同一输出路径，已停止导出。</value></data>
+  <data name="Cli_BrowserFound" xml:space="preserve"><value>找到 {0} 个文件。</value></data>
+  <data name="Cli_BrowserOutputPrompt" xml:space="preserve"><value>输出文件路径（留空跳过）</value></data>
+  <data name="Cli_BrowserExported" xml:space="preserve"><value>已导出 {0} → {1}</value></data>
+  <data name="Cli_BrowserLocation" xml:space="preserve"><value>路径：{0}    类型：{1}</value></data>
+  <data name="Cli_BrowserNextPage" xml:space="preserve"><value>更多条目：ls . {0}</value></data>
+  <data name="Cli_BrowserExportProgress" xml:space="preserve"><value>正在导出文件</value></data>
+  <data name="Cli_BrowserCleanupFailed" xml:space="preserve"><value>释放挂载资源失败。</value></data>
 </root>

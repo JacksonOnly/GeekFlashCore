@@ -33,6 +33,10 @@ Sahara 探测成功后、Loader 上传前会输出完整身份信息；`info` �
 
 名称优先从 Sahara OEM/SoC HW/MSM 标识映射，无法识别时使用已有 Loader 名称或显示“未知”，原始 ID 仍保留。共享的 OEM ID 只显示对应厂商组，例如 OPPO / OnePlus / realme；“厂商协议策略”与硬件厂商名称分别显示。通用 Sahara 诊断日志中的身份 ID 改为 HEX，Hash 仍仅记录长度。
 
+通信策略按 `--vendor` → Firehose 启动证据 → 已接受 Loader 厂商 → Sahara OEM 顺序判断。全部未知时，在 Configure 和认证之前列出厂商，请输入编号或名称；通用设备可以选 `Generic`，留空或 Ctrl+C 取消。非交互或 stdin 重定向不能回答资源提示，未知厂商必须显式指定 `--vendor Generic` 或实际厂商。Sahara 的 OPPO/OnePlus/realme 共享 OEM 回退为 Oplus，Firehose 的 OnePlus/Nothing 特征仍优先。选择保留至断开/失效，重配置不重复提问。
+
+Core 的 `IVendorSelectionProvider` 是可选宿主接口，使用既有资源超时、取消和迟到结果观察。原构造函数及厂商解析入口保留，未配置此 Provider 的旧宿主仍回退 Generic；新增完整构造函数末尾可传 `vendorSelectionProvider`，返回有效的非 Auto 枚举。
+
 ## Oplus 模式
 
 两种 Oplus 模式均在 Configure 和存储查询前执行：启动日志 → Digest → verify XML → Sign（零填充至 4096 字节）→ verify passed → sha256init → Configure。Digest 失败、Sign 超时或半帧均立即中止连接，不发送其他命令。
@@ -64,7 +68,7 @@ Loader 上传并输出 `VIP is enabled, receiving the signed table` 后，设备
 确认设备仍在等待第一张 Digest、且上一轮尚未发送 Digest 时，可显式续接：
 
 ```powershell
-geekflash --port COM77 --oplus-mode OplusDigestLegacy --oplus-digest "D:\刷机\方案\奇美拉\480\Digest.bin" --oplus-resume
+geekflash --port COM77 --vendor Oplus --oplus-mode OplusDigestLegacy --oplus-digest "D:\刷机\方案\奇美拉\480\Digest.bin" --oplus-resume
 ```
 
 Sign 可通过提示手动输入，也可加 `--oplus-sign FILE`。续接跳过 Sahara 和启动日志，不重新上传 Loader，首包是 Digest，之后 Verify → Sign → sha256init → Configure。Pt 同样支持；缺少芯片信息时要求手动 Sign。Core 对应 `OplusDigestConfiguration.ResumeAwaitingDigest`，每个协议实例仅允许一次，认证/RAW 失败后再次 `connect` 不会盲目续接。
@@ -123,3 +127,37 @@ geekflash --port COM7 --loader programmer.elf --non-interactive read sector 0 0 
 ```
 
 读取先写入目标同目录的唯一临时文件，协议成功且未取消后才替换目标。失败或取消会删除临时文件，保留已有输出；进程被强制终止时可能遗留 `.tmp` 文件。未执行真实硬件读写验证。
+
+## 只读挂载与资源浏览器
+
+连接后的交互提示符中执行 `browse <partition> [lun] [lp-slot]`，例如 `browse super`、`browse super 0 1` 或 `browse system_a`。也可在命令行连接后直接进入：
+
+```powershell
+geekflash --port COM7 --loader programmer.elf browse super
+geekflash browse-image "D:\images\super.img"
+geekflash browse-image "D:\images\system.img"
+```
+
+`browse-image <raw-image> [lp-slot]` 无需设备，支持 raw LP/EROFS/Ext 镜像；不直接处理 Android Sparse 容器。设备入口使用 GPT 字节范围切片，LP 按 extent 映射读取，均不会先转储完整 Super。LP slot 默认 0，最后一个参数可选择 1 等槽位，不自动猜测活动槽。设备分区同名时需要显式 LUN，LP 外部块设备名存在歧义时拒绝挂载；本地多设备 LP 需要额外源，当前单镜像入口会明确拒绝。
+
+进入后显示当前路径、类型、大小、编号和返回项。输入编号或目录路径进入；输入文件路径可选择输出文件。挂载层和普通目录使用同一条路径，例如 `/super/system_a/etc/settings.conf`，路径和搜索区分大小写：
+
+```text
+cd /super/system_a/etc
+ls
+up
+cd ..
+pwd
+read /super/system_a/etc/settings.conf "D:\backup\settings.conf"
+find *.conf /super/system_a "D:\backup\system_a"
+find build.prop /super
+exit
+```
+
+`up` 和 `cd ..` 返回上层，能依次退出文件目录、文件系统分区、LP 容器，到虚拟 `/`。`exit` 返回原 CLI 提示符；以独立 `browse`/`browse-image` 启动时退出程序。路径中的空格用引号包裹，路径分隔符使用 `/`。`ls [path] [page]` 每页 50 项，page 从 0 开始，编号为目录内序号；LP 子分区在首次进入时才打开文件系统。未知格式可按 raw 文件导出，已识别但损坏/不支持的文件系统会报错。
+
+`read <path> <输出文件>` 导出一个普通文件或 raw 分区；父输出目录需要存在。`find <文件名通配符> [path] [输出目录]` 递归搜索 EROFS/Ext 的普通文件，支持 `*`、`?`；不指定目录时仅打印完整虚拟路径。指定输出目录时创建并保留相对搜索起点的目录结构，例如上述搜索输出 `D:\backup\system_a\etc\settings.conf`。搜索 LP 容器会按需访问各逻辑分区。
+
+不跟随符号链接，不导出设备节点/Socket 等特殊文件；目录循环有检测，目录深度和节点数有上限。每个文件用池化缓冲流式复制并原子替换，取消/短读保留该文件原输出，成功时显示导出进度；批量导出中已成功的文件会保留，后续失败停止本次搜索。输出不能越出指定目录、通过链接目录写入、覆盖挂载源镜像，多个结果映射同一路径时停止。交互命令错误可以重试，设备会话失效则退出浏览器并要求重连。
+
+可给 `browse-image` 的 stdin 提供命令脚本；配合 `--non-interactive` 时，命令错误立即返回失败退出码，不等待文件输出提示，脚本使用显式 `read`/`find` 输出路径。设备脚本还需提供连接资源；所有厂商证据未知时必须加 `--vendor`。尚无本轮真机挂载/吞吐验证，首次实测建议先搜索小目录、导出一个小文件。

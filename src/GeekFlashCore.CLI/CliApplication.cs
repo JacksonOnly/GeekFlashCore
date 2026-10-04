@@ -33,6 +33,12 @@ internal sealed class CliApplication
         try { options = NormalizeAndValidate(options, requestedRegistration); }
         catch (CommandUsageException exception) { _ui.WriteLine(exception.Message); return 2; }
         if (options.Command == "help") { CommandLine.PrintHelp(); return 0; }
+        if (options.Command == "browse-image")
+        {
+            try { await BrowserCommands.BrowseImageAsync(options.Arguments, _ui, ct).ConfigureAwait(false); return 0; }
+            catch (OperationCanceledException) { _ui.ShowCancelled(); return 130; }
+            catch (Exception exception) { _ui.LogException(exception); return 1; }
+        }
         if (options.Command.Equals("devices", StringComparison.OrdinalIgnoreCase)) return ListDevices();
         if (options.Command.Equals("interactive", StringComparison.OrdinalIgnoreCase))
             return await InteractiveAsync(options, ct).ConfigureAwait(false);
@@ -123,6 +129,12 @@ internal sealed class CliApplication
             case "info":
                 registration.InfoPresenter?.Invoke(protocol, _ui);
                 return 0;
+            case "browse":
+                await BrowserCommands.BrowseDeviceAsync(protocol, options.Arguments, _ui, progress, ct).ConfigureAwait(false);
+                return 0;
+            case "browse-image":
+                await BrowserCommands.BrowseImageAsync(options.Arguments, _ui, ct).ConfigureAwait(false);
+                return 0;
             case "partitions": case "read": case "write": case "erase":
                 await StorageCommands.ExecuteAsync(protocol, options.Command,
                     options.Arguments, _ui, progress, ct);
@@ -171,7 +183,7 @@ internal sealed class CliApplication
         catch (Exception exception) { _ui.LogException(exception); return 1; }
     }
 
-    private static string[] Tokenize(string line)
+    internal static string[] Tokenize(string line)
     {
         var tokens = new List<string>(); var current = new System.Text.StringBuilder(); char quote = '\0';
         foreach (char ch in line)

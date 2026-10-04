@@ -154,4 +154,25 @@ Loader build time: {2}    Reported commands: {3}</value></data>
   <data name="Cli_OplusModeInvalid" xml:space="preserve"><value>Enter 1 or 2.</value></data>
   <data name="Cli_LogConnectionModeSelected" xml:space="preserve"><value>CLI connection mode selected: {OplusMode}.</value></data>
   <data name="Cli_SessionEnded" xml:space="preserve"><value>Operation succeeded. The device session has ended; exiting.</value></data>
+  <data name="Cli_VendorSelectionRequired" xml:space="preserve"><value>Vendor is unknown. Use --vendor in non-interactive mode (Generic for generic devices).</value></data>
+  <data name="Cli_VendorUnknown" xml:space="preserve"><value>Startup logs, Loader and Sahara did not identify a vendor. Select a strategy:</value></data>
+  <data name="Cli_VendorPrompt" xml:space="preserve"><value>Vendor number or name (blank to cancel)</value></data>
+  <data name="Cli_VendorInvalid" xml:space="preserve"><value>Select a listed vendor; Auto is not a selection.</value></data>
+  <data name="Cli_BrowserHelp" xml:space="preserve"><value>Browser: ls [path] [page] (50 entries, pages start at 0), cd &lt;path&gt;, up, pwd, read &lt;path&gt; &lt;output-file&gt;, find &lt;glob&gt; [path] [output-directory], exit. Enter a number or path to open; file paths prompt for export. Use / in paths; symbolic links are not followed.</value></data>
+  <data name="Cli_BrowserInvalidPath" xml:space="preserve"><value>Invalid path or filename, or output path contains a link.</value></data>
+  <data name="Cli_BrowserLimit" xml:space="preserve"><value>Browser mount, depth or entry limit exceeded.</value></data>
+  <data name="Cli_BrowserNotDirectory" xml:space="preserve"><value>This node is not a browsable directory.</value></data>
+  <data name="Cli_BrowserNotFile" xml:space="preserve"><value>Only regular files or raw partitions can be exported, not directories, links or special files.</value></data>
+  <data name="Cli_BrowserNotFound" xml:space="preserve"><value>Path not found: {0}</value></data>
+  <data name="Cli_BrowserSourceOverwrite" xml:space="preserve"><value>The output cannot overwrite the mounted image.</value></data>
+  <data name="Cli_BrowserShortRead" xml:space="preserve"><value>The file ended before its declared length.</value></data>
+  <data name="Cli_BrowserBlockDeviceRequired" xml:space="preserve"><value>This protocol does not provide mountable block devices.</value></data>
+  <data name="Cli_BrowserOutputCollision" xml:space="preserve"><value>Multiple search results map to the same output path; export stopped.</value></data>
+  <data name="Cli_BrowserFound" xml:space="preserve"><value>Found {0} files.</value></data>
+  <data name="Cli_BrowserOutputPrompt" xml:space="preserve"><value>Output file path (blank to skip)</value></data>
+  <data name="Cli_BrowserExported" xml:space="preserve"><value>Exported {0} → {1}</value></data>
+  <data name="Cli_BrowserLocation" xml:space="preserve"><value>Path: {0}    Type: {1}</value></data>
+  <data name="Cli_BrowserNextPage" xml:space="preserve"><value>More entries: ls . {0}</value></data>
+  <data name="Cli_BrowserExportProgress" xml:space="preserve"><value>Exporting file</value></data>
+  <data name="Cli_BrowserCleanupFailed" xml:space="preserve"><value>Failed to release mount resources.</value></data>
 </root>

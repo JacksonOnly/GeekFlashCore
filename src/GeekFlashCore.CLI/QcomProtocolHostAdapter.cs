@@ -28,9 +28,10 @@ internal static class QcomProtocolHostAdapter
         return new QcomProtocol(transport, options,
             new ConsoleSaharaImageProvider(context.Ui, context.Options.Loader),
             mode == OplusDigestMode.None && !options.AllowOplusModeSelection ? null : new ConsoleOplusDigestProvider(context.Ui, context.Options.OplusDigest, context.Options.OplusSign),
-            new ConsoleAuthenticationProvider(context.Ui), null, leaveTransportOpen: true,
+            new ConsoleAuthenticationProvider(context.Ui), null, leaveTransportOpen: true, programmerInspector: null,
             firehoseDigestProvider: options.FirehoseDigest.Enabled ? new ConsoleFirehoseDigestProvider(context.Ui, context.Options.Digest) : null,
-            firehoseVipProvider: options.FirehoseVip.Enabled ? new ConsoleVipProvider(context.Ui, context.Options.VipSigned, context.Options.VipChained) : null);
+            firehoseVipProvider: options.FirehoseVip.Enabled ? new ConsoleVipProvider(context.Ui, context.Options.VipSigned, context.Options.VipChained) : null,
+            vendorSelectionProvider: new ConsoleVendorSelectionProvider(context.Ui));
     }
 
     private static QcomProtocolOptions CreateOptions(CliOptions input)

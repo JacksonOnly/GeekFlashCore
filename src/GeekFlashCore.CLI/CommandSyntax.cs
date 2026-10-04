@@ -10,6 +10,8 @@ internal static class CommandSyntax
     internal static readonly IReadOnlyDictionary<string, string> Usages = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["partitions"] = "partitions <all|lun>",
+        ["browse"] = "browse <partition> [lun] [lp-slot]",
+        ["browse-image"] = "browse-image <raw-image> [lp-slot]",
         ["read"] = "read <partition> <file> [lun] | read sector <lun> <start> <count> <file>",
         ["write"] = "write <partition> <file> [lun] | write sector <lun> <start> <count> <file>",
         ["erase"] = "erase <partition> [lun] | erase sector <lun> <start> <count>",
@@ -35,6 +37,15 @@ internal static class CommandSyntax
         {
             switch (command)
             {
+                case "browse":
+                    if (a.Length is < 1 or > 3) throw new FormatException();
+                    if (a.Length > 1) Lun(a[1]);
+                    if (a.Length > 2 && Number(a[2]) > 25) throw new FormatException();
+                    break;
+                case "browse-image":
+                    if (a.Length is < 1 or > 2) throw new FormatException();
+                    if (a.Length > 1 && Number(a[1]) > 25) throw new FormatException();
+                    break;
                 case "read": case "write": case "erase":
                     bool erase = command == "erase";
                     if (a.Length > 0 && a[0].Equals("sector", StringComparison.OrdinalIgnoreCase))

@@ -9,6 +9,9 @@
     <RootNamespace>GeekFlashCore.CLI</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\GeekFlashCore.Android.Lp\GeekFlashCore.Android.Lp.csproj" />
+    <ProjectReference Include="..\GeekFlashCore.FileSystem.Erofs\GeekFlashCore.FileSystem.Erofs.csproj" />
+    <ProjectReference Include="..\GeekFlashCore.FileSystem.Ext\GeekFlashCore.FileSystem.Ext.csproj" />
     <ProjectReference Include="..\GeekFlashCore.Protocol.Abstractions\GeekFlashCore.Protocol.Abstractions.csproj" />
     <ProjectReference Include="..\GeekFlashCore.Protocol.Qcom\GeekFlashCore.Protocol.Qcom.csproj" />
     <ProjectReference Include="..\GeekFlashCore.Protocol.Qcom.Abstractions\GeekFlashCore.Protocol.Qcom.Abstractions.csproj" />

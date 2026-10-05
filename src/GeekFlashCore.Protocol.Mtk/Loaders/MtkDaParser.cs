@@ -47,7 +47,10 @@ public static class MtkDaParser
             if (Read16(entry, 0) != 0xdada)
                 throw new MtkResourceException("DA entry magic");
             int tableOffset = legacy ? 0x10 : 0x14;
-            ushort index = Read16(entry, tableOffset - 4), regions = Read16(entry, tableOffset - 2);
+            ushort rawIndex = Read16(entry, tableOffset - 4), regions = Read16(entry, tableOffset - 2);
+            // Standard containers include file-info (or a DA1 alias) in region zero.
+            // Both reference loaders execute region 1 then 2 even when the raw index is zero.
+            ushort index = rawIndex == 0 && regions >= 3 ? (ushort)1 : rawIndex;
             if (regions is < 2 or > 10 || index >= regions - 1 || tableOffset + regions * 20 > stride)
                 throw new MtkResourceException("DA region count/index");
             var windows = new List<MtkDaRegion>(regions);
@@ -62,13 +65,13 @@ public static class MtkDaParser
                     continue;
                 }
                 if (length == 0 || signature >= length || (long)offset > source.Length - length ||
-                    (ulong)address + length > (ulong)uint.MaxValue + 1 || entryOffset >= length)
+                    (ulong)address + length > (ulong)uint.MaxValue + 1 || entryOffset > length)
                     throw new MtkResourceException("DA region window");
                 windows.Add(new(offset, length, address, entryOffset, signature));
             }
             MtkDaKind dialect = v6 ? MtkDaKind.Xml : kind ?? (legacy ? MtkDaKind.Legacy : MtkDaKind.XFlash);
             entries.Add(new(Read16(entry, 2), Read16(entry, 4), Read16(entry, 6),
-                legacy ? (ushort)0 : Read16(entry, 8), index, dialect, windows.AsReadOnly()));
+                legacy ? (ushort)0 : Read16(entry, 8), index, dialect, windows.AsReadOnly()) { RawEntryRegionIndex = rawIndex });
         }
         return entries.AsReadOnly();
     }

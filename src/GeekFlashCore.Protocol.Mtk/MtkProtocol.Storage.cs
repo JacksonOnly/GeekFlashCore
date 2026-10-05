@@ -1,8 +1,6 @@
 using GeekFlashCore.Android.Sparse;
 using GeekFlashCore.BlockDevice;
 using GeekFlashCore.BlockDevice.Abstractions;
-using GeekFlashCore.Gpt;
-using GeekFlashCore.Gpt.Abstractions;
 using GeekFlashCore.Protocol.Abstractions;
 
 namespace GeekFlashCore.Protocol.Mtk;
@@ -43,12 +41,12 @@ public sealed partial class MtkProtocol
             var region = Range(range);
             if (!destination.OutputStream.CanWrite)
                 throw new ArgumentException(nameof(destination));
-            _da!.Read(region, range.Offset, range.Length, destination.OutputStream);
-            progress?.Report(new(range.Length, range.Length, Strings.FormatPhase("read"))
-            {
-                Unit = ProgressUnit.Bytes,
-                Phase = ProgressPhase.Completed
-            });
+            var tracker = new TransferProgress(progress, range.Length, "read");
+            tracker.Report(0, ProgressPhase.Started);
+            using var output = new ProgressStream(destination.OutputStream, n => tracker.Report(n));
+            _da!.Read(region, range.Offset, range.Length, output);
+            _wire.Check();
+            tracker.Report(range.Length, ProgressPhase.Completed);
             return destination;
         }, ct));
     }
@@ -62,12 +60,15 @@ public sealed partial class MtkProtocol
             if (source.Source.Length <= 0)
                 throw new MtkResourceException("write source length");
             using Stream input = source.Source.OpenStream();
-            if (!input.CanRead || input.CanSeek && input.Length - input.Position != source.Source.Length)
+            if (!input.CanRead || input.CanSeek && (input.Position != 0 || input.Length != source.Source.Length))
                 throw new MtkResourceException("write source");
+            using var prefix = input.CanSeek ? null : new PrefixStream(input, source.Source.Length);
+            Stream content = prefix ?? input;
             long written;
-            if (SparseImageParser.IsSparse(input))
+            TransferProgress tracker;
+            if (SparseImageParser.IsSparse(content))
             {
-                using var block = new StreamBlockDevice(input, source.Source.Length, DeviceOwnership.Borrow);
+                using var block = new StreamBlockDevice(content, source.Source.Length, DeviceOwnership.Borrow);
                 using var sparse = SparseImageParser.Open(block, DeviceOwnership.Borrow);
                 if (sparse.ExpandedLength <= 0 || sparse.ExpandedLength > range.Length || sparse.Header.BlockSize % region.BlockSize != 0)
                     throw new MtkResourceException("Sparse geometry");
@@ -76,10 +77,15 @@ public sealed partial class MtkProtocol
                 // Validate every expanded region before the first storage write.
                 foreach (var part in data)
                     _ = Range(new(range.RegionId, checked(range.Offset + part.StartBlock * (long)sparse.Header.BlockSize), part.Length));
+                tracker = new(progress, sparse.ExpandedLength, "write");
+                tracker.Report(0, ProgressPhase.Started);
                 foreach (var part in data)
                 {
-                    using var partStream = part.OpenRead(input, true);
-                    _da!.Write(region, checked(range.Offset + part.StartBlock * (long)sparse.Header.BlockSize), part.Length, partStream);
+                    long start = checked(part.StartBlock * (long)sparse.Header.BlockSize);
+                    tracker.Report(start);
+                    using var partStream = part.OpenRead(content, true);
+                    using var tracked = new ProgressStream(partStream, n => tracker.Report(checked(start + n)));
+                    _da!.Write(region, checked(range.Offset + start), part.Length, tracked);
                 }
                 written = sparse.ExpandedLength;
             }
@@ -89,20 +95,30 @@ public sealed partial class MtkProtocol
                 long padded = checked((written + region.BlockSize - 1) / region.BlockSize * region.BlockSize);
                 if (padded > range.Length)
                     throw new ArgumentOutOfRangeException(nameof(source));
-                using var padding = new PaddingStream(input, written, padded);
+                tracker = new(progress, written, "write");
+                tracker.Report(0, ProgressPhase.Started);
+                using var tracked = new ProgressStream(content, n => tracker.Report(n));
+                using var padding = new PaddingStream(tracked, written, padded);
                 _da!.Write(region, range.Offset, padded, padding);
             }
             _partitions = null;
-            progress?.Report(new(written, written, Strings.FormatPhase("write"))
-            {
-                Unit = ProgressUnit.Bytes,
-                Phase = ProgressPhase.Completed
-            });
+            _wire.Check();
+            tracker.Report(written, ProgressPhase.Completed);
             return written;
         }, ct));
     }
     public Task<bool> EraseAsync(StorageTarget target, IProgress<ProgressRecord>? progress = null, CancellationToken ct = default) =>
-        Task.FromResult(Execute(() => { var range = Resolve(target); var region = Range(range); _da!.Erase(region, range.Offset, range.Length); _partitions = null; return true; }, ct));
+        Task.FromResult(Execute(() =>
+        {
+            var range = Resolve(target); var region = Range(range);
+            var tracker = new TransferProgress(progress, range.Length, "erase");
+            tracker.Report(0, ProgressPhase.Started);
+            _wire.ProgressPercent = percent => tracker.Report(checked(range.Length / 100 * percent + range.Length % 100 * percent / 100));
+            try { _da!.Erase(region, range.Offset, range.Length); }
+            finally { _wire.ProgressPercent = null; }
+            _partitions = null; _wire.Check();
+            tracker.Report(range.Length, ProgressPhase.Completed); return true;
+        }, ct));
     public Task<IReadOnlyList<PartitionInfo>> GetPartitionsAsync(IProgress<ProgressRecord>? progress = null, CancellationToken ct = default) =>
         Task.FromResult(Execute<IReadOnlyList<PartitionInfo>>(() => LoadPartitionsCore().Select(p => new PartitionInfo(p.Name, p.Range.Offset, p.Range.Offset, p.Range.Length,
             new Dictionary<string, string> { { "PhysicalPartitionNumber", p.Range.RegionId.ToString(System.Globalization.CultureInfo.InvariantCulture) } })).ToArray(), ct));
@@ -114,40 +130,18 @@ public sealed partial class MtkProtocol
         List<(string, MtkFlashRange)> result = [];
         foreach (var region in _storage!.Regions)
         {
-            int block = region.BlockSize;
-            if (region.Length < block * 2L)
-                continue;
-            byte[] header = new byte[block * 2];
-            using (var output = new MemoryStream(header, true))
-                _da!.Read(region, 0, header.Length, output);
-            if (!header.AsSpan(block, 8).SequenceEqual("EFI PART"u8))
-                continue;
-            var h = header.AsSpan(block);
-            ulong entriesLba = BinaryPrimitives.ReadUInt64LittleEndian(h[72..]);
-            uint count = BinaryPrimitives.ReadUInt32LittleEndian(h[80..]), entrySize = BinaryPrimitives.ReadUInt32LittleEndian(h[84..]);
-            if (entriesLba != 2 || count is 0 or > 4096 || entrySize is < 128 or > 4096 || entrySize % 8 != 0)
-                throw new MtkResourceException("GPT geometry");
-            long bytes = checked((long)count * entrySize);
-            long padded = checked((bytes + block - 1) / block * block), size = checked(header.Length + padded);
-            if (size > 1048576 || size > region.Length)
-                throw new MtkResourceException("GPT metadata");
-            byte[] image = new byte[(int)size];
-            header.CopyTo(image, 0);
-            using (var output = new MemoryStream(image, header.Length, (int)padded, true))
-                _da!.Read(region, header.Length, padded, output);
-            var table = new GptParser().Parse(image, new GptParseOptions
+            var entries = ReadGpt(region);
+            if (entries is null)
             {
-                SectorSize = block,
-                CrcPolicy = GptCrcPolicy.Strict,
-                AllowUnpatchedPartitionGeometry = false,
-                AllowEmptyPartitionTypeId = false,
-                SkipEmptyPartitionTypeId = true
-            });
-            if (table.Header.AlternateLba >= (ulong)(region.Length / block))
-                throw new MtkResourceException("GPT disk size");
-            foreach (var entry in table.Entries)
+                if (region.WireId == _storage.UserRegionId && _da is Da.LegacySession && _options.LegacyPmtLayout is { } pmt)
+                    result.AddRange(ReadLegacyPmt(pmt).Select(p => (p.Name!, new MtkFlashRange(region.WireId, p.Offset!.Value, p.Length!.Value))));
+                else if (region.WireId == _storage.UserRegionId && region.Kind == MtkStorageKind.Nand && _da is Da.XmlSession)
+                    result.AddRange(ReadXmlPartitionTable().Select(p => (p.Name!, new MtkFlashRange(region.WireId, p.Offset!.Value, p.Length!.Value))));
+                continue;
+            }
+            foreach (var entry in entries)
             {
-                var range = new MtkFlashRange(region.WireId, checked((long)entry.FirstLba * block), checked((long)entry.SectorCount * block));
+                var range = new MtkFlashRange(region.WireId, checked((long)entry.FirstLba * region.BlockSize), checked((long)entry.SectorCount * region.BlockSize));
                 _ = Range(range);
                 result.Add((entry.Name, range));
             }
@@ -157,14 +151,74 @@ public sealed partial class MtkProtocol
     public IReadOnlyList<BlockDeviceDescriptor> GetBlockDevices() => Execute<IReadOnlyList<BlockDeviceDescriptor>>(() =>
     {
         Ready();
-        return _storage!.Regions.Select(r => new BlockDeviceDescriptor(new($"mtk:{r.Kind}:{r.WireId}"), r.Length, r.BlockSize, true, r.Kind.ToString(), (int)r.WireId)).ToArray();
+        return _storage!.Regions.Select(r => new BlockDeviceDescriptor(new($"mtk:{r.Kind}:{r.WireId}"), r.Length, r.BlockSize, r.CanWrite, r.Kind.ToString(), (int)r.WireId)).ToArray();
     });
     public IReadableBlockDevice OpenBlockDevice(BlockDeviceId id, BlockDeviceOpenOptions? options = null) => Execute<IReadableBlockDevice>(() =>
     {
         Ready();
         var region = _storage!.Regions.SingleOrDefault(r => id.Value == $"mtk:{r.Kind}:{r.WireId}") ?? throw new MtkCapabilityException("block device");
+        if (options?.Writable == true && !region.CanWrite) throw new MtkCapabilityException("read-only storage region");
         return new MtkBlockDevice(this, region, Generation, options?.Writable == true);
     });
+    private sealed class TransferProgress(IProgress<ProgressRecord>? progress, long total, string phase)
+    {
+        private long _current;
+        private readonly string _label = Strings.FormatPhase(phase);
+        public void Report(long current, ProgressPhase state = ProgressPhase.Running)
+        {
+            _current = Math.Clamp(current, _current, total);
+            progress?.Report(new(total, _current, _label) { Unit = ProgressUnit.Bytes, Phase = state });
+        }
+    }
+    // Check a nonseekable source's magic without consuming Raw bytes or treating a Sparse file as Raw.
+    private sealed class PrefixStream : Stream
+    {
+        private readonly Stream _source;
+        private readonly byte[] _prefix;
+        private int _prefixPosition;
+        public PrefixStream(Stream source, long length)
+        {
+            _source = source;
+            _prefix = new byte[(int)Math.Min(4, length)];
+            source.ReadExactly(_prefix);
+            if (_prefix.Length == 4 && BinaryPrimitives.ReadUInt32LittleEndian(_prefix) == 0xed26ff3a)
+                throw new MtkResourceException("seekable Sparse source");
+        }
+        public override int Read(Span<byte> data)
+        {
+            int copied = Math.Min(data.Length, _prefix.Length - _prefixPosition);
+            _prefix.AsSpan(_prefixPosition, copied).CopyTo(data); _prefixPosition += copied;
+            return copied != 0 ? copied : _source.Read(data);
+        }
+        public override int Read(byte[] b, int o, int n) => Read(b.AsSpan(o, n));
+        public override bool CanRead => true;
+        public override bool CanWrite => false;
+        public override bool CanSeek => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override long Seek(long o, SeekOrigin s) => throw new NotSupportedException();
+        public override void SetLength(long n) => throw new NotSupportedException();
+        public override void Write(byte[] b, int o, int n) => throw new NotSupportedException();
+    }
+    // The underlying stream belongs to the source/destination; disposing this wrapper never closes it.
+    private sealed class ProgressStream(Stream stream, Action<long> report) : Stream
+    {
+        private long _transferred;
+        private void Advance(int count) { _transferred = checked(_transferred + count); report(_transferred); }
+        public override int Read(Span<byte> data) { int count = stream.Read(data); Advance(count); return count; }
+        public override int Read(byte[] b, int o, int n) => Read(b.AsSpan(o, n));
+        public override void Write(ReadOnlySpan<byte> data) { stream.Write(data); Advance(data.Length); }
+        public override void Write(byte[] b, int o, int n) => Write(b.AsSpan(o, n));
+        public override bool CanRead => stream.CanRead;
+        public override bool CanWrite => stream.CanWrite;
+        public override bool CanSeek => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => _transferred; set => throw new NotSupportedException(); }
+        public override void Flush() => stream.Flush();
+        public override long Seek(long o, SeekOrigin s) => throw new NotSupportedException();
+        public override void SetLength(long n) => throw new NotSupportedException();
+    }
     private sealed class PaddingStream(Stream source, long actual, long padded) : Stream
     {
         private long _position;

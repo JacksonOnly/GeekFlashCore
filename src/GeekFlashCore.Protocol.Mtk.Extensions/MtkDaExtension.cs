@@ -10,7 +10,7 @@ using GeekFlashCore.Protocol.Mtk.Abstractions;
 namespace GeekFlashCore.Protocol.Mtk.Extensions;
 
 /// <summary>Standard communication with an already loaded penumbra DA extension; no patch or exploit is performed.</summary>
-public sealed class MtkDaExtension : IMtkRpmbService
+public sealed class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseService
 {
     private readonly IMtkProtocol _protocol;
     private readonly IMtkSessionAccess _access;
@@ -37,7 +37,8 @@ public sealed class MtkDaExtension : IMtkRpmbService
             throw new ArgumentOutOfRangeException(nameof(context));
         _access.UseSession(c =>
         {
-            if (c.Target.HardwareCode != context.HardwareCode || c.Kind == MtkDaKind.Legacy)
+            if (c.Target.HardwareCode != context.HardwareCode || c.Kind == MtkDaKind.Legacy ||
+                c.Storage.Kind is not (MtkStorageKind.Emmc or MtkStorageKind.Ufs))
                 throw new MtkCapabilityException("extension profile/dialect");
             var da2 = c.DownloadAgent.Entry.Regions[c.DownloadAgent.Entry.EntryRegionIndex + 1];
             if (context.Da2Base != da2.Address || context.Da2Size != da2.Length - da2.SignatureLength)
@@ -245,6 +246,32 @@ public sealed class MtkDaExtension : IMtkRpmbService
         BinaryPrimitives.WriteUInt32LittleEndian(b, start);
         BinaryPrimitives.WriteUInt32LittleEndian(b.AsSpan(4), count);
         return b;
+    }
+    /// <summary>Writes zero data blocks through the authenticated RPMB backend with bounded buffers.
+    /// Counter, capacity and final status rules are identical to Write; unknown writes are never retried.</summary>
+    public void Erase(uint region, uint startBlock, uint blockCount, CancellationToken cancellationToken = default)
+    {
+        using var source = new ZeroStream(checked((long)blockCount * 256));
+        Write(region, startBlock, blockCount, source, cancellationToken);
+    }
+    private sealed class ZeroStream(long length) : Stream
+    {
+        private long _position;
+        public override int Read(Span<byte> data)
+        {
+            int count = (int)Math.Min(data.Length, length - _position);
+            data[..count].Clear(); _position += count; return count;
+        }
+        public override int Read(byte[] b, int o, int n) => Read(b.AsSpan(o, n));
+        public override bool CanRead => true;
+        public override bool CanWrite => false;
+        public override bool CanSeek => false;
+        public override long Length => length;
+        public override long Position { get => _position; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] b, int o, int n) => throw new NotSupportedException();
     }
     private static Dictionary<string, string> RpmbArgs(uint region, uint start, uint count) => Args(("partition", region.ToString()), ("start_sector", start.ToString()), ("sectors_count", count.ToString()));
     private void Memory(IMtkDaChannel c, uint address, uint length)

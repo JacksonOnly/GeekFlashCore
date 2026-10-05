@@ -22,11 +22,11 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
             wire.SendFrame(part);
         wire.ReadStatus();
     }
-    public byte[] Control(uint command)
+    public byte[] Control(uint command, int maximum = 512)
     {
         Command(0x10009);
         Command(command);
-        byte[] result = wire.ReadSmallFrame(512);
+        byte[] result = wire.ReadSmallFrame(Math.Min(maximum, options.MaximumFrameSize));
         try
         {
             wire.ReadStatus();
@@ -55,7 +55,9 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         Parameters(MtkWire.Le32(0x10101), new byte[4]);
         wire.ReadStatus(0x434e5953);
         byte[] agent = Control(0x4000a);
-        if (!agent.AsSpan().SequenceEqual("preloader"u8))
+        if (!agent.AsSpan().SequenceEqual("preloader"u8) && !agent.AsSpan().SequenceEqual("brom"u8))
+            throw new MtkResourceException("connection agent");
+        if (agent.AsSpan().SequenceEqual("brom"u8))
         {
             if (emi is null)
                 throw new MtkResourceException("EMI");
@@ -75,7 +77,7 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         using Stream source = new MtkDataWindow(image.Source, region.FileOffset, length).OpenStream();
         Command(0x10008);
         byte[] range = new byte[16];
-        BinaryPrimitives.WriteUInt64LittleEndian(range, checked(region.Address + region.EntryOffset));
+        BinaryPrimitives.WriteUInt64LittleEndian(range, region.Address);
         BinaryPrimitives.WriteUInt64LittleEndian(range.AsSpan(8), (ulong)length);
         wire.SendFrame(range);
         SendStreamFrame(source, length);
@@ -92,7 +94,7 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
             throw wire.Failure();
         if (BinaryPrimitives.ReadUInt32LittleEndian(state) == 0)
             return null;
-        byte[] challenge = Control(0x40013);
+        byte[] challenge = Control(0x40013, maximum: options.MaximumFrameSize);
         if (challenge.Length < 20)
         {
             System.Security.Cryptography.CryptographicOperations.ZeroMemory(challenge);
@@ -122,11 +124,19 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
     public MtkStorageInfo GetStorage()
     {
         byte[] emmc = Control(0x40001);
-        if (emmc.Length >= 8 && BinaryPrimitives.ReadUInt32LittleEndian(emmc) == 1)
+        if (emmc.Length >= 8 && BinaryPrimitives.ReadUInt32LittleEndian(emmc) is 1 or 2)
             return MtkStorageDecoder.Emmc(emmc);
         if (emmc.Any(b => b != 0))
             throw new MtkResourceException("eMMC info");
-        return MtkStorageDecoder.Ufs(Control(0x40004));
+        byte[] ufs = Control(0x40004);
+        if (ufs.Length >= 4 && BinaryPrimitives.ReadUInt32LittleEndian(ufs) == 0x30)
+            return MtkStorageDecoder.Ufs(ufs);
+        if (ufs.Any(b => b != 0)) throw new MtkResourceException("UFS info");
+        byte[] nand = Control(0x40002);
+        if (nand.Length >= 4 && BinaryPrimitives.ReadUInt32LittleEndian(nand) != 0)
+            return MtkStorageDecoder.Nand(nand, options.EnableNandLogicalWrites);
+        if (nand.Any(b => b != 0)) throw new MtkResourceException("NAND info");
+        return MtkStorageDecoder.Nor(Control(0x40003), options.NorEraseBlockSize);
     }
     public void Read(MtkStorageRegion region, long offset, long length, Stream output)
     {
@@ -150,6 +160,7 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
     }
     public void Write(MtkStorageRegion region, long offset, long length, Stream input)
     {
+        if (!region.CanWrite) throw new MtkCapabilityException("NAND logical writes");
         Command(0x10004);
         Parameters(FlashParams(region, offset, length));
         byte[] buffer = ArrayPool<byte>.Shared.Rent(wire.WritePacketLength);
@@ -172,8 +183,12 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
     }
     public void Erase(MtkStorageRegion region, long offset, long length)
     {
+        if (!region.CanWrite || region.EraseBlockSize == 0)
+            throw new MtkCapabilityException("erase geometry/policy");
+        if (offset % region.EraseBlockSize != 0 || length % region.EraseBlockSize != 0)
+            throw new ArgumentOutOfRangeException(nameof(length));
         Command(0x10003);
-        Parameters(FlashParams(region, offset, length));
+        Parameters(FlashParams(region, offset, length, erase: true));
         Span<byte> delay = stackalloc byte[4];
         for (int i = 0; i < options.MaximumProgressEvents; i++)
         {
@@ -197,7 +212,7 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         Command(0x10007);
         byte[] p = new byte[28];
         BinaryPrimitives.WriteUInt32LittleEndian(p, mode == ProtocolRebootMode.PowerOff ? 0u : 1u);
-        BinaryPrimitives.WriteUInt32LittleEndian(p.AsSpan(16), mode == ProtocolRebootMode.Download ? 1u : 0u);
+        BinaryPrimitives.WriteUInt32LittleEndian(p.AsSpan(12), mode == ProtocolRebootMode.Download ? 2u : 0u);
         Parameters(p);
     }
     private void SendStreamFrame(Stream source, long length)
@@ -217,13 +232,15 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         }
         finally { ArrayPool<byte>.Shared.Return(buffer, true); }
     }
-    private static byte[] FlashParams(MtkStorageRegion region, long offset, long length)
+    private static byte[] FlashParams(MtkStorageRegion region, long offset, long length, bool erase = false)
     {
         byte[] p = new byte[56];
         BinaryPrimitives.WriteUInt32LittleEndian(p, (uint)region.Kind);
         BinaryPrimitives.WriteUInt32LittleEndian(p.AsSpan(4), region.WireId);
         BinaryPrimitives.WriteUInt64LittleEndian(p.AsSpan(8), (ulong)offset);
         BinaryPrimitives.WriteUInt64LittleEndian(p.AsSpan(16), (ulong)length);
+        if (region.Kind == MtkStorageKind.Nand && !erase)
+            BinaryPrimitives.WriteUInt32LittleEndian(p.AsSpan(36), 2); // Logical data pages with ECC, excluding OOB.
         return p;
     }
 }

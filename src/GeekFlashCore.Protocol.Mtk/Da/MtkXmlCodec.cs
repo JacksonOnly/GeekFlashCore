@@ -15,7 +15,10 @@ internal static class MtkXmlCodec
         ["SET-HOST-INFO"] = ["info"],
         ["BOOT-TO"] = ["at_address", "jmp_address", "source_file"],
         ["GET-HW-INFO"] = ["target_file"],
+        ["READ-PARTITION-TABLE"] = ["target_file"],
         ["GET-SYS-PROPERTY"] = ["key", "target_file"],
+        ["READ-REGISTER"] = ["bit_width", "base_address", "target_file"],
+        ["WRITE-REGISTER"] = ["bit_width", "base_address", "source_file"],
         ["SECURITY-GET-DEV-FW-INFO"] = ["target_file"],
         ["SECURITY-SET-FLASH-POLICY"] = ["source_file"],
         ["READ-FLASH"] = ["partition", "target_file", "length", "offset"],
@@ -58,11 +61,13 @@ internal static class MtkXmlCodec
         }
         return Encoding.UTF8.GetBytes("<?xml version=\"1.0\" encoding=\"utf-8\"?>" + text + "\0");
     }
-    public static XElement Parse(ReadOnlySpan<byte> bytes, int limit, bool allowPropertyKey = false)
+    public static XElement Parse(ReadOnlySpan<byte> bytes, int limit, bool allowPropertyKey = false, bool allowPartitionVersion = false)
     {
         if (bytes.Length == 0 || bytes.Length > limit)
             throw new MtkResourceException("XML length");
-        string text = new UTF8Encoding(false, true).GetString(bytes).TrimEnd('\0');
+        string text;
+        try { text = new UTF8Encoding(false, true).GetString(bytes).TrimEnd('\0'); }
+        catch (DecoderFallbackException) { throw new MtkResourceException("XML encoding"); }
         using var reader = XmlReader.Create(new StringReader(text), new XmlReaderSettings
         {
             DtdProcessing = DtdProcessing.Prohibit,
@@ -75,7 +80,8 @@ internal static class MtkXmlCodec
             XElement root = XElement.Load(reader);
             if (root.DescendantsAndSelf().Count() > 1024 || root.DescendantsAndSelf().Any(e =>
                 e.Ancestors().Count() > 8 || e.Name.NamespaceName.Length != 0 || e.Attributes().Any(a =>
-                    !allowPropertyKey || e.Name != "item" || a.Name != "key" || a.Value.Length > 128)))
+                    !(allowPropertyKey && e.Name == "item" && a.Name == "key" && a.Value.Length <= 128) &&
+                    !(allowPartitionVersion && e == root && e.Name == "partition_table" && a.Name == "version" && a.Value == "1.0"))))
                 throw new MtkResourceException("XML structure");
             return root;
         }

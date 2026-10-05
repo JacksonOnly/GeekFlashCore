@@ -17,6 +17,11 @@ public interface IMtkSecurityCipher
     }
     byte[] Transform(ReadOnlySpan<byte> data, bool encrypt);
 }
+/// <summary>Optional authenticated RPMB erasure implemented as bounded zero writes, never key programming.</summary>
+public interface IMtkRpmbEraseService
+{
+    void Erase(uint region, uint startBlock, uint blockCount, CancellationToken cancellationToken = default);
+}
 /// <summary>Security configuration changes are planned separately from application.</summary>
 public interface IMtkSecurityConfigurationService
 {

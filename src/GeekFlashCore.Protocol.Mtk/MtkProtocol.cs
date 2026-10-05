@@ -120,7 +120,10 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         _wire.Begin(token, _options.OperationTimeoutMilliseconds);
         try
         {
-            return action();
+            T result = action();
+            if (_state != MtkSessionState.Faulted)
+                _wire.Check();
+            return result;
         }
         catch { if (_wire.HasWritten && _state != MtkSessionState.Faulted) Fault(); throw; }
     }
@@ -243,7 +246,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 if (_brom.BeginDownloadAgent(da1.Address, da1.Length, da1.SignatureLength))
                     await AuthenticateAsync(MtkAuthenticationKind.BromSla, _brom.StartSla(), resources, ct).ConfigureAwait(false);
                 _brom.FinishDownloadAgent(da1.Length, stream);
-                _brom.JumpDownloadAgent(checked(da1.Address + da1.EntryOffset));
+                _brom.JumpDownloadAgent(da1.Address);
             }
             LoadDa(resources, target, upload: false);
             var challenge = _da!.GetAuthenticationChallenge();
@@ -319,7 +322,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             throw new MtkResourceException("DA selection");
         foreach (var region in entry.Regions.Skip(entry.EntryRegionIndex).Take(2))
         {
-            if (region.Length == 0 || region.SignatureLength >= region.Length || region.EntryOffset >= region.Length ||
+            if (region.Length == 0 || region.SignatureLength >= region.Length || region.EntryOffset > region.Length ||
                 region.FileOffset < 0 || region.FileOffset > image.Source.Length - region.Length ||
                 (ulong)region.Address + region.Length > (ulong)uint.MaxValue + 1)
                 throw new MtkResourceException("DA region");
@@ -442,6 +445,10 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     public void Disconnect()
     {
         using var gate = Enter(default);
+        DisconnectCore();
+    }
+    private void DisconnectCore()
+    {
         _da = null;
         _storage = null;
         _target = null;
@@ -458,8 +465,8 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     }
     public Task DisconnectAsync(IProgress<ProgressRecord>? progress = null, CancellationToken ct = default)
     {
-        ct.ThrowIfCancellationRequested();
-        Disconnect();
+        using var gate = Enter(ct);
+        DisconnectCore();
         return Task.CompletedTask;
     }
     public Task<bool> RebootAsync(ProtocolRebootMode mode, IProgress<ProgressRecord>? progress = null, CancellationToken ct = default)
@@ -491,10 +498,12 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     private sealed class Channel(MtkProtocol owner, Action? guard = null) : IMtkDaChannel
     {
         private bool _valid = true;
+        private readonly int _thread = Environment.CurrentManagedThreadId;
+        private readonly long _generation = owner.Generation;
         private void Check()
         {
             guard?.Invoke();
-            if (!_valid)
+            if (!_valid || _thread != Environment.CurrentManagedThreadId || _generation != owner.Generation)
                 throw new InvalidOperationException(Strings.SessionUnavailable);
             owner._wire.Check();
         }
@@ -624,7 +633,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         public void Invalidate()
         {
             guard?.Invoke();
-            if (!_valid)
+            if (!_valid || _thread != Environment.CurrentManagedThreadId || _generation != owner.Generation)
                 throw new InvalidOperationException(Strings.SessionUnavailable);
             owner.Fault();
             _valid = false;

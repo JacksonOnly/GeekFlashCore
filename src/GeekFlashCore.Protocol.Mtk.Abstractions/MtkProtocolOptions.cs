@@ -26,6 +26,12 @@ public sealed record MtkProtocolOptions
     /// <summary>Initializes an explicitly configured or known watchdog immediately after FD during Probe.
     /// Default Probe only queries; Connect prepares it before security queries and resource requests.</summary>
     public bool InitializeWatchdogOnProbe { get; init; }
+    /// <summary>Explicitly enables XFlash logical NAND data-page writes with ECC. OOB/physical writes are excluded.</summary>
+    public bool EnableNandLogicalWrites { get; init; }
+    /// <summary>Confirmed NOR erase alignment. Zero leaves erase unavailable; no erase geometry is guessed.</summary>
+    public int NorEraseBlockSize { get; init; }
+    /// <summary>Confirmed Legacy PMT layout used when a user region contains no GPT.</summary>
+    public MtkPmtLayout? LegacyPmtLayout { get; init; }
     /// <summary>Explicit watchdog profile overriding known metadata. Unknown chips without a profile receive no writes.</summary>
     public MtkChipProfile? ChipProfile
     {
@@ -36,8 +42,12 @@ public sealed record MtkProtocolOptions
         if (ReadTimeoutMilliseconds <= 0 || ConnectTimeoutMilliseconds <= 0 ||
             OperationTimeoutMilliseconds <= 0 || ResourceTimeoutMilliseconds <= 0)
             throw new ArgumentOutOfRangeException(nameof(ReadTimeoutMilliseconds));
+        if (NorEraseBlockSize < 0 || NorEraseBlockSize > 16777216 ||
+            NorEraseBlockSize != 0 && (NorEraseBlockSize & (NorEraseBlockSize - 1)) != 0 ||
+            LegacyPmtLayout is { } pmt && !Enum.IsDefined(pmt))
+            throw new ArgumentOutOfRangeException(nameof(NorEraseBlockSize));
         if (BufferSize is < 512 or > 1048576 || MaximumFrameSize < BufferSize || MaximumFrameSize > 1048576 ||
-            MaximumXmlSize is < 1024 or > 65536 || MaximumMessages is < 1 or > 1024 ||
+            MaximumXmlSize is < 1024 or > 65536 || MaximumXmlSize > MaximumFrameSize || MaximumMessages is < 1 or > 1024 ||
             MaximumProgressEvents is < 1 or > 65536 || MaximumHandshakePrefix is < 0 or > 16 ||
             DaKind is { } kind && !Enum.IsDefined(kind))
             throw new ArgumentOutOfRangeException(nameof(BufferSize));

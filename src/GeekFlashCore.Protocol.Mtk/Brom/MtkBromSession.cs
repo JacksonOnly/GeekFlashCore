@@ -52,7 +52,7 @@ internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions op
         MtkDaRegion region = image.Entry.Regions[image.Entry.EntryRegionIndex];
         SendDownloadAgent(region.Address, region.Length, region.SignatureLength,
             new MtkDataWindow(image.Source, region.FileOffset, region.Length), signer);
-        JumpDownloadAgent(checked(region.Address + region.EntryOffset));
+        JumpDownloadAgent(region.Address);
     }
     public void SendResource(MtkBromCommand command, ReadOnlySpan<byte> data)
     {

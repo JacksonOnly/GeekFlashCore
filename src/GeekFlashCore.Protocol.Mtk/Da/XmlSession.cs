@@ -62,7 +62,7 @@ internal sealed class XmlSession(MtkWire wire, MtkProtocolOptions options) : IMt
         var region = image.Entry.Regions[image.Entry.EntryRegionIndex + 1];
         long length = region.Length - region.SignatureLength;
         using Stream source = new MtkDataWindow(image.Source, region.FileOffset, length).OpenStream();
-        string address = $"0x{checked(region.Address + region.EntryOffset):x}";
+        string address = $"0x{region.Address:x}";
         Begin("BOOT-TO", Args(("at_address", address), ("jmp_address", address), ("source_file", "MEM://0x0:0x0")));
         Download(length, source);
         Lifetime("END");
@@ -119,6 +119,36 @@ internal sealed class XmlSession(MtkWire wire, MtkProtocolOptions options) : IMt
         }
         finally { System.Security.Cryptography.CryptographicOperations.ZeroMemory(copy); }
     }
+    public byte[] QueryFile(string command)
+    {
+        Begin(command, Args(("target_file", "MEM://0x0:0x200000")));
+        using var output = new MemoryStream();
+        try { Upload(output, null, options.MaximumXmlSize); Lifetime("END"); return output.ToArray(); }
+        finally { System.Security.Cryptography.CryptographicOperations.ZeroMemory(output.GetBuffer()); }
+    }
+    public byte[] GetSystemProperty(string key)
+    {
+        Begin("GET-SYS-PROPERTY", Args(("key", key), ("target_file", "MEM://0x0:0x200000")));
+        using var output = new MemoryStream();
+        try { Upload(output, null, options.MaximumXmlSize); Lifetime("END"); return output.ToArray(); }
+        finally { System.Security.Cryptography.CryptographicOperations.ZeroMemory(output.GetBuffer()); }
+    }
+    public uint ReadRegister(uint address)
+    {
+        Begin("READ-REGISTER", Args(("bit_width", "32"), ("base_address", $"0x{address:X}"), ("target_file", "MEM://0x0:0x4")));
+        string size = ReceiveText(64);
+        if (size != "OK@0x4") throw wire.Failure();
+        Ack(); ReadAck(); Ack();
+        Span<byte> data = stackalloc byte[4];
+        if (wire.ReadFrame(data) != 4) throw wire.Failure();
+        Ack(); Lifetime("END"); return BinaryPrimitives.ReadUInt32LittleEndian(data);
+    }
+    public void WriteRegister(uint address, uint value)
+    {
+        Begin("WRITE-REGISTER", Args(("bit_width", "32"), ("base_address", $"0x{address:X}"), ("source_file", "MEM://0x0:0x4")));
+        using var source = new MemoryStream(MtkWire.Le32(value), false);
+        Download(4, source); Lifetime("END");
+    }
     public MtkStorageInfo GetStorage()
     {
         Begin("GET-HW-INFO", Args(("target_file", "MEM://0x0:0x200000")));
@@ -134,6 +164,18 @@ internal sealed class XmlSession(MtkWire wire, MtkProtocolOptions options) : IMt
         ulong Number(string key) => MtkXmlCodec.Number(MtkXmlCodec.Value(section, key));
         int block = checked((int)Number("block_size"));
         List<MtkStorageRegion> regions = [];
+        if (kind == "NAND")
+        {
+            ulong page = Number("page_size"), spare = Number("spare_size"), total = Number("total_size");
+            if (page is < 512 or > 65536 || (page & (page - 1)) != 0 || spare > page || block < (long)page ||
+                block > 16777216 || block % (long)page != 0 || total == 0 || total > long.MaxValue || total % (ulong)block != 0)
+                throw new MtkResourceException("XML NAND geometry");
+            // XML has no confirmed usable/BMT size or operation type; expose standard reads only.
+            var region = new MtkStorageRegion(MtkStorageKind.Nand, 8, "NAND-WHOLE", total, (int)page)
+            { CanWrite = false, EraseBlockSize = block };
+            return new(MtkStorageKind.Nand, Array.AsReadOnly(new[] { region }), 8, 0) {
+                Nand = new(0, (int)page, (int)spare, block, total, total, false) { LogicalCapacityConfirmed = false } };
+        }
         if (kind == "EMMC")
         {
             string[] sizes = ["boot1_size", "boot2_size", "rpmb_size", "gp1_size", "gp2_size", "gp3_size", "gp4_size", "user_size"];
@@ -179,6 +221,7 @@ internal sealed class XmlSession(MtkWire wire, MtkProtocolOptions options) : IMt
     }
     public void Write(MtkStorageRegion region, long offset, long length, Stream input)
     {
+        if (!region.CanWrite) throw new MtkCapabilityException("read-only storage region");
         Begin("WRITE-FLASH", Args(("partition", region.Name), ("source_file", $"MEM:\\0x0:0x{length:X}"), ("offset", $"0x{offset:X}")));
         FileSize(length);
         Progress();
@@ -187,12 +230,16 @@ internal sealed class XmlSession(MtkWire wire, MtkProtocolOptions options) : IMt
     }
     public void Erase(MtkStorageRegion region, long offset, long length)
     {
+        if (!region.CanWrite || region.EraseBlockSize == 0) throw new MtkCapabilityException("erase geometry/policy");
+        if (offset % region.EraseBlockSize != 0 || length % region.EraseBlockSize != 0) throw new ArgumentOutOfRangeException(nameof(length));
         Begin("ERASE-FLASH", Args(("partition", region.Name), ("length", $"0x{length:X}"), ("offset", $"0x{offset:X}")));
         Progress();
         Lifetime("END");
     }
     public void Reboot(ProtocolRebootMode mode)
     {
+        if (mode == ProtocolRebootMode.PowerOff)
+            throw new MtkCapabilityException("XML power off");
         if (mode == ProtocolRebootMode.Download)
             Simple("SET-BOOT-MODE", Args(("mode", "FASTBOOT"), ("connect_type", "USB"), ("mobile_log", "OFF"), ("adb", "OFF")));
         Simple("REBOOT", Args(("action", "IMMEDIATE")));
@@ -288,6 +335,7 @@ internal sealed class XmlSession(MtkWire wire, MtkProtocolOptions options) : IMt
                 !uint.TryParse(text[12..], out uint percent) || percent > 100)
                 throw wire.Failure();
             Ack();
+            wire.ProgressPercent?.Invoke((int)percent);
         }
         throw wire.Failure();
     }

@@ -71,10 +71,11 @@ public sealed record MtkStorageRegion
     public MtkStorageRegion(MtkStorageKind kind, uint wireId, string name, ulong length, int blockSize)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        if (kind is not (MtkStorageKind.Emmc or MtkStorageKind.Ufs) ||
+        if (kind is not (MtkStorageKind.Emmc or MtkStorageKind.Ufs or MtkStorageKind.Sdmmc or MtkStorageKind.Nor or MtkStorageKind.Nand) ||
             kind == MtkStorageKind.Emmc && (wireId is < 1 or > 8 || wireId == 3) ||
             kind == MtkStorageKind.Ufs && wireId is < 1 or > 3 ||
-            length == 0 || length > long.MaxValue || blockSize is < 512 or > 65536 ||
+            kind is MtkStorageKind.Sdmmc or MtkStorageKind.Nor or MtkStorageKind.Nand && wireId != 8 ||
+            length == 0 || length > long.MaxValue || blockSize < (kind == MtkStorageKind.Nor ? 1 : 512) || blockSize > 65536 ||
             (blockSize & (blockSize - 1)) != 0 || length % (uint)blockSize != 0)
             throw new ArgumentOutOfRangeException(nameof(length));
         Kind = kind;
@@ -82,6 +83,7 @@ public sealed record MtkStorageRegion
         Name = name;
         Length = (long)length;
         BlockSize = blockSize;
+        EraseBlockSize = kind == MtkStorageKind.Nor ? 0 : blockSize;
     }
     public MtkStorageKind Kind
     {
@@ -103,16 +105,36 @@ public sealed record MtkStorageRegion
     {
         get;
     }
+    /// <summary>Confirmed erase alignment; zero means erase geometry has not been supplied.</summary>
+    public int EraseBlockSize { get; init; }
+    /// <summary>Whether ordinary writes are enabled for this region's data semantics.</summary>
+    public bool CanWrite { get; init; } = true;
 }
 /// <summary>Ordinary regions and separately reported RPMB capacity in 256-byte data blocks.</summary>
-public sealed record MtkStorageInfo(MtkStorageKind Kind, IReadOnlyList<MtkStorageRegion> Regions, uint UserRegionId, uint RpmbDataBlocks);
+public sealed record MtkStorageInfo(MtkStorageKind Kind, IReadOnlyList<MtkStorageRegion> Regions, uint UserRegionId, uint RpmbDataBlocks)
+{
+    /// <summary>Reported NAND geometry; logical flash ranges contain data pages only, excluding spare/OOB.</summary>
+    public MtkNandGeometry? Nand { get; init; }
+}
+/// <summary>NAND device geometry, separate from logical data-page ranges and erase alignment.</summary>
+public sealed record MtkNandGeometry(uint Type, int PageSize, int SpareSize, int EraseBlockSize,
+    ulong TotalSize, ulong AvailableSize, bool HasBadBlockTable)
+{
+    /// <summary>False when XML reports only total size and does not confirm usable logical capacity or BMT.</summary>
+    public bool LogicalCapacityConfirmed { get; init; } = true;
+}
 /// <summary>A typed byte range. Offset and length must be aligned to the region's logical blocks.</summary>
 public readonly record struct MtkFlashRange(uint RegionId, long Offset, long Length);
-/// <summary>A region window in a reopenable DA container; no whole-file allocation.</summary>
+/// <summary>A region window in a reopenable DA container. EntryOffset retains m_start_offset metadata;
+/// it is a region length/signature boundary, never a displacement added to Address for execution.</summary>
 public sealed record MtkDaRegion(long FileOffset, uint Length, uint Address, uint EntryOffset, uint SignatureLength);
 /// <summary>A DA metadata entry. Region index is a zero-based table index.</summary>
 public sealed record MtkDaEntry(ushort HardwareCode, ushort HardwareSubCode, ushort HardwareVersion,
-    ushort SoftwareVersion, ushort EntryRegionIndex, MtkDaKind Kind, IReadOnlyList<MtkDaRegion> Regions);
+    ushort SoftwareVersion, ushort EntryRegionIndex, MtkDaKind Kind, IReadOnlyList<MtkDaRegion> Regions)
+{
+    /// <summary>Unmodified container index, when parsed. EntryRegionIndex identifies the actual first stage.</summary>
+    public ushort? RawEntryRegionIndex { get; init; }
+}
 /// <summary>An explicitly selected image; the host retains ownership of the data source.</summary>
 public sealed record MtkDaImage(IDataSource Source, MtkDaEntry Entry);
 /// <summary>EMI data already extracted and validated by the parser or host.</summary>

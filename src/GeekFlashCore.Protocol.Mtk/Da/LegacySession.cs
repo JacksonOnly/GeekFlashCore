@@ -46,8 +46,6 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
         _ = wire.Read32();
         Span<byte> ids = stackalloc byte[16];
         wire.Read(ids);
-        if (ids.IndexOfAnyExcept((byte)0) < 0)
-            throw new MtkCapabilityException("Legacy NAND/NOR");
         wire.WriteByte(0x5a);
         Discard(3);
         // Known common Legacy configuration. Chip-specific trailing fields stay explicit.
@@ -112,7 +110,8 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
         wire.WriteByte(0x5a);
         Ack();
         wire.Stage = MtkBootStage.Da2;
-        Discard(0x1c);
+        Span<byte> nor = stackalloc byte[0x1c];
+        wire.Read(nor);
         Span<byte> nand = stackalloc byte[0x11];
         wire.Read(nand);
         int count = BinaryPrimitives.ReadUInt16BigEndian(nand[15..]);
@@ -131,8 +130,16 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
         Discard(9);
         Span<byte> emmc = stackalloc byte[0x5c];
         wire.Read(emmc);
-        _storage = MtkStorageDecoder.Emmc(emmc, true);
-        Discard(0x1c + 0x26);
+        Span<byte> sdc = stackalloc byte[0x1c];
+        wire.Read(sdc);
+        if (BinaryPrimitives.ReadUInt32BigEndian(emmc) == 0 && BinaryPrimitives.ReadUInt64BigEndian(emmc[60..]) > 0)
+            _storage = MtkStorageDecoder.Emmc(emmc, true);
+        else if (BinaryPrimitives.ReadUInt32BigEndian(sdc) == 0 && BinaryPrimitives.ReadUInt64BigEndian(sdc[4..]) > 0)
+            _storage = MtkStorageDecoder.Single(MtkStorageKind.Sdmmc, BinaryPrimitives.ReadUInt64BigEndian(sdc[4..]), 512);
+        else if (BinaryPrimitives.ReadUInt32BigEndian(nor) == 0 && BinaryPrimitives.ReadUInt32BigEndian(nor[8..]) > 0)
+            _storage = MtkStorageDecoder.Single(MtkStorageKind.Nor, BinaryPrimitives.ReadUInt32BigEndian(nor[8..]), 1, options.NorEraseBlockSize);
+        else throw new MtkCapabilityException("Legacy NAND/unknown storage");
+        Discard(0x26);
         if (target.HardwareCode == 0x8163)
             Discard(4);
         Span<byte> pass = stackalloc byte[10];
@@ -188,9 +195,33 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
     public MtkStorageInfo GetStorage() => _storage ?? throw new MtkResourceException("Legacy storage");
     private void CheckUsbSpeed()
     {
+        _ = GetUsbSpeed();
+    }
+    public byte GetUsbSpeed()
+    {
+        wire.Command = 0x72;
         wire.WriteByte(0x72);
         Ack();
-        _ = wire.ReadByte();
+        return wire.ReadByte();
+    }
+    public uint ReadRegister(uint address)
+    {
+        wire.Command = 0x7a;
+        wire.WriteByte(0x7a); Write32(address);
+        uint result = wire.Read32(); Ack(); return result;
+    }
+    public void WriteRegister(uint address, uint value)
+    {
+        wire.Command = 0x7b;
+        wire.WriteByte(0x7b); Write32(address); Write32(value); Ack();
+    }
+    public byte[] ReadPmt()
+    {
+        wire.Command = 0xa5; wire.WriteByte(0xa5); Ack();
+        uint length = wire.Read32();
+        if (length == 0 || length > 393216) throw new MtkResourceException("PMT length");
+        wire.WriteByte(0x5a);
+        byte[] bytes = new byte[(int)length]; wire.Read(bytes); wire.WriteByte(0x5a); return bytes;
     }
     private void Switch(MtkStorageRegion region)
     {
@@ -206,7 +237,7 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
         if (write)
             wire.WriteByte((byte)region.Kind);
         else
-            wire.Write([0x0c, 2]);
+            wire.Write([0x0c, region.Kind == MtkStorageKind.Nor ? (byte)0 : (byte)2]);
         if (write)
             wire.WriteByte((byte)region.WireId);
         Span<byte> p = stackalloc byte[20];
@@ -218,8 +249,10 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
     }
     public void Read(MtkStorageRegion region, long offset, long length, Stream output)
     {
+        if (region.Kind == MtkStorageKind.Sdmmc)
+            throw new MtkCapabilityException("Legacy SDMMC read");
         CheckUsbSpeed();
-        Switch(region);
+        if (region.Kind == MtkStorageKind.Emmc) Switch(region);
         Header(0xd6, region, offset, length, false);
         byte[] buffer = ArrayPool<byte>.Shared.Rent(options.BufferSize);
         try
@@ -263,6 +296,8 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
     }
     public void Erase(MtkStorageRegion region, long offset, long length)
     {
+        if (region.Kind != MtkStorageKind.Emmc)
+            throw new MtkCapabilityException("Legacy storage erase");
         CheckUsbSpeed();
         Switch(region);
         wire.Write([0xd4, 2, 0, 0, 0]);
@@ -279,6 +314,7 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
             if (percent > 100)
                 throw wire.Failure();
             wire.WriteByte(0x5a);
+            wire.ProgressPercent?.Invoke(percent);
             if (percent == 100)
             {
                 Ack();

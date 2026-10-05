@@ -22,6 +22,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         get; set;
     }
     public int WritePacketLength { get; set; } = options.BufferSize;
+    public Action<int>? ProgressPercent { get; set; }
     public void Begin(CancellationToken token, int timeout)
     {
         Token = token;

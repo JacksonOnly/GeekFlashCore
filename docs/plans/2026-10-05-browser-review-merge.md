@@ -19,7 +19,11 @@
 
 - 本轮目标导航测试 4/4（每项分别执行四种命令写法），当前工作树完整回归 126/126，Release 解决方案构建零警告零错误。
 - 用户运行中的 b6cf CLI 锁定标准产物，使用 ignored `.tests/review-build/bin` 构建验证，未终止用户程序或访问设备。
-- 待执行：快进合并 main、主工作区原有 Qcom/CLI/LP/Core 测试及 Release 构建、更新合并证据与交付检查。
+- 已提交 `2c36c84 fix(cli): map cd parent to browser up`，主工作区 main 从 cbafc5b 快进合并到该代码提交，无冲突，无未知修改；未推送。
+- 主工作区旧 Qcom 测试有一项仍要求字节读取必须对齐，与 FH-02 已明确修改的契约冲突。将该 ignored 本地测试更新为真实跨扇区字节结果校验，继续要求写入严格对齐；未修改生产代码或提交测试。更新前 Qcom 250 通过/1 失败，目标更新后 1/1、完整 251/251。
+- 合并后主工作区 Qcom 251/251、CLI 55/55、Android LP 55/55、Core 9/9，共 370 项通过；完整 Release 构建零警告零错误，中英 CLI/Qcom 资源键和 diff 检查通过。
+- 主工作区新 EXE 合成 Super 冒烟确认连续 cd .. 返回文件系统分区、Super、虚拟根目录，根目录不越界，随后嵌套 EROFS print/find 可继续使用，退出码 0。主工作区标准 CLI 已重建，b6cf 运行中的旧实例未中断；改用主工作区 `src/GeekFlashCore.CLI/bin/Release/net10.0/geekflash.exe` 可使用合并版。
+- 两处 Git 工作区干净，测试、合成夹具、日志、独立构建目录及标准 bin/obj 均 ignored，无受跟踪测试。文档收尾同步 main；真机复测仍从只读 browse/print/find 小文件开始。
 
 验证命令：
 
@@ -28,4 +32,16 @@ dotnet test .tests/GeekFlashCore.Protocol.Qcom.Tests/GeekFlashCore.Protocol.Qcom
 dotnet test .tests/GeekFlashCore.Protocol.Qcom.Tests/GeekFlashCore.Protocol.Qcom.Tests.csproj -c Release --no-restore -p:BaseOutputPath=C:/Users/a1375/.codex/worktrees/b6cf/GeekFlashCore/.tests/review-build/bin/ -v quiet
 dotnet build GeekFlashCore.slnx -c Release --no-restore -p:BaseOutputPath=C:/Users/a1375/.codex/worktrees/b6cf/GeekFlashCore/.tests/review-build/bin/ -v quiet
 git diff --check
+```
+
+主工作区追加验证（工作目录 `D:/Code/CSharp/GeekFlashCore`）：
+
+```powershell
+dotnet test .tests/GeekFlashCore.Protocol.Qcom.Tests/GeekFlashCore.Protocol.Qcom.Tests.csproj -c Release --no-restore -v quiet
+dotnet test .tests/GeekFlashCore.CLI.Tests/GeekFlashCore.CLI.Tests.csproj -c Release --no-restore -v quiet
+dotnet test .tests/GeekFlashCore.Android.Lp.Tests/GeekFlashCore.Android.Lp.Tests.csproj -c Release --no-restore -v quiet
+dotnet test .tests/GeekFlashCore.Core.Tests/GeekFlashCore.Core.Tests.csproj -c Release --no-restore -v quiet
+dotnet build GeekFlashCore.slnx -c Release --no-restore -v quiet
+git diff --check
+git ls-files .tests
 ```

@@ -6,12 +6,15 @@ using GeekFlashCore.UsbWatcher;
 using GeekFlashCore.UsbWatcher.Extensions;
 using GeekFlashCore.UsbWatcher.Abstractions;
 using GeekFlashCore.CLI.Localization;
+using LibUsbDotNet;
+using LibUsbDotNet.LibUsb;
+using Serilog;
 
 namespace GeekFlashCore.CLI;
 
-internal sealed record TransportResolution(ITransport Transport, ProtocolRegistration Registration);
+internal sealed record TransportResolution(ITransport Transport, ProtocolRegistration Registration, CliOptions? PreparedOptions = null);
 
-internal sealed class TransportResolver
+internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, CancellationToken, Task<CliOptions>>? prepareOptions = null)
 {
     private readonly WindowsMtkDriver? _mtkDriver = OperatingSystem.IsWindows()
         ? new(new WindowsMtkDriverBackend()) : null;
@@ -47,10 +50,11 @@ internal sealed class TransportResolver
                 throw new ArgumentException(Strings.Cli_UsbFormatInvalid);
             if (selected is null && !ProtocolRegistry.TryIdentify(new UsbDeviceInfo { VendorId = vid, ProductId = pid }, out selected))
                 throw new ArgumentException(Strings.Cli_ProtocolSelectionRequired);
+            if (selected.UsbFactory is not null)
+                return await ResolveNativeUsbAsync(selected, options, ct).ConfigureAwait(false);
             await PrepareNativeUsbAsync(selected, options, ct).ConfigureAwait(false);
-            return new TransportResolution(selected.UsbFactory is { } factory
-                ? factory(new((ushort)vid, (ushort)pid), options)
-                : LibUsbTransportFactory.Create(vid, pid, Guid.Empty, readTimeout: options.ReadTimeout, writeTimeout: options.WriteTimeout), selected);
+            return new TransportResolution(LibUsbTransportFactory.Create(vid, pid, Guid.Empty,
+                readTimeout: options.ReadTimeout, writeTimeout: options.WriteTimeout), selected);
         }
 
         if (selected?.UsbFactory is not null)
@@ -79,29 +83,35 @@ internal sealed class TransportResolver
             var monitor = UsbDeviceMonitorFactory.Create();
             using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
             wait.CancelAfter(options.DeviceWaitTimeout);
+            UsbDeviceInfo? device;
             try
             {
-                var device = await monitor.WaitForDeviceAsync(d => MatchesDevice(d, selected), wait.Token).ConfigureAwait(false);
-                if (device is null) throw new InvalidOperationException(Strings.Cli_DeviceNotFound);
-                ProtocolRegistry.TryIdentify(device!, out var identifiedRegistration);
-                var registration = selected ?? identifiedRegistration;
-                if (registration.UsbFactory is not null)
-                    return await ResolveNativeUsbAsync(registration, options, ct).ConfigureAwait(false);
-                var port = device.ExtractPortName() ?? throw new InvalidOperationException(Strings.Cli_DeviceMissingComPort);
-                return new TransportResolution(SerialPortTransportFactory.Create(port, options.ReadTimeout, options.WriteTimeout), registration);
+                device = await monitor.WaitForDeviceAsync(d => MatchesDevice(d, selected), wait.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
                 throw new TimeoutException(Strings.FormatCli_DeviceWaitTimedOut(options.DeviceWaitTimeout));
             }
             finally { if (monitor.IsMonitoring) monitor.StopMonitoring(); }
+            // The monitor's timeout translates only its own wait, not later host input cancellation.
+            if (device is null) throw new InvalidOperationException(Strings.Cli_DeviceNotFound);
+            ProtocolRegistry.TryIdentify(device, out var identifiedRegistration);
+            var registration = selected ?? identifiedRegistration;
+            if (registration.UsbFactory is not null)
+                return await ResolveNativeUsbAsync(registration, options, ct).ConfigureAwait(false);
+            var port = device.ExtractPortName() ?? throw new InvalidOperationException(Strings.Cli_DeviceMissingComPort);
+            return new TransportResolution(SerialPortTransportFactory.Create(port, options.ReadTimeout, options.WriteTimeout), registration);
         }
         throw new InvalidOperationException(Strings.Cli_DeviceNotFound);
     }
     private async Task<TransportResolution> ResolveNativeUsbAsync(ProtocolRegistration registration, CliOptions options, CancellationToken ct)
     {
+        // Resolve host input before acquiring a USB snapshot that can expire while the user selects a DA.
+        if (prepareOptions is not null)
+            options = await prepareOptions(registration, options, ct).ConfigureAwait(false);
         NativeUsbRuntime.EnsureAvailable();
         var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        bool reportedDisconnect = false;
         while (true)
         {
             ct.ThrowIfCancellationRequested();
@@ -116,18 +126,57 @@ internal sealed class TransportResolver
                 registration.DeviceIdentifier?.Identify(new UsbDeviceInfo { VendorId = id.VendorId, ProductId = id.ProductId }).IsSuccess == true);
             var identity = SelectUsbIdentity(identities, options);
             if (identity is not null)
-                return new(registration.UsbFactory!(identity, options), registration);
+            {
+                var transport = TryOpenNativeTransport(() => registration.UsbFactory!(identity, options), ct);
+                if (transport is not null)
+                {
+                    if (elapsed.ElapsedMilliseconds >= options.DeviceWaitTimeout)
+                    {
+                        transport.Dispose();
+                        throw new TimeoutException(Strings.FormatCli_DeviceWaitTimedOut(options.DeviceWaitTimeout));
+                    }
+                    return new(transport, registration, options);
+                }
+                if (!reportedDisconnect)
+                {
+                    Log.ForContext("UserPresentation", true).Warning(Strings.Cli_UsbOpenDisconnectedRetry);
+                    Console.WriteLine(Strings.Cli_UsbOpenDisconnectedRetry);
+                    reportedDisconnect = true;
+                }
+            }
             await Task.Delay(100, ct).ConfigureAwait(false);
         }
     }
     internal static UsbTransportIdentity? SelectUsbIdentity(IEnumerable<UsbTransportIdentity> identities, CliOptions options)
     {
-        var matches = identities.Where(id => (options.UsbBus is null || options.UsbBus == id.BusNumber) &&
+        var matches = identities.Where(id => (options.Usb is null || TryParseUsb(options.Usb, out int vid, out int pid) && id.VendorId == vid && id.ProductId == pid) &&
+            (options.UsbBus is null || options.UsbBus == id.BusNumber) &&
             (options.UsbPortPath is null || options.UsbPortPath == id.PortPath) &&
             (options.UsbSerial is null || options.UsbSerial == id.SerialNumber)).Take(2).ToArray();
         if (matches.Length > 1)
             throw new InvalidOperationException(Strings.Cli_UsbAmbiguous);
         return matches.SingleOrDefault();
+    }
+
+    internal static ITransport? TryOpenNativeTransport(Func<ITransport> create, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        ITransport? transport = null;
+        try
+        {
+            transport = create();
+            ct.ThrowIfCancellationRequested();
+            transport.Open();
+            ct.ThrowIfCancellationRequested();
+            return transport;
+        }
+        catch (UsbException exception) when (exception.ErrorCode == Error.NoDevice)
+        {
+            transport?.Dispose();
+            ct.ThrowIfCancellationRequested();
+            return null;
+        }
+        catch { transport?.Dispose(); throw; }
     }
 
     private static ProtocolRegistration ResolveDefaultRegistration() =>

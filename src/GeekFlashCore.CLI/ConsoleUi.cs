@@ -4,6 +4,9 @@ using GeekFlashCore.Protocol.Qcom.Abstractions;
 using Serilog;
 using Serilog.Events;
 using System.Diagnostics;
+using GeekFlashCore.Protocol.Mtk.Abstractions;
+using LibUsbDotNet;
+using LibUsbDotNet.LibUsb;
 
 namespace GeekFlashCore.CLI;
 
@@ -245,8 +248,11 @@ internal sealed class ConsoleUi
         Log.Error(exception, Strings.Cli_LogCommandFailed, exception.Message);
         string message = exception switch
         {
+            MtkLoaderSelectionTimeoutException => Strings.Cli_MtkDaSelectionTimedOut,
             TimeoutException => Strings.Cli_ResponseTimedOut,
             FirehoseNakException => Strings.Cli_DeviceRejected,
+            UsbException { ErrorCode: Error.NoDevice } => Strings.Cli_UsbDisconnected,
+            MtkResourceException or MtkProtocolException or MtkCapabilityException or MtkExploitException or
             ArgumentException or FileNotFoundException or InvalidOperationException or QcomResourceException =>
                 exception.Message.Replace('\r', ' ').Replace('\n', ' '),
             _ => Strings.Cli_OperationFailed

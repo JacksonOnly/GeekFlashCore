@@ -101,6 +101,8 @@ MTK-13 的框架修订与文档在独立 `feat(mtk)!: add scoped host extension 
 
 2026-10-05 新增 USB-01～03：CLI Windows native DLL 部署与按 MTK 刷机硬件 ID 自动安装 libusb-win32 的设计、实现、验证及恢复方法见 [Windows USB 启动准备](2026-10-05-mtk-windows-usb-bootstrap.md)。设备过滤器范围遵循用户明确确认，不对共享 Ports/USB 类安装；不涉及漏洞策略实现。此项补齐运行依赖，驱动/UAC 与真机连接仍待验证。
 
+同日用户真实日志已证明过滤器安装/注册表复核成功，第二次 BROM Probe 成功；尚无 DA 执行证据。REC-01～03 修复默认交互缺少 DA 文件选择、MTK 资源异常被隐藏以及协议启动前 USB 候选过期的处理，见 [CLI 连接准备与错误展示](2026-10-05-mtk-cli-connection-recovery.md)。CLI 101 / MTK 120 / Qcom 251 项通过，Release 与差异检查通过；仅协议创建前 NoDevice 有界重新枚举，已开始的协议通信不重试。
+
 - 无真机/脱敏抓包。驱动绑定、CDC 控制接口、native ZLP、物理身份与重枚举、包长/取消延迟和吞吐仍需硬件验证。
 - LibUsbDotNet control timeout 是进程静态配置；typed MTK 连接拒绝非有限值，不修改全局。不能承诺中断正在阻塞的 native call。
 - FC/Preloader 字段、Legacy 初始化/EMI、XML DRAM、厂商状态、XFlash 28-byte reboot 与 Python 32-byte 形式存在参考差异；本地测试锁定当前明确线路，需设备补证。

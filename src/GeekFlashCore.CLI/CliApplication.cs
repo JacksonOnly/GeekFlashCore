@@ -10,12 +10,13 @@ namespace GeekFlashCore.CLI;
 internal sealed class CliApplication
 {
     private readonly ConsoleUi _ui;
-    private readonly TransportResolver _transportResolver = new();
+    private readonly TransportResolver _transportResolver;
     private readonly IProgress<ProgressRecord> _progress;
 
     public CliApplication(ConsoleUi? ui = null)
     {
         _ui = ui ?? new ConsoleUi();
+        _transportResolver = new(PrepareConnectionOptionsAsync);
         _progress = new ImmediateProgress<ProgressRecord>(_ui.Report);
     }
 
@@ -159,9 +160,20 @@ internal sealed class CliApplication
         ProtocolRegistration registration = requested ?? resolution.Registration;
         try
         {
-            return (registration.Factory(new ProtocolHostContext(_ui, options), resolution.Transport), resolution.Transport, registration);
+            return (registration.Factory(new ProtocolHostContext(_ui, resolution.PreparedOptions ?? options), resolution.Transport), resolution.Transport, registration);
         }
         catch { resolution.Transport.Dispose(); throw; }
+    }
+
+    internal Task<CliOptions> PrepareConnectionOptionsAsync(ProtocolRegistration registration, CliOptions options, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (registration.Type != ProtocolType.Mtk) return Task.FromResult(options);
+        MtkProtocolHostAdapter.ValidateOptions(options);
+        if (options.Command is "help" or "devices" ||
+            registration.CommandSet is { } commands && commands.Handles(options.Command) && !commands.RequiresConnection(options.Command))
+            return Task.FromResult(options);
+        return MtkProtocolHostAdapter.SelectLoaderAsync(options, _ui, ct);
     }
 
     private static CliOptions NormalizeAndValidate(CliOptions options, ProtocolRegistration? registration)

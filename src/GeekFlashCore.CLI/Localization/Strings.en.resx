@@ -217,4 +217,9 @@ Examples (current directory /super/system_a):
   <data name="Cli_MtkDriverInstallTimedOut" xml:space="preserve"><value>libusb-win32 installation exceeded 60 seconds; its outcome is uncertain. Check drivers and reconnect.</value></data>
   <data name="Cli_MtkDriverLateLaunchFailed" xml:space="preserve"><value>Late launch of the cancelled MTK driver installer failed.</value></data>
   <data name="Cli_MtkDriverTerminationFailed" xml:space="preserve"><value>Cannot terminate the MTK driver installer; check the installation outcome.</value></data>
+  <data name="Cli_MtkDaPrompt" xml:space="preserve"><value>Select the MTK DA file matching this device (empty cancels; --loader also accepted)</value></data>
+  <data name="Cli_MtkDaMissing" xml:space="preserve"><value>MTK DA file is missing or unreadable; specify a matching DA with --loader, or enter its path in interactive mode.</value></data>
+  <data name="Cli_MtkDaSelectionTimedOut" xml:space="preserve"><value>MTK DA selection timed out; specify the file with --loader before reconnecting.</value></data>
+  <data name="Cli_UsbOpenDisconnectedRetry" xml:space="preserve"><value>USB device disconnected before protocol communication; enumerating again and waiting for the device.</value></data>
+  <data name="Cli_UsbDisconnected" xml:space="preserve"><value>USB device disconnected or enumerated again; reconnect it and retry.</value></data>
 </root>

@@ -217,4 +217,9 @@ find 搜索中按 Ctrl+C 取消本次搜索，等待当前读取及 ACK 完成�
   <data name="Cli_MtkDriverInstallTimedOut" xml:space="preserve"><value>libusb-win32 安装超过 60 秒，结果不确定；请检查驱动状态后重新连接。</value></data>
   <data name="Cli_MtkDriverLateLaunchFailed" xml:space="preserve"><value>已取消的 MTK 驱动安装器迟到启动失败。</value></data>
   <data name="Cli_MtkDriverTerminationFailed" xml:space="preserve"><value>无法终止 MTK 驱动安装器；安装结果需要检查。</value></data>
+  <data name="Cli_MtkDaPrompt" xml:space="preserve"><value>请选择与设备匹配的 MTK DA 文件路径（留空取消；也可使用 --loader）</value></data>
+  <data name="Cli_MtkDaMissing" xml:space="preserve"><value>缺少或无法读取 MTK DA 文件；请使用 --loader 指定与设备匹配的 DA 文件，或在交互模式输入文件路径。</value></data>
+  <data name="Cli_MtkDaSelectionTimedOut" xml:space="preserve"><value>选择 MTK DA 文件超时；请通过 --loader 预先指定文件后重新连接。</value></data>
+  <data name="Cli_UsbOpenDisconnectedRetry" xml:space="preserve"><value>USB 设备在开始协议通信前已断开，正在重新枚举并等待设备。</value></data>
+  <data name="Cli_UsbDisconnected" xml:space="preserve"><value>USB 设备已断开或重新枚举；请重新连接设备后重试。</value></data>
 </root>

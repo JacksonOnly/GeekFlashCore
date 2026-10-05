@@ -32,6 +32,8 @@ install-filter.exe 本身不复制 SYS。CLI 使用隐藏的内部 helper 入口
 
 ## 使用与恢复
 
+USB-04：用户 14:04/14:05 的真实日志补证安装/注册表复核与 BROM Probe 成功，第一次打开时曾 NoDevice；后续失败为未提供 DA，不能视作 libusb DLL 加载失败。恢复修复见 [CLI 连接准备与错误展示](2026-10-05-mtk-cli-connection-recovery.md)，DA 执行及存储线路仍待设备材料验证。
+
 在本工作区重新构建后，运行原 CLI 交互命令即可按发现的 MTK 刷机 ID 自动检查和安装。Windows 可能弹出一次管理员授权；已是管理员则直接安装。devices 命令只读，不安装。非交互模式需要预先以管理员启动。默认使用用户给定的两个 D:\Code 目录，文件会进入输出和 publish 目录，运行时不依赖该源码目录。
 
 其他构建机可指定：

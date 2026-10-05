@@ -10,8 +10,24 @@ using GeekFlashCore.CLI.Localization;
 
 namespace GeekFlashCore.CLI;
 
+internal sealed class MtkLoaderSelectionTimeoutException() : TimeoutException(Strings.Cli_MtkDaSelectionTimedOut);
+
 internal static class MtkProtocolHostAdapter
 {
+    internal static async Task<CliOptions> SelectLoaderAsync(CliOptions options, ConsoleUi ui, CancellationToken ct)
+    {
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        budget.CancelAfter(options.ResourceTimeout ?? 30000);
+        try
+        {
+            string path = (await ui.SelectFileAsync(Strings.Cli_MtkDaPrompt, options.Loader,
+                Strings.Cli_MtkDaMissing, budget.Token, path => new FileInfo(path).Length > 0).ConfigureAwait(false))!;
+            return options with { Loader = path };
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested && budget.IsCancellationRequested)
+        { throw new MtkLoaderSelectionTimeoutException(); }
+    }
+
     public static ProtocolRegistration Registration
     {
         get;

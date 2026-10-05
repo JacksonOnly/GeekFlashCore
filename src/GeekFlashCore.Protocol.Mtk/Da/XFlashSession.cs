@@ -84,9 +84,9 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         wire.ReadStatus();
         wire.ReadStatus(0, 0x434e5953);
         wire.Stage = MtkBootStage.Da2;
-        QueryPacketLength();
         checkpoint(MtkExploitStage.Da2Ready);
     }
+    public void CompleteAuthentication() => QueryPacketLength();
     public byte[]? GetAuthenticationChallenge()
     {
         byte[] state = Control(0x40016);
@@ -104,6 +104,8 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
     }
     public void Authenticate(ReadOnlySpan<byte> response)
     {
+        if (response.IsEmpty || response.Length > options.MaximumFrameSize)
+            throw new MtkResourceException("DA SLA response length");
         byte[] copy = response.ToArray();
         try
         {

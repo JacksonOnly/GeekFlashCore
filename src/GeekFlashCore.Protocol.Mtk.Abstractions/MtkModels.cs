@@ -31,7 +31,14 @@ public enum MtkCapabilitySupport
 /// <summary>Authentication purpose; signatures are supplied by the host.</summary>
 public enum MtkAuthenticationKind
 {
-    BromSla, DaSla
+    BromSla, DaSla,
+    /// <summary>XML DA1 SLA, completed before the DA1 host checkpoint. DaSla retains its DA2 purpose.</summary>
+    Da1Sla
+}
+/// <summary>Observed standard DA authentication phase. Unsupported is not authentication success.</summary>
+public enum MtkDaAuthenticationState
+{
+    NotQueried, NotRequired, Authenticated, Unsupported
 }
 /// <summary>Hardware security flags exactly as reported by the target.</summary>
 public sealed record MtkSecurityConfiguration(uint Raw)

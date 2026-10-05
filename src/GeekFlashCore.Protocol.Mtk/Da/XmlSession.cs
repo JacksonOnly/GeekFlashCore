@@ -47,17 +47,20 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         Begin(name, parameters);
         Lifetime("END");
     }
-    public void Initialize(MtkDaImage image, MtkEmiImage? emi, MtkTargetInfo target,
-        Func<MtkExploitStage, MtkDaImage> checkpoint)
+    public void InitializeDa1()
     {
         wire.Stage = MtkBootStage.Da1;
         Simple("SET-RUNTIME-PARAMETER", Args(("checksum_level", "NONE"), ("battery_exist", "AUTO-DETECT"), ("da_log_level", "INFO"),
             ("log_channel", "UART"), ("system_os", "LINUX"), ("initialize_dram", "YES")));
         Simple("HOST-SUPPORTED-COMMANDS", Args(("host_capability", "CMD:DOWNLOAD-FILE^1@CMD:FILE-SYS-OPERATION^1@CMD:PROGRESS-REPORT^1@CMD:UPLOAD-FILE^1@")));
+        Simple("SET-HOST-INFO", Args(("info", "GeekFlashCore")));
         Begin("NOTIFY-INIT-HW", Args());
         Progress();
         Lifetime("END");
-        Simple("SET-HOST-INFO", Args(("info", "GeekFlashCore")));
+    }
+    public void Initialize(MtkDaImage image, MtkEmiImage? emi, MtkTargetInfo target,
+        Func<MtkExploitStage, MtkDaImage> checkpoint)
+    {
         image = checkpoint(MtkExploitStage.Da1Ready);
         var region = image.Entry.Regions[image.Entry.EntryRegionIndex + 1];
         long length = region.Length - region.SignatureLength;
@@ -67,15 +70,38 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         Download(length, source);
         Lifetime("END");
         wire.Stage = MtkBootStage.Da2;
-        checkpoint(MtkExploitStage.Da2Ready);
         Simple("HOST-SUPPORTED-COMMANDS", Args(("host_capability", "CMD:DOWNLOAD-FILE^1@CMD:FILE-SYS-OPERATION^1@CMD:PROGRESS-REPORT^1@CMD:UPLOAD-FILE^1@")));
         Begin("NOTIFY-INIT-HW", Args());
         Progress();
         Lifetime("END");
+        checkpoint(MtkExploitStage.Da2Ready);
+    }
+    public MtkDaAuthenticationState AuthenticationState { get; private set; }
+    private bool BeginSlaProperty()
+    {
+        byte[] data = MtkXmlCodec.Create("GET-SYS-PROPERTY", Args(("key", "DA.SLA"), ("target_file", "MEM://0x0:0x200000")));
+        Lifetime("START"); wire.SendFrame(data);
+        string ack = ReceiveText(64);
+        if (ack is "OK" or "OK@0x0") return true;
+        if (ack != "ERR!UNSUPPORTED") throw wire.Failure();
+        var end = ReceiveXml();
+        if (MtkXmlCodec.Value(end, "command") != "CMD:END") throw wire.Failure();
+        var results = end.Descendants("result").ToArray();
+        if (results.Length != 1 || results[0].HasElements) throw wire.Failure();
+        if (results[0].Value != "OK")
+        {
+            var messages = end.Descendants("message").ToArray();
+            if (results[0].Value != "ERR" || messages.Length != 1 || messages[0].HasElements || messages[0].Value != "ERR!UNSUPPORTED")
+                throw wire.Failure();
+        }
+        Ack();
+        AuthenticationState = MtkDaAuthenticationState.Unsupported;
+        return false;
     }
     public byte[]? GetAuthenticationChallenge()
     {
-        Begin("GET-SYS-PROPERTY", Args(("key", "DA.SLA"), ("target_file", "MEM://0x0:0x200000")));
+        AuthenticationState = MtkDaAuthenticationState.NotQueried;
+        if (!BeginSlaProperty()) return null;
         using var property = new MemoryStream();
         Upload(property, null, options.MaximumXmlSize);
         Lifetime("END");
@@ -85,7 +111,10 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
             throw new MtkResourceException("XML DA.SLA property");
         string state = items[0].Value.Trim();
         if (state == "DISABLED")
+        {
+            AuthenticationState = MtkDaAuthenticationState.NotRequired;
             return null;
+        }
         if (state != "ENABLED")
             throw wire.Failure();
         Begin("SECURITY-GET-DEV-FW-INFO", Args(("target_file", "MEM://0x0:0x200000")));
@@ -109,6 +138,8 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
     }
     public void Authenticate(ReadOnlySpan<byte> response)
     {
+        if (response.IsEmpty || response.Length > options.MaximumFrameSize)
+            throw new MtkResourceException("DA SLA response length");
         Begin("SECURITY-SET-FLASH-POLICY", Args(("source_file", "MEM://auth")));
         byte[] copy = response.ToArray();
         try

@@ -34,6 +34,12 @@ The current primary reference is the user's `D:\Code\Rust\penumbra-main` archive
 | `core/src/da/scatter.rs` | `D789C65C764DAC24D29BE4682A03F6EDEC4462E530495EDECCB8039CC541ECE4` |
 | `core/src/da/xflash/exts.rs` | `0CD543F08A394E13D7CEB4223C5D2793F7BA6290EBE9E21E28BCEAA7A6A1BF1D` |
 | `core/src/da/xml/exts.rs` | `E52BEBD172340109D59A62288F19B999B8916ACF88D3E2D0A8EFD64B1C8491E6` |
+| `core/src/da/xflash/protocol.rs` | `CB17E5926F4D0483DC7DABA44792AAD23BD73DA6C02A316783EE518E3AC84E23` |
+| `core/src/da/xml/protocol.rs` | `B9ED36BD0F956A26DB249EA19587A66457C77F3B98D50CE28FC0D1F1CE9F5408` |
+| `core/src/macros.rs` | `1100C6949EC249F60DE6EEF3CF4FAFE59969928BED5005DC40A721AF0A718522` |
+
+The updated protocol/macros files were inspected for host callback placement and ordinary authentication order only.
+No concrete exploit, automatic strategy construction, exploit error suppression, or assertion of patched/authenticated state was ported.
 
 Additional normal mtkclient references are `Library/DA/legacy/dalegacy_lib.py` (NAND DF and IoT DA3/CDC) and `Library/Hardware/hwcrypto_{sej,gcpu,dxcc}.py` (standard register sequences, bounded rewrites of polling, public image-format constants and normal derivation). DAPC/security disable, DMA protection bypass, blacklist removal, firmware/DA modifications and payload injection were excluded. Explicit profiles replace hardcoded DMA/clock addresses.
 

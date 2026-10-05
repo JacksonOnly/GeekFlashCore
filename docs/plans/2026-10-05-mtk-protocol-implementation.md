@@ -2,6 +2,8 @@
 
 日期：2026-10-05。设计：`2026-10-05-mtk-protocol-design.md`。BROM 对应：`2026-10-05-mtk-brom-method-mapping.md`。宿主阶段框架：`2026-10-05-mtk-exploit-framework.md`。
 
+最新恢复记录：[Legacy 磁盘 PMT 与新版宿主检查点实施记录](2026-10-05-mtk-legacy-pmt-checkpoints-implementation.md)。本轮新增 eMMC DiskV1 分区发现，XML DA1 标准 SLA 与新版 XML/XFlash 回调顺序、认证证据、IoT 已上传区域保护；727 项全量测试通过，Release 0 警告/错误。下方历史基线与旧阶段位置不能替代该最新记录；具体漏洞实现仍为空。
+
 工作区：`C:\Users\a1375\.codex\worktrees\8d7a\GeekFlashCore`。分支：`codex/mtk-protocol`。初始 HEAD：`173d1bb`。
 
 ## 授权范围与基线

@@ -155,6 +155,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         catch { _state = MtkSessionState.Disconnected; throw; }
         _wire.Stage = MtkBootStage.Unknown;
         _wire.Command = 0;
+        _da1Authentication = _da2Authentication = MtkDaAuthenticationState.NotQueried;
         State(MtkSessionState.Handshaking);
         if (_transport.ControlInterfaceNumber is { } controlInterface)
             _wire.ConfigureCdc(controlInterface);
@@ -188,18 +189,10 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 _brom.Authenticate(resources.SynchronousSigner);
             }
             LoadDa(resources, target);
-            byte[]? daChallenge = _da!.GetAuthenticationChallenge();
-            if (daChallenge is not null)
-            {
-                try
-                {
-                    if (resources.SynchronousSigner is null)
-                        throw new MtkResourceException("synchronous DA SLA signer");
-                    using var response = resources.SynchronousSigner(MtkAuthenticationKind.DaSla, daChallenge);
-                    _da.Authenticate(response.Memory.Span);
-                }
-                finally { CryptographicOperations.ZeroMemory(daChallenge); }
-            }
+            if (_da is XmlSession) AuthenticateDaSynchronously(MtkAuthenticationKind.Da1Sla, resources);
+            ContinueDa(resources, target);
+            AuthenticateDaSynchronously(MtkAuthenticationKind.DaSla, resources);
+            CompleteDaAuthentication();
             RunExploitCheckpoint(MtkExploitStage.Da2Authenticated, resources);
             CompleteConnection();
             return 0;
@@ -257,9 +250,23 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 _brom.JumpDownloadAgent(da1.Address);
             }
             LoadDa(resources, target, upload: false);
-            var challenge = _da!.GetAuthenticationChallenge();
+            if (_da is XmlSession)
+            {
+                var firstChallenge = GetDaAuthenticationChallenge(MtkAuthenticationKind.Da1Sla);
+                if (firstChallenge is not null)
+                {
+                    await AuthenticateAsync(MtkAuthenticationKind.Da1Sla, firstChallenge, resources, ct).ConfigureAwait(false);
+                    _da1Authentication = MtkDaAuthenticationState.Authenticated;
+                }
+            }
+            ContinueDa(resources, target);
+            var challenge = GetDaAuthenticationChallenge(MtkAuthenticationKind.DaSla);
             if (challenge is not null)
+            {
                 await AuthenticateAsync(MtkAuthenticationKind.DaSla, challenge, resources, ct).ConfigureAwait(false);
+                _da2Authentication = MtkDaAuthenticationState.Authenticated;
+            }
+            CompleteDaAuthentication();
             RunExploitCheckpoint(MtkExploitStage.Da2Authenticated, resources);
             CompleteConnection();
             progress?.Report(new(1, 1, Strings.FormatPhase(_state))
@@ -383,7 +390,11 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             MtkDaKind.Xml => new XmlSession(_wire, _options),
             _ => new LegacySession(_wire, _options)
         };
-        _da.Initialize(resources.DownloadAgent, resources.Emi, target, stage =>
+        if (_da is XmlSession xml) xml.InitializeDa1();
+    }
+    private void ContinueDa(MtkConnectionResources resources, MtkTargetInfo target)
+    {
+        _da!.Initialize(resources.DownloadAgent, resources.Emi, target, stage =>
         {
             var state = stage == MtkExploitStage.Da1Ready ? MtkSessionState.Da1Ready : MtkSessionState.Da2Ready;
             if (_state != state)

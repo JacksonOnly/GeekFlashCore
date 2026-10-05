@@ -118,6 +118,8 @@ Core 必须能够在运行时向宿主请求非 Program/Read 命令参数的资�
 
 ## 5. Sahara 与 Loader 分析
 
+2026-10-05（PBL-01）：新增默认关闭的 EnablePblPatch，CLI 默认启用。按用户最新要求，所有品牌的 Sahara SDM845/SDM710/SM6125 身份明确匹配时，在 Loader 校验后显示提示并自动运行；用户已确认采用通知后自动执行。710/845 保持 OPPOLoaderTest 原线路，665 使用用户抓包补全六块补丁 ELF 与随后 Hello/Loader 两阶段。Patch I/O 同步，710/845 的 1000 ms 重开等待位于门面编排层；665 不重开，首 Loader 包回放、固定循环上限、Patch 后 Loader 的 4 MiB/文件范围限制和失败关闭独立建模。旧宿主默认、普通上传、Firehose/Digest 续接保持既有入口。完整线路、范围、资源与风险见 `2026-10-05-pbl-patch-design.md` 和 `2026-10-05-sm6125-capture-analysis.md`。
+
 QcomImageUtils 用于提取：
 
 - OEM 与 SoC 类型；

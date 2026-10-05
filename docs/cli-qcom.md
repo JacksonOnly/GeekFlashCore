@@ -37,6 +37,14 @@ Sahara 探测成功后、Loader 上传前会输出完整身份信息；`info` �
 
 Core 的 `IVendorSelectionProvider` 是可选宿主接口，使用既有资源超时、取消和迟到结果观察。原构造函数及厂商解析入口保留，未配置此 Provider 的旧宿主仍回退 Generic；新增完整构造函数末尾可传 `vendorSelectionProvider`，返回有效的非 Auto 枚举。
 
+## Patch PBL
+
+连接期间，CLI 根据 Sahara 芯片标识匹配所有品牌的 SDM845、SDM710 和 SM6125（Snapdragon 665）。选定并校验 Loader 后显示“正在进行 Patch PBL”，随后自动执行，无需再次确认。其他芯片或芯片身份未知时继续原有连接流程。
+
+710 / 845 使用内置片段完成固定 175 次交互，关闭传输、等待 1000 ms、重新打开后上传 Loader。665 最多进行 100 次触发交互，再发送抓包提取的六块补丁资源；设备再次 Hello 后保留首个 READ_DATA64 继续用户 Loader 上传，不关闭或重开。Patch 后的 Loader 请求限制在文件范围内，单次不超过 4 MiB。取消、短读、超时、非法报文或重开失败会中止连接；只有 Loader、Firehose 配置与存储初始化完成后才报告联机成功。
+
+Core 宿主通过 `QcomProtocolOptions.EnablePblPatch = true` 启用，默认值为 false；同步 `ProbeSahara → UploadSaharaImages → ConfigureFirehose` 和异步 `ConnectAsync` 共用 Patch 线路。Firehose 已运行会话与 Digest 续接保持其原有入口。665 的资源、重复计数与提取命令见 [抓包分析](plans/2026-10-05-sm6125-capture-analysis.md)。当前证据来自用户抓包、参考源码和模拟传输，本实现的跨品牌效果、Command→ImageTxPending、Patch 后重开与 USB 重枚举仍需真机验证。
+
 ## Oplus 模式
 
 两种 Oplus 模式均在 Configure 和存储查询前执行：启动日志 → Digest → verify XML → Sign（零填充至 4096 字节）→ verify passed → sha256init → Configure。Digest 失败、Sign 超时或半帧均立即中止连接，不发送其他命令。

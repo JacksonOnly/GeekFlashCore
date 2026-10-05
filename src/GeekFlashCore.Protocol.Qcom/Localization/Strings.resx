@@ -438,4 +438,11 @@
   <data name="Qcom_FirehoseResumeUnconfirmed" xml:space="preserve"><value>设备已返回 Firehose 响应，但 NOP 未确认成功；请检查设备状态后重新连接。</value></data>
   <data name="Qcom_ByteReadSectorTooLarge" xml:space="preserve"><value>Firehose 字节读取不支持超过 65536 字节的逻辑扇区。</value></data>
   <data name="Qcom_LogOplusModeDetected" xml:space="preserve"><value>已根据 Digest 内容自动选择 Oplus 模式：{OplusMode}。</value></data>
+  <data name="Qcom_PblAttemptsExhausted" xml:space="preserve"><value>Snapdragon 665 PBL Patch 在 100 次尝试后仍未进入补丁资源传输阶段。</value></data>
+  <data name="Qcom_PblUnexpectedPacket" xml:space="preserve"><value>PBL Patch 收到非预期的 Sahara 命令或报文长度。</value></data>
+  <data name="Qcom_PblResourceInvalid" xml:space="preserve"><value>PBL Patch 内置资源缺失或长度无效。</value></data>
+  <data name="Qcom_LogPblStart" xml:space="preserve"><value>识别到 Snapdragon {Chip}，正在进行 Patch PBL…</value></data>
+  <data name="Qcom_LogPblLoaderTransfer" xml:space="preserve"><value>PBL Patch 交互已完成，继续上传 Loader。</value></data>
+  <data name="Qcom_PblLoaderRangeInvalid" xml:space="preserve"><value>PBL Patch 后的 Loader 读取请求越界或超过 4 MiB。</value></data>
+  <data name="Qcom_PblBootstrapRequestInvalid" xml:space="preserve"><value>Snapdragon 665 PBL Patch 请求与已捕获的补丁资源范围或顺序不符。</value></data>
 </root>

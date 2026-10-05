@@ -123,7 +123,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
                     new SaharaImageEntryRequest(Snapshot(_targetInfo)!.Sahara!) { VendorHint = _options.VendorOverride }, token), ct).ConfigureAwait(false);
                 if (response.Entries is null || response.Entries.Count == 0)
                     throw new QcomResourceException(Strings.Qcom_LoaderProviderRequired);
-                UploadCore(response.Entries.ToArray(), progress, ct);
+                await UploadCoreAsync(response.Entries.ToArray(), progress, ct).ConfigureAwait(false);
             }
             StartFirehose();
             if (NeedsVendorSelection)
@@ -193,6 +193,8 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     public void UploadSaharaImages(IReadOnlyList<SaharaImageEntry> images, IProgress<ProgressRecord>? progress = null, CancellationToken cancellationToken = default)
     {
         using var operation = Enter();
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
+        cancellationToken = cancellation.Token;
         cancellationToken.ThrowIfCancellationRequested();
         if (_sahara?.IsConnected != true || _firehose is not null) throw new InvalidOperationException(Strings.Qcom_InvalidSessionState);
         try { UploadCore(images, progress, cancellationToken); }
@@ -459,6 +461,20 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
 
     private void UploadCore(IReadOnlyList<SaharaImageEntry> images, IProgress<ProgressRecord>? progress, CancellationToken ct)
     {
+        ValidateSaharaImages(images, ct);
+        PreparePblPatch(ct);
+        CompleteSaharaUpload(images, progress, ct);
+    }
+
+    private async ValueTask UploadCoreAsync(IReadOnlyList<SaharaImageEntry> images, IProgress<ProgressRecord>? progress, CancellationToken ct)
+    {
+        ValidateSaharaImages(images, ct);
+        await PreparePblPatchAsync(ct).ConfigureAwait(false);
+        CompleteSaharaUpload(images, progress, ct);
+    }
+
+    private void ValidateSaharaImages(IReadOnlyList<SaharaImageEntry> images, CancellationToken ct)
+    {
         ArgumentNullException.ThrowIfNull(images);
         var ids = new HashSet<int>();
         foreach (var image in images)
@@ -471,6 +487,10 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             if (_inspector.TryInspect(image.DataSource, out var info) && info.IsProgrammer) _programmer = info;
         }
         if (images.Count == 0) throw new QcomResourceException(Strings.Qcom_InvalidResource);
+    }
+
+    private void CompleteSaharaUpload(IReadOnlyList<SaharaImageEntry> images, IProgress<ProgressRecord>? progress, CancellationToken ct)
+    {
         ct.ThrowIfCancellationRequested();
         _sahara!.UploadImageCancelable(images, null, progress, ct);
         _firehose = CreateFirehoseSession(_wire!);
@@ -977,7 +997,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         Interlocked.Increment(ref _generation);
         _storage = null;
         bool hadFirehose = _firehose is not null;
-        if (!hadFirehose && _sahara is not null && Transport.IsOpen)
+        if (!hadFirehose && _sahara is { IsPblImageTransfer: false } && Transport.IsOpen)
         {
             try { _sahara.ResetStateMachine(); } catch { }
         }

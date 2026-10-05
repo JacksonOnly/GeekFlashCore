@@ -1,5 +1,12 @@
 # Qualcomm Protocol Implementation Plan
 
+### PBL-01（2026-10-05）：所有品牌 845 / 710 / 665 自动 Patch PBL
+
+- 用户确认匹配目标设备后“显示提示后自动执行”，随后明确三个芯片不限品牌。新增默认关闭的 Core EnablePblPatch，CLI 默认开启；Sahara SoC 为 SDM845/SDM710/SM6125 时，Loader 校验后运行内置 Patch，再完成既有 Loader/Firehose 初始化，OEM 无关。
+- 710/845 完整参考片段与 175 次交互保留，关闭→可取消等待 1000 ms→重开→Flush→参考 Hello 后上传。665 修正为抓包资源线路：12 组 OUT 重复计数合计 95 次，运行时最多 100 次触发；先传六块补丁 17344 字节，再 Hello→首 Loader READ_DATA64→HelloResponse→回放首包，保留已排队的后续请求，不 Done/重开。同步/异步共用执行器，失败不再发送普通 reset 或盲目重放 Patch；Patch 后 Loader 严格校验文件范围与 4 MiB，旧上传兼容填充保持原有规则。
+- 验证：61 项新增目标测试通过；通用化与 665 六块流程先确认 20 项失败再修复。最终 Qcom 412/412、CLI 55/55（共 467 项）完整 Release 回归通过，无跳过。Python 提取校验 4/4；Release 解决方案构建 0 警告/0 错误；资源键、diff 和 ignored/跟踪检查通过。原 11 个资源与参考逐字节一致，新 665 资源与抓包/提取输出一致，12 个资源共 40088 字节；模拟 710/845 完整 Patch 分配 12456/14328 字节，未按 Loader 大小新增物化。
+- 证据与风险：用户抓包仅证明捕获的设备线路；本实现身份、后续阶段和分配验证为模拟/纯内存，未操作硬件。跨品牌效果、真实 Command→ImageTxPending、665 探测状态、1000 ms 复位窗口以及串口/LibUsb 重开/重枚举仍需用户设备复测。详细实施与继续位置见 `2026-10-05-pbl-patch-implementation.md`，资源/提取/使用见 `2026-10-05-sm6125-capture-analysis.md`；本轮不合并或推送。
+
 ### OP-UX-03（2026-10-05）：按 Digest 内容自动选择 Oplus 线路
 
 - 用户要求替代 OP-UX-02 的 Pt/Legacy 编号菜单。保留设备 Sahara OEM、已解析 Oplus/OnePlus Loader 与 VIP 启动日志共同成立的门槛；CLI 直接获取 Digest 和 Sign，Core 在首个 Firehose 写入前识别：可建立非空有效分区索引的 Digest 使用 Pt，否则使用 Legacy。显式配置与已有宿主 SelectedMode 优先；仅指定 --oplus-digest 的既有 Pt 默认未更改。

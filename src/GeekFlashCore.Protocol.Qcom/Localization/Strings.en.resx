@@ -541,4 +541,11 @@ Current {0}, expected {1}</value>
   <data name="Qcom_FirehoseResumeUnconfirmed" xml:space="preserve"><value>The device returned a Firehose response, but NOP was not confirmed. Check the device state and reconnect.</value></data>
   <data name="Qcom_ByteReadSectorTooLarge" xml:space="preserve"><value>Firehose byte reads do not support logical sectors larger than 65536 bytes.</value></data>
   <data name="Qcom_LogOplusModeDetected" xml:space="preserve"><value>Oplus mode automatically detected from Digest content: {OplusMode}.</value></data>
+  <data name="Qcom_PblAttemptsExhausted" xml:space="preserve"><value>Snapdragon 665 PBL Patch did not reach bootstrap transfer after 100 attempts.</value></data>
+  <data name="Qcom_PblUnexpectedPacket" xml:space="preserve"><value>PBL Patch received an unexpected Sahara command or packet length.</value></data>
+  <data name="Qcom_PblResourceInvalid" xml:space="preserve"><value>PBL Patch embedded resources are missing or have invalid lengths.</value></data>
+  <data name="Qcom_LogPblStart" xml:space="preserve"><value>Snapdragon {Chip} detected. Running Patch PBL…</value></data>
+  <data name="Qcom_LogPblLoaderTransfer" xml:space="preserve"><value>PBL Patch exchange completed; continuing Loader upload.</value></data>
+  <data name="Qcom_PblLoaderRangeInvalid" xml:space="preserve"><value>The Loader read request after PBL Patch is out of bounds or exceeds 4 MiB.</value></data>
+  <data name="Qcom_PblBootstrapRequestInvalid" xml:space="preserve"><value>The Snapdragon 665 PBL Patch request does not match the captured bootstrap ranges or order.</value></data>
 </root>

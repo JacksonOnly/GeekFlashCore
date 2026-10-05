@@ -16,6 +16,7 @@ internal class SaharaProtocol : IDisposable
     private const int MaxRamDumpRead = 0x100000;
     private const int MaxCommandDataLength = 0x100000;
     private const int UploadBufferSize = 64 * 1024;
+    private const int MaximumPblLoaderChunkLength = 4 * 1024 * 1024;
     private const long ProgressReportInterval = 0x100000;
     private const int MemoryTableEntrySize32Bit = 52;
     private const int MemoryTableEntrySize64Bit = 64;
@@ -31,6 +32,7 @@ internal class SaharaProtocol : IDisposable
     public SaharaTargetInfo TargetInfo => _targetInfo;
 
     public bool IsConnected { get; private set; }
+    internal bool IsPblImageTransfer { get; private set; }
 
     internal void ResetStateMachine()
     {
@@ -144,6 +146,9 @@ internal class SaharaProtocol : IDisposable
                             throw new SaharaProtocolException(Strings.FormatSahara_InvalidPacketLength(dataLength));
                         if (!imageDict.TryGetValue(imageId, out var image))
                             throw new FileNotFoundException(Strings.FormatSahara_ImageNotFound(imageId));
+                        if (IsPblImageTransfer && (dataLength > MaximumPblLoaderChunkLength ||
+                            dataOffset > image.Length || dataLength > image.Length - dataOffset))
+                            throw new SaharaProtocolException(Strings.Qcom_PblLoaderRangeInvalid);
                         if (currentImageId != imageId)
                         {
                             stream?.Dispose();
@@ -297,6 +302,24 @@ internal class SaharaProtocol : IDisposable
         ThrowIfDisposed();
         ThrowIfNotConnected();
         SwitchModeTo(mode);
+    }
+
+    internal void BeginPblImageTransfer()
+    {
+        ThrowIfDisposed();
+        ThrowIfNotConnected();
+        // Patch owns the new Hello and its chip-specific HelloResponse.
+        _sender.SendSwitchModeRequest(SaharaMode.ImageTxPending);
+        IsConnected = false;
+    }
+
+    internal void ResumePblImageTransfer(SaharaTargetInfo target)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(target);
+        _targetInfo = target with { Mode = SaharaMode.ImageTxPending };
+        IsPblImageTransfer = true;
+        IsConnected = true;
     }
 
     public void Reset()

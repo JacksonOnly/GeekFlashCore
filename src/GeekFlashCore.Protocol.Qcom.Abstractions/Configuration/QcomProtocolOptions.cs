@@ -25,6 +25,8 @@ public sealed record QcomProtocolOptions
     public OplusDigestConfiguration OplusDigest { get; init; } = new();
     /// <summary>Request Digest resources for Pt/Legacy detection after VIP startup only when both Sahara and Loader identify Oplus.</summary>
     public bool AllowOplusModeSelection { get; init; }
+    /// <summary>Automatically run PBL Patch before Loader upload for Sahara-identified SDM845, SDM710 and SM6125 devices of any brand. Disabled by default.</summary>
+    public bool EnablePblPatch { get; init; }
 
     public void Validate()
     {

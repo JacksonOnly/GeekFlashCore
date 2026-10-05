@@ -1,0 +1,457 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// DA extension ABI derived from penumbra/mtk-payloads (Shomy 2025-2026, AGPL-3.0-or-later).
+using System.Buffers;
+using System.Buffers.Binary;
+using System.Security.Cryptography;
+using System.Xml;
+using System.Xml.Linq;
+using GeekFlashCore.Protocol.Mtk.Abstractions;
+
+namespace GeekFlashCore.Protocol.Mtk.Extensions;
+
+/// <summary>Standard communication with an already loaded penumbra DA extension; no patch or exploit is performed.</summary>
+public sealed class MtkDaExtension : IMtkRpmbService
+{
+    private readonly IMtkProtocol _protocol;
+    private readonly IMtkSessionAccess _access;
+    private long _generation = -1;
+    private MtkExtensionContext? _context;
+    private readonly HashSet<uint> _authenticated = [];
+    public MtkDaExtension(IMtkProtocol protocol)
+    {
+        ArgumentNullException.ThrowIfNull(protocol);
+        _protocol = protocol;
+        _access = protocol as IMtkSessionAccess ?? throw new MtkCapabilityException("scoped DA channel");
+    }
+    public bool IsReady => _context is not null && _protocol.IsConnected && _generation == _protocol.Generation;
+    public bool IsAuthenticated(uint region)
+    {
+        lock (_authenticated)
+            return IsReady && _authenticated.Contains(region);
+    }
+    public void Initialize(MtkExtensionContext context, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (context.Da2Base == 0 || context.Da2Size == 0 || (ulong)context.Da2Base + context.Da2Size > (ulong)uint.MaxValue + 1 ||
+            context.UfsRpmbDataBlocks.Count > 4 || context.AllowedMemoryRanges.Any(r => !r.Contains(r.Address, r.Length)))
+            throw new ArgumentOutOfRangeException(nameof(context));
+        _access.UseSession(c =>
+        {
+            if (c.Target.HardwareCode != context.HardwareCode || c.Kind == MtkDaKind.Legacy)
+                throw new MtkCapabilityException("extension profile/dialect");
+            var da2 = c.DownloadAgent.Entry.Regions[c.DownloadAgent.Entry.EntryRegionIndex + 1];
+            if (context.Da2Base != da2.Address || context.Da2Size != da2.Length - da2.SignatureLength)
+                throw new MtkResourceException("extension DA2 context");
+            lock (_authenticated)
+                _authenticated.Clear();
+            _context = null;
+            _generation = -1;
+            if (c.Kind == MtkDaKind.XFlash)
+            {
+                Control(c, 0xf0000);
+                Span<byte> ack = stackalloc byte[4];
+                if (c.ReceiveData(ack) != 4 || BinaryPrimitives.ReadUInt32LittleEndian(ack) != 0)
+                    throw new MtkProtocolException(MtkBootStage.Da2, 0xf0000);
+                c.CheckStatus();
+                byte[] bytes = new byte[32];
+                uint[] fields = [context.SejBase, context.TzccBase, context.Da2Base, context.Da2Size, (uint)c.WritePacketLength, (uint)c.WritePacketLength, (uint)c.Storage.Kind, 0];
+                for (int i = 0; i < fields.Length; i++)
+                    BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(i * 4), fields[i]);
+                Control(c, 0xf0001, bytes);
+            }
+            else
+            {
+                c.BeginXmlCommand("EXT-ACK", Args());
+                using var response = new MemoryStream();
+                c.ReceiveXmlFile(response, null, 4096);
+                c.EndXmlCommand();
+                if (XmlValue(response.ToArray(), "status") != "OK")
+                    throw new MtkProtocolException(MtkBootStage.Da2, 0xf0000);
+                c.BeginXmlCommand("EXT-DA-CTX", Args(("sej_base", Hex(context.SejBase)), ("tzcc_base", Hex(context.TzccBase)),
+                    ("ssr_base", Hex(context.SsrBase)), ("da2_base", Hex(context.Da2Base)), ("da2_size", Hex(context.Da2Size)),
+                    ("storage", c.Storage.Kind == MtkStorageKind.Emmc ? "EMMC" : "UFS"), ("usb_log", "no")));
+                c.EndXmlCommand();
+            }
+            _context = context with
+            {
+                UfsRpmbDataBlocks = context.UfsRpmbDataBlocks.ToArray(),
+                AllowedMemoryRanges = context.AllowedMemoryRanges.ToArray()
+            };
+            _generation = c.Generation;
+            return 0;
+        }, cancellationToken);
+    }
+    private void Ready(IMtkDaChannel channel)
+    {
+        if (!IsReady || _generation != channel.Generation)
+            throw new InvalidOperationException(Localization.Strings.ExtensionUnavailable);
+    }
+    private static byte[] LE(uint value)
+    {
+        byte[] b = new byte[4];
+        BinaryPrimitives.WriteUInt32LittleEndian(b, value);
+        return b;
+    }
+    private static string Hex(uint value) => $"0x{value:X}";
+    private static Dictionary<string, string> Args(params (string Key, string Value)[] values) => values.ToDictionary(v => v.Key, v => v.Value);
+    private static void Control(IMtkDaChannel c, uint command, params byte[][] parameters)
+    {
+        c.SendCommand(0x10009);
+        c.SendCommand(command);
+        if (parameters.Length > 0)
+        {
+            foreach (var p in parameters)
+                c.SendData(p);
+            c.CheckStatus();
+        }
+    }
+    private static void Upload(IMtkDaChannel c, long length, Stream output)
+    {
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(1048576);
+        try
+        {
+            while (length > 0)
+            {
+                int n = c.ReceiveData(buffer.AsSpan(0, (int)Math.Min(length, 1048576)));
+                if (n <= 0)
+                    throw new MtkResourceException("extension short read");
+                output.Write(buffer.AsSpan(0, n));
+                c.SendData(LE(0));
+                c.CheckStatus();
+                length -= n;
+            }
+        }
+        finally { ArrayPool<byte>.Shared.Return(buffer, true); }
+    }
+    private static void Download(IMtkDaChannel c, long length, Stream input, int limit = 32768)
+    {
+        int packet = Math.Min(c.WritePacketLength, limit);
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(packet);
+        try
+        {
+            while (length > 0)
+            {
+                int n = (int)Math.Min(packet, length);
+                input.ReadExactly(buffer.AsSpan(0, n));
+                uint sum = 0;
+                foreach (byte b in buffer.AsSpan(0, n))
+                    sum += b;
+                c.SendData(LE(0));
+                c.SendData(LE(sum & 0xffff));
+                c.SendData(buffer.AsSpan(0, n));
+                c.CheckStatus();
+                length -= n;
+            }
+            c.CheckStatus();
+        }
+        finally { ArrayPool<byte>.Shared.Return(buffer, true); }
+    }
+    private uint Capacity(IMtkDaChannel c, uint region)
+    {
+        Ready(c);
+        if (region > 3 || c.Storage.Kind == MtkStorageKind.Emmc && region != 0)
+            throw new ArgumentOutOfRangeException(nameof(region));
+        uint size = c.Storage.Kind == MtkStorageKind.Emmc ? c.Storage.RpmbDataBlocks :
+            region < _context!.UfsRpmbDataBlocks.Count ? _context.UfsRpmbDataBlocks[(int)region] : 0;
+        if (size == 0)
+            throw new MtkCapabilityException("RPMB capacity");
+        return size;
+    }
+    public void Authenticate(uint region, ReadOnlySpan<byte> key, CancellationToken cancellationToken = default)
+    {
+        if (key.Length != 32)
+            throw new ArgumentOutOfRangeException(nameof(key));
+        byte[] copy = key.ToArray();
+        try
+        {
+            _access.UseSession(c =>
+            {
+                _ = Capacity(c, region);
+                if (c.Kind == MtkDaKind.XFlash)
+                {
+                    Control(c, 0xf0008, LE(region), copy);
+                    c.CheckStatus();
+                }
+                else
+                {
+                    c.BeginXmlCommand("EXT-RPMB-INIT", Args(("partition", region.ToString()), ("key", Convert.ToHexString(copy))));
+                    c.EndXmlCommand();
+                }
+                lock (_authenticated)
+                    _authenticated.Add(region);
+                return 0;
+            }, cancellationToken);
+        }
+        finally { CryptographicOperations.ZeroMemory(copy); }
+    }
+    private long RpmbRange(IMtkDaChannel c, uint region, uint start, uint count)
+    {
+        uint capacity = Capacity(c, region);
+        if (count == 0 || (ulong)start + count > capacity)
+            throw new ArgumentOutOfRangeException(nameof(count));
+        if (!IsAuthenticated(region))
+            throw new MtkCapabilityException("RPMB authentication");
+        return checked((long)count * 256);
+    }
+    public void Read(uint region, uint startBlock, uint blockCount, Stream destination, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        _access.UseSession(c =>
+        {
+            long length = RpmbRange(c, region, startBlock, blockCount);
+            if (!destination.CanWrite)
+                throw new ArgumentException(nameof(destination));
+            if (c.Kind == MtkDaKind.XFlash)
+            {
+                Control(c, 0xf0009, LE(region), Range(startBlock, blockCount));
+                Upload(c, length, destination);
+                c.CheckStatus();
+            }
+            else
+            {
+                c.BeginXmlCommand("EXT-RPMB-READ", RpmbArgs(region, startBlock, blockCount));
+                c.ReceiveXmlFile(destination, length, length);
+                c.EndXmlCommand();
+            }
+            return 0;
+        }, cancellationToken);
+    }
+    public void Write(uint region, uint startBlock, uint blockCount, Stream source, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        _access.UseSession(c =>
+        {
+            long length = RpmbRange(c, region, startBlock, blockCount);
+            if (!source.CanRead || source.CanSeek && source.Length - source.Position != length)
+                throw new MtkResourceException("RPMB source length");
+            if (c.Kind == MtkDaKind.XFlash)
+            {
+                Control(c, 0xf000a, LE(region), Range(startBlock, blockCount));
+                Download(c, length, source);
+                c.CheckStatus();
+            }
+            else
+            {
+                c.BeginXmlCommand("EXT-RPMB-WRITE", RpmbArgs(region, startBlock, blockCount));
+                c.SendXmlFile(source, length);
+                c.EndXmlCommand();
+            }
+            return 0;
+        }, cancellationToken); // Unknown writes are never retried.
+    }
+    private static byte[] Range(uint start, uint count)
+    {
+        byte[] b = new byte[8];
+        BinaryPrimitives.WriteUInt32LittleEndian(b, start);
+        BinaryPrimitives.WriteUInt32LittleEndian(b.AsSpan(4), count);
+        return b;
+    }
+    private static Dictionary<string, string> RpmbArgs(uint region, uint start, uint count) => Args(("partition", region.ToString()), ("start_sector", start.ToString()), ("sectors_count", count.ToString()));
+    private void Memory(IMtkDaChannel c, uint address, uint length)
+    {
+        Ready(c);
+        if (!_context!.AllowedMemoryRanges.Any(r => r.Contains(address, length)))
+            throw new MtkCapabilityException("memory access range");
+    }
+    /// <summary>Reads one aligned register inside an explicitly approved range. XML uses its memory command.</summary>
+    public uint ReadRegister(uint address, CancellationToken cancellationToken = default) =>
+        _access.UseSession(c =>
+        {
+            if (address % 4 != 0)
+                throw new ArgumentOutOfRangeException(nameof(address));
+            Memory(c, address, 4);
+            Span<byte> data = stackalloc byte[4];
+            if (c.Kind == MtkDaKind.XFlash)
+            {
+                Control(c, 0xf0004, LE(address));
+                if (c.ReceiveData(data) != 4)
+                    throw new MtkResourceException("register read");
+                c.CheckStatus();
+            }
+            else
+            {
+                c.BeginXmlCommand("EXT-READ-MEM", Args(("address", Hex(address)), ("length", "0x4")));
+                using var output = new MemoryStream();
+                c.ReceiveXmlFile(output, 4, 4);
+                c.EndXmlCommand();
+                output.ToArray().CopyTo(data);
+            }
+            return BinaryPrimitives.ReadUInt32LittleEndian(data);
+        }, cancellationToken);
+    /// <summary>Writes one aligned register inside an explicitly approved range.</summary>
+    public void WriteRegister(uint address, uint value, CancellationToken cancellationToken = default) =>
+        _access.UseSession(c =>
+        {
+            if (address % 4 != 0)
+                throw new ArgumentOutOfRangeException(nameof(address));
+            Memory(c, address, 4);
+            if (c.Kind == MtkDaKind.XFlash)
+                Control(c, 0xf0005, LE(address), LE(value));
+            else
+            {
+                c.BeginXmlCommand("EXT-WRITE-MEM", Args(("address", Hex(address)), ("length", "0x4")));
+                using var input = new MemoryStream(LE(value), false);
+                c.SendXmlFile(input, 4);
+                c.EndXmlCommand();
+            }
+            return 0;
+        }, cancellationToken);
+    /// <summary>Explicitly requests the existing extension's RPMB derivation; disposal of the owned result clears it.</summary>
+    public MtkSensitiveBuffer DeriveRpmbKey(CancellationToken cancellationToken = default) =>
+        _access.UseSession(c =>
+        {
+            Ready(c);
+            if (_context!.SejBase == 0 && _context.TzccBase == 0 && _context.SsrBase == 0)
+                throw new MtkCapabilityException("key derivation profile");
+            byte[] key = new byte[32];
+            try
+            {
+                if (c.Kind == MtkDaKind.XFlash)
+                {
+                    Control(c, 0xf0006, LE(0));
+                    if (c.ReceiveData(key) != 32)
+                        throw new MtkResourceException("RPMB derived key");
+                    c.CheckStatus();
+                }
+                else
+                {
+                    c.BeginXmlCommand("EXT-KEY-DERIVE", Args(("key_type", "RPMB")));
+                    using var output = new MemoryStream();
+                    c.ReceiveXmlFile(output, null, 4096);
+                    c.EndXmlCommand();
+                    byte[] xml = output.ToArray();
+                    try
+                    {
+                        string value = XmlValue(xml, "result");
+                        if (value.Length != 64)
+                            throw new MtkResourceException("RPMB derived key");
+                        byte[] decoded = Convert.FromHexString(value);
+                        try
+                        {
+                            decoded.CopyTo(key, 0);
+                        }
+                        finally { CryptographicOperations.ZeroMemory(decoded); }
+                    }
+                    finally { CryptographicOperations.ZeroMemory(xml); CryptographicOperations.ZeroMemory(output.GetBuffer()); }
+                }
+                return new MtkSensitiveBuffer(key);
+            }
+            catch { CryptographicOperations.ZeroMemory(key); throw; }
+        }, cancellationToken);
+    public void ReadMemory(uint address, uint length, Stream destination, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        _access.UseSession(c =>
+        {
+            Memory(c, address, length);
+            if (!destination.CanWrite)
+                throw new ArgumentException(nameof(destination));
+            if (c.Kind == MtkDaKind.XFlash)
+            {
+                Control(c, 0xf0002, MemoryParams(address, length));
+                Upload(c, length, destination);
+                c.CheckStatus();
+            }
+            else
+            {
+                c.BeginXmlCommand("EXT-READ-MEM", Args(("address", Hex(address)), ("length", Hex(length))));
+                c.ReceiveXmlFile(destination, length, length);
+                c.EndXmlCommand();
+            }
+            return 0;
+        }, cancellationToken);
+    }
+    public void WriteMemory(uint address, uint length, Stream source, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        _access.UseSession(c =>
+        {
+            Memory(c, address, length);
+            if (!source.CanRead || source.CanSeek && source.Length - source.Position != length)
+                throw new MtkResourceException("memory source");
+            if (c.Kind == MtkDaKind.XFlash)
+            {
+                Control(c, 0xf0003, MemoryParams(address, length));
+                Download(c, length, source, c.WritePacketLength);
+                c.CheckStatus();
+            }
+            else
+            {
+                c.BeginXmlCommand("EXT-WRITE-MEM", Args(("address", Hex(address)), ("length", Hex(length))));
+                c.SendXmlFile(source, length);
+                c.EndXmlCommand();
+            }
+            return 0;
+        }, cancellationToken);
+    }
+    private static byte[] MemoryParams(uint address, uint length)
+    {
+        byte[] b = new byte[16];
+        BinaryPrimitives.WriteUInt64LittleEndian(b, address);
+        BinaryPrimitives.WriteUInt64LittleEndian(b.AsSpan(8), length);
+        return b;
+    }
+    /// <summary>Runs bounded SEJ crypto only after context confirmation. The caller owns and must clear the result.</summary>
+    public byte[] TransformSej(ReadOnlySpan<byte> data, bool encrypt, bool antiClone = true, bool legacy = false, bool xor = false)
+    {
+        if (data.Length == 0 || data.Length > 65536 || data.Length % 16 != 0)
+            throw new ArgumentOutOfRangeException(nameof(data));
+        byte[] copy = data.ToArray();
+        try
+        {
+            return _access.UseSession(c => TransformSej(c, copy, encrypt, antiClone, legacy, xor));
+        }
+        finally { CryptographicOperations.ZeroMemory(copy); }
+    }
+    internal byte[] TransformSej(IMtkDaChannel c, ReadOnlySpan<byte> data, bool encrypt, bool antiClone, bool legacy, bool xor)
+    {
+        if (data.IsEmpty || data.Length > 65536 || data.Length % 16 != 0)
+            throw new ArgumentOutOfRangeException(nameof(data));
+        Ready(c);
+        if (_context!.SejBase == 0)
+            throw new MtkCapabilityException("SEJ profile");
+        byte[] copy = data.ToArray(), result = new byte[data.Length];
+        try
+        {
+            using var input = new MemoryStream(copy, false);
+            using var output = new MemoryStream(result, true);
+            if (c.Kind == MtkDaKind.XFlash)
+            {
+                byte[] p = new byte[12];
+                BinaryPrimitives.WriteUInt32LittleEndian(p, (uint)copy.Length);
+                p[4] = encrypt ? (byte)1 : (byte)0;
+                p[5] = antiClone ? (byte)1 : (byte)0;
+                p[6] = xor ? (byte)1 : (byte)0;
+                p[7] = legacy ? (byte)1 : (byte)0;
+                p[8] = 1;
+                p[10] = 2;
+                Control(c, 0xf0007, p);
+                Download(c, copy.Length, input, c.WritePacketLength);
+                Upload(c, copy.Length, output);
+                c.CheckStatus();
+            }
+            else
+            {
+                if (legacy || xor)
+                    throw new MtkCapabilityException("XML legacy SEJ");
+                c.BeginXmlCommand("EXT-SEJ", Args(("encrypt", encrypt ? "yes" : "no"), ("ac", antiClone ? "yes" : "no"), ("length", Hex((uint)copy.Length))));
+                c.SendXmlFile(input, copy.Length);
+                c.ReceiveXmlFile(output, copy.Length, copy.Length);
+                c.EndXmlCommand();
+            }
+            return result;
+        }
+        catch { CryptographicOperations.ZeroMemory(result); throw; }
+        finally { CryptographicOperations.ZeroMemory(copy); }
+    }
+    private static string XmlValue(byte[] bytes, string field)
+    {
+        using var reader = XmlReader.Create(new StringReader(System.Text.Encoding.UTF8.GetString(bytes).TrimEnd('\0')),
+            new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = 4096 });
+        XElement root = XElement.Load(reader);
+        var items = root.DescendantsAndSelf(field).ToArray();
+        if (items.Length != 1 || items[0].HasElements)
+            throw new MtkResourceException("extension XML");
+        return items[0].Value;
+    }
+}

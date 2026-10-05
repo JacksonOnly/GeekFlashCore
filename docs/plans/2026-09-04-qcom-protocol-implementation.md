@@ -1,5 +1,11 @@
 # Qualcomm Protocol Implementation Plan
 
+### PRINT-01（2026-10-05）：浏览器帮助与 print
+
+- 浏览器帮助逐条解释 ls/cd/up/pwd/read/find/exit 并提供路径和导出示例；新增 `print <path>`，普通文件大小不超过 24 KiB（24576 字节，含）时直接显示文本，超限在读取内容前提示 read 导出。browse help/browse-image help 可脱离设备查看，已断连交互入口也能显示。
+- 同步字节读取及最终 ACK 返回后才检查取消；有界池化缓冲清零归还、流按所有权关闭，完整读取和解码成功后输出。UTF-8 和带 BOM 的 UTF-16/32 支持、控制字符转义、中英文资源已实现。影响范围为 CLI。
+- 最终目标测试 33/33，完整本地回归 122/122，Release 构建零警告零错误，资源/diff/ignored 检查通过。包含 512/4096 FirehoseBlockDevice 加模拟传输的 print/后续 NOP 和 RAW 内取消，实际 EXE 合成嵌套镜像打印与超限拒绝通过。标准目录锁释放后原 CLI 已重建；未进行硬件操作，真机 print 仍待复测。详见 `2026-10-05-browser-help-print.md`。
+
 ### FIND-01（2026-10-04）：首个搜索结果停止与安全取消
 
 - 用户真机已完成 Firehose 续接、Super→Ext 和 build.prop 定位；find 打印首个结果后继续遍历，后续 RAW 超时导致失效。CLI 现在默认首个匹配/导出后停止，find --all 保留全量行为。

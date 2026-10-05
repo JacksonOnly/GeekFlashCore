@@ -33,6 +33,7 @@ internal sealed class CliApplication
         try { options = NormalizeAndValidate(options, requestedRegistration); }
         catch (CommandUsageException exception) { _ui.WriteLine(exception.Message); return 2; }
         if (options.Command == "help") { CommandLine.PrintHelp(); return 0; }
+        if (options.Command is "browse" or "browse-image" && BrowserCommands.ShowHelp(options.Arguments, _ui)) return 0;
         if (options.Command == "browse-image")
         {
             try { await BrowserCommands.BrowseImageAsync(options.Arguments, _ui, ct).ConfigureAwait(false); return 0; }
@@ -112,6 +113,7 @@ internal sealed class CliApplication
         try { options = NormalizeAndValidate(options, registration); }
         catch (CommandUsageException exception) { _ui.WriteLine(exception.Message); return 2; }
         ct.ThrowIfCancellationRequested();
+        if (options.Command is "browse" or "browse-image" && BrowserCommands.ShowHelp(options.Arguments, _ui)) return 0;
         registration.CommandSet?.ValidateAvailability(protocol, options.Command);
         if (registration.CommandSet is { } commands && commands.Handles(options.Command))
             return await commands.ExecuteAsync(protocol, options, _ui, progress, ct);

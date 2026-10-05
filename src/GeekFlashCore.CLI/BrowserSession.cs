@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Text;
 using GeekFlashCore.Android.Lp;
 using GeekFlashCore.Android.Lp.Abstractions;
 using GeekFlashCore.BlockDevice;
@@ -13,6 +14,7 @@ namespace GeekFlashCore.CLI;
 
 internal sealed class BrowserSession(int slot = 0, ILpBlockDeviceResolver? resolver = null, string? sourcePath = null) : IDisposable
 {
+    private const int MaximumPrintBytes = 24 * 1024;
     private readonly Stack<IDisposable> _resources = new();
     private readonly Dictionary<string, BrowserMount> _mounts = new(StringComparer.Ordinal);
     private readonly FileSystemReadLimits _limits = new(maximumCacheBytes: 1024 * 1024, maximumWorkingBytes: 4 * 1024 * 1024);
@@ -132,6 +134,56 @@ internal sealed class BrowserSession(int slot = 0, ILpBlockDeviceResolver? resol
             foreach (var child in node.Children(ct))
                 foreach (var match in Walk(child, depth + 1)) yield return match;
         }
+    }
+
+    internal string ReadText(BrowserNode node, CancellationToken ct)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ct.ThrowIfCancellationRequested();
+        _operationToken = ct;
+        if (node.IsDirectory || node.Kind != "file") throw new IOException(Strings.Cli_BrowserPrintNotFile);
+        long size = node.Size;
+        if (size is < 0 or > MaximumPrintBytes) throw new IOException(Strings.Cli_BrowserPrintTooLarge);
+        int length = checked((int)size);
+        using Stream input = node.OpenRead();
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(Math.Max(1, length));
+        try
+        {
+            int copied = 0;
+            while (copied < length)
+            {
+                ct.ThrowIfCancellationRequested();
+                // Keep each filesystem read and its complete Firehose RAW/ACK exchange synchronous.
+                int read = input.Read(buffer.AsSpan(copied, length - copied));
+                ct.ThrowIfCancellationRequested();
+                if (read == 0) throw new EndOfStreamException(Strings.Cli_BrowserShortRead);
+                copied = checked(copied + read);
+            }
+            ct.ThrowIfCancellationRequested();
+            string text;
+            try { text = DecodeText(buffer.AsSpan(0, length)); }
+            catch (DecoderFallbackException) { throw new IOException(Strings.Cli_BrowserPrintInvalidText); }
+            // Files are untrusted terminal input. Keep text layout, but display other controls literally.
+            if (!text.Any(c => char.IsControl(c) && c is not ('\r' or '\n' or '\t'))) return text;
+            var safe = new StringBuilder(text.Length);
+            foreach (char c in text)
+                if (char.IsControl(c) && c is not ('\r' or '\n' or '\t')) safe.Append("\\u").Append(((int)c).ToString("X4"));
+                else safe.Append(c);
+            return safe.ToString();
+        }
+        finally { ArrayPool<byte>.Shared.Return(buffer, clearArray: true); }
+    }
+
+    private static string DecodeText(ReadOnlySpan<byte> bytes)
+    {
+        Encoding encoding;
+        int prefix;
+        if (bytes.StartsWith<byte>([0xFF, 0xFE, 0x00, 0x00])) { encoding = new UTF32Encoding(false, false, true); prefix = 4; }
+        else if (bytes.StartsWith<byte>([0x00, 0x00, 0xFE, 0xFF])) { encoding = new UTF32Encoding(true, false, true); prefix = 4; }
+        else if (bytes.StartsWith<byte>([0xFF, 0xFE])) { encoding = new UnicodeEncoding(false, false, true); prefix = 2; }
+        else if (bytes.StartsWith<byte>([0xFE, 0xFF])) { encoding = new UnicodeEncoding(true, false, true); prefix = 2; }
+        else { encoding = new UTF8Encoding(false, true); prefix = bytes.StartsWith<byte>([0xEF, 0xBB, 0xBF]) ? 3 : 0; }
+        return encoding.GetString(bytes[prefix..]);
     }
 
     internal async Task ExportAsync(BrowserNode node, string destination, CancellationToken ct, Action<long, long>? progress = null)

@@ -130,12 +130,13 @@ geekflash --port COM7 --loader programmer.elf --non-interactive read sector 0 0 
 
 ## 只读挂载与资源浏览器
 
-连接后的交互提示符中执行 `browse <partition> [lun] [lp-slot]`，例如 `browse super`、`browse super 0 1` 或 `browse system_a`。也可在命令行连接后直接进入：
+连接后的交互提示符中执行 `browse <partition> [lun] [lp-slot]`，例如 `browse super`、`browse super 0 1` 或 `browse system_a`。`browse help` 显示浏览器命令的含义和示例，进入浏览器后输入 `help` 可再次查看。也可在命令行连接后直接进入：
 
 ```powershell
 geekflash --port COM7 --loader programmer.elf browse super
 geekflash browse-image "D:\images\super.img"
 geekflash browse-image "D:\images\system.img"
+geekflash browse help
 ```
 
 `browse-image <raw-image> [lp-slot]` 无需设备，支持 raw LP/EROFS/Ext 镜像；不直接处理 Android Sparse 容器。设备入口使用 GPT 字节范围切片，LP 按 extent 映射读取，均不会先转储完整 Super。LP slot 默认 0，最后一个参数可选择 1 等槽位，不自动猜测活动槽。设备分区同名时需要显式 LUN，LP 外部块设备名存在歧义时拒绝挂载；本地多设备 LP 需要额外源，当前单镜像入口会明确拒绝。
@@ -148,13 +149,16 @@ ls
 up
 cd ..
 pwd
+print /super/system_a/etc/settings.conf
 read /super/system_a/etc/settings.conf "D:\backup\settings.conf"
 find --all *.conf /super/system_a "D:\backup\system_a"
 find build.prop /super
 exit
 ```
 
-`up` 和 `cd ..` 返回上层，能依次退出文件目录、文件系统分区、LP 容器，到虚拟 `/`。`exit` 返回原 CLI 提示符；以独立 `browse`/`browse-image` 启动时退出程序。路径中的空格用引号包裹，路径分隔符使用 `/`。`ls [path] [page]` 每页 50 项，page 从 0 开始，编号为目录内序号；LP 子分区在首次进入时才打开文件系统。未知格式可按 raw 文件导出，已识别但损坏/不支持的文件系统会报错。
+`up` 和 `cd ..` 返回上层，能依次退出文件目录、文件系统分区、LP 容器，到虚拟 `/`，例如 `/super/system_a` 返回 `/super`。`pwd` 显示当前目录路径。`exit` 返回原 CLI 提示符；以独立 `browse`/`browse-image` 启动时退出程序。路径中的空格用引号包裹，路径分隔符使用 `/`。`ls [path] [page]` 每页 50 项，page 从 0 开始，编号为目录内序号；LP 子分区在首次进入时才打开文件系统。未知格式可按 raw 文件导出，已识别但损坏/不支持的文件系统会报错。
+
+`print <path>` 直接在终端显示普通文件文本，默认只允许不超过 24 KiB（24576 字节，含）的文件，当前没有扩大上限参数；大文件使用 `read` 保存到电脑。支持 UTF-8，以及带 BOM 的 UTF-16/UTF-32；其他编码或二进制文件可用 read 导出。换行与制表符保留，其他控制字符显示为 `\uXXXX`，文件内容只显示在终端，不写入诊断日志。短读、无效文本或取消时不打印部分内容，读取仍使用同步文件系统与完整 Firehose RAW/ACK。`browse help` 和 `browse-image help` 均无需连接设备或打开镜像。
 
 `read <path> <输出文件>` 导出一个普通文件或 raw 分区；父输出目录需要存在。`find <文件名通配符> [path] [输出目录]` 递归搜索 EROFS/Ext 的普通文件，支持 `*`、`?`，默认找到第一个匹配文件后停止；指定输出目录时导出该文件后停止。需要全部结果或批量导出时使用 `find --all <文件名通配符> [path] [输出目录]`。不指定输出目录时仅打印完整虚拟路径；指定时创建并保留相对搜索起点的目录结构，例如上述全量搜索输出 `D:\backup\system_a\etc\settings.conf`。搜索 LP 容器会按需访问各逻辑分区。
 

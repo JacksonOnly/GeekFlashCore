@@ -158,7 +158,28 @@ Loader build time: {2}    Reported commands: {3}</value></data>
   <data name="Cli_VendorUnknown" xml:space="preserve"><value>Startup logs, Loader and Sahara did not identify a vendor. Select a strategy:</value></data>
   <data name="Cli_VendorPrompt" xml:space="preserve"><value>Vendor number or name (blank to cancel)</value></data>
   <data name="Cli_VendorInvalid" xml:space="preserve"><value>Select a listed vendor; Auto is not a selection.</value></data>
-  <data name="Cli_BrowserHelp" xml:space="preserve"><value>Browser: ls [path] [page] (50 entries, pages start at 0), cd &lt;path&gt;, up, pwd, read &lt;path&gt; &lt;output-file&gt;, find [--all] &lt;glob&gt; [path] [output-directory], exit. find stops at the first file by default; --all searches every match. Ctrl+C during search returns to the browser after the current read completes. Enter a number or path to open; file paths prompt for export. Use / in paths; symbolic links are not followed.</value></data>
+  <data name="Cli_BrowserHelp" xml:space="preserve"><value>Read-only browser:
+  help                         Show this help; browse help also works at geekflash&gt;.
+  ls [path] [page]             List a directory; path defaults to the current directory, 50 entries per page, pages start at 0.
+  cd &lt;path&gt;                    Enter a directory, for example cd /super/system_a/system.
+  up                           Go to the parent directory, like cd ..; /super/system_a returns to /super.
+  pwd                          Show the current directory path, for example /super/system_a.
+  read &lt;path&gt; &lt;output-file&gt;    Read a file or raw partition and save it on your computer; the output parent directory must exist.
+  print &lt;path&gt;                 Print file contents directly; the default limit is 24 KiB (24576 bytes, inclusive). Use read for larger files.
+  find [--all] &lt;glob&gt; [path] [output-directory]
+                               Search filenames recursively using * or ?; path defaults to the current directory.
+                               Stop at the first match by default; --all finds every match. An output directory exports matching files.
+  exit                         Return to geekflash&gt;; exit the program when started as a standalone command.
+Enter a number or directory path to open; file paths prompt for export. Use / in paths, match case and quote spaces; symbolic links are not followed.
+Ctrl+C during find cancels this search after the current read and ACK complete, then returns to the current directory.
+Examples (current directory /super/system_a):
+  print system/build.prop
+  read system/build.prop "D:\backup\build.prop"
+  find build.prop
+  find --all *.conf . "D:\backup\system_a"</value></data>
+  <data name="Cli_BrowserPrintNotFile" xml:space="preserve"><value>print requires a regular file, not a directory, link, raw partition or special file.</value></data>
+  <data name="Cli_BrowserPrintTooLarge" xml:space="preserve"><value>print supports files up to 24 KiB (24576 bytes); the file size is invalid or too large. Use read to export it.</value></data>
+  <data name="Cli_BrowserPrintInvalidText" xml:space="preserve"><value>Cannot decode file text; print supports UTF-8 or UTF-16/UTF-32 with a BOM. Use read to export other encodings or binary files.</value></data>
   <data name="Cli_BrowserInvalidPath" xml:space="preserve"><value>Invalid path or filename, or output path contains a link.</value></data>
   <data name="Cli_BrowserLimit" xml:space="preserve"><value>Browser mount, depth or entry limit exceeded.</value></data>
   <data name="Cli_BrowserNotDirectory" xml:space="preserve"><value>This node is not a browsable directory.</value></data>

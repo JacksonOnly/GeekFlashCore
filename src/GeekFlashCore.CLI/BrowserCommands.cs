@@ -11,6 +11,7 @@ internal static class BrowserCommands
 {
     internal static async Task BrowseImageAsync(string[] args, ConsoleUi ui, CancellationToken ct)
     {
+        if (ShowHelp(args, ui)) return;
         string path = Path.GetFullPath(ConsolePath.Normalize(args[0])!);
         int slot = args.Length > 1 ? checked((int)CommandSyntax.Number(args[1])) : 0;
         using var session = new BrowserSession(slot, sourcePath: path);
@@ -23,6 +24,7 @@ internal static class BrowserCommands
     internal static async Task BrowseDeviceAsync(IProtocol protocol, string[] args, ConsoleUi ui,
         IProgress<ProgressRecord> progress, CancellationToken ct)
     {
+        if (ShowHelp(args, ui)) return;
         if (protocol is not IBlockDeviceProvider provider) throw new NotSupportedException(Strings.Cli_BrowserBlockDeviceRequired);
         if (protocol is IQcomProtocol qcom) FirehoseCommands.Require(qcom, "read");
         IReadOnlyList<PartitionInfo> partitions = await protocol.GetPartitionsAsync(progress, ct).ConfigureAwait(false);
@@ -34,6 +36,13 @@ internal static class BrowserCommands
         using var session = new BrowserSession(slot, resolver);
         session.AddMount(args[0], () => resolver.Open(matches[0]));
         await RunAsync(session, ui, ct, () => protocol.IsConnected).ConfigureAwait(false);
+    }
+
+    internal static bool ShowHelp(string[] args, ConsoleUi ui)
+    {
+        if (args.Length != 1 || !args[0].Equals("help", StringComparison.OrdinalIgnoreCase)) return false;
+        ui.WriteLine(Strings.Cli_BrowserHelp);
+        return true;
     }
 
     internal static async Task RunAsync(BrowserSession session, ConsoleUi ui, CancellationToken ct, Func<bool>? connected = null)
@@ -76,6 +85,10 @@ internal static class BrowserCommands
                         case "read":
                             Require(tokens, 3);
                             await ExportAsync(session, session.Resolve(tokens[1], ct), tokens[2], ui, ct).ConfigureAwait(false);
+                            break;
+                        case "print":
+                            Require(tokens, 2);
+                            ui.WriteLine(session.ReadText(session.Resolve(tokens[1], ct), ct));
                             break;
                         case "find":
                             await FindAsync(session, tokens, ui, ct, connected).ConfigureAwait(false);

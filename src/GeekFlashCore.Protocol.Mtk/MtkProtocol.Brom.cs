@@ -20,16 +20,25 @@ public sealed partial class MtkProtocol : IMtkBromSessionAccess
             finally { session.Expire(); }
         }, cancellationToken);
     }
-    private sealed class BromChannel(MtkProtocol owner, Action? guard = null) : IMtkBromSession
+    private sealed class BromChannel(MtkProtocol owner, Action? guard = null) : IMtkBromSession, IMtkBromSessionControl
     {
         private bool _valid = true;
+        private readonly int _thread = Environment.CurrentManagedThreadId;
+        private readonly long _generation = owner.Generation;
         public void Expire() => _valid = false;
-        private void Check()
+        public void Check()
         {
             guard?.Invoke();
-            if (!_valid || owner._state != MtkSessionState.Probed)
+            if (!_valid || owner._state != MtkSessionState.Probed || _thread != Environment.CurrentManagedThreadId || _generation != owner.Generation)
                 throw new InvalidOperationException(Strings.SessionUnavailable);
             owner._wire.Check();
+        }
+        public void Invalidate()
+        {
+            guard?.Invoke();
+            if (!_valid || _thread != Environment.CurrentManagedThreadId || _generation != owner.Generation)
+                throw new InvalidOperationException(Strings.SessionUnavailable);
+            owner.Fault(); _valid=false;
         }
         private void Transition()
         {

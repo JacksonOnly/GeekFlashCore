@@ -1,5 +1,9 @@
 # Qualcomm Protocol Implementation Plan
 
+### MERGE-PBL-01（2026-10-05）：自动 Digest 与通用 PBL Patch 合并
+
+- 用户授权合并后，本地 main 从 c300957 无冲突快进纳入 f9ff352 和 9c42699。主工作区 Release 解决方案构建 0 警告/0 错误；同一源码提交的功能工作区完整 Qcom 412、CLI 55、Python 提取校验 4 项通过，首次并行共享 obj 写锁已通过串行重跑排除。源码一致性、diff 与 ignored/跟踪检查通过，未推送。详细证据与设备待验证风险见 `2026-10-05-pbl-patch-implementation.md` 的合并复核。
+
 ### PBL-01（2026-10-05）：所有品牌 845 / 710 / 665 自动 Patch PBL
 
 - 用户确认匹配目标设备后“显示提示后自动执行”，随后明确三个芯片不限品牌。新增默认关闭的 Core EnablePblPatch，CLI 默认开启；Sahara SoC 为 SDM845/SDM710/SM6125 时，Loader 校验后运行内置 Patch，再完成既有 Loader/Firehose 初始化，OEM 无关。

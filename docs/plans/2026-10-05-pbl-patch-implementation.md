@@ -12,5 +12,11 @@
 - 测试先行：初版执行器 17 项、连接 14 项、范围 3 项分别确认失败后最小实现；最新需求先修改 OEM/665 六块流程的测试，48 项中 20 项失败，移除 OEM 门槛并补齐资源阶段后通过。最终 61 项目标测试通过，覆盖品牌不限、参考字节与175次循环、665第1/3/95/100次及上限、抓包重复计数/六块字节、3字节分片、非法命令/长度/身份/未捕获范围/重复请求、异常重入顺序、已排队的第二个 Loader 请求、取消/重开失败、资源先校验、零 Loader 写入和清理行为、同步/异步完整连接。
 - 验证命令与结果：`dotnet test .tests/GeekFlashCore.Protocol.Qcom.Tests/GeekFlashCore.Protocol.Qcom.Tests.csproj -c Release --no-restore --verbosity quiet` 初次 410/410，通过后补充两项队列/未知身份测试，目标 61/61；最终追加 `--no-build` 完整回归 412/412 通过。CLI 55/55 通过，共 467 项 C# 测试，无跳过。`python .tests/test_sm6125_extractor.py`，4/4 通过（原始字节、重复计数篡改、缺失偏移、资源字节篡改）；提取工具成功复现相同资源。`dotnet build GeekFlashCore.slnx -c Release --no-restore --verbosity quiet`，0 警告/0 错误。中英资源键一致；`git diff --check` 通过，`.tests` ignored 且 git ls-files .tests 无输出。
 - 资源/性能证据：原 11 个资源总计 19608 字节，与参考文件 SHA256 对照一致；新增 665 固定窗口 20480 字节，与提取输出一致，12 个资源共 40088 字节。线路测试另逐包比对参考/抓包字节。纯内存无分配传输下，通用化后完整 175 次交互稳态新增分配：710 为 12456 字节、845 为 14328 字节（均小于 64 KiB）；该值仅说明 Core 执行器分配，不代表真实传输吞吐。665 仅增加固定 20 KiB 窗口和栈包缓冲，不按 Loader 或异常 ELF 声明大小增长。
-- 工作区：仅生产代码、固定片段和必要文档提交；测试/夹具与 bin/obj 保持 ignored。当前分支保留，不合并、不推送。
+- 工作区：仅生产代码、固定片段和必要文档提交；测试/夹具与 bin/obj 保持 ignored。实现阶段保留分支，未合并或推送；后续用户授权合并见下方记录。
 - 风险和继续位置：本轮未操作硬件，Command 模式恢复、665 探测后的状态、1000 ms 重开窗口、串口与 LibUsb 重新枚举待验证。下一步从用户真机新 EDL 连接开始，核对自动提示、参考片段响应和 Loader/Firehose 初始化；不能根据片段成功发送就宣称实际 Patch 成功。
+
+## 合并复核（2026-10-05，MERGE-PBL-01）
+
+- 用户明确要求合并；主工作区 D:/Code/CSharp/GeekFlashCore 的 main 与当前功能工作区均无受跟踪修改。main 从 c300957 无冲突快进至 9c42699，纳入 f9ff352（Digest 内容自动识别）和 9c42699（三芯片通用 PBL Patch）。未推送、未删除分支或工作区。
+- 合并后主工作区执行 `dotnet build GeekFlashCore.slnx -c Release --no-restore --verbosity quiet`，0 警告/0 错误。功能工作区与 main 源码一致，在该工作区完整 Release Qcom 412/412、CLI 55/55 通过，Python 提取校验 4/4 通过；主工作区原有 ignored 测试文件保持原样。
+- 首次并行测试构建遇到共享 obj 写锁（CS2012）；CLI 完成后串行重跑 Qcom 通过，无需修改生产代码。git diff --check、源码一致性、两个工作区状态与 .tests 未跟踪/ignored 检查通过。仅追加本合并记录；设备验证风险与下一步保持上述结论。

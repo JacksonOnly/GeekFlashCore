@@ -13,6 +13,16 @@ internal sealed record TransportResolution(ITransport Transport, ProtocolRegistr
 
 internal sealed class TransportResolver
 {
+    private readonly WindowsMtkDriver? _mtkDriver = OperatingSystem.IsWindows()
+        ? new(new WindowsMtkDriverBackend()) : null;
+
+    private async Task PrepareNativeUsbAsync(ProtocolRegistration registration, CliOptions options, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        NativeUsbRuntime.EnsureAvailable();
+        if (registration.Type == ProtocolType.Mtk && _mtkDriver is not null)
+            await _mtkDriver.EnsureAsync(options.NonInteractive, ct).ConfigureAwait(false);
+    }
     public async Task<TransportResolution> ResolveAsync(CliOptions options, CancellationToken ct, ProtocolRegistration? preferred = null)
     {
         options.Validate();
@@ -37,6 +47,7 @@ internal sealed class TransportResolver
                 throw new ArgumentException(Strings.Cli_UsbFormatInvalid);
             if (selected is null && !ProtocolRegistry.TryIdentify(new UsbDeviceInfo { VendorId = vid, ProductId = pid }, out selected))
                 throw new ArgumentException(Strings.Cli_ProtocolSelectionRequired);
+            await PrepareNativeUsbAsync(selected, options, ct).ConfigureAwait(false);
             return new TransportResolution(selected.UsbFactory is { } factory
                 ? factory(new((ushort)vid, (ushort)pid), options)
                 : LibUsbTransportFactory.Create(vid, pid, Guid.Empty, readTimeout: options.ReadTimeout, writeTimeout: options.WriteTimeout), selected);
@@ -87,26 +98,26 @@ internal sealed class TransportResolver
         }
         throw new InvalidOperationException(Strings.Cli_DeviceNotFound);
     }
-    private static async Task<TransportResolution> ResolveNativeUsbAsync(ProtocolRegistration registration, CliOptions options, CancellationToken ct)
+    private async Task<TransportResolution> ResolveNativeUsbAsync(ProtocolRegistration registration, CliOptions options, CancellationToken ct)
     {
-        using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        wait.CancelAfter(options.DeviceWaitTimeout);
-        try
+        NativeUsbRuntime.EnsureAvailable();
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        while (true)
         {
-            while (true)
-            {
-                wait.Token.ThrowIfCancellationRequested();
-                var identities = LibUsbTransportFactory.Enumerate(serialNumber: options.UsbSerial).Where(id =>
-                    registration.DeviceIdentifier?.Identify(new UsbDeviceInfo { VendorId = id.VendorId, ProductId = id.ProductId }).IsSuccess == true);
-                var identity = SelectUsbIdentity(identities, options);
-                if (identity is not null)
-                    return new(registration.UsbFactory!(identity, options), registration);
-                await Task.Delay(100, wait.Token).ConfigureAwait(false);
-            }
-        }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-        {
-            throw new TimeoutException(Strings.FormatCli_DeviceWaitTimedOut(options.DeviceWaitTimeout));
+            ct.ThrowIfCancellationRequested();
+            if (elapsed.ElapsedMilliseconds >= options.DeviceWaitTimeout)
+                throw new TimeoutException(Strings.FormatCli_DeviceWaitTimedOut(options.DeviceWaitTimeout));
+            // Driver preparation can require UAC and device restart; it has a separate finite budget.
+            elapsed.Stop();
+            await PrepareNativeUsbAsync(registration, options, ct).ConfigureAwait(false);
+            elapsed.Start();
+            ct.ThrowIfCancellationRequested();
+            var identities = LibUsbTransportFactory.Enumerate(serialNumber: options.UsbSerial).Where(id =>
+                registration.DeviceIdentifier?.Identify(new UsbDeviceInfo { VendorId = id.VendorId, ProductId = id.ProductId }).IsSuccess == true);
+            var identity = SelectUsbIdentity(identities, options);
+            if (identity is not null)
+                return new(registration.UsbFactory!(identity, options), registration);
+            await Task.Delay(100, ct).ConfigureAwait(false);
         }
     }
     internal static UsbTransportIdentity? SelectUsbIdentity(IEnumerable<UsbTransportIdentity> identities, CliOptions options)

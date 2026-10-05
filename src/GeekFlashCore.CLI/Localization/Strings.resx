@@ -204,4 +204,17 @@ find 搜索中按 Ctrl+C 取消本次搜索，等待当前读取及 ACK 完成�
   <data name="Cli_HelpMtk" xml:space="preserve"><value>MTK: --protocol mtk --loader DA.bin [--mtk-preloader preloader.bin] [--mtk-da-mode auto|legacy|xflash|xml] [--mtk-auth-file auth.bin] [--mtk-cert cert.bin] [--usb-serial value | --usb-bus N --usb-port-path N.N] [--usb-interface N --usb-control-interface N --usb-alt N] [--mtk-ufs-rpmb-blocks N,N] [--mtk-sej-base ADDR --mtk-tzcc-base ADDR --mtk-ssr-base ADDR]；命令: devices | mtk-probe | mtk-capabilities | mtk-rpmb read|write region start count key-file data-file | mtk-memory read|write address length file | mtk-seccfg lock|unlock region offset length backup-file；MTK 默认连接预算 60000 ms、资源预算 30000 ms，均为有限时限；--connect-timeout 覆盖整个 MTK 连接。</value></data>
   <data name="Cli_UsbTopology" xml:space="preserve"><value>{0}:{1} bus={2} port={3}</value></data>
   <data name="Cli_UsbAmbiguous" xml:space="preserve"><value>匹配到多台 USB 设备，请通过序列号或总线/端口路径明确选择。</value></data>
+  <data name="Cli_UsbNativeMissing" xml:space="preserve"><value>无法加载 USB 原生库 {0}（{1}）。请检查 runtimes 目录、DLL 架构和依赖；libusb-win32 还需要 libusb0.dll 与 libusbK.dll 桥接库。</value></data>
+  <data name="Cli_UsbArchitectureUnsupported" xml:space="preserve"><value>当前架构不支持随附的 Windows USB 原生库或 libusb-win32 安装器。</value></data>
+  <data name="Cli_MtkDriverScopeInvalid" xml:space="preserve"><value>驱动安装范围必须是已支持的 MTK 刷机硬件 ID。</value></data>
+  <data name="Cli_MtkDriverInstalling" xml:space="preserve"><value>正在为 {0} 个 MTK 刷机硬件 ID 安装 libusb-win32 设备过滤器；可能出现 Windows 管理员授权提示。</value></data>
+  <data name="Cli_MtkDriverInstalled" xml:space="preserve"><value>MTK libusb-win32 设备过滤器已安装并通过绑定检查，将重新枚举 USB 设备。</value></data>
+  <data name="Cli_MtkDriverInstallFailed" xml:space="preserve"><value>libusb-win32 安装器失败，退出码 {0}；请检查驱动状态后重新连接，安装可能已部分生效。</value></data>
+  <data name="Cli_MtkDriverVerificationFailed" xml:space="preserve"><value>安装器已退出，但 MTK 设备的 libusb-win32 绑定检查未通过；请检查驱动并重新连接。</value></data>
+  <data name="Cli_MtkDriverInstallerMissing" xml:space="preserve"><value>缺少 libusb-win32 安装器：{0}。请通过 LibUsbWin32Root 构建属性打包驱动文件。</value></data>
+  <data name="Cli_MtkDriverAdministratorRequired" xml:space="preserve"><value>自动安装 MTK 设备过滤器需要管理员权限；非交互模式请以管理员身份运行 CLI。</value></data>
+  <data name="Cli_MtkDriverLaunchFailed" xml:space="preserve"><value>无法启动 libusb-win32 安装器或 Windows 管理员授权已取消。</value></data>
+  <data name="Cli_MtkDriverInstallTimedOut" xml:space="preserve"><value>libusb-win32 安装超过 60 秒，结果不确定；请检查驱动状态后重新连接。</value></data>
+  <data name="Cli_MtkDriverLateLaunchFailed" xml:space="preserve"><value>已取消的 MTK 驱动安装器迟到启动失败。</value></data>
+  <data name="Cli_MtkDriverTerminationFailed" xml:space="preserve"><value>无法终止 MTK 驱动安装器；安装结果需要检查。</value></data>
 </root>

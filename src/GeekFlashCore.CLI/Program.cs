@@ -2,6 +2,16 @@ using GeekFlashCore.CLI;
 using GeekFlashCore.CLI.Localization;
 using Serilog;
 
+if (args.FirstOrDefault() == WindowsMtkDriverBackend.HelperSwitch)
+{
+    try
+    {
+        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException(Strings.Cli_UsbArchitectureUnsupported);
+        return await WindowsMtkDriverBackend.InstallElevatedAsync(args[1..], CancellationToken.None);
+    }
+    catch (Exception exception) { Console.Error.WriteLine(exception.Message); return 1; }
+}
+
 CliOptions options;
 try
 {

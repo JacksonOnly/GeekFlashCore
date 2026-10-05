@@ -182,6 +182,7 @@ internal sealed class CliApplication
         {
             if (registration?.UsbFactory is not null || !OperatingSystem.IsWindows())
             {
+                NativeUsbRuntime.EnsureAvailable();
                 foreach (var identity in LibUsbTransportFactory.Enumerate(serialNumber: options.UsbSerial))
                 {
                     if (registration?.DeviceIdentifier is { } identifier &&

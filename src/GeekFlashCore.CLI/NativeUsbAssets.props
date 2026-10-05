@@ -1,0 +1,20 @@
+<Project>
+  <PropertyGroup>
+    <LibUsbNativeRoot Condition="'$(LibUsbNativeRoot)' == '' and Exists('D:\Code\libusb-1.0.29')">D:\Code\libusb-1.0.29</LibUsbNativeRoot>
+    <LibUsbWin32Root Condition="'$(LibUsbWin32Root)' == '' and Exists('D:\Code\libusb1273\libusb-win32-bin-1.2.7.3')">D:\Code\libusb1273\libusb-win32-bin-1.2.7.3</LibUsbWin32Root>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(LibUsbNativeRoot)' != ''">
+    <Content Include="$(LibUsbNativeRoot)\VS2022\MS64\dll\libusb-1.0.dll" Condition="Exists('$(LibUsbNativeRoot)\VS2022\MS64\dll\libusb-1.0.dll')" Link="runtimes\win-x64\native\libusb-1.0.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(LibUsbNativeRoot)\VS2022\MS32\dll\libusb-1.0.dll" Condition="Exists('$(LibUsbNativeRoot)\VS2022\MS32\dll\libusb-1.0.dll')" Link="runtimes\win-x86\native\libusb-1.0.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(LibUsbNativeRoot)\MinGW-llvm-aarch64\dll\libusb-1.0.dll" Condition="Exists('$(LibUsbNativeRoot)\MinGW-llvm-aarch64\dll\libusb-1.0.dll')" Link="runtimes\win-arm64\native\libusb-1.0.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(LibUsbNativeRoot)\README*" Link="licenses\libusb-1.0\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(LibUsbWin32Root)' != ''">
+    <Content Include="$(LibUsbWin32Root)\bin\amd64\install-filter.exe;$(LibUsbWin32Root)\bin\amd64\libusb0.dll;$(LibUsbWin32Root)\bin\amd64\libusb0.sys" Condition="Exists('$(LibUsbWin32Root)\bin\amd64\install-filter.exe')" Link="drivers\libusb-win32\x64\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(LibUsbWin32Root)\bin\x86\install-filter.exe;$(LibUsbWin32Root)\bin\x86\libusb0_x86.dll;$(LibUsbWin32Root)\bin\x86\libusb0.sys" Condition="Exists('$(LibUsbWin32Root)\bin\x86\install-filter.exe')" Link="drivers\libusb-win32\x86\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(LibUsbWin32Root)\bin\amd64\libusb0.dll" Condition="Exists('$(LibUsbWin32Root)\bin\amd64\libusb0.dll')" Link="runtimes\win-x64\native\libusb0.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(LibUsbWin32Root)\bin\x86\libusb0_x86.dll" Condition="Exists('$(LibUsbWin32Root)\bin\x86\libusb0_x86.dll')" Link="runtimes\win-x86\native\libusb0.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(LibUsbWin32Root)\bin\x86\libusb0_x86.dll" Condition="Exists('$(LibUsbWin32Root)\bin\x86\libusb0_x86.dll')" Link="drivers\libusb-win32\x86\libusb0.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(LibUsbWin32Root)\COPYING*.txt;$(LibUsbWin32Root)\installer_license.txt" Link="licenses\libusb-win32\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

@@ -59,37 +59,22 @@ internal sealed class ConsoleOplusDigestProvider(ConsoleUi ui, string? configure
     private string? _digestPath = configuredPath;
     private string? _signPath = configuredSign;
     private bool _explained;
-    private OplusDigestMode? _selectedMode;
     public async ValueTask<OplusDigestResourceResponse> ResolveAsync(OplusDigestResourceRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         OplusDigestMode mode = request.Mode;
-        if (mode == OplusDigestMode.None)
-        {
-            ui.WriteLine(Strings.Cli_OplusModeChoices);
-            while (true)
-            {
-                string answer = await ui.AskAsync(Strings.Cli_OplusModePrompt, cancellationToken).ConfigureAwait(false);
-                if (string.IsNullOrWhiteSpace(answer)) throw new OperationCanceledException();
-                _selectedMode = answer.Trim().ToLowerInvariant() switch
-                {
-                    "1" or "oplusdigestlegacy" => OplusDigestMode.OplusDigestLegacy,
-                    "2" or "oplusdigestpt" => OplusDigestMode.OplusDigestPt,
-                    _ => null
-                };
-                if (_selectedMode is null) { ui.WriteLine(Strings.Cli_OplusModeInvalid); continue; }
-                mode = _selectedMode.Value;
-                Serilog.Log.ForContext("UserPresentation", true).Information(Strings.Cli_LogConnectionModeSelected, mode);
-                break;
-            }
-        }
         if (!_explained)
         {
-            ui.WriteLine(mode == OplusDigestMode.OplusDigestLegacy
-                ? Strings.Cli_OplusLegacyResources : Strings.Cli_OplusPtResources);
+            ui.WriteLine(mode switch
+            {
+                OplusDigestMode.None => Strings.Cli_OplusAutoResources,
+                OplusDigestMode.OplusDigestLegacy => Strings.Cli_OplusLegacyResources,
+                _ => Strings.Cli_OplusPtResources
+            });
             _explained = true;
         }
-        string path = (await ui.SelectFileAsync(Strings.FormatCli_OplusDigestPrompt(mode), _digestPath,
+        string path = (await ui.SelectFileAsync(mode == OplusDigestMode.None
+            ? Strings.Cli_OplusAutoDigestPrompt : Strings.FormatCli_OplusDigestPrompt(mode), _digestPath,
             Strings.Cli_OplusDigestMissing, cancellationToken).ConfigureAwait(false))!;
         _digestPath = path;
         if (request.PreviousSignRejected) ui.WriteLine(Strings.Cli_OplusSignRejected);
@@ -99,7 +84,7 @@ internal sealed class ConsoleOplusDigestProvider(ConsoleUi ui, string? configure
         _signPath = signPath;
         ui.WriteLine(Strings.Cli_OplusVerifying);
         return new OplusDigestResourceResponse(new FileDataSource(path))
-        { Sign = new FileDataSource(signPath!), SelectedMode = _selectedMode };
+        { Sign = new FileDataSource(signPath!) };
     }
 
     private static bool IsValidSignFile(string path) => File.Exists(path) && new FileInfo(path).Length is > 0 and <= 4096;

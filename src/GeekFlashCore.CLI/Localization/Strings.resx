@@ -147,12 +147,8 @@ Loader 构建时间：{2}    已报告命令：{3} 项</value></data>
   <data name="Cli_SaharaMemoryDebug" xml:space="preserve"><value>内存调试模式</value></data>
   <data name="Cli_HelpHint" xml:space="preserve"><value>输入 geekflash help 查看用法。</value></data>
   <data name="Cli_LogStorageOperation" xml:space="preserve"><value>CLI {Command}：分区={Partition} LUN={Lun} 起始扇区={StartSector} 扇区数={SectorCount} 文件={FilePath}。</value></data>
-  <data name="Cli_OplusModeChoices" xml:space="preserve"><value>设备与 Loader 均为 Oplus，启动日志报告 VIP 已启用。
-  1. Oplus DigestLegacy（Digest + Sign）
-  2. Oplus DigestPt（分区映射）</value></data>
-  <data name="Cli_OplusModePrompt" xml:space="preserve"><value>请选择 1 / 2（留空取消）</value></data>
-  <data name="Cli_OplusModeInvalid" xml:space="preserve"><value>请输入 1 或 2。</value></data>
-  <data name="Cli_LogConnectionModeSelected" xml:space="preserve"><value>CLI 连接模式已选择：{OplusMode}。</value></data>
+  <data name="Cli_OplusAutoResources" xml:space="preserve"><value>设备与 Loader 均为 Oplus，启动日志报告 VIP 已启用。请选择 Digest 和 Sign；可解析的分区表 Digest 自动使用 DigestPt，否则使用 DigestLegacy。Ctrl+C 取消。</value></data>
+  <data name="Cli_OplusAutoDigestPrompt" xml:space="preserve"><value>Oplus Digest 文件路径（自动识别模式，留空取消）</value></data>
   <data name="Cli_SessionEnded" xml:space="preserve"><value>操作成功，设备会话已结束，程序退出。</value></data>
   <data name="Cli_VendorSelectionRequired" xml:space="preserve"><value>无法识别厂商，非交互模式请使用 --vendor 指定（通用设备选 Generic）。</value></data>
   <data name="Cli_VendorUnknown" xml:space="preserve"><value>启动日志、Loader 和 Sahara 未匹配厂商，请选择通信策略：</value></data>

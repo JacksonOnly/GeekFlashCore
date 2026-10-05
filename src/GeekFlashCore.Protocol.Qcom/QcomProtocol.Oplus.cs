@@ -67,9 +67,22 @@ public sealed partial class QcomProtocol
                 throw new QcomResourceException(Strings.Qcom_InvalidResource);
             return;
         }
-        if (resource.SelectedMode is not (OplusDigestMode.OplusDigestPt or OplusDigestMode.OplusDigestLegacy))
+        OplusDigestMode mode;
+        if (resource.SelectedMode is { } selectedMode)
+            mode = selectedMode;
+        else
+        {
+            // Startup has already established both Oplus identities and VIP. Only
+            // an unusable partition map falls back; resource I/O failures propagate.
+            IDataSource digest = resource.Digest ?? throw new QcomResourceException(Strings.Qcom_InvalidResource);
+            mode = new OplusDigestParser().TryParse(digest, out _oplusIndex)
+                ? OplusDigestMode.OplusDigestPt : OplusDigestMode.OplusDigestLegacy;
+        }
+        if (mode is not (OplusDigestMode.OplusDigestPt or OplusDigestMode.OplusDigestLegacy))
             throw new QcomResourceException(Strings.Qcom_InvalidResource);
-        _oplusConfiguration = _oplusConfiguration with { Mode = resource.SelectedMode.Value };
+        _oplusConfiguration = _oplusConfiguration with { Mode = mode };
+        if (resource.SelectedMode is null)
+            Log.ForContext("UserPresentation", true).Information(Strings.Qcom_LogOplusModeDetected, mode);
         if (_oplusConfiguration.Mode == OplusDigestMode.OplusDigestLegacy)
         {
             _firehose!.ConfigureLegacyWire(_oplusConfiguration);
@@ -110,7 +123,7 @@ public sealed partial class QcomProtocol
                     throw new QcomResourceException(Strings.Qcom_OplusDigestLengthInvalid);
                 // Validate the map before sending any command. The same resource/strategy
                 // is retained across Configure/storage geometry fallbacks.
-                if (_oplusConfiguration.Mode == OplusDigestMode.OplusDigestPt)
+                if (_oplusConfiguration.Mode == OplusDigestMode.OplusDigestPt && _oplusIndex is null)
                     _oplusIndex = new OplusDigestParser().Parse(digest);
                 _oplusDigest = digest;
             }

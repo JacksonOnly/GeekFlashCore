@@ -87,7 +87,7 @@ RAW 中断或未知状态仍应重新进入 EDL，再使用普通带 Loader 的�
 
 ## 调试文件日志
 
-直接运行 `geekflash` 时不再预先询问模式。上传 Loader 并读取启动日志后，只有 VIP 已启用、Sahara OEM 属于 Oplus、解析的 Loader 也属于 Oplus/OnePlus，才提示 `1` Oplus DigestLegacy、`2` Oplus DigestPt，再选择 Digest 和 Sign 文件。错误选择可重输，留空或 Ctrl+C 取消；文件参数有效时直接使用。普通设备无需选择模式。显式 `--oplus-mode`、Oplus Digest、普通 Digest 或 VIP 参数优先；非交互、重定向不增加模式提问。身份未知或已运行的 Loader 无法自动满足这些条件，需显式指定模式。
+直接运行 `geekflash` 时不再询问模式编号。上传 Loader 并读取启动日志后，只有 VIP 已启用、Sahara OEM 属于 Oplus、解析的 Loader 也属于 Oplus/OnePlus，才请求 Digest 和 Sign 文件。Core 在发送首包前解析 Digest：能建立非空且有效的分区索引时自动使用 OplusDigestPt，否则使用 OplusDigestLegacy。读取失败、短读或非法长度直接中止，不回退 Legacy。文件路径留空或 Ctrl+C 取消；文件参数有效时直接使用。普通设备无需选择模式。显式 `--oplus-mode`、Oplus Digest、普通 Digest 或 VIP 参数优先；仅指定 `--oplus-digest` 的原有 Pt 默认保持不变。非交互、重定向不增加资源提问。身份未知或已运行的 Loader 无法自动满足这些条件，需显式指定模式。
 
 启动日志明确以 `ufs:` 报告存储时，自动配置从 UFS 开始，避免先配置 eMMC、存储查询失败后再切换的多余命令；显式存储类型不覆盖，无证据仍沿用原有协商与回退。详细文件日志记录每次小米内置认证的通过状态和耗时，不记录签名内容；控制台仍只显示必要的联机阶段。
 

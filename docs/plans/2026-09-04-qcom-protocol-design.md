@@ -177,7 +177,9 @@ Configure 使用有界状态机实现，保留 GeekFlashTool 的顺序和兼容�
 
 ### 8.1 OplusDigestPt
 
-Digest 发送并通过设备 Verify 后，使用 OplusDigestUtils 解析分区表，构建不可变索引。每个条目至少包含：
+2026-10-05（OP-UX-03）：保留 VIP 启动证据与设备/Loader 双 Oplus 身份门槛，CLI 删除 Pt/Legacy 编号选择。Mode=None 且资源响应未指定 SelectedMode 时，由 Core 在首个 Firehose 写入前解析 Digest，非空有效分区索引使用 Pt，格式或映射不可用时使用 Legacy；长度无效、I/O 错误和短读直接失败。解析索引复用于后续 Pt 校验，同步/异步共用逻辑；显式模式和旧宿主 SelectedMode 契约继续优先。Sign 必需、认证重试、线路顺序和会话重置保持原有规则。
+
+Digest 发送前使用 OplusDigestUtils 解析分区表，构建不可变索引，通过设备 Verify 后用于读写映射。每个条目至少包含：
 
 - Label；
 - FileName；

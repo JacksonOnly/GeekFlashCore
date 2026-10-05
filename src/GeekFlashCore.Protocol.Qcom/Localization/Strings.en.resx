@@ -540,4 +540,5 @@ Current {0}, expected {1}</value>
   <data name="Qcom_LogFirehoseProbeRejected" xml:space="preserve"><value>The device rejected the Sahara wake-up packet with complete XML; confirming the running Firehose session with NOP.</value></data>
   <data name="Qcom_FirehoseResumeUnconfirmed" xml:space="preserve"><value>The device returned a Firehose response, but NOP was not confirmed. Check the device state and reconnect.</value></data>
   <data name="Qcom_ByteReadSectorTooLarge" xml:space="preserve"><value>Firehose byte reads do not support logical sectors larger than 65536 bytes.</value></data>
+  <data name="Qcom_LogOplusModeDetected" xml:space="preserve"><value>Oplus mode automatically detected from Digest content: {OplusMode}.</value></data>
 </root>

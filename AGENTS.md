@@ -126,3 +126,5 @@ git status --short --ignored
 开始 MTK 工作前，读取本文件、`docs/plans/2026-10-05-mtk-protocol-design.md`、`docs/plans/2026-10-05-mtk-protocol-implementation.md`、`docs/plans/2026-10-05-mtk-brom-method-mapping.md` 和 `docs/plans/2026-10-05-mtk-exploit-framework.md`，再检查当前工作区与最近提交。MTK 测试位于 ignored `.tests/GeekFlashCore.Protocol.Mtk.Tests`。
 
 MTK 标准功能补全的最新范围、证据和未决风险另见 `docs/plans/2026-10-05-mtk-standard-completion-design.md` 与 `docs/plans/2026-10-05-mtk-standard-completion-implementation.md`。此范围禁止新增漏洞利用；已有未跟踪漏洞计划和 ignored 测试不得混入标准功能提交。
+
+更新至 `D:\Code\Rust\penumbra-main` 后的 Legacy NAND/IoT、独立硬件加密、Scatter、eFuse、命名分区与 Penumbra2 扩展 ABI 进度，以 `docs/plans/2026-10-05-mtk-nonexploit-parity-design.md` 和 `docs/plans/2026-10-05-mtk-nonexploit-parity-implementation.md` 为最新恢复来源；历史文档的缺口列表按日期保留。

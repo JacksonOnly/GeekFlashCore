@@ -8,4 +8,8 @@
 <data name="ExtensionUnavailable" xml:space="preserve"><value>MTK 扩展上下文不可用或已失效，请重新连接。</value></data>
   <data name="ExploitStopped" xml:space="preserve"><value>宿主扩展在阶段 {0} 返回 {1}，连接已终止，必须重新连接。</value></data>
 <data name="BootControlWriteUnknown" xml:space="preserve"><value>启动槽位配置可能已写入；请重新连接并检查设备，禁止自动重试。</value></data>
+<data name="PermanentWriteUnknown" xml:space="preserve"><value>永久存储编程可能已经执行；请重新连接并检查设备，禁止自动重试。</value></data>
+<data name="ScatterWriteUnknown" xml:space="preserve"><value>Scatter 刷写可能已部分完成；请使用保存的备份检查设备，禁止自动重试。</value></data>
+<data name="RpmbLockWriteUnknown" xml:space="preserve"><value>RPMB 锁状态可能已写入；请重新连接并检查原始备份与设备状态，禁止自动重试。</value></data>
+<data name="FlashFillUnknown" xml:space="preserve"><value>逻辑填充可能已部分写入；请重新连接并检查目标范围，禁止自动重试。</value></data>
 </root>

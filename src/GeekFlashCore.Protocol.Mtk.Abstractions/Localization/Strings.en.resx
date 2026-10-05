@@ -8,4 +8,8 @@
 <data name="ExtensionUnavailable" xml:space="preserve"><value>MTK extension context is unavailable or expired. Reconnect required.</value></data>
   <data name="ExploitStopped" xml:space="preserve"><value>The host extension returned {1} at {0}. Connection stopped; reconnect is required.</value></data>
 <data name="BootControlWriteUnknown" xml:space="preserve"><value>Boot slot metadata may have been written. Reconnect and inspect the device; do not retry automatically.</value></data>
+<data name="PermanentWriteUnknown" xml:space="preserve"><value>Permanent storage programming may have taken place. Reconnect and inspect the device; do not retry automatically.</value></data>
+<data name="ScatterWriteUnknown" xml:space="preserve"><value>Scatter flashing may have partially completed. Inspect the device using the saved backups; do not retry automatically.</value></data>
+<data name="RpmbLockWriteUnknown" xml:space="preserve"><value>RPMB lock metadata may have been written. Reconnect and inspect the original backup and device state; do not retry automatically.</value></data>
+<data name="FlashFillUnknown" xml:space="preserve"><value>Logical fill may have partially written the range. Reconnect and inspect the range; do not retry automatically.</value></data>
 </root>

@@ -26,8 +26,12 @@ public sealed record MtkProtocolOptions
     /// <summary>Initializes an explicitly configured or known watchdog immediately after FD during Probe.
     /// Default Probe only queries; Connect prepares it before security queries and resource requests.</summary>
     public bool InitializeWatchdogOnProbe { get; init; }
-    /// <summary>Explicitly enables XFlash logical NAND data-page writes with ECC. OOB/physical writes are excluded.</summary>
+    /// <summary>Explicitly enables logical NAND data-page writes with ECC. OOB/physical writes are excluded.</summary>
     public bool EnableNandLogicalWrites { get; init; }
+    /// <summary>Host-confirmed usable NAND capacity for Legacy/XML which report only total capacity.</summary>
+    public long? NandLogicalCapacity { get; init; }
+    /// <summary>Uses the documented three-region MT6261 IoT DA boot sequence. No automatic dialect guessing.</summary>
+    public bool LegacyIoT { get; init; }
     /// <summary>Confirmed NOR erase alignment. Zero leaves erase unavailable; no erase geometry is guessed.</summary>
     public int NorEraseBlockSize { get; init; }
     /// <summary>Confirmed Legacy PMT layout used when a user region contains no GPT.</summary>
@@ -42,7 +46,7 @@ public sealed record MtkProtocolOptions
         if (ReadTimeoutMilliseconds <= 0 || ConnectTimeoutMilliseconds <= 0 ||
             OperationTimeoutMilliseconds <= 0 || ResourceTimeoutMilliseconds <= 0)
             throw new ArgumentOutOfRangeException(nameof(ReadTimeoutMilliseconds));
-        if (NorEraseBlockSize < 0 || NorEraseBlockSize > 16777216 ||
+        if (NandLogicalCapacity is <= 0 || LegacyIoT && DaKind is { } da && da != MtkDaKind.Legacy || NorEraseBlockSize < 0 || NorEraseBlockSize > 16777216 ||
             NorEraseBlockSize != 0 && (NorEraseBlockSize & (NorEraseBlockSize - 1)) != 0 ||
             LegacyPmtLayout is { } pmt && !Enum.IsDefined(pmt))
             throw new ArgumentOutOfRangeException(nameof(NorEraseBlockSize));

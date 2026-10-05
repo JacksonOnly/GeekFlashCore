@@ -79,10 +79,18 @@ public sealed class MtkSecurityWriteException : GeekFlashCore.Protocol.Abstracti
 /// <summary>Explicit context for an already loaded compatible DA extension. No patching or payload boot is implied.</summary>
 public sealed record MtkExtensionContext(ushort HardwareCode, uint Da2Base, uint Da2Size, uint SejBase = 0, uint TzccBase = 0, uint SsrBase = 0)
 {
+    /// <summary>Caller-confirmed ABI of the already loaded extension; never guessed by retries.</summary>
+    public MtkExtensionAbi Abi { get; init; }
     /// <summary>Explicit UFS RPMB capacities (256-byte blocks); standard UFS info does not supply them.</summary>
     public IReadOnlyList<uint> UfsRpmbDataBlocks { get; init; } = [];
     public IReadOnlyList<MtkMemoryRange> AllowedMemoryRanges { get; init; } = [];
 }
+public enum MtkExtensionAbi { Legacy,Penumbra2 }
+public enum MtkKeySize : byte { Key128,Key192,Key256 }
+public enum MtkKeyDeriveId : uint { Rpmb,Fde,Tee,AesImageEncryption,AesCustom,Motorola,RootOfTrust }
+public enum MtkSejKeyId : byte { Software,Hardware,HardwareWrapped,Rid,Custom }
+public sealed record MtkSejParameters(bool Encrypt,bool AntiClone=true,bool Legacy=false,bool Xor=false,
+    MtkAesMode Mode=MtkAesMode.Cbc,MtkSejKeyId Key=MtkSejKeyId.Software,MtkKeySize KeySize=MtkKeySize.Key256);
 /// <summary>Host-approved memory window; no addresses are inferred for unknown hardware.</summary>
 public readonly record struct MtkMemoryRange(uint Address, uint Length)
 {

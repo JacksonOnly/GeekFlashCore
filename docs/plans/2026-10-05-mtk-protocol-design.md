@@ -2,14 +2,14 @@
 
 日期：2026-10-05
 
-任务：MTK-00～MTK-12
+任务：MTK-00～MTK-13
 
-状态：2026-10-05 用户授权实施；漏洞部分按最新要求只保留接口。
+状态：2026-10-05 MTK-01～12 已实施；用户后续授权 MTK-13 阶段接口框架，仍禁止漏洞实现。
 
 ## 2026-10-05 实施范围修订（优先于原草案）
 
-- 用户指定在 worktree `8d7a/GeekFlashCore` 实施，并明确“利用漏洞的部分只预留一个接口”。
-- MTK-08 改为仅定义 `IMtkExploitStrategy`；不实现、注册或自动执行任何漏洞、认证绕过、DA 安全补丁、攻击载荷或架构扫描。
+- 用户指定在 worktree `8d7a/GeekFlashCore` 实施，最初要求“利用漏洞的部分只预留一个接口”；后续明确要求参考 mtkclient 与 penumbra 设置接口并在合适阶段调用，只搭框架，不进行漏洞利用。
+- MTK-08 最初只预留接口；MTK-13 修订为 `IMtkExploitStrategy`、阶段元数据、作用域 context 和明确结果，由宿主显式注入后在连接阶段调用。无策略实现、默认注册、漏洞算法、DA 安全补丁生成、攻击载荷或架构扫描。最新契约以 [框架修订](2026-10-05-mtk-exploit-framework.md) 为准。
 - 下文原草案中的漏洞族、patch 与内置攻击 payload 实施要求被本修订替代；不添加 exploit CLI 选项。
 - MTK-09 保留已经合法加载且具有对应 ABI 的 DA 扩展通信、ACK/context、内存与 crypto；不通过补丁使标准 DA 获得扩展。宿主提供扩展上下文，能力以真实 ACK 与 context 状态为依据。
 - RPMB、seccfg 仍属范围；缺少扩展、密钥或硬件算法时明确拒绝操作，不采用 dummy signature 或绕过线路。
@@ -20,7 +20,7 @@
 
 在 GeekFlashCore 中建设可独立复用的 MediaTek 刷机协议，供 CLI、桌面工具与服务宿主使用。MTK 的生产传输统一使用现有 LibUsb 后端，协议收发使用同步 `ITransport`、`Span<T>` 与有界池化缓冲。异步仅用于宿主编排、资源请求、设备等待及取消边界。
 
-用户于 2026-10-05 明确要求结合以下三个参考项目，而非直接移植某一个项目；当前授权范围为标准协议、RPMB 与 seccfg，漏洞仅保留接口：
+用户于 2026-10-05 明确要求结合以下三个参考项目，而非直接移植某一个项目；当前授权范围为标准协议、RPMB、seccfg 及宿主阶段接口框架，禁止漏洞实现：
 
 | 来源 | 本次读取的本地 HEAD | 主要用途 |
 | --- | --- | --- |
@@ -38,7 +38,7 @@
 3. Legacy、XFlash v5、XML v6 的独立同步会话与流式读、写、擦除、重启。
 4. eMMC user/boot/GP 与 UFS LU 的类型化几何模型；GPT、Raw、Android Sparse 与通用块设备接入。
 5. BROM SLA / DAA / cert、DA SLA 的类型化宿主资源和认证流程。
-6. 单一漏洞预留接口；对已合法加载扩展的 ACK/context、内存、寄存器与 SEJ 操作。
+6. 单一宿主策略接口与阶段/context/result 框架，无策略实现；对已合法加载扩展的 ACK/context、内存、寄存器与 SEJ 操作。
 7. RPMB 上下文初始化、读写与认证；seccfg v3/v4 的解析、算法匹配及锁定/解锁。
 8. CLI 的 MTK 注册、纯 USB 自动发现、文件资源 Provider、能力与风险状态展示。
 
@@ -94,7 +94,7 @@ XML device file-system 请求仅在当前命令预先声明的虚拟资源中回
 
 ### 3.4 扩展与安全能力
 
-漏洞族和安全补丁不属于当前实施范围，仅保留 `IMtkExploitStrategy`，核心不接收、不注册、不调用该接口。没有 exploit CLI、攻击二进制、反汇编器或自动绕过流程。
+漏洞族和安全补丁不属于当前实施范围。`IMtkExploitStrategy` 仅由宿主显式注入；核心按 descriptor 筛选 BeforeDa1、Da1Ready、Da2Ready、Da2Authenticated 四阶段并提供串行化、有界、过期后不可用的 USB/BROM/DA context。没有策略实现、默认注册、exploit CLI、攻击二进制、反汇编器或自动绕过流程。完成结果不解除认证；终止或未知结果使会话失效。返回 DA 资源经重新验证，已执行阶段不可替换，详见框架修订。
 
 扩展模块通信限定于宿主已经合法加载、具有 penumbra/mtk-payloads 对应 ABI 的 DA。必须在当前代数内完成 ACK → CTX → operation；CTX 的 hardware/DA2 范围与实际加载元数据匹配。访问寄存器/内存需显式允许窗口，SEJ 与派生密钥需明确硬件基址。任何线上失败使会话失效，不继续试其他扩展。
 
@@ -138,7 +138,7 @@ MessagePipe 不是首轮必需依赖；所有 Provider 均可由任意宿主直�
 - `MtkCapabilities`：`Supported/Unsupported/Unknown/RequiresExtension`，来自 profile、DA 静态证据、运行时命令及扩展 ACK 的组合；功能缺失不会显示为操作成功。
 - `MtkProtocolException`：阶段、命令、数值 status 与 `RequiresReconnect`；`MtkResourceException` 与 `MtkCapabilityException` 分离。用户文本在 MTK 项目中英文 resx 配对。
 - `IMtkDaProvider`、`IMtkEmiProvider`、`IMtkAuthenticationProvider`：强类型 request/response + `ValueTask` + `CancellationToken`。
-- `IMtkExploitStrategy`：只保留接口；`IMtkSessionAccess` / `IMtkDaChannel`：同步、受限生命周期的扩展访问。上下文仅在当前 gate/代数内有效，验证阶段与访问范围；不将原始 Transport 暴露给异步资源 Provider。
+- `IMtkExploitStrategy`：宿主显式注入的阶段接口，无策略实现；`MtkExploitContext` 提供回调期 USB/BROM/DA 通道；`IMtkSessionAccess` / `IMtkDaChannel` 提供同步、受限生命周期的扩展访问。上下文仅在当前 gate/代数/线程内有效，验证阶段与访问范围；不将原始 Transport 暴露给异步资源 Provider。
 - `IMtkRpmbService`：读取、写入、认证/上下文状态与独立 region/256 字节数据块计数；不作为普通 writable block device 暴露。
 - `IMtkSecurityConfigurationService`：读取/校验、生成变更计划、应用 lock/unlock 和回读验证；不得在构造或 Connect 中自动改 seccfg。
 
@@ -237,7 +237,7 @@ v3/v4 分开解析，校验 magic/version/declared size、头部/条目与算法
 | MTK-05 | `Da/XFlash`、`Da/Xml`、shared framed wire；DA1/DA2 初始化 | 按方言完整连接/认证/错误/重枚举 transcript；分两提交 |
 | MTK-06 | `Da/Legacy` stage config/DA2/存储与 USB speed 查询 | Legacy eMMC 核心 transcript 与明确其他介质能力；`feat(mtk): support legacy download agents` |
 | MTK-07 | `Storage`、GPT、Raw/Sparse、block devices/leases、sync/async facade | 边界/最终 ACK/资源/旧代数/流式大镜像；`feat(mtk): add streaming flash storage` |
-| MTK-08 | 只保留 `IMtkExploitStrategy` | 无实现、注册、调用、payload 或 exploit CLI；随契约提交 |
+| MTK-08 → MTK-13 | 宿主策略契约和四阶段编排 | 无策略实现、默认注册、payload 或 exploit CLI；显式注入才调用；独立框架修订与验证 |
 | MTK-09 | `Extensions/Da/Memory/Crypto`、已加载扩展 ABI、上下文与 capability | ACK → CTX → operation、ABI、未知地址/禁重入；`feat(mtk): add validated da extensions` |
 | MTK-10 | `Extensions/Rpmb` | 多 region/256vs512/chunk/status/认证/未知写结果；`feat(mtk): support authenticated rpmb operations` |
 | MTK-11 | `Extensions/Security` seccfg v3/v4、crypto algorithms、变更计划和回读 | 已知加密向量/原文校验/保留尾部/最小写/失败恢复；`feat(mtk): support verified seccfg lock changes` |
@@ -259,7 +259,7 @@ CLI 保留 `--loader` 为选定协议 Loader；新增 `--mtk-preloader`、`--mtk
 | 方言 | 每种完整 DA1/EMI/DA2/storage transcript；FLOW/MESSAGE 交错；超大/零长/错误帧；command 与 final status；XML START/END/ERR/文件/进度 |
 | Flash / GPT / Sparse | eMMC user/boot/GP、UFS LU、512/4096 block、名称歧义、越界/溢出零写入、部分读/尾部 padding、Sparse RAW/FILL/DONT_CARE/损坏、最终 ACK 才完成 |
 | 会话 | sync/async 同线路、并发串行、重入拒绝、预取消不污染 Ready、Raw 取消 Faulted、旧 lease 失效、disposed/late provider 释放 |
-| Reserved exploit | 仅一个接口，无实现、无注册、无核心调用、无攻击二进制与 CLI 选项 |
+| Host strategy framework | descriptor 筛选、三 DA/同步异步阶段、作用域/代数/线程、取消/失败/重连、资源替换与认证不隐式跳过；无策略实现、默认注册、攻击二进制或 CLI 选项 |
 | RPMB | region/地址/计数/key 长度、256 数据与512 wire、chunk 上限、认证错误、部分 response、counter/未知写结果、不自动重试 |
 | seccfg / crypto | v3/v4 与已知向量、magic/size/digest、SW/HW profile、保留未变字段、预写快照/回读、取消/超时可能已写结果 |
 | CLI | MTK 强制 LibUsb、无 COM 热插拔、显式 USB 推断、默认串口 Qcom 不变、未注册协议/未知能力、非交互资源缺失、帮助与中英文 key 对齐 |

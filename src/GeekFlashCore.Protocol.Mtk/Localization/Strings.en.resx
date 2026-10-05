@@ -9,4 +9,5 @@
 <data name="Ambiguous" xml:space="preserve"><value>MTK resource or device match is ambiguous.</value></data>
 <data name="Timeout" xml:space="preserve"><value>MTK stage timed out.</value></data>
 <data name="UsbRequired" xml:space="preserve"><value>MTK requires an identified USB transport.</value></data>
+  <data name="ExploitCheckpoint" xml:space="preserve"><value>Host extension checkpoint {0} returned {1}.</value></data>
 </root>

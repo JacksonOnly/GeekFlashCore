@@ -1,5 +1,4 @@
 using GeekFlashCore.Protocol.Abstractions;
-using GeekFlashCore.Transport.Abstractions;
 
 namespace GeekFlashCore.Protocol.Mtk.Abstractions;
 
@@ -25,9 +24,3 @@ public sealed record MtkConnectionResources(MtkDaImage DownloadAgent, MtkEmiImag
     MtkSensitiveBuffer? Authentication = null, MtkSensitiveBuffer? Certificate = null,
     IMtkAuthenticationProvider? Signer = null,
     Func<MtkAuthenticationKind, ReadOnlyMemory<byte>, MtkSensitiveBuffer>? SynchronousSigner = null);
-/// <summary>Reserved exploit integration contract. Core neither implements nor invokes it.</summary>
-public interface IMtkExploitStrategy
-{
-    /// <summary>Runs a host-supplied strategy; a false result never proves device recovery.</summary>
-    bool Execute(IUsbTransport transport, MtkTargetInfo target, CancellationToken cancellationToken);
-}

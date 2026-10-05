@@ -20,12 +20,13 @@ public sealed partial class MtkProtocol : IMtkBromSessionAccess
             finally { session.Expire(); }
         }, cancellationToken);
     }
-    private sealed class BromChannel(MtkProtocol owner) : IMtkBromSession
+    private sealed class BromChannel(MtkProtocol owner, Action? guard = null) : IMtkBromSession
     {
         private bool _valid = true;
         public void Expire() => _valid = false;
         private void Check()
         {
+            guard?.Invoke();
             if (!_valid || owner._state != MtkSessionState.Probed)
                 throw new InvalidOperationException(Strings.SessionUnavailable);
             owner._wire.Check();

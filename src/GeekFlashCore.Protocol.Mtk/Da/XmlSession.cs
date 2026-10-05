@@ -47,7 +47,8 @@ internal sealed class XmlSession(MtkWire wire, MtkProtocolOptions options) : IMt
         Begin(name, parameters);
         Lifetime("END");
     }
-    public void Initialize(MtkDaImage image, MtkEmiImage? emi, MtkTargetInfo target)
+    public void Initialize(MtkDaImage image, MtkEmiImage? emi, MtkTargetInfo target,
+        Func<MtkExploitStage, MtkDaImage> checkpoint)
     {
         wire.Stage = MtkBootStage.Da1;
         Simple("SET-RUNTIME-PARAMETER", Args(("checksum_level", "NONE"), ("battery_exist", "AUTO-DETECT"), ("da_log_level", "INFO"),
@@ -57,6 +58,7 @@ internal sealed class XmlSession(MtkWire wire, MtkProtocolOptions options) : IMt
         Progress();
         Lifetime("END");
         Simple("SET-HOST-INFO", Args(("info", "GeekFlashCore")));
+        image = checkpoint(MtkExploitStage.Da1Ready);
         var region = image.Entry.Regions[image.Entry.EntryRegionIndex + 1];
         long length = region.Length - region.SignatureLength;
         using Stream source = new MtkDataWindow(image.Source, region.FileOffset, length).OpenStream();
@@ -65,6 +67,7 @@ internal sealed class XmlSession(MtkWire wire, MtkProtocolOptions options) : IMt
         Download(length, source);
         Lifetime("END");
         wire.Stage = MtkBootStage.Da2;
+        checkpoint(MtkExploitStage.Da2Ready);
         Simple("HOST-SUPPORTED-COMMANDS", Args(("host_capability", "CMD:DOWNLOAD-FILE^1@CMD:FILE-SYS-OPERATION^1@CMD:PROGRESS-REPORT^1@CMD:UPLOAD-FILE^1@")));
         Begin("NOTIFY-INIT-HW", Args());
         Progress();

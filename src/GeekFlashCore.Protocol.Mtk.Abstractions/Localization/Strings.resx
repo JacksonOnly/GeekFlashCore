@@ -6,4 +6,5 @@
 <data name="CapabilityUnavailable" xml:space="preserve"><value>MTK 能力或前提不可用：{0}。</value></data>
 <data name="SecurityWriteUnknown" xml:space="preserve"><value>seccfg 可能已写入，请重新连接并检查锁状态与备份。</value></data>
 <data name="ExtensionUnavailable" xml:space="preserve"><value>MTK 扩展上下文不可用或已失效，请重新连接。</value></data>
+  <data name="ExploitStopped" xml:space="preserve"><value>宿主扩展在阶段 {0} 返回 {1}，连接已终止，必须重新连接。</value></data>
 </root>

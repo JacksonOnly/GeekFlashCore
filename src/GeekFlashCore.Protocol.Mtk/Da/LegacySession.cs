@@ -32,7 +32,8 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
             count -= n;
         }
     }
-    public void Initialize(MtkDaImage image, MtkEmiImage? emi, MtkTargetInfo target)
+    public void Initialize(MtkDaImage image, MtkEmiImage? emi, MtkTargetInfo target,
+        Func<MtkExploitStage, MtkDaImage> checkpoint)
     {
         if (wire.ReadByte() != 0xc0)
             throw wire.Failure();
@@ -86,6 +87,7 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
             InitializeEmi(emi, target);
         else if (dramStatus != 0)
             throw wire.Failure(dramStatus);
+        image = checkpoint(MtkExploitStage.Da1Ready);
         var region = image.Entry.Regions[image.Entry.EntryRegionIndex + 1];
         using Stream source = new MtkDataWindow(image.Source, region.FileOffset, region.Length).OpenStream();
         Write32(region.Address);
@@ -138,6 +140,7 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
         if (pass[0] != 0x5a)
             throw wire.Failure();
         CheckUsbSpeed(); // No automatic speed switch or reset.
+        checkpoint(MtkExploitStage.Da2Ready);
     }
     private void InitializeEmi(MtkEmiImage? emi, MtkTargetInfo target)
     {

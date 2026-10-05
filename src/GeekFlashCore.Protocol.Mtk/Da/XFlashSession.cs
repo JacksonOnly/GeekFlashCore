@@ -40,7 +40,8 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         Command(command);
         Parameters(data);
     }
-    public void Initialize(MtkDaImage image, MtkEmiImage? emi, MtkTargetInfo target)
+    public void Initialize(MtkDaImage image, MtkEmiImage? emi, MtkTargetInfo target,
+        Func<MtkExploitStage, MtkDaImage> checkpoint)
     {
         if (wire.ReadByte() != 0xc0)
             throw wire.Failure();
@@ -68,6 +69,7 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         }
         Control(0x20003, new byte[4]);
         QueryPacketLength();
+        image = checkpoint(MtkExploitStage.Da1Ready);
         var region = image.Entry.Regions[image.Entry.EntryRegionIndex + 1];
         long length = region.Length - region.SignatureLength;
         using Stream source = new MtkDataWindow(image.Source, region.FileOffset, length).OpenStream();
@@ -81,6 +83,7 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         wire.ReadStatus(0, 0x434e5953);
         wire.Stage = MtkBootStage.Da2;
         QueryPacketLength();
+        checkpoint(MtkExploitStage.Da2Ready);
     }
     public byte[]? GetAuthenticationChallenge()
     {

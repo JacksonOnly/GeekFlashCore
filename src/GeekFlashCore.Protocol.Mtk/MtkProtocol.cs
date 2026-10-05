@@ -20,6 +20,8 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     private readonly IMtkEmiProvider? _emiProvider;
     private readonly IMtkAuthenticationProvider? _signer;
     private readonly Func<MtkTargetInfo, MtkConnectionResources>? _resources;
+    private readonly IMtkExploitStrategy? _exploitStrategy;
+    private readonly MtkExploitDescriptor? _exploitDescriptor;
     private readonly bool _leaveTransportOpen;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly AsyncLocal<bool> _inside = new();
@@ -28,20 +30,29 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     private IMtkDaSession? _da;
     private MtkStorageInfo? _storage;
     private MtkTargetInfo? _target;
+    private MtkTargetInfo? _initialTarget;
     private MtkDaImage? _image;
     private long _generation;
     private volatile MtkSessionState _state;
     private bool _openedHere;
     /// <summary>Creates a serialized session. Provider sources are borrowed; sensitive buffers returned by
-    /// the resource factory transfer ownership. Borrowed transports are still closed after wire failures.</summary>
+    /// the resource factory transfer ownership. Borrowed transports are still closed after wire failures.
+    /// An optional host strategy is invoked only at its declared checkpoints; the core owns no strategies.</summary>
     public MtkProtocol(IUsbTransport transport, MtkProtocolOptions? options = null, IMtkDaProvider? daProvider = null,
         IMtkEmiProvider? emiProvider = null, IMtkAuthenticationProvider? authenticationProvider = null,
-        Func<MtkTargetInfo, MtkConnectionResources>? resources = null, bool leaveTransportOpen = false)
+        Func<MtkTargetInfo, MtkConnectionResources>? resources = null, bool leaveTransportOpen = false,
+        IMtkExploitStrategy? exploitStrategy = null)
     {
         ArgumentNullException.ThrowIfNull(transport);
         _transport = transport;
         _options = options ?? new();
         _options.Validate();
+        _exploitStrategy = exploitStrategy;
+        if (exploitStrategy is not null)
+        {
+            _exploitDescriptor = exploitStrategy.Descriptor ?? throw new MtkResourceException("extension descriptor");
+            _exploitDescriptor.Validate();
+        }
         _daProvider = daProvider;
         _emiProvider = emiProvider;
         _signer = authenticationProvider;
@@ -50,16 +61,18 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         _wire = new(transport, _options);
         _brom = new(_wire, _options);
     }
-    /// <summary>Creates the production backend exclusively through LibUsb.</summary>
+    /// <summary>Creates the production backend exclusively through LibUsb. The optional strategy must be
+    /// explicitly supplied by the host; no built-in strategies are available.</summary>
     public static MtkProtocol CreateUsb(LibUsbConnectionOptions connection, MtkProtocolOptions? options = null,
-        IMtkDaProvider? daProvider = null, IMtkEmiProvider? emiProvider = null, IMtkAuthenticationProvider? signer = null)
+        IMtkDaProvider? daProvider = null, IMtkEmiProvider? emiProvider = null, IMtkAuthenticationProvider? signer = null,
+        IMtkExploitStrategy? exploitStrategy = null)
     {
         options ??= new();
         options.Validate();
         var transport = LibUsbTransportFactory.Create(connection);
         try
         {
-            return new(transport, options, daProvider, emiProvider, signer);
+            return new(transport, options, daProvider, emiProvider, signer, exploitStrategy: exploitStrategy);
         }
         catch { try { transport.Dispose(); } catch { } throw; }
     }
@@ -138,6 +151,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         if (_transport.ControlInterfaceNumber is { } controlInterface)
             _wire.ConfigureCdc(controlInterface);
         _target = _brom.Probe();
+        _initialTarget = _target;
         State(MtkSessionState.Probed);
         return _target;
     }
@@ -149,7 +163,8 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         {
             _wire.Begin(cancellationToken, _options.ConnectTimeoutMilliseconds);
             MtkTargetInfo target = ProbeCore();
-            ValidateResources(resources, target);
+            resources = PrepareBootResources(resources, target);
+            target = _target!;
             SendBootResources(resources, target);
             if (target.Security.Sla)
             {
@@ -170,6 +185,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 }
                 finally { CryptographicOperations.ZeroMemory(daChallenge); }
             }
+            RunExploitCheckpoint(MtkExploitStage.Da2Authenticated, resources);
             CompleteConnection();
             return 0;
         }, cancellationToken);
@@ -202,7 +218,8 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 var emi = _emiProvider is null ? null : await MtkResourceRequest.Get(t => _emiProvider.GetEmiAsync(target, t), ResourceBudget(), ct).ConfigureAwait(false);
                 resources = new(image, emi, Signer: _signer);
             }
-            ValidateResources(resources, target);
+            resources = PrepareBootResources(resources, target);
+            target = _target!;
             SendBootResources(resources, target);
             if (target.Security.Sla)
                 await AuthenticateAsync(MtkAuthenticationKind.BromSla, _brom.StartSla(), resources, ct).ConfigureAwait(false);
@@ -220,6 +237,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             var challenge = _da!.GetAuthenticationChallenge();
             if (challenge is not null)
                 await AuthenticateAsync(MtkAuthenticationKind.DaSla, challenge, resources, ct).ConfigureAwait(false);
+            RunExploitCheckpoint(MtkExploitStage.Da2Authenticated, resources);
             CompleteConnection();
             progress?.Report(new(1, 1, Strings.FormatPhase(_state))
             {
@@ -277,7 +295,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             _da!.Authenticate(response.Memory.Span);
     }
     private int ResourceBudget() => Math.Min(_options.ResourceTimeoutMilliseconds, _wire.RemainingTimeoutMilliseconds);
-    private void ValidateResources(MtkConnectionResources resources, MtkTargetInfo target)
+    private void ValidateResources(MtkConnectionResources resources, MtkTargetInfo target, bool requireBootAuthentication = true)
     {
         var image = resources.DownloadAgent ?? throw new MtkResourceException("DA");
         var entry = image.Entry;
@@ -295,9 +313,9 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 throw new MtkResourceException("DA region");
             using var stream = new MtkDataWindow(image.Source, region.FileOffset, region.Length).OpenStream();
         }
-        if (target.Security.Daa && resources.Authentication is null)
+        if (requireBootAuthentication && target.Security.Daa && resources.Authentication is null)
             throw new MtkResourceException("DAA authentication");
-        if (target.Security.CertificateRequired && resources.Certificate is null)
+        if (requireBootAuthentication && target.Security.CertificateRequired && resources.Certificate is null)
             throw new MtkResourceException("certificate");
         foreach (var sensitive in new[] { resources.Authentication, resources.Certificate })
             if (sensitive is not null && (sensitive.Memory.Length == 0 ||
@@ -327,13 +345,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     }
     private void LoadDa(MtkConnectionResources resources, MtkTargetInfo target, bool upload = true)
     {
-        _image = resources.DownloadAgent with
-        {
-            Entry = resources.DownloadAgent.Entry with
-            {
-                Regions = Array.AsReadOnly(resources.DownloadAgent.Entry.Regions.ToArray())
-            }
-        };
+        _image = resources.DownloadAgent;
         if (upload)
         {
             State(MtkSessionState.UploadingDa1);
@@ -346,9 +358,16 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             MtkDaKind.Xml => new XmlSession(_wire, _options),
             _ => new LegacySession(_wire, _options)
         };
-        State(MtkSessionState.UploadingDa2);
-        _da.Initialize(resources.DownloadAgent, resources.Emi, target);
-        State(MtkSessionState.Da2Ready);
+        _da.Initialize(resources.DownloadAgent, resources.Emi, target, stage =>
+        {
+            var state = stage == MtkExploitStage.Da1Ready ? MtkSessionState.Da1Ready : MtkSessionState.Da2Ready;
+            if (_state != state)
+                State(state);
+            RunExploitCheckpoint(stage, resources);
+            if (stage == MtkExploitStage.Da1Ready)
+                State(MtkSessionState.UploadingDa2);
+            return _image!;
+        });
     }
     private void CompleteConnection()
     {
@@ -414,6 +433,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         _da = null;
         _storage = null;
         _target = null;
+        _initialTarget = null;
         _partitions = null;
         _image = null;
         Interlocked.Increment(ref _generation);
@@ -442,6 +462,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             _da = null;
             _storage = null;
             _target = null;
+            _initialTarget = null;
             _image = null;
             _partitions = null;
             Interlocked.Increment(ref _generation);
@@ -455,11 +476,12 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         ArgumentNullException.ThrowIfNull(action);
         return Execute(() => { Ready(); var channel = new Channel(this); try { return action(channel); } finally { channel.Expire(); } }, cancellationToken);
     }
-    private sealed class Channel(MtkProtocol owner) : IMtkDaChannel
+    private sealed class Channel(MtkProtocol owner, Action? guard = null) : IMtkDaChannel
     {
         private bool _valid = true;
         private void Check()
         {
+            guard?.Invoke();
             if (!_valid)
                 throw new InvalidOperationException(Strings.SessionUnavailable);
             owner._wire.Check();
@@ -494,7 +516,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             get
             {
                 Check();
-                return owner._storage!;
+                return owner._storage ?? throw new InvalidOperationException(Strings.SessionUnavailable);
             }
         }
         public long Generation
@@ -589,6 +611,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         }
         public void Invalidate()
         {
+            guard?.Invoke();
             if (!_valid)
                 throw new InvalidOperationException(Strings.SessionUnavailable);
             owner.Fault();
@@ -603,6 +626,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         _da = null;
         _storage = null;
         _target = null;
+        _initialTarget = null;
         _image = null;
         _partitions = null;
         Interlocked.Increment(ref _generation);

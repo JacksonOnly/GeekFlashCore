@@ -9,4 +9,5 @@
 <data name="Ambiguous" xml:space="preserve"><value>MTK 资源或设备匹配不唯一。</value></data>
 <data name="Timeout" xml:space="preserve"><value>MTK 阶段超时。</value></data>
 <data name="UsbRequired" xml:space="preserve"><value>MTK 需要带身份信息的 USB 传输。</value></data>
+  <data name="ExploitCheckpoint" xml:space="preserve"><value>宿主扩展阶段 {0} 返回 {1}。</value></data>
 </root>

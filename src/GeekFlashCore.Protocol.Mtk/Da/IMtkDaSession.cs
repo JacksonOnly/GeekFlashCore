@@ -8,7 +8,8 @@ internal interface IMtkDaSession
     {
         get;
     }
-    void Initialize(MtkDaImage image, MtkEmiImage? emi, MtkTargetInfo target);
+    void Initialize(MtkDaImage image, MtkEmiImage? emi, MtkTargetInfo target,
+        Func<MtkExploitStage, MtkDaImage> checkpoint);
     byte[]? GetAuthenticationChallenge();
     void Authenticate(ReadOnlySpan<byte> response);
     MtkStorageInfo GetStorage();

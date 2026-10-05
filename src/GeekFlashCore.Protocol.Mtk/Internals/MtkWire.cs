@@ -48,6 +48,11 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         HasWritten = true;
         transport.Write(data);
     }
+    public void MarkHostTransfer()
+    {
+        Check();
+        HasWritten = true;
+    }
     public void ConfigureCdc(int controlInterface)
     {
         Check();

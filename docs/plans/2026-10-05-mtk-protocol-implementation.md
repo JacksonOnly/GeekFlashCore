@@ -1,12 +1,12 @@
 # GeekFlashCore MTK 实施进度
 
-日期：2026-10-05。设计：`2026-10-05-mtk-protocol-design.md`。BROM 对应：`2026-10-05-mtk-brom-method-mapping.md`。
+日期：2026-10-05。设计：`2026-10-05-mtk-protocol-design.md`。BROM 对应：`2026-10-05-mtk-brom-method-mapping.md`。宿主阶段框架：`2026-10-05-mtk-exploit-framework.md`。
 
 工作区：`C:\Users\a1375\.codex\worktrees\8d7a\GeekFlashCore`。分支：`codex/mtk-protocol`。初始 HEAD：`173d1bb`。
 
 ## 授权范围与基线
 
-用户授权实施 MTK-01～12，并明确漏洞部分只预留一个接口。本要求覆盖原草案中的漏洞/patch/payload 实施内容。生产 MTK 使用 LibUsb；标准认证、已合法加载的 DA 扩展通信、RPMB、seccfg 保留。未连接或写入真实设备。
+用户最初授权实施 MTK-01～12，并明确漏洞部分只预留一个接口；后续明确要求参考 mtkclient 与 penumbra 设置接口并在合适阶段调用，新增 MTK-13 只搭建宿主框架，仍禁止任何漏洞实现或利用。本要求覆盖原草案中的漏洞/patch/payload 实施内容。生产 MTK 使用 LibUsb；标准认证、已合法加载的 DA 扩展通信、RPMB、seccfg 保留。未连接或写入真实设备。
 
 本次进入指定工作区时有两份未跟踪 MTK 计划，没有其他生产修改。由 detached HEAD 建立上述分支。原来没有本地测试工程；本轮将已有 Qcom/CLI/Core/LP 测试源复制到 ignored `.tests`，并创建 MTK 模拟测试。参考仓库只读；已有参考修改保留，revision 不等同于所有工作树文件的指纹。
 
@@ -22,11 +22,12 @@
 | MTK-05 / 2026-10-05 | 独立 XFlash/XML DA1/DA2 初始化、认证、存储、read/write/erase/reboot；严格 frame/status 和 XML lifetime | 完整模拟线路、MESSAGE 上限、DA.SLA item、DTD/重复项、END timeout、文件路径/大小拒绝；XML EMI 见矩阵 |
 | MTK-06 / 2026-10-05 | 独立 Legacy eMMC 初始化/EMI/DA2、分区选择、校验和读写、进度擦除、系统重启 | 完整 Legacy 模拟线路、checksum/short nonseek EOF 失败；其他 Legacy 介质明确拒绝 |
 | MTK-07 / 2026-10-05 | eMMC/UFS 几何、primary GPT、目标解析、Raw/Sparse 流式写、generation block view、任意字节对齐读 | 512/4096 block、小 buffer、GPT CRC、Raw/Sparse 大源与 DONT_CARE、最终 NAK/旧视图失效 |
-| MTK-08 / 2026-10-05 | 按最新要求只定义一个 `IMtkExploitStrategy` | 没有实现、注册、核心调用、漏洞选项、patch、payload 或二进制 |
+| MTK-08 / 2026-10-05 | 初次授权只预留 `IMtkExploitStrategy`；后由 MTK-13 扩充框架 | 初次交付无核心调用；最新契约和调用范围见 MTK-13 |
 | MTK-09 / 2026-10-05 | 可选 Extensions 只依赖 Abstractions；已加载 DA ACK/context、允许范围内的内存/寄存器、SEJ、显式 RPMB key derivation | XFlash/XML ABI、已加载 DA2 上下文、边界、过期通道、硬件 cipher 同 gate 不重入；硬件算法待验证 |
 | MTK-10 / 2026-10-05 | 已存在 32-byte key 的 RPMB Authenticate、256-byte data block、区域/容量/chunk/final status、失败不重试 | XFlash/XML read/write transcript、UFS 显式容量、final NAK 失效；不提供 ProgramKey |
 | MTK-11 / 2026-10-05 | seccfg v3/v4 SW/SEJ cipher、原文验证、generation plan、预写快照、备份、最小对齐写、完整回读 | v3/v4、尾部保留、原 hash、硬件 cipher mock、最小 sector 写；写后失败 MayHaveWritten 且失效 |
 | MTK-12 / 2026-10-05 | CLI 注册、纯 USB discovery/devices、文件资源、MTK 参数/命令与帮助；Qcom 默认保持；README/AGENTS/来源文本 | CLI 参数冲突、枚举歧义/物理选择、旧 Qcom 回归；完整验收见下一节 |
+| MTK-13 / 2026-10-05 | descriptor、四个连接 checkpoint、作用域 USB/BROM/DA context、明确 outcome、重连终止、校验后 DA 替换与标准安全复查；同步/异步共用 | 38 个无漏洞/无设备 I/O 的观察器测试通过；MTK120、全量499通过；Release0警告/错误；三种 DA 顺序和默认写入字节等价；没有策略实现或真实设备操作 |
 
 ## 实施中的纠正
 
@@ -58,13 +59,13 @@ CLI 原来的 1500 ms 是 Qualcomm 初始探测预算，不能复用于整个 MT
 | RPMB | eMMC/UFS 独立 Authenticate/read/write，256-byte data blocks | UFS 每 region 容量显式；不烧录 key；简化 ABI 不提供宿主 nonce/MAC/counter 的完整帧校验 |
 | seccfg | v3/v4、软件与已提供的 SEJ cipher、lock/unlock plan/apply | 不推断 Android UI/AVB 最终状态；写失败可能已改变设备；调用方承担备份持久化，CLI 使用 durable FileStream |
 | CLI | mtk-probe/capabilities/memory/rpmb/seccfg，通用存储命令、MTK devices | 标准材料显式文件；无厂商账户/签名服务；寄存器、BROM 与派生 key 走类型化 API |
-| 漏洞部分 | 仅接口 | 无默认实现、认证绕过、攻击载荷、patch 或执行线路 |
+| 宿主阶段框架 | 策略契约、context/result 与四阶段调用 | 显式注入才调用；无策略实现、默认注册、认证绕过、攻击载荷、patch 生成或 CLI 开关 |
 
 ## 验收命令与证据
 
 目标测试先定义行为或复现缺陷，再修改实现；例如 fresh Probe/非法 options 两项先失败再通过。BROM 方法新增时先记录缺少 UseBromSession 的编译失败，再实现并完成线路测试。测试工程与所有夹具留在 ignored `.tests`，不加入 solution、NuGet 或 Git。
 
-本轮可用的全部本地测试通过，共 **461 项**，0失败/0跳过。CLI 新增时限修复后再运行完整 CLI 与 MTK 目标测试及 Release 构建；Qcom/Core/LP 在本轮全量阶段通过，之后未修改其实现。
+MTK-01～12 的首次验收通过 **461 项**，0失败/0跳过。下表保留首次交付证据；MTK-13 的最终复验单独记录在框架修订文档。
 
 | 命令 / 检查 | 最终结果 |
 | --- | --- |
@@ -92,8 +93,9 @@ CLI 原来的 1500 ms 是 Qualcomm 初始探测预算，不能复用于整个 MT
 | `fb15d34` | BROM、Legacy/XFlash/XML、DA/EMI 与流式存储 |
 | `b286cf3` | 已加载 DA 扩展、SEJ/key derivation、RPMB |
 | `24e1bd7` | seccfg 原文校验、变更计划、备份/最小写/回读 |
+| `8ac4fb6` | CLI 注册、USB 发现、参数/命令与首次交付文档 |
 
-CLI、solution 登记和交付文档在随后 `feat(cli): expose mtk usb and security commands` 提交中。该提交号通过 `git log` 查询，避免在自身提交内容中写循环 hash。没有 push、PR、包发布或真实设备操作；验收后工作区仅有 ignored 本地测试/构建产物。
+MTK-13 的框架修订与文档在独立 `feat(mtk)!: add scoped host extension checkpoints` 提交中；footer 标明原预留接口签名变化，提交号通过 `git log` 查询，避免在自身提交内容中写循环 hash。没有 push、PR、包发布或真实设备操作；验收后工作区仅有 ignored 本地测试/构建产物。
 
 ## 未决风险与恢复入口
 
@@ -105,4 +107,4 @@ CLI、solution 登记和交付文档在随后 `feat(cli): expose mtk usb and sec
 - 扩展依赖已加载兼容 ABI，硬件算法与 UFS RPMB region/capacity 由宿主确认。简化 RPMB API 不宣称主机端完整帧认证。
 - seccfg/RPMB 写入未知结果不可重试/伪回滚；备份与回读失败需重连检查。只修改格式支持的配置，不保证 bootloader UI/AVB 状态。
 
-恢复时依次读取 AGENTS、设计、本文、BROM 方法对应，检查 `git status --short` 与最近提交；先补充上述设备证据或具体 profile/夹具，再扩大支持矩阵。不得将漏洞接口变成自动实现。
+恢复时依次读取 AGENTS、设计、本文、BROM 方法对应与宿主框架修订，检查 `git status --short` 与最近提交；先补充上述设备证据或具体 profile/夹具，再扩大支持矩阵。不得添加默认策略或漏洞实现。宿主同步回调必须合作取消；核心只能在回调返回后拒绝超期结果。

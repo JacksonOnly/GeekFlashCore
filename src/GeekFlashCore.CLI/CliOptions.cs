@@ -13,6 +13,9 @@ internal sealed record CliOptions
     public string? MtkAuthenticationFile { get; init; }
     public string? MtkCertificateFile { get; init; }
     public bool MtkNandWrite { get; init; }
+    public long? MtkNandCapacity { get; init; }
+    public bool MtkIoT { get; init; }
+    public GeekFlashCore.Protocol.Mtk.Abstractions.MtkExtensionAbi MtkExtensionAbi { get; init; }
     public int MtkNorEraseBlockSize { get; init; }
     public string? MtkPmtLayout { get; init; }
     public string? UsbSerial { get; init; }
@@ -84,7 +87,7 @@ internal sealed record CliOptions
         {
             if (MtkPreloader is not null || MtkDaMode is not null || MtkAuthenticationFile is not null || MtkCertificateFile is not null ||
                 MtkSejBase != 0 || MtkTzccBase != 0 || MtkSsrBase != 0 || MtkUfsRpmbBlocks.Count > 0 ||
-                MtkNandWrite || MtkNorEraseBlockSize != 0 || MtkPmtLayout is not null ||
+                MtkNandWrite || MtkNandCapacity is not null || MtkIoT || MtkExtensionAbi!=0 || MtkNorEraseBlockSize != 0 || MtkPmtLayout is not null ||
                 UsbInterface != -1 || UsbControlInterface is not null || UsbAlternateSetting != 0)
                 throw new ArgumentException(Localization.Strings.Cli_MtkOptionConflict);
             QcomProtocolHostAdapter.ValidateOptions(this);

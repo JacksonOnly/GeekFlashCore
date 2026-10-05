@@ -38,10 +38,12 @@ internal static class MtkProtocolHostAdapter
     {
         if (o.Port is not null)
             throw new ArgumentException(Strings.Cli_MtkRequiresUsb);
-        _ = DaKind(o.MtkDaMode);
+        var kind = DaKind(o.MtkDaMode);
         _ = PmtLayout(o.MtkPmtLayout);
+        if(!Enum.IsDefined(o.MtkExtensionAbi))throw new ArgumentException(Strings.Cli_MtkExtensionAbiInvalid);
         if (o.MtkNorEraseBlockSize < 0 || o.MtkNorEraseBlockSize > 16 * 1024 * 1024 ||
-            (o.MtkNorEraseBlockSize & (o.MtkNorEraseBlockSize - 1)) != 0)
+            (o.MtkNorEraseBlockSize & (o.MtkNorEraseBlockSize - 1)) != 0 || o.MtkNandCapacity is <= 0 ||
+            o.MtkIoT && kind is not (null or MtkDaKind.Legacy))
             throw new ArgumentException(Strings.Cli_MtkMediaOptionsInvalid);
         if (o.ResourceTimeout is <= 0)
             throw new ArgumentException(Strings.Cli_TimeoutMustBePositive);
@@ -80,12 +82,14 @@ internal static class MtkProtocolHostAdapter
             throw new ArgumentException(Strings.Cli_MtkRequiresUsb);
         var o = context.Options;
         ValidateOptions(o);
-        var kind = DaKind(o.MtkDaMode);
+        var kind = DaKind(o.MtkDaMode) ?? (o.MtkIoT ? MtkDaKind.Legacy : (MtkDaKind?)null);
         return new MtkProtocol(usb, new()
         {
             DaKind = kind,
             InitializeWatchdogOnProbe = true,
             EnableNandLogicalWrites = o.MtkNandWrite,
+            NandLogicalCapacity = o.MtkNandCapacity,
+            LegacyIoT = o.MtkIoT,
             NorEraseBlockSize = o.MtkNorEraseBlockSize,
             LegacyPmtLayout = PmtLayout(o.MtkPmtLayout),
             ReadTimeoutMilliseconds = o.ReadTimeout,
@@ -155,7 +159,7 @@ internal static class MtkProtocolHostAdapter
     }
     private sealed class CommandSet : IProtocolCommandSet
     {
-        private static readonly string[] Names = ["mtk-probe", "mtk-capabilities", "mtk-rpmb", "mtk-memory", "mtk-seccfg", "mtk-query", "mtk-property", "mtk-register", "mtk-pmt", "mtk-slot"];
+        private static readonly string[] Names = ["mtk-probe", "mtk-capabilities", "mtk-rpmb", "mtk-memory", "mtk-seccfg", "mtk-query", "mtk-property", "mtk-register", "mtk-pmt", "mtk-slot", "mtk-scatter", "mtk-efuse", "mtk-partition", "mtk-key", "mtk-fill", "mtk-rsc", "mtk-rpmb-lock"];
         public bool Handles(string command) => Names.Contains(command, StringComparer.OrdinalIgnoreCase);
         public CliOptions Normalize(CliOptions options) => options with { Command = options.Command.ToLowerInvariant() };
         public bool RequiresConnection(string command) => command is not ("mtk-probe" or "mtk-capabilities");
@@ -164,7 +168,7 @@ internal static class MtkProtocolHostAdapter
             if (RequiresConnection(command) && !protocol.IsConnected)
                 throw new InvalidOperationException(Strings.Cli_ReconnectRequired);
         }
-        public void PrintHelp(IProtocol protocol, ConsoleUi ui) { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkStandard); }
+        public void PrintHelp(IProtocol protocol, ConsoleUi ui) { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkStandard); ui.WriteLine(Strings.Cli_HelpMtkParity); ui.WriteLine(Strings.Cli_HelpMtkKeys); ui.WriteLine(Strings.Cli_HelpMtkWriteExtras); }
         public void Validate(CliOptions options)
         {
             string[] a = options.Arguments;
@@ -216,6 +220,35 @@ internal static class MtkProtocolHostAdapter
                         CommandSyntax.Number(a[index + 1]) > long.MaxValue || CommandSyntax.Number(a[index + 2]) is < 2080 or > long.MaxValue)
                         throw new CommandUsageException("mtk-slot");
                     break;
+                case "mtk-scatter":
+                    if(a.Length is not (2 or 4) || a[0] is not ("plan" or "flash" or "update") || a.Length!=(a[0]=="plan"?2:4))
+                        throw new CommandUsageException("mtk-scatter plan scatter-file | flash|update scatter-file image-directory backup-directory");
+                    break;
+                case "mtk-key":
+                    if(a.Length is not (4 or 5) || a[0] is not ("id" or "input") || a.Length!=(a[0]=="id"?4:5) ||
+                        a[0]=="id" && !Enum.GetNames<MtkKeyDeriveId>().Contains(a[1],StringComparer.OrdinalIgnoreCase) ||
+                        a[a[0]=="id"?2:3] is not ("128" or "192" or "256"))throw new CommandUsageException("mtk-key id key-name 128|192|256 output-file | input label-file salt-file 128|192|256 output-file");
+                    break;
+                case "mtk-fill":
+                    if(a.Length!=4 || CommandSyntax.Number(a[0])>uint.MaxValue || CommandSyntax.Number(a[1])>long.MaxValue ||
+                        CommandSyntax.Number(a[2]) is 0 or >long.MaxValue || CommandSyntax.Number(a[3])>255)throw new CommandUsageException("mtk-fill region offset length byte-value");
+                    break;
+                case "mtk-rsc":
+                    if(a.Length!=2 || a[0].Length is 0 or >63 || a[0].Any(c=>!char.IsAsciiLetterOrDigit(c) && c is not ('.' or '_' or '-')))throw new CommandUsageException("mtk-rsc partition source-file");
+                    break;
+                case "mtk-rpmb-lock":
+                    if(a.Length is not (2 or 3) || a[0] is not ("read" or "lock" or "unlock") || a.Length!=(a[0]=="read"?2:3))throw new CommandUsageException("mtk-rpmb-lock read key-file | lock|unlock key-file backup-file");
+                    break;
+                case "mtk-efuse":
+                    if(a.Length is not (2 or 3) || a[0] is not ("read" or "write") || a.Length!=(a[0]=="read"?2:3))
+                        throw new CommandUsageException("mtk-efuse read output-file | write image-file backup-file");
+                    break;
+                case "mtk-partition":
+                    if(a.Length is not (2 or 4) || a[0] is not ("read" or "write" or "erase") || a.Length!=(a[0]=="erase"?2:4) ||
+                        a[1].Length is 0 or >64 || a[1].Any(c=>!char.IsAsciiLetterOrDigit(c) && c is not ('.' or '_' or '-')) ||
+                        a.Length==4 && CommandSyntax.Number(a[2]) is 0 or >long.MaxValue)
+                        throw new CommandUsageException("mtk-partition read|write name maximum-length file | erase name");
+                    break;
                 default:
                     throw new CommandUsageException(options.Command);
             }
@@ -233,6 +266,88 @@ internal static class MtkProtocolHostAdapter
             if (options.Command == "mtk-capabilities")
             {
                 Present(p, ui);
+                return 0;
+            }
+            if(options.Command=="mtk-key")
+            {
+                if(options.MtkExtensionAbi!=MtkExtensionAbi.Penumbra2)throw new MtkCapabilityException("--mtk-extension-abi penumbra2");
+                byte[] label=[],salt=[];
+                try
+                {
+                    if(a[0]=="input"){label=a[1]=="-"?[]:ReadBounded(a[1],32);salt=a[2]=="-"?[]:ReadBounded(a[2],32);}
+                    var extension=CreateExtension(p,options,[],ct);string bits=a[a[0]=="id"?2:3];
+                    MtkKeySize size=bits switch {"128"=>MtkKeySize.Key128,"192"=>MtkKeySize.Key192,_=>MtkKeySize.Key256};
+                    using var key=a[0]=="id"?extension.DeriveKey(Enum.Parse<MtkKeyDeriveId>(a[1],true),size,ct):extension.DeriveKey(label,salt,size,ct);
+                    await AtomicReadOutput.WriteAsync(ConsolePath.Normalize(a[^1])!,s=>s.WriteAsync(key.Memory,ct).AsTask(),ct);
+                }
+                finally{CryptographicOperations.ZeroMemory(label);CryptographicOperations.ZeroMemory(salt);}
+                return 0;
+            }
+            if(options.Command=="mtk-fill")
+            {
+                new MtkFlashFillService(p).Fill(new((uint)CommandSyntax.Number(a[0]),(long)CommandSyntax.Number(a[1]),(long)CommandSyntax.Number(a[2])),(byte)CommandSyntax.Number(a[3]),progress:progress,cancellationToken:ct);return 0;
+            }
+            if(options.Command=="mtk-rsc")
+            {
+                (p as IMtkDaStandardOperations??throw new MtkCapabilityException("standard RSC info")).SetRscInfo(a[0],new FileDataSource(ConsolePath.Normalize(a[1])!),progress,ct);return 0;
+            }
+            if(options.Command=="mtk-rpmb-lock")
+            {
+                byte[] key=ReadBounded(a[1],32);
+                try
+                {
+                    if(key.Length!=32)throw new MtkResourceException("RPMB key length");
+                    if(p.DownloadAgent?.Entry.Kind!=MtkDaKind.Xml || p.GetStorageInfo().Kind!=MtkStorageKind.Ufs)throw new MtkCapabilityException("XML/UFS RPMB lock metadata");
+                    var extension=CreateExtension(p,options,[],ct);extension.Authenticate(1,key,ct);
+                    if(a[0]=="read"){var info=extension.ReadRpmbLockState(ct);ui.WriteLine(Strings.FormatCli_MtkRpmbLockState(info.Version,info.State));}
+                    else{using var backup=new FileStream(ConsolePath.Normalize(a[2])!,FileMode.CreateNew,FileAccess.Write,FileShare.None);extension.SetRpmbLockState(a[0]=="lock",backup,ct);}
+                }
+                finally{CryptographicOperations.ZeroMemory(key);}
+                return 0;
+            }
+            if(options.Command=="mtk-efuse")
+            {
+                var operations=p as IMtkDaStandardOperations??throw new MtkCapabilityException("standard eFuse operations");
+                if(a[0]=="read")
+                {
+                    using var result=operations.ReadEfuses(ct);
+                    await AtomicReadOutput.WriteAsync(ConsolePath.Normalize(a[1])!,s=>s.WriteAsync(result.Memory,ct).AsTask(),ct);
+                }
+                else
+                {
+                    var source=new FileDataSource(ConsolePath.Normalize(a[1])!);
+                    if(source.Length is <=0 or >0x5000 || p.DownloadAgent?.Entry.Kind==MtkDaKind.XFlash && source.Length!=0x42d4)
+                        throw new MtkResourceException("eFuse image length");
+                    using var original=operations.ReadEfuses(ct);
+                    using var backup=new FileStream(ConsolePath.Normalize(a[2])!,FileMode.CreateNew,FileAccess.Write,FileShare.None);
+                    backup.Write(original.Memory.Span);backup.Flush(true);
+                    operations.WriteEfuses(source,ct);
+                }
+                return 0;
+            }
+            if(options.Command=="mtk-partition")
+            {
+                var partitions=p as IMtkNamedPartitionAccess??throw new MtkCapabilityException("native partitions");
+                if(a[0]=="erase")partitions.EraseNamedPartition(a[1],ct);
+                else if(a[0]=="read")await AtomicReadOutput.WriteAsync(ConsolePath.Normalize(a[3])!,s=>
+                {partitions.ReadNamedPartition(a[1],s,(long)CommandSyntax.Number(a[2]),ct);return Task.CompletedTask;},ct);
+                else partitions.WriteNamedPartition(a[1],new FileDataSource(ConsolePath.Normalize(a[3])!),(long)CommandSyntax.Number(a[2]),ct);
+                return 0;
+            }
+            if(options.Command=="mtk-scatter")
+            {
+                string path=ConsolePath.Normalize(a[1])!;
+                if(new FileInfo(path).Length>MtkScatterParser.MaximumCharacters*4L)throw new MtkResourceException("scatter text length");
+                string scatterText=File.ReadAllText(path);var manifest=MtkScatterParser.Parse(scatterText);
+                var service=new MtkScatterService(p);var plan=service.Plan(manifest,ct);
+                foreach(var part in plan.Partitions)ui.WriteLine(Strings.FormatCli_MtkScatterRange(part.Name,part.Range.RegionId,part.Range.Offset,part.Range.Length,part.FileName??"-"));
+                if(a[0]!="plan")
+                {
+                    var store=new MtkScatterDirectoryStore(ConsolePath.Normalize(a[2])!,ConsolePath.Normalize(a[3])!);
+                    if(a[0]=="update" && p.DownloadAgent?.Entry.Kind==MtkDaKind.Xml)
+                        (p as IMtkNativeScatterAccess??throw new MtkCapabilityException("XML FLASH-UPDATE")).ApplyXmlScatter(scatterText,store.OpenImage,store,progress,ct);
+                    else service.Apply(plan,store.OpenImage,store,a[0]=="update",progress,ct);
+                }
                 return 0;
             }
             if (options.Command is "mtk-query" or "mtk-property" or "mtk-register" or "mtk-pmt")
@@ -278,8 +393,8 @@ internal static class MtkProtocolHostAdapter
                 {
                     var extension = CreateExtension(p, options, [], ct);
                     ciphers = p.DownloadAgent!.Entry.Kind == MtkDaKind.XFlash ?
-                        [new MtkSoftwareSecurityCipher(), new MtkSejSecurityCipher(extension), new MtkSejSecurityCipher(extension, xor: true), new MtkSejSecurityCipher(extension, legacy: true)] :
-                        [new MtkSoftwareSecurityCipher(), new MtkSejSecurityCipher(extension)];
+                        [new MtkPlainSecurityCipher(),new MtkSoftwareSecurityCipher(), new MtkSejSecurityCipher(extension), new MtkSejSecurityCipher(extension, xor: true), new MtkSejSecurityCipher(extension, legacy: true)] :
+                        [new MtkPlainSecurityCipher(),new MtkSoftwareSecurityCipher(), new MtkSejSecurityCipher(extension)];
                 }
                 var service = new MtkSecurityConfigurationService(p, ciphers);
                 using var plan = service.Plan(new((uint)CommandSyntax.Number(a[1]), (long)CommandSyntax.Number(a[2]), (long)CommandSyntax.Number(a[3])), a[0] == "lock", ct);
@@ -328,6 +443,7 @@ internal static class MtkProtocolHostAdapter
                 options.MtkSejBase, options.MtkTzccBase, options.MtkSsrBase)
             {
                 AllowedMemoryRanges = ranges,
+                Abi = options.MtkExtensionAbi,
                 UfsRpmbDataBlocks = options.MtkUfsRpmbBlocks
             }, ct);
             return ext;

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+<resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader>
+<data name="InvalidData" xml:space="preserve"><value>Invalid MTK data or response: {0}.</value></data>
+<data name="SessionUnavailable" xml:space="preserve"><value>MTK session unavailable. Reconnect required.</value></data>
+<data name="Reentry" xml:space="preserve"><value>MTK session callbacks cannot reenter the protocol.</value></data>
+<data name="Phase" xml:space="preserve"><value>MTK stage: {0}.</value></data>
+<data name="Faulted" xml:space="preserve"><value>MTK session faulted. Reconnect required.</value></data>
+<data name="Ambiguous" xml:space="preserve"><value>MTK resource or device match is ambiguous.</value></data>
+<data name="Timeout" xml:space="preserve"><value>MTK stage timed out.</value></data>
+<data name="UsbRequired" xml:space="preserve"><value>MTK requires an identified USB transport.</value></data>
+</root>

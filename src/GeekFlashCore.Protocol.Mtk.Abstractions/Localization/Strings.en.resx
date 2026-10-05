@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+<resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader>
+<data name="WireFailure" xml:space="preserve"><value>MTK protocol failure: stage {0}, command 0x{1}, status 0x{2}. Reconnect required.</value></data>
+<data name="ResourceMissing" xml:space="preserve"><value>MTK resource is missing or invalid: {0}.</value></data>
+<data name="CapabilityUnavailable" xml:space="preserve"><value>MTK capability or prerequisite is unavailable: {0}.</value></data>
+<data name="SecurityWriteUnknown" xml:space="preserve"><value>seccfg may have been written. Reconnect and inspect lock state and backup.</value></data>
+<data name="ExtensionUnavailable" xml:space="preserve"><value>MTK extension context is unavailable or expired. Reconnect required.</value></data>
+</root>

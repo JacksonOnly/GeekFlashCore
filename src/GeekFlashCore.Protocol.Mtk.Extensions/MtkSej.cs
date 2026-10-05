@@ -101,4 +101,38 @@ public sealed class MtkSej
     /// <summary>Derives reference MTEE keymaster material.</summary>
     public MtkSensitiveBuffer DeriveMtee(bool hardwareLabel=false,ReadOnlySpan<byte> otp=default,CancellationToken cancellationToken=default) =>
         TransformV3(hardwareLabel?"www.mediatek.com0123456789ABCDEF"u8:"KeymasterMaster\0"u8,true,otp:otp,cancellationToken:cancellationToken);
+    /// <summary>Normal META cipher with the reference custom seed, or an explicitly supplied seed.</summary>
+    public MtkSensitiveBuffer TransformMeta(ReadOnlySpan<byte> data,bool encrypt,uint seed=0xbb13be00,
+        bool legacy=false,ReadOnlySpan<byte> otp=default,CancellationToken cancellationToken=default)
+    {
+        uint rotated=(seed>>16)|(seed<<16);Span<byte> iv=stackalloc byte[16];
+        BinaryPrimitives.WriteUInt32LittleEndian(iv,seed);BinaryPrimitives.WriteUInt32LittleEndian(iv[4..],~seed);
+        BinaryPrimitives.WriteUInt32LittleEndian(iv[8..],rotated);BinaryPrimitives.WriteUInt32LittleEndian(iv[12..],~rotated);
+        try{return TransformV3(data,encrypt,iv,legacy,otp,cancellationToken);}finally{CryptographicOperations.ZeroMemory(iv);}
+    }
+    /// <summary>Wraps repeated MEID material with the hardware key, then performs the reference two AES-256 passes.
+    /// All intermediate key material is cleared; no persistent OTP is programmed.</summary>
+    public MtkSensitiveBuffer DeriveMteeFromMeid(ReadOnlySpan<byte> meid,ReadOnlySpan<byte> otp=default,CancellationToken cancellationToken=default)
+    {
+        if(meid.Length is not (16 or 32) || otp.Length is not (0 or 32))throw new ArgumentException(nameof(meid));
+        Span<byte> input=stackalloc byte[32];for(int i=0;i<input.Length;i++)input[i]=meid[i%meid.Length];
+        byte[] iv=Convert.FromHexString("57325A5A125497661254976657325A5A");
+        try
+        {
+            using var wrapped=TransformCore(input,true,MtkAesMode.Cbc,default,iv,false,false,otp,cancellationToken);
+            using var first=Transform(input,true,MtkAesMode.Cbc,wrapped.Memory.Span,iv,cancellationToken);
+            return Transform(first.Memory.Span,true,MtkAesMode.Cbc,wrapped.Memory.Span,iv,cancellationToken);
+        }
+        finally{CryptographicOperations.ZeroMemory(input);CryptographicOperations.ZeroMemory(iv);}
+    }
+    /// <summary>Normal V3 user profiles 0/1/3. User 2 accepts a caller-supplied 256-bit wrapped key.</summary>
+    public MtkSensitiveBuffer TransformForUser(ReadOnlySpan<byte> data,bool encrypt,int user,
+        ReadOnlySpan<byte> wrappedKey=default,ReadOnlySpan<byte> otp=default,CancellationToken cancellationToken=default)
+    {
+        if(user is <0 or >3 || (user==2?wrappedKey.Length!=32:!wrappedKey.IsEmpty))throw new ArgumentOutOfRangeException(nameof(user));
+        if(user==2)return TransformCore(data,encrypt,MtkAesMode.Cbc,wrappedKey,Convert.FromHexString("57325A5A125497661254976657325A5A"),false,false,otp,cancellationToken);
+        ReadOnlySpan<uint> words=user switch {0=>DefaultIv,1=>[0xAA542CDA,0x55522114,0xE3F083BD,0x55522114],_=>[0x2684B690,0xEB67A8BE,0xA113144C,0x177B1215]};
+        Span<byte> iv=stackalloc byte[16];for(int i=0;i<4;i++)BinaryPrimitives.WriteUInt32LittleEndian(iv[(i*4)..],words[i]);
+        try{return TransformV3(data,encrypt,iv,otp:otp,cancellationToken:cancellationToken);}finally{CryptographicOperations.ZeroMemory(iv);}
+    }
 }

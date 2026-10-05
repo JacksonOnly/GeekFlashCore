@@ -27,7 +27,7 @@ public static class MtkSecurityCodec
         ArgumentNullException.ThrowIfNull(ciphers);
         if (original.Length > 65536)
             throw new ArgumentOutOfRangeException(nameof(original));
-        if (ciphers.Count is 0 or > 4)
+        if (ciphers.Count is 0 or > 8)
             throw new ArgumentOutOfRangeException(nameof(ciphers));
         int size = DeclaredSize(original);
         if (size > original.Length)
@@ -43,6 +43,7 @@ public static class MtkSecurityCodec
         {
             foreach (var cipher in ciphers)
             {
+                if(v3 && cipher is MtkPlainSecurityCipher)continue;
                 byte[] candidate = Transform(cipher, channel, original.Slice(offset, length), false);
                 bool valid = candidate.Length == length && (v3 ? ValidV3(candidate) : CryptographicOperations.FixedTimeEquals(candidate, hash));
                 if (valid)

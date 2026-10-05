@@ -5,6 +5,14 @@ using GeekFlashCore.Protocol.Mtk.Abstractions;
 
 namespace GeekFlashCore.Protocol.Mtk.Extensions;
 
+/// <summary>Explicit unencrypted seccfg digest candidate. Only an exact original SHA256 match permits a change.</summary>
+public sealed class MtkPlainSecurityCipher : IMtkSecurityCipher
+{
+    public string Name=>"SHA";
+    public byte[] Transform(ReadOnlySpan<byte> data,bool encrypt)
+    {if(data.Length!=32)throw new ArgumentOutOfRangeException(nameof(data));return data.ToArray();}
+}
+
 /// <summary>Public MediaTek software seccfg AES-CBC format; no host secret or device key is embedded.</summary>
 public sealed class MtkSoftwareSecurityCipher : IMtkSecurityCipher
 {

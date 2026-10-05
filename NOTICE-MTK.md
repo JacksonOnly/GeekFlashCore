@@ -18,3 +18,18 @@ Some inspected reference working trees already contained local changes. Revision
 The 2026-10-05 standard completion also references penumbra `core/src/core/bootctrl.rs` (Shomy, 2026, AGPL-3.0-or-later) for Android boot-control fields and CRC, and mtkclient `Library/DA/{legacy/dalegacy_flash_param,xflash/xflash_lib,xml/xml_cmd,xml/xml_lib}.py` for standard read-only queries, PMT/XML partition metadata, register commands and NAND/NOR/SDMMC geometry. DA `m_start_offset` metadata is preserved as a length/signature boundary, not added to `m_start_addr`. No exploitation algorithms or device-side payloads were added. The current local penumbra copy has no Git metadata; its prior inspected revision above is historical provenance, not a newly verified file revision.
 
 Changes from references include bounded counts/lengths/XML, explicit endianness and final status checks, serialized generations, borrowed stream ownership, late authentication cleanup, streaming Raw/Sparse, strict extension prerequisites and verified seccfg planning/readback. Dummy signatures, timeout-as-success, silent checksum failures, arbitrary XML and automatic retries after unknown writes are excluded.
+
+## Updated normal-function references (2026-10-05)
+
+The current primary reference is the user's `D:\Code\Rust\penumbra-main` archive, without Git metadata. Its normal `core/src/da/{protocol,scatter,types}.rs`, `core/src/da/{xflash,xml}/{protocol,flash,cmd,exts}.rs` and `tui/src/cli/commands/device/keys.rs` define the Scatter/native partition/eFuse/resource and Penumbra2 extension ABI behavior. The historical `ce13391` above is not the archive's asserted revision. File fingerprints (SHA256) identify the inspected inputs:
+
+| Archive path | SHA256 |
+| --- | --- |
+| `Cargo.lock` | `BF661EB3C6AC20F62059751168DF2F3A8F195A235243FFDDD96CADC1C3ED5806` |
+| `core/src/da/scatter.rs` | `D789C65C764DAC24D29BE4682A03F6EDEC4462E530495EDECCB8039CC541ECE4` |
+| `core/src/da/xflash/exts.rs` | `0CD543F08A394E13D7CEB4223C5D2793F7BA6290EBE9E21E28BCEAA7A6A1BF1D` |
+| `core/src/da/xml/exts.rs` | `E52BEBD172340109D59A62288F19B999B8916ACF88D3E2D0A8EFD64B1C8491E6` |
+
+Additional normal mtkclient references are `Library/DA/legacy/dalegacy_lib.py` (NAND DF and IoT DA3/CDC) and `Library/Hardware/hwcrypto_{sej,gcpu,dxcc}.py` (standard register sequences, bounded rewrites of polling, public image-format constants and normal derivation). DAPC/security disable, DMA protection bypass, blacklist removal, firmware/DA modifications and payload injection were excluded. Explicit profiles replace hardcoded DMA/clock addresses.
+
+XML/UFS RPMB `SecRpmbInfo` layout was checked against [hacc source at e5a68124](https://github.com/shomykohai/hacc/blob/e5a68124e7d795465804aaf2d11cef43cf8b7267/src/common/rpmb.rs), the exact dependency pinned in the archive's Cargo.lock. Attribution: Copyright (c) 2026-present Shomy, rva3, MIT; license text is retained in `licenses/MTK-HACC-MIT.txt`. Only layout/enum facts and normal host communication are referenced; device-side code, keys and payloads are not distributed.

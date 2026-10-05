@@ -10,7 +10,7 @@ using GeekFlashCore.Protocol.Mtk.Abstractions;
 namespace GeekFlashCore.Protocol.Mtk.Extensions;
 
 /// <summary>Standard communication with an already loaded penumbra DA extension; no patch or exploit is performed.</summary>
-public sealed class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseService
+public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseService
 {
     private readonly IMtkProtocol _protocol;
     private readonly IMtkSessionAccess _access;
@@ -33,7 +33,7 @@ public sealed class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseService
     {
         ArgumentNullException.ThrowIfNull(context);
         if (context.Da2Base == 0 || context.Da2Size == 0 || (ulong)context.Da2Base + context.Da2Size > (ulong)uint.MaxValue + 1 ||
-            context.UfsRpmbDataBlocks.Count > 4 || context.AllowedMemoryRanges.Any(r => !r.Contains(r.Address, r.Length)))
+            context.UfsRpmbDataBlocks.Count > 4 || !Enum.IsDefined(context.Abi) || context.AllowedMemoryRanges.Any(r => !r.Contains(r.Address, r.Length)))
             throw new ArgumentOutOfRangeException(nameof(context));
         _access.UseSession(c =>
         {
@@ -328,6 +328,7 @@ public sealed class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseService
         _access.UseSession(c =>
         {
             Ready(c);
+            if(_context!.Abi==MtkExtensionAbi.Penumbra2)return DeriveKeyCore(c,MtkKeyDeriveId.Rpmb,MtkKeySize.Key256,[],[]);
             if (_context!.SejBase == 0 && _context.TzccBase == 0 && _context.SsrBase == 0)
                 throw new MtkCapabilityException("key derivation profile");
             byte[] key = new byte[32];
@@ -435,6 +436,7 @@ public sealed class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseService
         if (data.IsEmpty || data.Length > 65536 || data.Length % 16 != 0)
             throw new ArgumentOutOfRangeException(nameof(data));
         Ready(c);
+        if(_context!.Abi==MtkExtensionAbi.Penumbra2)return TransformSejCore(c,data,new(encrypt,antiClone,legacy,xor));
         if (_context!.SejBase == 0)
             throw new MtkCapabilityException("SEJ profile");
         byte[] copy = data.ToArray(), result = new byte[data.Length];

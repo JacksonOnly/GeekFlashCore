@@ -55,7 +55,7 @@ public sealed class MtkDxcc
             uint keySize=key==MtkDxccKey.Root && (Read(0xaa0)&2)!=0?0x800000u:0;
             Queue([0,0x8000041,0,0,keySize|0x1001c20,0],operation);
             Queue([key==MtkDxccKey.User?keyAddress:0,key==MtkDxccKey.User?0x41u:0,0,0,keySize|0x4001c20|(((uint)key&3)<<15)|((((uint)key>>2)&3)<<20),0],operation);
-            // DMA_DLLI reads exactly the meaningful byte count, including an empty CMAC message.
+            // Preserve the reference DMA_DLLI byte count. Hardware behavior for an empty message requires device validation.
             Queue([input,checked((uint)data.Length*4)|2,0,0,1,0],operation);
             Queue([0,0,_profile.Scratch.Address,0x42,0x8001c26,0],operation);
             Complete(operation);_access.ReadMemory(_profile.Scratch.Address,result);Cleanup(length,operation);operation.Check();return new(result);
@@ -110,6 +110,13 @@ public sealed class MtkDxcc
     {
         if(index>0x24)throw new ArgumentOutOfRangeException(nameof(index));var operation=new HardwareOperation(_access,_profile,cancellationToken);operation.Check();
         try { operation.Clock(true);operation.Wait(0xabc,v=>(v&1)!=0);Write(0xaa4,index*4|0x10000);operation.Wait(0xab4,v=>(v&1)!=0);uint result=Read(0xaac);operation.Clock(false);operation.Check();return result; }
+        catch { try { operation.Clock(false); }catch { }try { _access.Invalidate(); }catch { }throw; }
+    }
+    /// <summary>Reads the raw lifecycle register after OTP readiness; does not provision or disable the engine.</summary>
+    public uint ReadLifecycleState(CancellationToken cancellationToken=default)
+    {
+        var operation=new HardwareOperation(_access,_profile,cancellationToken);operation.Check();
+        try { operation.Clock(true);operation.Wait(0xabc,v=>(v&1)!=0);uint result=Read(0xad4);operation.Clock(false);operation.Check();return result; }
         catch { try { operation.Clock(false); }catch { }try { _access.Invalidate(); }catch { }throw; }
     }
     public MtkSensitiveBuffer ReadPublicKeyHash(bool secondary=false,CancellationToken cancellationToken=default)

@@ -39,6 +39,10 @@ public sealed class MtkGcpu
         {
             Write(4,(Read(4)&0x7ff0bf7f)|0x34080);Write(0x20,0x885b);Write(0x24,Read(0x24)&0xfffdfffd);Write(0x404,0x80002000);
         }
+        else if(_profile.HardwareCode is 0x8172 or 0x8127)
+        {Write(0,(Read(0)&0xfffffff0)|0xf);Write(4,Read(4)&0xffffdfff);}
+        else if(_profile.HardwareCode==0x335)
+        {Write(0,Read(4)&0xffffdfff);Write(0,Read(0)|7);Write(4,0x80ff1800);Write(0x20,0x887f);Write(0x24,0);}
         for(uint i=1;i<64;i++)Write(0xc00+i*4,0);
     }
     private void Cleanup(HardwareOperation operation,int scratchLength=0)
@@ -85,7 +89,40 @@ public sealed class MtkGcpu
         }
         catch { CryptographicOperations.ZeroMemory(result);try { Cleanup(operation,scratchLength); }catch { }try { _access.Invalidate(); }catch { }throw; }
     }
-    public MtkSensitiveBuffer DeriveMtee(CancellationToken cancellationToken=default)=>TransformEcb("KeymasterMaster\0"u8,true,cancellationToken:cancellationToken);
+    /// <summary>MT6735 packet ECB. Both DMA buffers are confined to the supplied scratch region.</summary>
+    public MtkSensitiveBuffer TransformPacketEcb(ReadOnlySpan<byte> data,bool encrypt,CancellationToken cancellationToken=default)
+    {
+        if(_profile.HardwareCode!=0x335)throw new MtkCapabilityException("GCPU packet ECB chip profile");
+        if(data.IsEmpty || data.Length%16!=0 || data.Length>_profile.MaximumInputSize ||
+            !_profile.Scratch.Contains(_profile.Scratch.Address,checked((uint)data.Length*2)))throw new ArgumentException(nameof(data));
+        var operation=new HardwareOperation(_access,_profile,cancellationToken);operation.Check();byte[] result=new byte[data.Length];int scratchLength=checked(data.Length*2);
+        try
+        {
+            Initialize(operation);Write(0,(Read(0)&0xfffffff8)|7);Write(4,0x80ff1800);Write(0x20,0x887f);Write(0x24,0);
+            Write(0x80c,uint.MaxValue);Write(0x80c,uint.MaxValue);Write(0x80c,uint.MaxValue);Write(0x80c,2);Write(4,Read(4)|0x2000);
+            uint output=checked(_profile.Scratch.Address+(uint)data.Length);_access.WriteMemory(_profile.Scratch.Address,data);
+            Write(0xc00,encrypt?0x7bu:0x7a);Write(0xc04,_profile.Scratch.Address);Write(0xc08,output);Write(0xc0c,(uint)data.Length/16);
+            for(uint i=3;i<=13;i++)Write(0xc04+i*4,0);Write(0x400,0);
+            uint status=operation.Wait(0x804,v=>v!=0);if((status&2)!=0)throw new InvalidOperationException(Strings.HardwareFailure);Write(0x804,status);
+            _access.ReadMemory(output,result);
+            for(uint i=0;i<0xe0;i++)Write(0xc00+i*4,0);Write(0x808,0);Write(4,0x80fe1800);
+            ClearScratch(scratchLength);operation.Clock(false);operation.Check();return new(result);
+        }
+        catch { CryptographicOperations.ZeroMemory(result);try { Cleanup(operation,scratchLength);Write(0x808,0);Write(4,0x80fe1800); }catch { }try { _access.Invalidate(); }catch { }throw; }
+    }
+    public MtkSensitiveBuffer DeriveMtee(CancellationToken cancellationToken=default)=>_profile.HardwareCode==0x335?
+        TransformPacketEcb("www.mediatek.com0123456789ABCDEF"u8,true,cancellationToken):TransformEcb("KeymasterMaster\0"u8,true,cancellationToken:cancellationToken);
+    /// <summary>Decrypts a normal MTEE image using supplied seed/key material. Input DMA never leaves scratch.</summary>
+    public MtkSensitiveBuffer DecryptMteeImage(ReadOnlySpan<byte> data,ReadOnlySpan<byte> keySeed,ReadOnlySpan<byte> ivSeed,
+        ReadOnlySpan<byte> aesKey1,ReadOnlySpan<byte> aesKey2,CancellationToken cancellationToken=default)
+    {
+        if(data.IsEmpty || data.Length%16!=0 || data.Length>_profile.MaximumInputSize || keySeed.Length!=16 || ivSeed.Length!=16 ||
+            aesKey1.Length!=16 || aesKey2.Length!=16 || !_profile.Scratch.Contains(_profile.Scratch.Address,checked((uint)data.Length*2)))throw new ArgumentException(nameof(data));
+        using var iv=TransformEcb(keySeed,false,aesKey1,cancellationToken);Span<byte> wrappedKey=stackalloc byte[16];
+        for(int i=0;i<wrappedKey.Length;i++)wrappedKey[i]=(byte)(aesKey2[i]^ivSeed[i]);
+        try { return TransformCbc(data,false,iv.Memory.Span,wrappedKey,true,cancellationToken); }
+        finally { CryptographicOperations.ZeroMemory(wrappedKey); }
+    }
     /// <summary>Reference device-key HMAC truncated to 16 bytes; the seed includes caller-confirmed devinfo words.</summary>
     public MtkSensitiveBuffer ComputeDeviceHmac(ReadOnlySpan<byte> data,ReadOnlySpan<byte> seed,CancellationToken cancellationToken=default)
     {

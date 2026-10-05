@@ -11,8 +11,8 @@ public sealed class MtkSecurityConfigurationService : IMtkSecurityConfigurationS
     public MtkSecurityConfigurationService(IMtkProtocol protocol, IReadOnlyList<IMtkSecurityCipher>? ciphers = null)
     {
         _access = protocol as IMtkSessionAccess ?? throw new MtkCapabilityException("scoped session");
-        _ciphers = ciphers?.ToArray() ?? [new MtkSoftwareSecurityCipher()];
-        if (_ciphers.Count is 0 or > 4 || _ciphers.Any(c => c is null))
+        _ciphers = ciphers?.ToArray() ?? [new MtkPlainSecurityCipher(),new MtkSoftwareSecurityCipher()];
+        if (_ciphers.Count is 0 or > 8 || _ciphers.Any(c => c is null))
             throw new ArgumentOutOfRangeException(nameof(ciphers));
     }
     public MtkSecurityChangePlan Plan(MtkFlashRange range, bool locked, CancellationToken cancellationToken = default) =>

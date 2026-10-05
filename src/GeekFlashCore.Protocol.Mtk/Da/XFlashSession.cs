@@ -215,6 +215,56 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         BinaryPrimitives.WriteUInt32LittleEndian(p.AsSpan(12), mode == ProtocolRebootMode.Download ? 2u : 0u);
         Parameters(p);
     }
+    public byte[] ReadEfuses()
+    {
+        Command(0x1000f);Parameters(new byte[0xf8]);byte[] result=wire.ReadSmallFrame(Math.Min(options.MaximumFrameSize,0x5000));
+        try { wire.SendFrame(new byte[4]);wire.ReadStatus();return result; }
+        catch { System.Security.Cryptography.CryptographicOperations.ZeroMemory(result);throw; }
+    }
+    public void WriteEfuses(ReadOnlySpan<byte> data)
+    {
+        Command(0x1000e);wire.SendFrame(data);wire.SendFrame(new byte[0xf8]);wire.ReadStatus();wire.ReadStatus();
+    }
+    private void DownloadInfo(uint action) { Command(0x10009);Command(action);wire.ReadStatus(); }
+    public long ReadNamed(string name,Stream destination,long maximum)
+    {
+        Command(0x10002);Parameters(System.Text.Encoding.ASCII.GetBytes(name));byte[] bytes=wire.ReadSmallFrame(8);wire.ReadStatus();
+        if(bytes.Length!=8)throw new MtkResourceException("partition upload size");ulong size=BinaryPrimitives.ReadUInt64LittleEndian(bytes);
+        if(size==0 || size>(ulong)maximum)throw new MtkResourceException("partition upload limit");
+        byte[] buffer=ArrayPool<byte>.Shared.Rent(options.MaximumFrameSize);
+        try
+        {
+            for(long done=0;done<(long)size;)
+            {
+                int n=wire.ReadFrame(buffer.AsSpan(0,(int)Math.Min(options.MaximumFrameSize,(long)size-done)));if(n==0)throw wire.Failure();destination.Write(buffer.AsSpan(0,n));wire.SendFrame(new byte[4]);wire.ReadStatus();done+=n;
+            }
+            return (long)size;
+        }
+        finally { ArrayPool<byte>.Shared.Return(buffer,true); }
+    }
+    public void WriteNamed(string name,Stream source,long length)
+    {
+        DownloadInfo(0x80001);Command(0x10001);byte[] size=new byte[8];BinaryPrimitives.WriteUInt64LittleEndian(size,(ulong)length);Parameters(System.Text.Encoding.ASCII.GetBytes(name),size);
+        byte[] buffer=ArrayPool<byte>.Shared.Rent(wire.WritePacketLength);
+        try
+        {
+            for(long done=0;done<length;)
+            { wire.Check();int n=(int)Math.Min(wire.WritePacketLength,length-done);source.ReadExactly(buffer.AsSpan(0,n));wire.SendFrame(new byte[4]);wire.SendFrame(MtkWire.Le32(MtkWire.Sum(buffer.AsSpan(0,n))));wire.SendFrame(buffer.AsSpan(0,n));wire.ReadStatus();done+=n; }
+            wire.ReadStatus();DownloadInfo(0x80002);
+        }
+        finally { ArrayPool<byte>.Shared.Return(buffer,true); }
+    }
+    public void EraseNamed(string name)
+    {
+        DownloadInfo(0x80001);Command(0x10006);wire.SendFrame(System.Text.Encoding.ASCII.GetBytes(name));
+        for(int i=0;i<options.MaximumProgressEvents;i++)
+        {
+            uint status=wire.ReadStatus(0x40040004,0x40040005);if(status==0x40040005) { DownloadInfo(0x80002);return; }
+            byte[] percent=wire.ReadSmallFrame(4);if(percent.Length!=4 || BinaryPrimitives.ReadUInt32LittleEndian(percent)>100)throw wire.Failure();
+            wire.SendFrame(new byte[4]);wire.ProgressPercent?.Invoke((int)BinaryPrimitives.ReadUInt32LittleEndian(percent));
+        }
+        throw wire.Failure();
+    }
     private void SendStreamFrame(Stream source, long length)
     {
         wire.SendFrameHeader(length);

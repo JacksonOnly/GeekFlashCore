@@ -246,6 +246,14 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 if (_brom.BeginDownloadAgent(da1.Address, da1.Length, da1.SignatureLength))
                     await AuthenticateAsync(MtkAuthenticationKind.BromSla, _brom.StartSla(), resources, ct).ConfigureAwait(false);
                 _brom.FinishDownloadAgent(da1.Length, stream);
+                if(_options.LegacyIoT)
+                {
+                    var da2=entry.Regions[entry.EntryRegionIndex+1];
+                    using Stream second=new MtkDataWindow(resources.DownloadAgent.Source,da2.FileOffset,da2.Length).OpenStream();
+                    if(_brom.BeginDownloadAgent(da2.Address,da2.Length,da2.SignatureLength))
+                        await AuthenticateAsync(MtkAuthenticationKind.BromSla,_brom.StartSla(),resources,ct).ConfigureAwait(false);
+                    _brom.FinishDownloadAgent(da2.Length,second);
+                }
                 _brom.JumpDownloadAgent(da1.Address);
             }
             LoadDa(resources, target, upload: false);
@@ -320,7 +328,9 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             !Enum.IsDefined(entry.Kind) || _options.DaKind is { } kind && kind != entry.Kind ||
             entry.EntryRegionIndex >= entry.Regions.Count - 1)
             throw new MtkResourceException("DA selection");
-        foreach (var region in entry.Regions.Skip(entry.EntryRegionIndex).Take(2))
+        if(_options.LegacyIoT && (entry.Kind!=MtkDaKind.Legacy || entry.EntryRegionIndex+2>=entry.Regions.Count ||
+            entry.Regions[entry.EntryRegionIndex+2].Length<0x1d4))throw new MtkResourceException("IoT DA3");
+        foreach (var region in entry.Regions.Skip(entry.EntryRegionIndex).Take(_options.LegacyIoT?3:2))
         {
             if (region.Length == 0 || region.SignatureLength >= region.Length || region.EntryOffset > region.Length ||
                 region.FileOffset < 0 || region.FileOffset > image.Source.Length - region.Length ||
@@ -495,7 +505,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         ArgumentNullException.ThrowIfNull(action);
         return Execute(() => { Ready(); var channel = new Channel(this); try { return action(channel); } finally { channel.Expire(); } }, cancellationToken);
     }
-    private sealed class Channel(MtkProtocol owner, Action? guard = null) : IMtkDaChannel
+    private sealed class Channel(MtkProtocol owner, Action? guard = null) : IMtkDaChannel, IMtkDaPartitionChannel
     {
         private bool _valid = true;
         private readonly int _thread = Environment.CurrentManagedThreadId;
@@ -508,6 +518,19 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             owner._wire.Check();
         }
         public void Expire() => _valid = false;
+        public IReadOnlyList<MtkPartitionRange> GetPartitionRanges()
+        {
+            Check();return Array.AsReadOnly(owner.LoadPartitionsCore().Select(p=>new MtkPartitionRange(p.Name,p.Range)).ToArray());
+        }
+        public void WriteNamedPartition(string name,Stream source,long length)
+        {
+            Check();owner.NamedWritePolicy();PartitionName(name);ArgumentNullException.ThrowIfNull(source);
+            if(length<=0 || !source.CanRead || source.CanSeek && source.Length-source.Position!=length)throw new MtkResourceException("native partition source");
+            if(owner._da is XFlashSession x)x.WriteNamed(name,source,length);
+            else if(owner._da is XmlSession xml)xml.WriteNamed(name,source,length);
+            else throw new MtkCapabilityException("native partition dialect");
+            owner._partitions=null;
+        }
         public MtkDaKind Kind
         {
             get

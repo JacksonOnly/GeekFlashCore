@@ -21,6 +21,13 @@ internal static class MtkXmlCodec
         ["WRITE-REGISTER"] = ["bit_width", "base_address", "source_file"],
         ["SECURITY-GET-DEV-FW-INFO"] = ["target_file"],
         ["SECURITY-SET-FLASH-POLICY"] = ["source_file"],
+        ["SECURITY-SET-ALLINONE-SIGNATURE"] = ["source_file"],
+        ["READ-EFUSE"] = ["target_file"],
+        ["WRITE-EFUSE"] = ["source_file"],
+        ["READ-PARTITION"] = ["partition","target_file"],
+        ["WRITE-PARTITION"] = ["partition","source_file"],
+        ["ERASE-PARTITION"] = ["partition"],
+        ["FLASH-UPDATE"] = ["source_file","path_separator","backup_folder"],
         ["READ-FLASH"] = ["partition", "target_file", "length", "offset"],
         ["WRITE-FLASH"] = ["partition", "source_file", "offset"],
         ["ERASE-FLASH"] = ["partition", "length", "offset"],
@@ -38,9 +45,21 @@ internal static class MtkXmlCodec
     };
     public static byte[] Create(string command, IReadOnlyDictionary<string, string> parameters)
     {
+        string[]? variant=command switch
+        {
+            "EXT-KEY-DERIVE" when parameters.Count==4=>["key_type","key_length","label","salt"],
+            "EXT-SEJ" when parameters.Count==6=>["encrypt","ac","length","cbc","key_id","key_size"],
+            _=>null
+        };
+        if(variant is not null)return CreateValidated(command,parameters,variant);
         if (!Arguments.TryGetValue(command, out var allowed) || parameters.Count != allowed.Length || parameters.Any(p =>
             !allowed.Contains(p.Key, StringComparer.Ordinal) || p.Value is null || p.Value.Length > 4096))
             throw new MtkCapabilityException("XML command/parameters");
+        return CreateValidated(command,parameters,allowed);
+    }
+    private static byte[] CreateValidated(string command,IReadOnlyDictionary<string,string> parameters,string[] allowed)
+    {
+        if(parameters.Count!=allowed.Length || parameters.Any(p=>!allowed.Contains(p.Key,StringComparer.Ordinal) || p.Value is null || p.Value.Length>4096))throw new MtkCapabilityException("XML command/parameters");
         var text = new StringBuilder();
         using (var writer = XmlWriter.Create(text, new XmlWriterSettings { OmitXmlDeclaration = true }))
         {

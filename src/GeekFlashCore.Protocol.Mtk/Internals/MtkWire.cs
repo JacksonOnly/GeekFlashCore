@@ -63,6 +63,13 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         Check();
         transport.ControlOut(0x21, 0x22, 3, checked((ushort)controlInterface), []);
     }
+    public void ConfigureIoTCdc()
+    {
+        if(transport.ControlInterfaceNumber is not { } number)return;
+        Check();HasWritten=true;
+        ReadOnlySpan<byte> coding=[0,0x10,0x0e,0,0,0,8]; // 921600 baud, 8N1.
+        transport.ControlOut(0x21,0x20,0,checked((ushort)number),coding);Check();
+    }
     public void ZeroLengthPacket()
     {
         Check();
@@ -148,7 +155,8 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
     }
     public void SendFrameHeader(long length)
     {
-        if (length <= 0 || length > uint.MaxValue)
+        // Zero-length parameter frames are required by the explicit V2 key-derive label/salt ABI.
+        if (length < 0 || length > uint.MaxValue)
             throw new MtkResourceException("frame length");
         Span<byte> header = stackalloc byte[12];
         BinaryPrimitives.WriteUInt32LittleEndian(header, 0xfeeeeeef);

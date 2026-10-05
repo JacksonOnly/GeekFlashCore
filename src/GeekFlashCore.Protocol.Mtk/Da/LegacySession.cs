@@ -6,7 +6,7 @@ using GeekFlashCore.Protocol.Mtk.Loaders;
 
 namespace GeekFlashCore.Protocol.Mtk.Da;
 
-internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : IMtkDaSession
+internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions options) : IMtkDaSession
 {
     private MtkStorageInfo? _storage;
     public MtkDaKind Kind => MtkDaKind.Legacy;
@@ -38,6 +38,7 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
         if (wire.ReadByte() != 0xc0)
             throw wire.Failure();
         wire.Stage = MtkBootStage.Da1;
+        if(options.LegacyIoT) { InitializeIoT(image,checkpoint);return; }
         _ = wire.Read32();
         ushort nandCount = wire.Read16();
         if (nandCount > 256)
@@ -115,30 +116,36 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
         Span<byte> nand = stackalloc byte[0x11];
         wire.Read(nand);
         int count = BinaryPrimitives.ReadUInt16BigEndian(nand[15..]);
+        bool nand32 = count == 0;
         if (count > 256)
             throw wire.Failure();
         if (count == 0)
         {
             // 32-bit NAND geometry puts count at offset 11 and already supplies four ID bytes.
             count = BinaryPrimitives.ReadUInt16BigEndian(nand[11..]);
-            if (count < 2 || count > 256)
+            if (count==0 && nand.IndexOfAnyExcept((byte)0)<0)
+                nand32=false; // An absent NAND descriptor has no device-ID bytes to discard.
+            else if (count < 2 || count > 256)
                 throw new MtkCapabilityException("Legacy NAND layout");
-            Discard(count * 2 - 4);
+            if(count>0)Discard(count * 2 - 4);
         }
         else
             Discard(count * 2);
-        Discard(9);
+        Span<byte> nandGeometry=stackalloc byte[9];wire.Read(nandGeometry);
         Span<byte> emmc = stackalloc byte[0x5c];
         wire.Read(emmc);
         Span<byte> sdc = stackalloc byte[0x1c];
         wire.Read(sdc);
-        if (BinaryPrimitives.ReadUInt32BigEndian(emmc) == 0 && BinaryPrimitives.ReadUInt64BigEndian(emmc[60..]) > 0)
+        ulong nandSize=nand32?BinaryPrimitives.ReadUInt32BigEndian(nand[7..]):BinaryPrimitives.ReadUInt64BigEndian(nand[7..]);
+        if(BinaryPrimitives.ReadUInt32BigEndian(nand)==0 && nandSize>0)
+            _storage=DecodeNand(nandSize,BinaryPrimitives.ReadUInt16BigEndian(nandGeometry),BinaryPrimitives.ReadUInt16BigEndian(nandGeometry[2..]),BinaryPrimitives.ReadUInt16BigEndian(nandGeometry[4..]),nandGeometry[8]);
+        else if (BinaryPrimitives.ReadUInt32BigEndian(emmc) == 0 && BinaryPrimitives.ReadUInt64BigEndian(emmc[60..]) > 0)
             _storage = MtkStorageDecoder.Emmc(emmc, true);
         else if (BinaryPrimitives.ReadUInt32BigEndian(sdc) == 0 && BinaryPrimitives.ReadUInt64BigEndian(sdc[4..]) > 0)
             _storage = MtkStorageDecoder.Single(MtkStorageKind.Sdmmc, BinaryPrimitives.ReadUInt64BigEndian(sdc[4..]), 512);
         else if (BinaryPrimitives.ReadUInt32BigEndian(nor) == 0 && BinaryPrimitives.ReadUInt32BigEndian(nor[8..]) > 0)
             _storage = MtkStorageDecoder.Single(MtkStorageKind.Nor, BinaryPrimitives.ReadUInt32BigEndian(nor[8..]), 1, options.NorEraseBlockSize);
-        else throw new MtkCapabilityException("Legacy NAND/unknown storage");
+        else throw new MtkCapabilityException("Legacy unknown storage");
         Discard(0x26);
         if (target.HardwareCode == 0x8163)
             Discard(4);
@@ -232,14 +239,25 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
     }
     private void Header(byte command, MtkStorageRegion region, long offset, long length, bool write)
     {
+        if(!write && options.LegacyIoT && region.Kind==MtkStorageKind.Nor && (offset<0 || length<=0 || (ulong)offset+(ulong)length>uint.MaxValue))
+            throw new ArgumentOutOfRangeException(nameof(length));
         wire.Command = command;
         wire.WriteByte(command);
         if (write)
             wire.WriteByte((byte)region.Kind);
         else
-            wire.Write([0x0c, region.Kind == MtkStorageKind.Nor ? (byte)0 : (byte)2]);
+        {
+            if(!options.LegacyIoT || region.Kind!=MtkStorageKind.Nor)wire.WriteByte(0x0c);
+            wire.WriteByte(region.Kind == MtkStorageKind.Nor ? (byte)0 : (byte)2);
+        }
         if (write)
             wire.WriteByte((byte)region.WireId);
+        if(!write && options.LegacyIoT && region.Kind==MtkStorageKind.Nor)
+        {
+            if(offset<0 || length<=0 || (ulong)offset+(ulong)length>uint.MaxValue)throw new ArgumentOutOfRangeException(nameof(length));
+            Span<byte> small=stackalloc byte[12];BinaryPrimitives.WriteUInt32BigEndian(small,(uint)offset);
+            BinaryPrimitives.WriteUInt32BigEndian(small[4..],(uint)length);BinaryPrimitives.WriteUInt32BigEndian(small[8..],4096);wire.Write(small);Ack();return;
+        }
         Span<byte> p = stackalloc byte[20];
         BinaryPrimitives.WriteUInt64BigEndian(p, (ulong)offset);
         BinaryPrimitives.WriteUInt64BigEndian(p[8..], (ulong)length);
@@ -249,9 +267,10 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
     }
     public void Read(MtkStorageRegion region, long offset, long length, Stream output)
     {
+        if(region.Kind==MtkStorageKind.Nand) { ReadNand(offset,length,output,false);return; }
         if (region.Kind == MtkStorageKind.Sdmmc)
             throw new MtkCapabilityException("Legacy SDMMC read");
-        CheckUsbSpeed();
+        if(!options.LegacyIoT)CheckUsbSpeed();
         if (region.Kind == MtkStorageKind.Emmc) Switch(region);
         Header(0xd6, region, offset, length, false);
         byte[] buffer = ArrayPool<byte>.Shared.Rent(options.BufferSize);
@@ -259,7 +278,7 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
         {
             while (length > 0)
             {
-                int n = (int)Math.Min(options.BufferSize, length);
+                int n = (int)Math.Min(options.LegacyIoT && region.Kind==MtkStorageKind.Nor?4096:options.BufferSize, length);
                 wire.Read(buffer.AsSpan(0, n));
                 ushort sum = wire.Read16();
                 if (sum != MtkWire.Sum(buffer.AsSpan(0, n)))
@@ -273,6 +292,7 @@ internal sealed class LegacySession(MtkWire wire, MtkProtocolOptions options) : 
     }
     public void Write(MtkStorageRegion region, long offset, long length, Stream input)
     {
+        if(!region.CanWrite)throw new MtkCapabilityException("NAND logical writes");
         Header(0x62, region, offset, length, true);
         byte[] buffer = ArrayPool<byte>.Shared.Rent(options.BufferSize);
         Span<byte> b = stackalloc byte[2];

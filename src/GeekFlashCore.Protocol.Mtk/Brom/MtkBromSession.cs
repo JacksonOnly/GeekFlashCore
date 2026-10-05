@@ -8,8 +8,10 @@ namespace GeekFlashCore.Protocol.Mtk.Brom;
 
 internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions options)
 {
-    public MtkTargetInfo Probe()
+    private bool _watchdogDisabled;
+    public MtkTargetInfo Probe(bool initializeWatchdog = false)
     {
+        _watchdogDisabled = false;
         ReadOnlySpan<byte> handshake = [0xa0, 0x0a, 0x50, 0x05];
         for (int i = 0; i < handshake.Length; i++)
         {
@@ -26,13 +28,24 @@ internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions op
         var hardware = GetHardwareCode();
         if (hardware.Code == 0)
             throw wire.Failure();
+        var chip = MtkChipCatalog.Find(hardware.Code);
+        var watchdog = (initializeWatchdog || options.InitializeWatchdogOnProbe)
+            ? DisableWatchdog(new(hardware.Code, 0, 0, 0, 0, 0, MtkBootStage.Unknown, new(0)))
+            : MtkWatchdogState.NotRequested;
         var security = GetTargetConfiguration();
         byte bl = GetBootLoaderVersion();
         wire.Stage = bl == 0xfe ? MtkBootStage.Brom : MtkBootStage.Preloader;
         byte brom = GetBromVersion();
         var versions = GetHardwareSoftwareVersion();
         return new(hardware.Code, versions.SubCode, versions.HardwareVersion, versions.SoftwareVersion,
-            brom, bl, wire.Stage, security);
+            brom, bl, wire.Stage, security)
+        {
+            InitialHardwareVersion = hardware.Version,
+            ChipName = chip?.Name,
+            ChipDescription = chip?.Description,
+            DaHardwareCode = options.DaHardwareCode ?? chip?.DaHardwareCode ?? hardware.Code,
+            WatchdogState = watchdog
+        };
     }
     public void Upload(MtkDaImage image, Func<MtkAuthenticationKind, ReadOnlyMemory<byte>, MtkSensitiveBuffer>? signer = null)
     {
@@ -105,10 +118,12 @@ internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions op
         if (status > 0xff)
             throw wire.Failure(status);
     }
-    public void DisableWatchdog(MtkTargetInfo target)
+    public MtkWatchdogState DisableWatchdog(MtkTargetInfo target)
     {
-        if (options.ChipProfile is not { } profile)
-            return;
+        if (_watchdogDisabled)
+            return MtkWatchdogState.Disabled;
+        if ((options.ChipProfile ?? MtkChipCatalog.Find(target.HardwareCode)?.Watchdog) is not { } profile)
+            return MtkWatchdogState.ProfileUnavailable;
         if (profile.HardwareCode != target.HardwareCode || profile.WatchdogAddress == 0 ||
             profile.WatchdogWidth is not (16 or 32) || profile.WatchdogAddress % (profile.WatchdogWidth / 8) != 0 ||
             profile.WatchdogWidth == 16 && profile.WatchdogValue > ushort.MaxValue)
@@ -117,6 +132,8 @@ internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions op
             Write16(profile.WatchdogAddress, [(ushort)profile.WatchdogValue]);
         else
             Write32(profile.WatchdogAddress, [profile.WatchdogValue]);
+        _watchdogDisabled = true;
+        return MtkWatchdogState.Disabled;
     }
     private ushort UploadBytes(Stream source, long length)
     {

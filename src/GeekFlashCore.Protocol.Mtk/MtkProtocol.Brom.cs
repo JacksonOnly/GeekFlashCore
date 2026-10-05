@@ -125,7 +125,7 @@ public sealed partial class MtkProtocol : IMtkBromSessionAccess
         public void DisableWatchdog()
         {
             Check();
-            owner._brom.DisableWatchdog(owner._target!);
+            owner._target = owner._target! with { WatchdogState = owner._brom.DisableWatchdog(owner._target!) };
         }
         public void ConfigureBromReset(uint miscLockAddress, bool enabled = true, int timeoutMilliseconds = 0)
         {

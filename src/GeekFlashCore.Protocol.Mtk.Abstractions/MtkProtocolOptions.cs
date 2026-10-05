@@ -23,7 +23,10 @@ public sealed record MtkProtocolOptions
     {
         get; init;
     }
-    /// <summary>Explicit profile for watchdog access; absent means no register writes.</summary>
+    /// <summary>Initializes an explicitly configured or known watchdog immediately after FD during Probe.
+    /// Default Probe only queries; Connect prepares it before security queries and resource requests.</summary>
+    public bool InitializeWatchdogOnProbe { get; init; }
+    /// <summary>Explicit watchdog profile overriding known metadata. Unknown chips without a profile receive no writes.</summary>
     public MtkChipProfile? ChipProfile
     {
         get; init;

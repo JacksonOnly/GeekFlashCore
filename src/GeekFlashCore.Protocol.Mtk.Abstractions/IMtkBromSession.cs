@@ -46,7 +46,8 @@ public interface IMtkBromSession
     void ReadRegisters(uint address, Span<byte> destination);
     /// <summary>Writes bounded, aligned register bytes using DA. Both statuses are little-endian and mandatory.</summary>
     void WriteRegisters(uint address, ReadOnlySpan<byte> data);
-    /// <summary>Disables the watchdog only using the explicitly supplied chip profile.</summary>
+    /// <summary>Disables a watchdog using an explicit override or known standard chip metadata.
+    /// Unknown chips receive no guessed addresses; acknowledged writes are not repeated in the same session.</summary>
     void DisableWatchdog();
     /// <summary>Configures watchdog-reset download flags at an explicit MISC_LOCK address; does not trigger a reset.</summary>
     void ConfigureBromReset(uint miscLockAddress, bool enabled = true, int timeoutMilliseconds = 0);

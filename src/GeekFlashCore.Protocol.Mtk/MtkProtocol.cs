@@ -129,10 +129,15 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         if (!IsConnected || _da is null || _storage is null)
             throw new InvalidOperationException(Strings.SessionUnavailable);
     }
-    private MtkTargetInfo ProbeCore()
+    private MtkTargetInfo ProbeCore() => ProbeCore(false);
+    private MtkTargetInfo ProbeCore(bool initializeWatchdog)
     {
         if (_state == MtkSessionState.Probed)
+        {
+            if (initializeWatchdog)
+                _target = _target! with { WatchdogState = _brom.DisableWatchdog(_target!) };
             return _target!;
+        }
         if (_state != MtkSessionState.Disconnected)
             throw new InvalidOperationException(Strings.SessionUnavailable);
         State(MtkSessionState.Opening);
@@ -150,9 +155,16 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         State(MtkSessionState.Handshaking);
         if (_transport.ControlInterfaceNumber is { } controlInterface)
             _wire.ConfigureCdc(controlInterface);
-        _target = _brom.Probe();
+        _target = _brom.Probe(initializeWatchdog);
         _initialTarget = _target;
         State(MtkSessionState.Probed);
+        Log.ForContext<MtkProtocol>().Information(Strings.ProbeSnapshot,
+            _target.HardwareCode.ToString("X4"), _target.ChipName ?? "?",
+            _target.DaHardwareCode?.ToString("X4"), _target.HardwareSubCode.ToString("X4"),
+            _target.InitialHardwareVersion.ToString("X4"), _target.HardwareVersion.ToString("X4"),
+            _target.SoftwareVersion.ToString("X4"), _target.BromVersion.ToString("X2"),
+            _target.PreloaderVersion.ToString("X2"), _target.Stage, _target.Security.Raw.ToString("X8"),
+            _target.WatchdogState);
         return _target;
     }
     public MtkTargetInfo Probe(CancellationToken cancellationToken = default) => Execute(ProbeCore, cancellationToken);
@@ -162,7 +174,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         Execute(() =>
         {
             _wire.Begin(cancellationToken, _options.ConnectTimeoutMilliseconds);
-            MtkTargetInfo target = ProbeCore();
+            MtkTargetInfo target = ProbeCore(true);
             resources = PrepareBootResources(resources, target);
             target = _target!;
             SendBootResources(resources, target);
@@ -206,7 +218,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         MtkConnectionResources? transferred = null;
         try
         {
-            var target = ProbeCore();
+            var target = ProbeCore(true);
             MtkConnectionResources resources;
             if (_resources is not null)
                 resources = transferred = _resources(target);
@@ -299,7 +311,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     {
         var image = resources.DownloadAgent ?? throw new MtkResourceException("DA");
         var entry = image.Entry;
-        if (entry.HardwareCode != (_options.DaHardwareCode ?? target.HardwareCode) ||
+        if (entry.HardwareCode != MtkChipCatalog.GetDaHardwareCode(target, _options.DaHardwareCode) ||
             entry.HardwareSubCode != 0 && entry.HardwareSubCode != target.HardwareSubCode ||
             entry.HardwareVersion > target.HardwareVersion || entry.SoftwareVersion > target.SoftwareVersion ||
             !Enum.IsDefined(entry.Kind) || _options.DaKind is { } kind && kind != entry.Kind ||
@@ -337,7 +349,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     }
     private void SendBootResources(MtkConnectionResources resources, MtkTargetInfo target)
     {
-        _brom.DisableWatchdog(target);
+        _target = target with { WatchdogState = _brom.DisableWatchdog(target) };
         if (resources.Certificate is { } certificate)
             _brom.SendResource(MtkBromCommand.SendCertificate, certificate.Memory.Span);
         if (resources.Authentication is { } auth)

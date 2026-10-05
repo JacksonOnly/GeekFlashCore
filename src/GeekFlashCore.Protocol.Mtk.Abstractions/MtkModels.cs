@@ -47,7 +47,24 @@ public sealed record MtkSecurityConfiguration(uint Raw)
 }
 /// <summary>A non-sensitive immutable probe snapshot. No identity is inferred from zero values.</summary>
 public sealed record MtkTargetInfo(ushort HardwareCode, ushort HardwareSubCode, ushort HardwareVersion,
-    ushort SoftwareVersion, byte BromVersion, byte PreloaderVersion, MtkBootStage Stage, MtkSecurityConfiguration Security);
+    ushort SoftwareVersion, byte BromVersion, byte PreloaderVersion, MtkBootStage Stage, MtkSecurityConfiguration Security)
+{
+    /// <summary>Initial FD version, independent of the later FC hardware version.</summary>
+    public ushort InitialHardwareVersion { get; init; }
+    /// <summary>Reference CPU name when the hardware code is known.</summary>
+    public string? ChipName { get; init; }
+    /// <summary>Reference CPU family description, when available.</summary>
+    public string? ChipDescription { get; init; }
+    /// <summary>Resolved DA hardware code; it can differ from the BROM hardware code.</summary>
+    public ushort? DaHardwareCode { get; init; }
+    /// <summary>Observed result of standard watchdog preparation.</summary>
+    public MtkWatchdogState WatchdogState { get; init; }
+}
+/// <summary>Watchdog preparation is only successful after the register write is acknowledged.</summary>
+public enum MtkWatchdogState
+{
+    NotRequested, ProfileUnavailable, Disabled
+}
 /// <summary>A validated ordinary storage region. RPMB is deliberately excluded.</summary>
 public sealed record MtkStorageRegion
 {

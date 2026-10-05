@@ -222,4 +222,14 @@ Examples (current directory /super/system_a):
   <data name="Cli_MtkDaSelectionTimedOut" xml:space="preserve"><value>MTK DA selection timed out; specify the file with --loader before reconnecting.</value></data>
   <data name="Cli_UsbOpenDisconnectedRetry" xml:space="preserve"><value>USB device disconnected before protocol communication; enumerating again and waiting for the device.</value></data>
   <data name="Cli_UsbDisconnected" xml:space="preserve"><value>USB device disconnected or enumerated again; reconnect it and retry.</value></data>
+  <data name="Cli_MtkChip" xml:space="preserve"><value>MTK chip: {0} {1}; hardware code 0x{2}, DA code 0x{3}.</value></data>
+  <data name="Cli_MtkVersions" xml:space="preserve"><value>Versions: subcode=0x{0}, FD HW=0x{1}, FC HW=0x{2}, SW=0x{3}, BROM=0x{4}, Preloader=0x{5}; stage {6}.</value></data>
+  <data name="Cli_MtkSecurity" xml:space="preserve"><value>Security 0x{0}: SBC={1}, SLA={2}, DAA={3}, certificate={4}, memory read auth={5}, memory write auth={6}, eMMC boot parameter={7}, cache command blocked={8}.</value></data>
+  <data name="Cli_MtkWatchdog" xml:space="preserve"><value>Watchdog: {0}.</value></data>
+  <data name="Cli_MtkUnknownChip" xml:space="preserve"><value>Unknown chip</value></data>
+  <data name="Cli_MtkEnabled" xml:space="preserve"><value>enabled</value></data>
+  <data name="Cli_MtkDisabled" xml:space="preserve"><value>disabled</value></data>
+  <data name="Cli_MtkWatchdogDisabled" xml:space="preserve"><value>disabled through an acknowledged standard register write</value></data>
+  <data name="Cli_MtkWatchdogUnavailable" xml:space="preserve"><value>known profile unavailable; no register written</value></data>
+  <data name="Cli_MtkWatchdogNotRequested" xml:space="preserve"><value>initialization not requested</value></data>
 </root>

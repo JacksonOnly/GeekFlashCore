@@ -10,4 +10,5 @@
 <data name="Timeout" xml:space="preserve"><value>MTK 阶段超时。</value></data>
 <data name="UsbRequired" xml:space="preserve"><value>MTK 需要带身份信息的 USB 传输。</value></data>
   <data name="ExploitCheckpoint" xml:space="preserve"><value>宿主扩展阶段 {0} 返回 {1}。</value></data>
+  <data name="ProbeSnapshot" xml:space="preserve"><value>MTK 探测：HW=0x{0}，CPU={1}，DA=0x{2}，subcode=0x{3}，FD HW=0x{4}，FC HW=0x{5}，SW=0x{6}，BROM=0x{7}，Preloader=0x{8}，阶段={9}，安全配置=0x{10}，WDT={11}。</value></data>
 </root>

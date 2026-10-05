@@ -75,11 +75,13 @@ internal static class MtkProtocolHostAdapter
         return new MtkProtocol(usb, new()
         {
             DaKind = kind,
+            InitializeWatchdogOnProbe = true,
             ReadTimeoutMilliseconds = o.ReadTimeout,
             ConnectTimeoutMilliseconds = o.HasExplicitConnectTimeout ? o.ConnectTimeout : MtkProtocolOptions.DefaultConnectTimeoutMilliseconds,
             ResourceTimeoutMilliseconds = o.ResourceTimeout is > 0 ? o.ResourceTimeout.Value : 30000
         }, resources: target =>
         {
+            PresentTarget(target, context.Ui);
             if (o.Loader is null)
                 throw new MtkResourceException("DA --loader");
             var image = MtkDaParser.Select(new FileDataSource(ConsolePath.Normalize(o.Loader)!), target, kind);
@@ -112,10 +114,32 @@ internal static class MtkProtocolHostAdapter
     private static void Present(IProtocol protocol, ConsoleUi ui)
     {
         var p = (IMtkProtocol)protocol;
+        if (p.SessionState == MtkSessionState.Probed && p.TargetInfo is { } target)
+            PresentTarget(target, ui);
         ui.WriteLine(Strings.FormatCli_MtkInfo(p.TargetInfo?.HardwareCode.ToString("X4") ?? "?", p.SessionState, p.Capabilities));
         if (p.IsConnected)
             foreach (var r in p.GetStorageInfo().Regions)
                 ui.WriteLine($"{r.WireId} {r.Name} {r.Length} / {r.BlockSize}");
+    }
+    internal static void PresentTarget(MtkTargetInfo target, ConsoleUi ui)
+    {
+        ui.WriteLine(Strings.FormatCli_MtkChip(target.ChipName ?? Strings.Cli_MtkUnknownChip,
+            target.ChipDescription ?? "", target.HardwareCode.ToString("X4"), MtkChipCatalog.GetDaHardwareCode(target).ToString("X4")));
+        ui.WriteLine(Strings.FormatCli_MtkVersions(target.HardwareSubCode.ToString("X4"),
+            target.InitialHardwareVersion.ToString("X4"), target.HardwareVersion.ToString("X4"),
+            target.SoftwareVersion.ToString("X4"), target.BromVersion.ToString("X2"),
+            target.PreloaderVersion.ToString("X2"), target.Stage));
+        static string Flag(bool enabled) => enabled ? Strings.Cli_MtkEnabled : Strings.Cli_MtkDisabled;
+        var s = target.Security;
+        ui.WriteLine(Strings.FormatCli_MtkSecurity(s.Raw.ToString("X8"), Flag(s.SecureBoot), Flag(s.Sla),
+            Flag(s.Daa), Flag(s.CertificateRequired), Flag(s.MemoryReadAuthenticationRequired),
+            Flag(s.MemoryWriteAuthenticationRequired), Flag(s.EmmcBootParameterPresent), Flag(s.CacheCommandBlocked)));
+        ui.WriteLine(Strings.FormatCli_MtkWatchdog(target.WatchdogState switch
+        {
+            MtkWatchdogState.Disabled => Strings.Cli_MtkWatchdogDisabled,
+            MtkWatchdogState.ProfileUnavailable => Strings.Cli_MtkWatchdogUnavailable,
+            _ => Strings.Cli_MtkWatchdogNotRequested
+        }));
     }
     private sealed class CommandSet : IProtocolCommandSet
     {

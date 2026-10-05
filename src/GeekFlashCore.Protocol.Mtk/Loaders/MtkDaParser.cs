@@ -74,7 +74,7 @@ public static class MtkDaParser
     }
     public static MtkDaImage Select(IDataSource source, MtkTargetInfo target, MtkDaKind? kind = null, ushort? alias = null)
     {
-        var matches = Parse(source, kind).Where(e => e.HardwareCode == (alias ?? target.HardwareCode) &&
+        var matches = Parse(source, kind).Where(e => e.HardwareCode == MtkChipCatalog.GetDaHardwareCode(target, alias) &&
             (e.HardwareSubCode == 0 || e.HardwareSubCode == target.HardwareSubCode) &&
             e.HardwareVersion <= target.HardwareVersion && e.SoftwareVersion <= target.SoftwareVersion &&
             (kind is null || e.Kind == kind)).ToArray();

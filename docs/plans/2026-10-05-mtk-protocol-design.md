@@ -69,6 +69,8 @@
 
 DA1 上传顺序：`D7 echo → address/length/signature length echo → initial status → bounded data chunks → XOR checksum → final status → D5/address echo → status → C0`。校验和必须计算并比对；参考 Rust 只读取 checksum 的行为不继承。watchdog 写入只在已识别芯片配置和访问能力明确时执行。
 
+2026-10-05 BROM 初始化修订：Connect/ConnectAsync 在 FD 后使用已知普通 WDT（或显式 profile），再查询 D8/FE/FF/FC，随后请求资源和认证；CLI 的独立 Probe 同样启用该初始化，库独立 Probe 默认只查询。未知芯片及未支持特殊线路不写寄存器；一次会话不重复准备。芯片名称、DA alias、FD 初始版本与 WDT 结果单独保留；DA parser 与核心校验使用同一 alias，subcode/最低版本仍严格校验。详见 [BROM 标准初始化](2026-10-05-mtk-brom-initialization.md)。
+
 ### 3.2 DA 容器、选择与 EMI
 
 - 新格式 DA header 为 `0x6C`，count 位于 `0x68`，条目通常为 `0xDC`；旧格式条目为 `0xD8`。

@@ -222,4 +222,14 @@ find 搜索中按 Ctrl+C 取消本次搜索，等待当前读取及 ACK 完成�
   <data name="Cli_MtkDaSelectionTimedOut" xml:space="preserve"><value>选择 MTK DA 文件超时；请通过 --loader 预先指定文件后重新连接。</value></data>
   <data name="Cli_UsbOpenDisconnectedRetry" xml:space="preserve"><value>USB 设备在开始协议通信前已断开，正在重新枚举并等待设备。</value></data>
   <data name="Cli_UsbDisconnected" xml:space="preserve"><value>USB 设备已断开或重新枚举；请重新连接设备后重试。</value></data>
+  <data name="Cli_MtkChip" xml:space="preserve"><value>MTK 芯片：{0} {1}；硬件编号 0x{2}，DA 编号 0x{3}。</value></data>
+  <data name="Cli_MtkVersions" xml:space="preserve"><value>版本：subcode=0x{0}，FD HW=0x{1}，FC HW=0x{2}，SW=0x{3}，BROM=0x{4}，Preloader=0x{5}；阶段 {6}。</value></data>
+  <data name="Cli_MtkSecurity" xml:space="preserve"><value>安全配置 0x{0}：SBC={1}，SLA={2}，DAA={3}，证书={4}，内存读认证={5}，内存写认证={6}，eMMC 启动参数={7}，Cache 命令阻止={8}。</value></data>
+  <data name="Cli_MtkWatchdog" xml:space="preserve"><value>看门狗：{0}。</value></data>
+  <data name="Cli_MtkUnknownChip" xml:space="preserve"><value>未知芯片</value></data>
+  <data name="Cli_MtkEnabled" xml:space="preserve"><value>开启</value></data>
+  <data name="Cli_MtkDisabled" xml:space="preserve"><value>关闭</value></data>
+  <data name="Cli_MtkWatchdogDisabled" xml:space="preserve"><value>已通过标准寄存器写入关闭</value></data>
+  <data name="Cli_MtkWatchdogUnavailable" xml:space="preserve"><value>缺少已知配置，未写入寄存器</value></data>
+  <data name="Cli_MtkWatchdogNotRequested" xml:space="preserve"><value>尚未请求初始化</value></data>
 </root>

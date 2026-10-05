@@ -39,6 +39,10 @@ internal static class MtkProtocolHostAdapter
         if (o.Port is not null)
             throw new ArgumentException(Strings.Cli_MtkRequiresUsb);
         _ = DaKind(o.MtkDaMode);
+        _ = PmtLayout(o.MtkPmtLayout);
+        if (o.MtkNorEraseBlockSize < 0 || o.MtkNorEraseBlockSize > 16 * 1024 * 1024 ||
+            (o.MtkNorEraseBlockSize & (o.MtkNorEraseBlockSize - 1)) != 0)
+            throw new ArgumentException(Strings.Cli_MtkMediaOptionsInvalid);
         if (o.ResourceTimeout is <= 0)
             throw new ArgumentException(Strings.Cli_TimeoutMustBePositive);
         if (o.Digest is not null || o.VipSigned is not null || o.VipChained is not null || o.OplusDigest is not null ||
@@ -55,6 +59,11 @@ internal static class MtkProtocolHostAdapter
         "xflash" => MtkDaKind.XFlash,
         "xml" => MtkDaKind.Xml,
         _ => throw new ArgumentException(Strings.Cli_MtkDaModeInvalid)
+    };
+    private static MtkPmtLayout? PmtLayout(string? layout) => layout switch
+    {
+        null => null, "32" => MtkPmtLayout.Word32, "64" => MtkPmtLayout.Word64, "96" => MtkPmtLayout.Legacy96,
+        _ => throw new ArgumentException(Strings.Cli_MtkMediaOptionsInvalid)
     };
     private static ITransport CreateUsb(UsbTransportIdentity id, CliOptions o) => LibUsbTransportFactory.Create(new LibUsbConnectionOptions
     {
@@ -76,6 +85,9 @@ internal static class MtkProtocolHostAdapter
         {
             DaKind = kind,
             InitializeWatchdogOnProbe = true,
+            EnableNandLogicalWrites = o.MtkNandWrite,
+            NorEraseBlockSize = o.MtkNorEraseBlockSize,
+            LegacyPmtLayout = PmtLayout(o.MtkPmtLayout),
             ReadTimeoutMilliseconds = o.ReadTimeout,
             ConnectTimeoutMilliseconds = o.HasExplicitConnectTimeout ? o.ConnectTimeout : MtkProtocolOptions.DefaultConnectTimeoutMilliseconds,
             ResourceTimeoutMilliseconds = o.ResourceTimeout is > 0 ? o.ResourceTimeout.Value : 30000
@@ -143,7 +155,7 @@ internal static class MtkProtocolHostAdapter
     }
     private sealed class CommandSet : IProtocolCommandSet
     {
-        private static readonly string[] Names = ["mtk-probe", "mtk-capabilities", "mtk-rpmb", "mtk-memory", "mtk-seccfg"];
+        private static readonly string[] Names = ["mtk-probe", "mtk-capabilities", "mtk-rpmb", "mtk-memory", "mtk-seccfg", "mtk-query", "mtk-property", "mtk-register", "mtk-pmt", "mtk-slot"];
         public bool Handles(string command) => Names.Contains(command, StringComparer.OrdinalIgnoreCase);
         public CliOptions Normalize(CliOptions options) => options with { Command = options.Command.ToLowerInvariant() };
         public bool RequiresConnection(string command) => command is not ("mtk-probe" or "mtk-capabilities");
@@ -152,7 +164,7 @@ internal static class MtkProtocolHostAdapter
             if (RequiresConnection(command) && !protocol.IsConnected)
                 throw new InvalidOperationException(Strings.Cli_ReconnectRequired);
         }
-        public void PrintHelp(IProtocol protocol, ConsoleUi ui) => ui.WriteLine(Strings.Cli_HelpMtk);
+        public void PrintHelp(IProtocol protocol, ConsoleUi ui) { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkStandard); }
         public void Validate(CliOptions options)
         {
             string[] a = options.Arguments;
@@ -164,9 +176,9 @@ internal static class MtkProtocolHostAdapter
                         throw new CommandUsageException(options.Command);
                     break;
                 case "mtk-rpmb":
-                    if (a.Length != 6 || a[0] is not ("read" or "write") || CommandSyntax.Number(a[1]) > 3 ||
+                    if (a.Length is not (5 or 6) || a[0] is not ("read" or "write" or "erase") || a.Length != (a[0] == "erase" ? 5 : 6) || CommandSyntax.Number(a[1]) > 3 ||
                         CommandSyntax.Number(a[2]) > uint.MaxValue || CommandSyntax.Number(a[3]) is 0 or > uint.MaxValue)
-                        throw new CommandUsageException("mtk-rpmb <read|write> <region> <start> <count> <key-file> <data-file>");
+                        throw new CommandUsageException("mtk-rpmb <read|write|erase> <region> <start> <count> <key-file> [data-file]");
                     break;
                 case "mtk-memory":
                     if (a.Length != 4 || a[0] is not ("read" or "write") || CommandSyntax.Number(a[1]) > uint.MaxValue ||
@@ -177,6 +189,32 @@ internal static class MtkProtocolHostAdapter
                     if (a.Length != 5 || a[0] is not ("lock" or "unlock") || CommandSyntax.Number(a[1]) > uint.MaxValue ||
                         CommandSyntax.Number(a[2]) > long.MaxValue || CommandSyntax.Number(a[3]) is 0 or > long.MaxValue)
                         throw new CommandUsageException("mtk-seccfg <lock|unlock> <region> <offset> <length> <backup-file>");
+                    break;
+                case "mtk-query":
+                    if (a.Length != 2 || !Enum.GetNames<MtkDaQuery>().Contains(a[0], StringComparer.OrdinalIgnoreCase))
+                        throw new CommandUsageException("mtk-query <query-name> <output-file>");
+                    break;
+                case "mtk-property":
+                    if (a.Length != 2 || a[0].Length is 0 or > 128 || a[0].Any(c => !char.IsAsciiLetterOrDigit(c) && c is not ('.' or '_' or '-')))
+                        throw new CommandUsageException("mtk-property <key> <output-file>");
+                    break;
+                case "mtk-register":
+                    if (a.Length is not (2 or 3) || a[0] is not ("read" or "write") || a.Length != (a[0] == "read" ? 2 : 3) ||
+                        CommandSyntax.Number(a[1]) > uint.MaxValue || CommandSyntax.Number(a[1]) % 4 != 0 ||
+                        a.Length == 3 && CommandSyntax.Number(a[2]) > uint.MaxValue)
+                        throw new CommandUsageException("mtk-register <read|write> <address> [value]");
+                    break;
+                case "mtk-pmt":
+                    if (a.Length != 1 || a[0] is not ("32" or "64" or "96" or "xml"))
+                        throw new CommandUsageException("mtk-pmt <32|64|96|xml>");
+                    break;
+                case "mtk-slot":
+                    if (a.Length is not (4 or 6) || a[0] is not ("read" or "set") || a.Length != (a[0] == "read" ? 4 : 6))
+                        throw new CommandUsageException("mtk-slot read <region> <offset> <length> | set <slot-index> <region> <offset> <length> <backup-file>");
+                    int index = a[0] == "read" ? 1 : 2;
+                    if (index == 2 && CommandSyntax.Number(a[1]) > 3 || CommandSyntax.Number(a[index]) > uint.MaxValue ||
+                        CommandSyntax.Number(a[index + 1]) > long.MaxValue || CommandSyntax.Number(a[index + 2]) is < 2080 or > long.MaxValue)
+                        throw new CommandUsageException("mtk-slot");
                     break;
                 default:
                     throw new CommandUsageException(options.Command);
@@ -195,6 +233,42 @@ internal static class MtkProtocolHostAdapter
             if (options.Command == "mtk-capabilities")
             {
                 Present(p, ui);
+                return 0;
+            }
+            if (options.Command is "mtk-query" or "mtk-property" or "mtk-register" or "mtk-pmt")
+            {
+                var diagnostics = p as IMtkDaDiagnostics ?? throw new MtkCapabilityException("standard DA diagnostics");
+                if (options.Command is "mtk-query" or "mtk-property")
+                {
+                    using var result = options.Command == "mtk-query" ? diagnostics.QueryDa(Enum.Parse<MtkDaQuery>(a[0], true), ct) : diagnostics.GetDaSystemProperty(a[0], ct);
+                    await AtomicReadOutput.WriteAsync(ConsolePath.Normalize(a[1])!, s => s.WriteAsync(result.Memory, ct).AsTask(), ct);
+                }
+                else if (options.Command == "mtk-register")
+                {
+                    uint register = (uint)CommandSyntax.Number(a[1]);
+                    if (a[0] == "read") ui.WriteLine(Strings.FormatCli_MtkRegisterValue(register.ToString("X8"), diagnostics.ReadDaRegister(register, ct).ToString("X8")));
+                    else diagnostics.WriteDaRegister(register, (uint)CommandSyntax.Number(a[2]), ct);
+                }
+                else foreach (var partition in a[0] == "xml" ? diagnostics.GetXmlPartitionTable(ct) : diagnostics.GetLegacyPartitionTable(PmtLayout(a[0])!.Value, ct))
+                    ui.WriteLine(Strings.FormatCli_MtkPartitionRange(partition.Name, partition.Offset, partition.Length));
+                return 0;
+            }
+            if (options.Command == "mtk-slot")
+            {
+                int index = a[0] == "read" ? 1 : 2;
+                var range = new MtkFlashRange((uint)CommandSyntax.Number(a[index]), (long)CommandSyntax.Number(a[index + 1]), (long)CommandSyntax.Number(a[index + 2]));
+                var service = new MtkBootControlService(p);
+                if (a[0] == "set")
+                {
+                    using var backup = new FileStream(ConsolePath.Normalize(a[5])!, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                    service.SetActiveSlot(range, (int)CommandSyntax.Number(a[1]), backup, ct);
+                    ui.WriteLine(Strings.FormatCli_MtkSlotWritten(a[1]));
+                    return 0;
+                }
+                var info = service.Read(range, ct);
+                ui.WriteLine(Strings.FormatCli_MtkSlotInfo(info.ActiveSlot, info.Version, info.CurrentSlot));
+                foreach (var slot in info.Slots)
+                    ui.WriteLine(Strings.FormatCli_MtkSlotState(slot.Index, slot.Priority, slot.TriesRemaining, slot.SuccessfulBoot, slot.VerityCorrupted));
                 return 0;
             }
             if (options.Command == "mtk-seccfg")
@@ -229,6 +303,7 @@ internal static class MtkProtocolHostAdapter
                 finally { CryptographicOperations.ZeroMemory(key); }
                 if (a[0] == "read")
                     await AtomicReadOutput.WriteAsync(ConsolePath.Normalize(a[5])!, s => { ext.Read(region, start, count, s, ct); return Task.CompletedTask; }, ct);
+                else if (a[0] == "erase") ext.Erase(region, start, count, ct);
                 else
                 {
                     using var s = File.OpenRead(ConsolePath.Normalize(a[5])!);

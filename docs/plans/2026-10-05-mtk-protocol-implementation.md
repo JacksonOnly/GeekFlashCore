@@ -23,7 +23,7 @@
 | MTK-06 / 2026-10-05 | 独立 Legacy eMMC 初始化/EMI/DA2、分区选择、校验和读写、进度擦除、系统重启 | 完整 Legacy 模拟线路、checksum/short nonseek EOF 失败；其他 Legacy 介质明确拒绝 |
 | MTK-07 / 2026-10-05 | eMMC/UFS 几何、primary GPT、目标解析、Raw/Sparse 流式写、generation block view、任意字节对齐读 | 512/4096 block、小 buffer、GPT CRC、Raw/Sparse 大源与 DONT_CARE、最终 NAK/旧视图失效 |
 | MTK-08 / 2026-10-05 | 初次授权只预留 `IMtkExploitStrategy`；后由 MTK-13 扩充框架 | 初次交付无核心调用；最新契约和调用范围见 MTK-13 |
-| MTK-09 / 2026-10-05 | 可选 Extensions 只依赖 Abstractions；已加载 DA ACK/context、允许范围内的内存/寄存器、SEJ、显式 RPMB key derivation | XFlash/XML ABI、已加载 DA2 上下文、边界、过期通道、硬件 cipher 同 gate 不重入；硬件算法待验证 |
+| MTK-09 / 2026-10-05 | 可选 Extensions 依赖 Abstractions 与 Shared CRC 工具，不依赖协议核心；已加载 DA ACK/context、允许范围内的内存/寄存器、SEJ、显式 RPMB key derivation | XFlash/XML ABI、已加载 DA2 上下文、边界、过期通道、硬件 cipher 同 gate 不重入；硬件算法待验证 |
 | MTK-10 / 2026-10-05 | 已存在 32-byte key 的 RPMB Authenticate、256-byte data block、区域/容量/chunk/final status、失败不重试 | XFlash/XML read/write transcript、UFS 显式容量、final NAK 失效；不提供 ProgramKey |
 | MTK-11 / 2026-10-05 | seccfg v3/v4 SW/SEJ cipher、原文验证、generation plan、预写快照、备份、最小对齐写、完整回读 | v3/v4、尾部保留、原 hash、硬件 cipher mock、最小 sector 写；写后失败 MayHaveWritten 且失效 |
 | MTK-12 / 2026-10-05 | CLI 注册、纯 USB discovery/devices、文件资源、MTK 参数/命令与帮助；Qcom 默认保持；README/AGENTS/来源文本 | CLI 参数冲突、枚举歧义/物理选择、旧 Qcom 回归；完整验收见下一节 |
@@ -49,16 +49,17 @@ CLI 原来的 1500 ms 是 Qualcomm 初始探测预算，不能复用于整个 MT
 | --- | --- | --- |
 | BROM / Preloader | 标准查询、word/register、UART、auth/SLA、DA/jump、partition、reset flag | 需要真实命令支持；未知目录命令没有猜测实现；watchdog 地址/值/位宽显式 |
 | DA 容器 / EMI | D8/DC、旧/新/v6、Legacy marker；Preloader EMI 窗口 | 不扫描参考目录；宿主 source；过大 marker scan 要求显式 DA mode |
-| Legacy | eMMC、对应 DA/EMI 线路与系统重启 | NAND/NOR/OOB/BMT、IoT、SDMMC 不登记支持；其他重启模式拒绝 |
-| XFlash | eMMC/UFS、DA1/EMI/DA2、读写擦除/重启、合法 SLA | 具体厂商环境/认证返回码仍待设备验证 |
-| XML | eMMC/UFS、严格 lifetime/file/progress、合法 SLA | 使用 DA runtime 的 DRAM 初始化；没有可确认的外部 XML EMI upload 命令，不臆造 |
-| 存储/GPT/镜像 | eMMC 1/2/4～8；UFS 1～3；primary GPT；Raw/Sparse | RPMB 排除普通 region；GPT 不做 backup fallback；Flush 仅保证协议应答 |
+| Legacy | eMMC、NOR 普通读写、SDMMC 标准写入、明确布局 PMT、标准寄存器、系统重启 | SDMMC read/erase、NOR erase、NAND/OOB/BMT/IoT 无确认线路而拒绝；其他重启模式拒绝 |
+| XFlash | eMMC/UFS/SDMMC/NOR、逻辑 NAND/ECC、DA1/EMI/DA2、标准只读查询、读写擦除/重启、合法 SLA | NAND 写/擦除显式启用；NOR 擦除几何显式提供；无物理页/OOB；厂商环境/返回码待设备验证 |
+| XML | eMMC/UFS、只读 NAND、原生分区表、标准寄存器/系统属性/FW/HW 查询、严格 lifetime/file/progress、合法 SLA | NAND usable/BMT 未确认，仅只读；PowerOff 拒绝；使用 DA runtime 的 DRAM 初始化；无确认的外部 EMI upload |
+| 存储/GPT/镜像 | eMMC 1/2/4～8；UFS 1～3；有界 primary/backup GPT、实际 entry LBA、CRC；Raw/Sparse 进度 | RPMB 排除普通 region；Flush 仅保证协议应答；不可寻址 Sparse 在写前拒绝，Raw 保留首部并流式 |
 | 重枚举 | 独立有界 LibUsb 工厂，同 serial 或 bus/port 与允许 PID | 不发送 DA 提速/USB reset、不自动续接 DA；旧视图必须失效 |
 | DA extension | XFlash/XML 已加载兼容 ABI 的 ACK/CTX、内存/register/SEJ/key derivation | 不 patch/load extension，不内置二进制；地址与实际 DA2/profile 匹配 |
 | Hardware crypto | 扩展 SEJ 和 backend key derivation | 无独立主机 GCPU/DXCC/TZCC 驱动；基址由宿主提供；算法/硬件待验证 |
-| RPMB | eMMC/UFS 独立 Authenticate/read/write，256-byte data blocks | UFS 每 region 容量显式；不烧录 key；简化 ABI 不提供宿主 nonce/MAC/counter 的完整帧校验 |
+| RPMB | eMMC/UFS 独立 Authenticate/read/write/erase，256-byte data blocks | erase 为已认证的有界零写；UFS 每 region 容量显式；不烧录 key；简化 ABI 不提供宿主 nonce/MAC/counter 的完整帧校验 |
 | seccfg | v3/v4、软件与已提供的 SEJ cipher、lock/unlock plan/apply | 不推断 Android UI/AVB 最终状态；写失败可能已改变设备；调用方承担备份持久化，CLI 使用 durable FileStream |
-| CLI | mtk-probe/capabilities/memory/rpmb/seccfg，通用存储命令、MTK devices | 标准材料显式文件；无厂商账户/签名服务；寄存器、BROM 与派生 key 走类型化 API |
+| A/B boot control | version/slot/CRC 校验、misc/para 最小扇区备份/写/完整回读 | 显式分区 range；未知写结果失效且不重试；CLI FileStream 在写前 durable flush；普通 Stream 持久化由宿主负责 |
+| CLI | mtk-probe/capabilities/memory/rpmb/seccfg/query/property/register/pmt/slot，通用存储命令、MTK devices | 标准材料显式文件；无厂商账户/签名服务；BROM 与派生 key 走类型化 API；查询结果仅写文件 |
 | 宿主阶段框架 | 策略契约、context/result 与四阶段调用 | 显式注入才调用；无策略实现、默认注册、认证绕过、攻击载荷、patch 生成或 CLI 开关 |
 
 ## 验收命令与证据
@@ -98,6 +99,8 @@ MTK-01～12 的首次验收通过 **461 项**，0失败/0跳过。下表保留�
 MTK-13 的框架修订与文档在独立 `feat(mtk)!: add scoped host extension checkpoints` 提交中；footer 标明原预留接口签名变化，提交号通过 `git log` 查询，避免在自身提交内容中写循环 hash。没有 push、PR、包发布或真实设备操作；验收后工作区仅有 ignored 本地测试/构建产物。
 
 ## 未决风险与恢复入口
+
+2026-10-05 STD-01～06 标准功能补全：DA `m_start_offset` 语义和 raw index 修正、DA channel 线程/代数、主备 GPT、PMT/XML 原生表、DA 查询/寄存器、存储介质、A/B、RPMB erase、传输进度和 CLI 见 [最新补全证据](2026-10-05-mtk-standard-completion-implementation.md)。本轮测试共 618 项通过（MTK184/CLI119/Qcom251/Core9/LP55），无失败/跳过；不含缺失策略导致无法编译的既有 ignored KamakiriTests.cs，排除说明见补全文档；没有实现漏洞。上表为当前支持，旧验收表保留其历史结果。
 
 2026-10-05 新增 USB-01～03：CLI Windows native DLL 部署与按 MTK 刷机硬件 ID 自动安装 libusb-win32 的设计、实现、验证及恢复方法见 [Windows USB 启动准备](2026-10-05-mtk-windows-usb-bootstrap.md)。设备过滤器范围遵循用户明确确认，不对共享 Ports/USB 类安装；不涉及漏洞策略实现。此项补齐运行依赖，驱动/UAC 与真机连接仍待验证。
 

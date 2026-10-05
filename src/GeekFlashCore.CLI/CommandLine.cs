@@ -16,11 +16,12 @@ internal static class CommandLine
             if (arg is "-v" or "--verbose") { builder = builder with { Verbose = true }; continue; }
             if (arg == "--non-interactive") { builder = builder with { NonInteractive = true }; continue; }
             if (arg == "--oplus-resume") { builder = builder with { OplusResume = true }; continue; }
+            if (arg == "--mtk-nand-write") { builder = builder with { MtkNandWrite = true }; continue; }
             string? value = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..] : null;
             string name = arg.Contains('=') ? arg[..arg.IndexOf('=')] : arg;
             if (name.StartsWith("--", StringComparison.Ordinal))
             {
-                if (name is not ("--port" or "--usb" or "--protocol" or "--loader" or "--digest" or "--vip-signed" or "--vip-chained" or "--oplus-digest" or "--oplus-sign" or "--oplus-mode" or "--oneplus-projid" or "--vendor" or "--auth" or "--read-timeout" or "--write-timeout" or "--connect-timeout" or "--resource-timeout" or "--device-wait-timeout" or "--log-file" or "--mtk-preloader" or "--mtk-da-mode" or "--mtk-auth-file" or "--mtk-cert" or "--usb-serial" or "--usb-bus" or "--usb-port-path" or "--mtk-sej-base" or "--mtk-tzcc-base" or "--mtk-ssr-base" or "--usb-interface" or "--usb-control-interface" or "--usb-alt" or "--mtk-ufs-rpmb-blocks"))
+                if (name is not ("--port" or "--usb" or "--protocol" or "--loader" or "--digest" or "--vip-signed" or "--vip-chained" or "--oplus-digest" or "--oplus-sign" or "--oplus-mode" or "--oneplus-projid" or "--vendor" or "--auth" or "--read-timeout" or "--write-timeout" or "--connect-timeout" or "--resource-timeout" or "--device-wait-timeout" or "--log-file" or "--mtk-preloader" or "--mtk-da-mode" or "--mtk-auth-file" or "--mtk-cert" or "--usb-serial" or "--usb-bus" or "--usb-port-path" or "--mtk-sej-base" or "--mtk-tzcc-base" or "--mtk-ssr-base" or "--usb-interface" or "--usb-control-interface" or "--usb-alt" or "--mtk-ufs-rpmb-blocks" or "--mtk-nor-erase-block" or "--mtk-pmt-layout"))
                     throw new ArgumentException(Strings.FormatCli_UnknownOption(name));
                 value ??= i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal)
                     ? args[++i]
@@ -34,6 +35,8 @@ internal static class CommandLine
                     "--mtk-da-mode" => builder with { MtkDaMode = value },
                     "--mtk-auth-file" => builder with { MtkAuthenticationFile = value },
                     "--mtk-cert" => builder with { MtkCertificateFile = value },
+                    "--mtk-nor-erase-block" => builder with { MtkNorEraseBlockSize = checked((int)CommandSyntax.Number(value)) },
+                    "--mtk-pmt-layout" => builder with { MtkPmtLayout = value },
                     "--usb-serial" => builder with { UsbSerial = value },
                     "--usb-bus" => builder with { UsbBus = byte.Parse(value) },
                     "--usb-port-path" => builder with { UsbPortPath = value },
@@ -85,5 +88,6 @@ internal static class CommandLine
         Console.WriteLine(Strings.Cli_HelpOptionsTimeouts);
         Console.WriteLine(Strings.Cli_HelpOptionsLegacy);
         Console.WriteLine(Strings.Cli_HelpMtk);
+        Console.WriteLine(Strings.Cli_HelpMtkStandard);
     }
 }

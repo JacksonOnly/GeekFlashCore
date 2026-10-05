@@ -12,6 +12,9 @@ internal sealed record CliOptions
     public string? MtkDaMode { get; init; }
     public string? MtkAuthenticationFile { get; init; }
     public string? MtkCertificateFile { get; init; }
+    public bool MtkNandWrite { get; init; }
+    public int MtkNorEraseBlockSize { get; init; }
+    public string? MtkPmtLayout { get; init; }
     public string? UsbSerial { get; init; }
     public byte? UsbBus { get; init; }
     public string? UsbPortPath { get; init; }
@@ -81,6 +84,7 @@ internal sealed record CliOptions
         {
             if (MtkPreloader is not null || MtkDaMode is not null || MtkAuthenticationFile is not null || MtkCertificateFile is not null ||
                 MtkSejBase != 0 || MtkTzccBase != 0 || MtkSsrBase != 0 || MtkUfsRpmbBlocks.Count > 0 ||
+                MtkNandWrite || MtkNorEraseBlockSize != 0 || MtkPmtLayout is not null ||
                 UsbInterface != -1 || UsbControlInterface is not null || UsbAlternateSetting != 0)
                 throw new ArgumentException(Localization.Strings.Cli_MtkOptionConflict);
             QcomProtocolHostAdapter.ValidateOptions(this);

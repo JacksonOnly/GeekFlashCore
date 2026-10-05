@@ -35,4 +35,22 @@ After `Probe`, `UseBromSession` exposes the standard mtkclient BROM methods: har
 
 DA/auth/cert files are supplied explicitly. Missing SLA responses require a host signer; the CLI has no vendor signing service. Already loaded ABI-compatible extensions provide bounded memory/register/SEJ/RPMB operations after ACK/context validation. UFS RPMB capacities must be supplied explicitly with `--mtk-ufs-rpmb-blocks`. seccfg v3/v4 changes validate the original configuration, persist a backup, write the minimum aligned window and verify readback. Failed writes are not retried.
 
+Standard DA diagnostics use the optional `IMtkDaDiagnostics` interface: allowlisted XFlash read-only controls, XML system properties/firmware/hardware information, Legacy/XML registers, explicit Legacy PMT layouts and the native XML partition table. Query results are owned sensitive buffers and must be disposed. GPT discovery validates the original header and entry-array CRCs, reads the actual entry LBA and recovers from a valid backup at the last physical block. Metadata stays bounded to 1 MiB; Raw and Sparse transfers remain streamed. Nonseekable Raw retains its prefix; nonseekable Sparse is rejected before writing.
+
+XFlash also recognizes SDMMC, NOR and logical NAND data pages with ECC. NAND writes/erase require `--mtk-nand-write`; OOB/physical writes are excluded. NOR erase requires confirmed `--mtk-nor-erase-block` geometry. Legacy supports NOR read/write and SDMMC write; unconfirmed Legacy SDMMC read/erase, NOR erase and Legacy NAND/IoT are explicitly unavailable. XML NAND supports standard reads and native partitions; its reported total size does not confirm usable logical capacity or BMT, so it is read-only. `--mtk-pmt-layout 32|64|96` selects the known Legacy layout for discovery when GPT is absent.
+
+`MtkBootControlService` validates version, slot count and CRC, backs up the minimum containing sector window, preserves adjacent bytes and verifies the entire readback. It accepts an explicitly resolved `misc`/`para` range; slot indexes are zero-based. `FileStream` backups are flushed durably before writing; other streams must provide their own persistence. RPMB erase is an authenticated zero write through the existing extension ABI. It requires an already provisioned key and does not program keys.
+
+```text
+geekflash --protocol mtk --loader DA.bin mtk-query Version da-version.bin
+geekflash --protocol mtk --loader DA.bin --mtk-da-mode xml mtk-property DA.VERSION property.xml
+geekflash --protocol mtk --loader DA.bin --mtk-da-mode xml mtk-pmt xml
+geekflash --protocol mtk --loader DA.bin --mtk-da-mode legacy mtk-pmt 64
+geekflash --protocol mtk --loader DA.bin mtk-slot read 8 MISC_OFFSET MISC_LENGTH
+geekflash --protocol mtk --loader DA.bin mtk-slot set 1 8 MISC_OFFSET MISC_LENGTH misc-window-backup.bin
+geekflash --protocol mtk --loader DA.bin mtk-rpmb erase 0 START_BLOCK BLOCK_COUNT key.bin
+```
+
+Replace the uppercase placeholders with confirmed numeric ranges/capacity; backup files are created without overwriting an existing file. `mtk-register read|write address [value]` uses the standard Legacy/XML command and requires aligned addresses. A Download reboot means Fastboot in XFlash/XML; XML PowerOff is unavailable and is rejected before I/O. See the [standard completion evidence and remaining limits](docs/plans/2026-10-05-mtk-standard-completion-implementation.md).
+
 The exploit portion provides only the `IMtkExploitStrategy` host contract and scoped connection checkpoints: before DA1, after DA1 initialization, after DA2 starts, and after standard DA authentication. The host must explicitly inject a strategy; none are implemented or registered by the core. No patches, payloads or exploit CLI options are included. A completed callback does not bypass standard authentication; failed or reconnect outcomes invalidate the session. See [host checkpoint contract](docs/plans/2026-10-05-mtk-exploit-framework.md), [implementation evidence and support limits](docs/plans/2026-10-05-mtk-protocol-implementation.md), [design](docs/plans/2026-10-05-mtk-protocol-design.md) and [source notices](NOTICE-MTK.md). Hardware compatibility, Windows USB drivers and real transfer throughput remain unverified.

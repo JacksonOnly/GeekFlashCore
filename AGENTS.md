@@ -124,3 +124,5 @@ git status --short --ignored
 完成一个任务后，把事实、命令结果和风险写回实施计划，再进入下一项工作。
 
 开始 MTK 工作前，读取本文件、`docs/plans/2026-10-05-mtk-protocol-design.md`、`docs/plans/2026-10-05-mtk-protocol-implementation.md`、`docs/plans/2026-10-05-mtk-brom-method-mapping.md` 和 `docs/plans/2026-10-05-mtk-exploit-framework.md`，再检查当前工作区与最近提交。MTK 测试位于 ignored `.tests/GeekFlashCore.Protocol.Mtk.Tests`。
+
+MTK 标准功能补全的最新范围、证据和未决风险另见 `docs/plans/2026-10-05-mtk-standard-completion-design.md` 与 `docs/plans/2026-10-05-mtk-standard-completion-implementation.md`。此范围禁止新增漏洞利用；已有未跟踪漏洞计划和 ignored 测试不得混入标准功能提交。

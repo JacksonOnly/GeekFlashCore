@@ -232,4 +232,11 @@ find 搜索中按 Ctrl+C 取消本次搜索，等待当前读取及 ACK 完成�
   <data name="Cli_MtkWatchdogDisabled" xml:space="preserve"><value>已通过标准寄存器写入关闭</value></data>
   <data name="Cli_MtkWatchdogUnavailable" xml:space="preserve"><value>缺少已知配置，未写入寄存器</value></data>
   <data name="Cli_MtkWatchdogNotRequested" xml:space="preserve"><value>尚未请求初始化</value></data>
+  <data name="Cli_MtkMediaOptionsInvalid" xml:space="preserve"><value>MTK NOR 擦除块必须为不超过 16 MiB 的 2 次幂（0 表示未知）；PMT 布局应为 32、64 或 96。</value></data>
+  <data name="Cli_MtkRegisterValue" xml:space="preserve"><value>寄存器 0x{0} = 0x{1}</value></data>
+  <data name="Cli_MtkPartitionRange" xml:space="preserve"><value>{0} 偏移={1} 字节 长度={2} 字节</value></data>
+  <data name="Cli_MtkSlotInfo" xml:space="preserve"><value>最高优先级槽位={0}，boot control 版本={1}，当前启动后缀槽位={2}。</value></data>
+  <data name="Cli_MtkSlotState" xml:space="preserve"><value>槽位 {0}：优先级={1}，剩余尝试={2}，启动成功={3}，verity 损坏={4}。</value></data>
+  <data name="Cli_MtkSlotWritten" xml:space="preserve"><value>槽位 {0} 已写入并读回校验，原始扇区已备份。</value></data>
+  <data name="Cli_HelpMtkStandard" xml:space="preserve"><value>MTK 标准命令：mtk-query query-name output-file | mtk-property key output-file | mtk-register read|write address [value] | mtk-pmt 32|64|96|xml | mtk-slot read region offset length | mtk-slot set slot-index region offset length backup-file | mtk-rpmb erase region start count key-file。槽位从 0 开始，range 必须对应 misc/para 分区。查询名使用 MtkDaQuery 枚举名称，例如 Version、ChipId、DeviceFirmwareInfo、HardwareInfo；二进制结果仅写入文件。介质选项：--mtk-nand-write（XFlash 显式允许逻辑页写入/擦除） --mtk-nor-erase-block bytes（已确认的擦除块） --mtk-pmt-layout 32|64|96（Legacy 无 GPT 时的明确布局）。</value></data>
 </root>

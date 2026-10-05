@@ -232,4 +232,11 @@ Examples (current directory /super/system_a):
   <data name="Cli_MtkWatchdogDisabled" xml:space="preserve"><value>disabled through an acknowledged standard register write</value></data>
   <data name="Cli_MtkWatchdogUnavailable" xml:space="preserve"><value>known profile unavailable; no register written</value></data>
   <data name="Cli_MtkWatchdogNotRequested" xml:space="preserve"><value>initialization not requested</value></data>
+  <data name="Cli_MtkMediaOptionsInvalid" xml:space="preserve"><value>MTK NOR erase blocks must be powers of two no larger than 16 MiB (0 means unknown); PMT layout must be 32, 64 or 96.</value></data>
+  <data name="Cli_MtkRegisterValue" xml:space="preserve"><value>Register 0x{0} = 0x{1}</value></data>
+  <data name="Cli_MtkPartitionRange" xml:space="preserve"><value>{0} offset={1} bytes length={2} bytes</value></data>
+  <data name="Cli_MtkSlotInfo" xml:space="preserve"><value>Highest-priority slot={0}; boot control version={1}; current boot suffix slot={2}.</value></data>
+  <data name="Cli_MtkSlotState" xml:space="preserve"><value>Slot {0}: priority={1}, tries remaining={2}, boot successful={3}, verity corrupted={4}.</value></data>
+  <data name="Cli_MtkSlotWritten" xml:space="preserve"><value>Slot {0} written and verified by readback; original sectors backed up.</value></data>
+  <data name="Cli_HelpMtkStandard" xml:space="preserve"><value>MTK standard commands: mtk-query query-name output-file | mtk-property key output-file | mtk-register read|write address [value] | mtk-pmt 32|64|96|xml | mtk-slot read region offset length | mtk-slot set slot-index region offset length backup-file | mtk-rpmb erase region start count key-file. Slots are zero-based; range must describe the misc/para partition. Query names use MtkDaQuery enum names, such as Version, ChipId, DeviceFirmwareInfo and HardwareInfo; binary results go only to files. Media options: --mtk-nand-write (explicitly allow XFlash logical page writes/erase), --mtk-nor-erase-block bytes (confirmed erase block), --mtk-pmt-layout 32|64|96 (explicit Legacy layout when no GPT exists).</value></data>
 </root>

@@ -62,6 +62,8 @@
 
 ## 工作树与恢复入口
 
+生产提交：`6b0065b feat(mtk): complete standard DA storage and diagnostics`；`20c57ed feat(mtk): add verified A/B boot control service`；CLI 与支持矩阵/来源/恢复文档在后续 `feat(cli): expose standard MTK diagnostics and slot commands` 中提交，其 hash 用 `git log` 查询，避免自引用。仅本地提交，没有 push、PR 或包发布。
+
 生产变更只涉及 MTK Core/Abstractions/Extensions、MTK CLI adapter/options/resources 和必要文档；Qualcomm、Transport、GPT parser、既有漏洞框架/策略文件不改。两份初始未跟踪 kamakiri 计划保留原样；ignored `KamakiriTests.cs` 保留，仅本地测试 csproj 排除其缺失策略引用。参考目录只读；mtkclient 基线 `e9fcf97`，当前 penumbra 拷贝无 Git 元数据，历史 `ce13391` 不能作为此次文件指纹。
 
 恢复工作时先读本文件和支持矩阵，运行当前 Release 测试；要新增上述未确认介质/硬件能力，需要设备 profile 或正常协议抓包再补设计和边界测试，不能照搬参考中的无界重试或吞状态错误。

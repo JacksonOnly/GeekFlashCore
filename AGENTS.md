@@ -14,6 +14,9 @@
 - `src/GeekFlashCore.Protocol.Qcom`：Qualcomm 协议实现、会话状态、Sahara、Firehose、厂商策略和存储操作。
 - `src/GeekFlashCore.Protocol.Qcom.Abstractions`：稳定的公共契约、配置、模型、资源接口和异常类型。
 - `src/GeekFlashCore.Protocol.Qcom.MessagePipe`：可选的 MessagePipe 资源适配层，不反向污染协议核心。
+- `src/GeekFlashCore.Protocol.Mtk.Abstractions`：MTK 稳定契约、BROM 命令/会话、资源与安全能力。
+- `src/GeekFlashCore.Protocol.Mtk`：同步 LibUsb BROM/Preloader、Legacy/XFlash/XML、DA/EMI 与流式存储。
+- `src/GeekFlashCore.Protocol.Mtk.Extensions`：可选已加载 DA 扩展、SEJ、RPMB、seccfg；核心不反向依赖。
 - `src/GeekFlashCore.Protocol.Abstractions`：跨协议公共抽象。
 - `src/GeekFlashCore.Android.Sparse`：Android Sparse 解析、计划和流式区域访问。
 - `src/GeekFlashCore.Transport.*`：SerialPort、LibUsb 和传输抽象。
@@ -60,6 +63,8 @@
 - 普通 Digest、VIP、Oplus Digest 等线路必须保持互斥和明确的启动顺序。厂商策略不得通过隐式全局状态互相污染。
 
 ## 安全和性能要求
+
+MTK 使用 LibUsb；BROM、三种 DA 与扩展共用串行化 gate、有限预算和会话代数。BROM 访问只在 Probe 后、DA 执行前开放，回调或跳转后通道失效。标准认证由宿主提供合法材料和签名；漏洞部分只保留 `IMtkExploitStrategy`，不得添加默认实现、自动调用、补丁或攻击载荷。扩展须验证 ACK/context；RPMB 不作为普通块设备，seccfg 写入必须备份、最小对齐写和回读，未知写结果不重试。
 
 - 所有外部长度、扇区范围、Payload、XML 大小、计数器和整数转换在分配或读写前校验，并使用 `checked` 或有界逻辑。
 - 大文件和大型资源使用 `IDataSource`、流式处理、窗口化和池化缓冲；不得按镜像总大小展开 Raw、Sparse 或 Digest 映射。
@@ -117,3 +122,5 @@ git status --short --ignored
 4. 当前分支的 `git status --short`、最近提交和相关测试。
 
 完成一个任务后，把事实、命令结果和风险写回实施计划，再进入下一项工作。
+
+开始 MTK 工作前，读取本文件、`docs/plans/2026-10-05-mtk-protocol-design.md`、`docs/plans/2026-10-05-mtk-protocol-implementation.md` 和 `docs/plans/2026-10-05-mtk-brom-method-mapping.md`，再检查当前工作区与最近提交。MTK 测试位于 ignored `.tests/GeekFlashCore.Protocol.Mtk.Tests`。

@@ -1,7 +1,9 @@
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.CLI.Localization;
 using GeekFlashCore.Transport.Abstractions;
+using GeekFlashCore.Transport.LibUsb;
 using GeekFlashCore.UsbWatcher;
+using GeekFlashCore.UsbWatcher.Abstractions;
 
 namespace GeekFlashCore.CLI;
 
@@ -40,7 +42,7 @@ internal sealed class CliApplication
             catch (OperationCanceledException) { _ui.ShowCancelled(); return 130; }
             catch (Exception exception) { _ui.LogException(exception); return 1; }
         }
-        if (options.Command.Equals("devices", StringComparison.OrdinalIgnoreCase)) return ListDevices();
+        if (options.Command.Equals("devices", StringComparison.OrdinalIgnoreCase)) return ListDevices(options, requestedRegistration);
         if (options.Command.Equals("interactive", StringComparison.OrdinalIgnoreCase))
             return await InteractiveAsync(options, ct).ConfigureAwait(false);
 
@@ -174,10 +176,25 @@ internal sealed class CliApplication
     private static IProtocolCommandHandler? FindSpecialHandler(ProtocolRegistration registration, CliOptions options) =>
         registration.CommandHandlers.FirstOrDefault(handler => handler.Name.Equals(options.Command, StringComparison.OrdinalIgnoreCase) && handler.Handles(options.Arguments));
 
-    private int ListDevices()
+    private int ListDevices(CliOptions options, ProtocolRegistration? registration)
     {
         try
         {
+            if (registration?.UsbFactory is not null || !OperatingSystem.IsWindows())
+            {
+                foreach (var identity in LibUsbTransportFactory.Enumerate(serialNumber: options.UsbSerial))
+                {
+                    if (registration?.DeviceIdentifier is { } identifier &&
+                        !identifier.Identify(new UsbDeviceInfo { VendorId = identity.VendorId, ProductId = identity.ProductId }).IsSuccess)
+                        continue;
+                    if (options.UsbBus is { } bus && bus != identity.BusNumber ||
+                        options.UsbPortPath is { } port && port != identity.PortPath)
+                        continue;
+                    _ui.WriteLine(Strings.FormatCli_UsbTopology(identity.VendorId.ToString("X4"), identity.ProductId.ToString("X4"),
+                        identity.BusNumber?.ToString() ?? "?", identity.PortPath ?? "?"));
+                }
+                return 0;
+            }
             foreach (var device in UsbEnumeratorFactory.Create().GetDevices())
                 _ui.WriteLine($"{device.VendorId?.ToString("X4") ?? "????"}:{device.ProductId?.ToString("X4") ?? "????"} {device.FriendlyName ?? device.Description ?? Strings.Cli_UsbDeviceFallback}");
             return 0;

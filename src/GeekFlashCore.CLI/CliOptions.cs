@@ -8,6 +8,20 @@ internal sealed record CliOptions
     public string? Usb { get; init; }
     public string? Protocol { get; init; }
     public string? Loader { get; init; }
+    public string? MtkPreloader { get; init; }
+    public string? MtkDaMode { get; init; }
+    public string? MtkAuthenticationFile { get; init; }
+    public string? MtkCertificateFile { get; init; }
+    public string? UsbSerial { get; init; }
+    public byte? UsbBus { get; init; }
+    public string? UsbPortPath { get; init; }
+    public int UsbInterface { get; init; } = -1;
+    public int? UsbControlInterface { get; init; }
+    public int UsbAlternateSetting { get; init; }
+    public IReadOnlyList<uint> MtkUfsRpmbBlocks { get; init; } = [];
+    public uint MtkSejBase { get; init; }
+    public uint MtkTzccBase { get; init; }
+    public uint MtkSsrBase { get; init; }
     public string? Digest { get; init; }
     public string? VipSigned { get; init; }
     public string? VipChained { get; init; }
@@ -25,6 +39,7 @@ internal sealed record CliOptions
     public bool Verbose { get; init; }
     public bool NonInteractive { get; init; }
     public int ConnectTimeout { get; init; } = QcomProtocolOptions.DefaultConnectTimeoutMilliseconds;
+    public bool HasExplicitConnectTimeout { get; init; }
     public int? ResourceTimeout { get; init; }
     public int EffectiveResourceTimeout => ResourceTimeout ?? (NonInteractive
         ? QcomProtocolOptions.DefaultResourceRequestTimeoutMilliseconds : Timeout.Infinite);
@@ -46,6 +61,9 @@ internal sealed record CliOptions
             throw new ArgumentException(Localization.Strings.Cli_EnumInvalid);
         if (Port is not null && Usb is not null)
             throw new ArgumentException(Localization.Strings.Cli_TransportConflict);
+        if (UsbInterface is < -1 or > 255 || UsbControlInterface is < 0 or > 255 ||
+            UsbAlternateSetting is < 0 or > 255 || MtkUfsRpmbBlocks.Count > 4)
+            throw new ArgumentException(Localization.Strings.Cli_UsbIdentityInvalid);
         if (Usb is { } usb && !TransportResolver.TryParseUsb(usb, out _, out _))
             throw new ArgumentException(Localization.Strings.Cli_UsbFormatInvalid);
         if (VipChained is not null && VipSigned is null)
@@ -55,6 +73,17 @@ internal sealed record CliOptions
         if (NonInteractive && EffectiveOplusMode != OplusDigestMode.None &&
             (string.IsNullOrWhiteSpace(OplusDigest) || string.IsNullOrWhiteSpace(OplusSign)))
             throw new ArgumentException(Localization.Strings.Cli_OplusResourcesRequired);
-        QcomProtocolHostAdapter.ValidateOptions(this);
+        bool mtk = Protocol is not null && ProtocolRegistry.TryResolve(Protocol, out var registration) && registration.Type == GeekFlashCore.Protocol.Abstractions.ProtocolType.Mtk ||
+            Protocol is null && Usb is { } identity && TransportResolver.TryParseUsb(identity, out int vid, out int pid) && GeekFlashCore.Protocol.Mtk.MtkDeviceIdentify.IsSupported((ushort)vid, (ushort)pid) ||
+            Protocol is null && Command.StartsWith("mtk-", StringComparison.OrdinalIgnoreCase);
+        if (mtk) MtkProtocolHostAdapter.ValidateOptions(this);
+        else
+        {
+            if (MtkPreloader is not null || MtkDaMode is not null || MtkAuthenticationFile is not null || MtkCertificateFile is not null ||
+                MtkSejBase != 0 || MtkTzccBase != 0 || MtkSsrBase != 0 || MtkUfsRpmbBlocks.Count > 0 ||
+                UsbInterface != -1 || UsbControlInterface is not null || UsbAlternateSetting != 0)
+                throw new ArgumentException(Localization.Strings.Cli_MtkOptionConflict);
+            QcomProtocolHostAdapter.ValidateOptions(this);
+        }
     }
 }

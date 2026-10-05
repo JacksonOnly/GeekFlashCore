@@ -35,12 +35,13 @@ internal sealed record ProtocolRegistration(
     Func<ProtocolHostContext, GeekFlashCore.Transport.Abstractions.ITransport, IProtocol> Factory,
     IReadOnlyList<IProtocolCommandHandler> CommandHandlers,
     Action<IProtocol, ConsoleUi>? InfoPresenter = null,
-    IProtocolCommandSet? CommandSet = null);
+    IProtocolCommandSet? CommandSet = null,
+    Func<GeekFlashCore.Transport.Abstractions.UsbTransportIdentity, CliOptions, GeekFlashCore.Transport.Abstractions.ITransport>? UsbFactory = null);
 
 internal static class ProtocolRegistry
 {
     private static readonly IReadOnlyList<ProtocolRegistration> Registrations =
-    [QcomProtocolHostAdapter.Registration];
+    [QcomProtocolHostAdapter.Registration, MtkProtocolHostAdapter.Registration];
 
     public static IReadOnlyList<ProtocolRegistration> All => Registrations;
 
@@ -48,9 +49,7 @@ internal static class ProtocolRegistry
     {
         if (string.IsNullOrWhiteSpace(name))
         {
-            registration = Registrations.Count == 1
-                ? Registrations[0]
-                : throw new ArgumentException(Strings.Cli_ProtocolSelectionRequired);
+            registration = QcomProtocolHostAdapter.Registration;
             return true;
         }
         registration = Registrations.FirstOrDefault(item => item.Names.Contains(name))!;

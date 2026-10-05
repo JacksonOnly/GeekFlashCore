@@ -195,4 +195,13 @@ find 搜索中按 Ctrl+C 取消本次搜索，等待当前读取及 ACK 完成�
   <data name="Cli_BrowserSearching" xml:space="preserve"><value>正在搜索；按 Ctrl+C 可取消本次搜索，等待当前读取完成后返回浏览器。</value></data>
   <data name="Cli_BrowserSearchCancelled" xml:space="preserve"><value>搜索已取消，已找到 {0} 个文件。可继续浏览。</value></data>
   <data name="Cli_BrowserSearchAlreadyActive" xml:space="preserve"><value>已有搜索正在进行。</value></data>
+  <data name="Cli_MtkWaiting" xml:space="preserve"><value>等待 MediaTek USB 设备…</value></data>
+  <data name="Cli_MtkRequiresUsb" xml:space="preserve"><value>MTK 仅支持 LibUsb USB 传输。</value></data>
+  <data name="Cli_MtkOptionConflict" xml:space="preserve"><value>指定选项与所选协议不兼容。</value></data>
+  <data name="Cli_UsbIdentityInvalid" xml:space="preserve"><value>USB 身份、接口或 RPMB 容量选项无效；物理端口路径需要有效 bus 和点分隔端口号。</value></data>
+  <data name="Cli_MtkDaModeInvalid" xml:space="preserve"><value>MTK DA 模式应为 auto、legacy、xflash 或 xml。</value></data>
+  <data name="Cli_MtkInfo" xml:space="preserve"><value>MTK HW 0x{0}；状态 {1}；能力 {2}</value></data>
+  <data name="Cli_HelpMtk" xml:space="preserve"><value>MTK: --protocol mtk --loader DA.bin [--mtk-preloader preloader.bin] [--mtk-da-mode auto|legacy|xflash|xml] [--mtk-auth-file auth.bin] [--mtk-cert cert.bin] [--usb-serial value | --usb-bus N --usb-port-path N.N] [--usb-interface N --usb-control-interface N --usb-alt N] [--mtk-ufs-rpmb-blocks N,N] [--mtk-sej-base ADDR --mtk-tzcc-base ADDR --mtk-ssr-base ADDR]；命令: devices | mtk-probe | mtk-capabilities | mtk-rpmb read|write region start count key-file data-file | mtk-memory read|write address length file | mtk-seccfg lock|unlock region offset length backup-file；MTK 默认连接预算 60000 ms、资源预算 30000 ms，均为有限时限；--connect-timeout 覆盖整个 MTK 连接。</value></data>
+  <data name="Cli_UsbTopology" xml:space="preserve"><value>{0}:{1} bus={2} port={3}</value></data>
+  <data name="Cli_UsbAmbiguous" xml:space="preserve"><value>匹配到多台 USB 设备，请通过序列号或总线/端口路径明确选择。</value></data>
 </root>

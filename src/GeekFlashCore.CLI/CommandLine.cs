@@ -20,7 +20,7 @@ internal static class CommandLine
             string name = arg.Contains('=') ? arg[..arg.IndexOf('=')] : arg;
             if (name.StartsWith("--", StringComparison.Ordinal))
             {
-                if (name is not ("--port" or "--usb" or "--protocol" or "--loader" or "--digest" or "--vip-signed" or "--vip-chained" or "--oplus-digest" or "--oplus-sign" or "--oplus-mode" or "--oneplus-projid" or "--vendor" or "--auth" or "--read-timeout" or "--write-timeout" or "--connect-timeout" or "--resource-timeout" or "--device-wait-timeout" or "--log-file"))
+                if (name is not ("--port" or "--usb" or "--protocol" or "--loader" or "--digest" or "--vip-signed" or "--vip-chained" or "--oplus-digest" or "--oplus-sign" or "--oplus-mode" or "--oneplus-projid" or "--vendor" or "--auth" or "--read-timeout" or "--write-timeout" or "--connect-timeout" or "--resource-timeout" or "--device-wait-timeout" or "--log-file" or "--mtk-preloader" or "--mtk-da-mode" or "--mtk-auth-file" or "--mtk-cert" or "--usb-serial" or "--usb-bus" or "--usb-port-path" or "--mtk-sej-base" or "--mtk-tzcc-base" or "--mtk-ssr-base" or "--usb-interface" or "--usb-control-interface" or "--usb-alt" or "--mtk-ufs-rpmb-blocks"))
                     throw new ArgumentException(Strings.FormatCli_UnknownOption(name));
                 value ??= i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal)
                     ? args[++i]
@@ -30,13 +30,27 @@ internal static class CommandLine
                 {
                     "--port" => builder with { Port = value }, "--usb" => builder with { Usb = value }, "--protocol" => builder with { Protocol = value },
                     "--loader" => builder with { Loader = value }, "--digest" => builder with { Digest = value }, "--vip-signed" => builder with { VipSigned = value },
+                    "--mtk-preloader" => builder with { MtkPreloader = value },
+                    "--mtk-da-mode" => builder with { MtkDaMode = value },
+                    "--mtk-auth-file" => builder with { MtkAuthenticationFile = value },
+                    "--mtk-cert" => builder with { MtkCertificateFile = value },
+                    "--usb-serial" => builder with { UsbSerial = value },
+                    "--usb-bus" => builder with { UsbBus = byte.Parse(value) },
+                    "--usb-port-path" => builder with { UsbPortPath = value },
+                    "--usb-interface" => builder with { UsbInterface = int.Parse(value) },
+                    "--usb-control-interface" => builder with { UsbControlInterface = int.Parse(value) },
+                    "--usb-alt" => builder with { UsbAlternateSetting = int.Parse(value) },
+                    "--mtk-ufs-rpmb-blocks" => builder with { MtkUfsRpmbBlocks = value.Split(',').Select(v=>checked((uint)CommandSyntax.Number(v))).ToArray() },
+                    "--mtk-sej-base" => builder with { MtkSejBase = checked((uint)CommandSyntax.Number(value)) },
+                    "--mtk-tzcc-base" => builder with { MtkTzccBase = checked((uint)CommandSyntax.Number(value)) },
+                    "--mtk-ssr-base" => builder with { MtkSsrBase = checked((uint)CommandSyntax.Number(value)) },
                     "--vip-chained" => builder with { VipChained = value }, "--oplus-digest" => builder with { OplusDigest = value },
                     "--oplus-sign" => builder with { OplusSign = value }, "--log-file" => builder with { LogFile = value },
                     "--oplus-mode" => builder with { OplusMode = Enum.Parse<OplusDigestMode>(value, true), HasExplicitOplusMode = true }, "--vendor" => builder with { Vendor = Enum.Parse<QcomVendorKind>(value, true) },
                     "--oneplus-projid" => builder with { OnePlusProjectId = value },
                     "--auth" => builder with { AuthenticationKind = ParseAuthentication(value) },
                     "--read-timeout" => builder with { ReadTimeout = int.Parse(value) }, "--write-timeout" => builder with { WriteTimeout = int.Parse(value) },
-                    "--connect-timeout" => builder with { ConnectTimeout = int.Parse(value) },
+                    "--connect-timeout" => builder with { ConnectTimeout = int.Parse(value), HasExplicitConnectTimeout = true },
                     "--resource-timeout" => builder with { ResourceTimeout = int.Parse(value) },
                     "--device-wait-timeout" => builder with { DeviceWaitTimeout = int.Parse(value) },
                     _ => throw new ArgumentException(Strings.FormatCli_UnknownOption(name))
@@ -70,5 +84,6 @@ internal static class CommandLine
         Console.WriteLine(Strings.Cli_HelpVipOptions);
         Console.WriteLine(Strings.Cli_HelpOptionsTimeouts);
         Console.WriteLine(Strings.Cli_HelpOptionsLegacy);
+        Console.WriteLine(Strings.Cli_HelpMtk);
     }
 }

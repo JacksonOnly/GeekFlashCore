@@ -28,25 +28,38 @@ internal sealed class TransportResolver
         if (!string.IsNullOrWhiteSpace(options.Port))
         {
             selected ??= ResolveDefaultRegistration();
+            if (selected.UsbFactory is not null) throw new ArgumentException(Strings.Cli_MtkRequiresUsb);
             return new TransportResolution(SerialPortTransportFactory.Create(options.Port, options.ReadTimeout, options.WriteTimeout), selected);
         }
         if (options.Usb is { } usb)
         {
             if (!TryParseUsb(usb, out int vid, out int pid))
                 throw new ArgumentException(Strings.Cli_UsbFormatInvalid);
-            selected ??= ResolveDefaultRegistration();
-            return new TransportResolution(LibUsbTransportFactory.Create(vid, pid, Guid.Empty,
-                readTimeout: options.ReadTimeout, writeTimeout: options.WriteTimeout), selected);
+            if (selected is null && !ProtocolRegistry.TryIdentify(new UsbDeviceInfo { VendorId = vid, ProductId = pid }, out selected))
+                throw new ArgumentException(Strings.Cli_ProtocolSelectionRequired);
+            return new TransportResolution(selected.UsbFactory is { } factory
+                ? factory(new((ushort)vid, (ushort)pid), options)
+                : LibUsbTransportFactory.Create(vid, pid, Guid.Empty, readTimeout: options.ReadTimeout, writeTimeout: options.WriteTimeout), selected);
         }
 
+        if (selected?.UsbFactory is not null)
+            return await ResolveNativeUsbAsync(selected, options, ct).ConfigureAwait(false);
+        if (!OperatingSystem.IsWindows() && selected is null)
+        {
+            ProtocolRegistry.TryResolve("mtk", out var mtk);
+            return await ResolveNativeUsbAsync(mtk, options, ct).ConfigureAwait(false);
+        }
         var enumerator = UsbEnumeratorFactory.Create();
         foreach (var device in enumerator.GetDevices())
         {
-            if (device.ExtractPortName() is not { } port) continue;
             if (ProtocolRegistry.TryIdentify(device, out var identified))
             {
                 if (selected is not null && selected.Type != identified.Type) continue;
-                return new TransportResolution(SerialPortTransportFactory.Create(port, options.ReadTimeout, options.WriteTimeout), selected ?? identified);
+                var registration = selected ?? identified;
+                if (registration.UsbFactory is not null)
+                    return await ResolveNativeUsbAsync(registration, options, ct).ConfigureAwait(false);
+                if (device.ExtractPortName() is { } port)
+                    return new TransportResolution(SerialPortTransportFactory.Create(port, options.ReadTimeout, options.WriteTimeout), registration);
             }
         }
         if (OperatingSystem.IsWindows())
@@ -58,10 +71,13 @@ internal sealed class TransportResolver
             try
             {
                 var device = await monitor.WaitForDeviceAsync(d => MatchesDevice(d, selected), wait.Token).ConfigureAwait(false);
-                var port = device?.ExtractPortName() ??
-                    throw new InvalidOperationException(Strings.Cli_DeviceMissingComPort);
+                if (device is null) throw new InvalidOperationException(Strings.Cli_DeviceNotFound);
                 ProtocolRegistry.TryIdentify(device!, out var identifiedRegistration);
-                return new TransportResolution(SerialPortTransportFactory.Create(port, options.ReadTimeout, options.WriteTimeout), selected ?? identifiedRegistration);
+                var registration = selected ?? identifiedRegistration;
+                if (registration.UsbFactory is not null)
+                    return await ResolveNativeUsbAsync(registration, options, ct).ConfigureAwait(false);
+                var port = device.ExtractPortName() ?? throw new InvalidOperationException(Strings.Cli_DeviceMissingComPort);
+                return new TransportResolution(SerialPortTransportFactory.Create(port, options.ReadTimeout, options.WriteTimeout), registration);
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
@@ -71,13 +87,45 @@ internal sealed class TransportResolver
         }
         throw new InvalidOperationException(Strings.Cli_DeviceNotFound);
     }
+    private static async Task<TransportResolution> ResolveNativeUsbAsync(ProtocolRegistration registration, CliOptions options, CancellationToken ct)
+    {
+        using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        wait.CancelAfter(options.DeviceWaitTimeout);
+        try
+        {
+            while (true)
+            {
+                wait.Token.ThrowIfCancellationRequested();
+                var identities = LibUsbTransportFactory.Enumerate(serialNumber: options.UsbSerial).Where(id =>
+                    registration.DeviceIdentifier?.Identify(new UsbDeviceInfo { VendorId = id.VendorId, ProductId = id.ProductId }).IsSuccess == true);
+                var identity = SelectUsbIdentity(identities, options);
+                if (identity is not null)
+                    return new(registration.UsbFactory!(identity, options), registration);
+                await Task.Delay(100, wait.Token).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new TimeoutException(Strings.FormatCli_DeviceWaitTimedOut(options.DeviceWaitTimeout));
+        }
+    }
+    internal static UsbTransportIdentity? SelectUsbIdentity(IEnumerable<UsbTransportIdentity> identities, CliOptions options)
+    {
+        var matches = identities.Where(id => (options.UsbBus is null || options.UsbBus == id.BusNumber) &&
+            (options.UsbPortPath is null || options.UsbPortPath == id.PortPath) &&
+            (options.UsbSerial is null || options.UsbSerial == id.SerialNumber)).Take(2).ToArray();
+        if (matches.Length > 1)
+            throw new InvalidOperationException(Strings.Cli_UsbAmbiguous);
+        return matches.SingleOrDefault();
+    }
 
     private static ProtocolRegistration ResolveDefaultRegistration() =>
         ProtocolRegistry.TryResolve(null, out var registration)
             ? registration
             : throw new InvalidOperationException(Strings.Cli_NoProtocolRegistrations);
     internal static bool MatchesDevice(UsbDeviceInfo device, ProtocolRegistration? selected) =>
-        device.ExtractPortName() is not null && ProtocolRegistry.TryIdentify(device, out var identified) &&
+        ProtocolRegistry.TryIdentify(device, out var identified) &&
+        (identified.UsbFactory is not null || device.ExtractPortName() is not null) &&
         (selected is null || selected.Type == identified.Type);
 
     internal static bool TryParseUsb(string usb, out int vid, out int pid)

@@ -14,6 +14,8 @@
     <ProjectReference Include="..\GeekFlashCore.FileSystem.Ext\GeekFlashCore.FileSystem.Ext.csproj" />
     <ProjectReference Include="..\GeekFlashCore.Protocol.Abstractions\GeekFlashCore.Protocol.Abstractions.csproj" />
     <ProjectReference Include="..\GeekFlashCore.Protocol.Qcom\GeekFlashCore.Protocol.Qcom.csproj" />
+    <ProjectReference Include="..\GeekFlashCore.Protocol.Mtk\GeekFlashCore.Protocol.Mtk.csproj" />
+    <ProjectReference Include="..\GeekFlashCore.Protocol.Mtk.Extensions\GeekFlashCore.Protocol.Mtk.Extensions.csproj" />
     <ProjectReference Include="..\GeekFlashCore.Protocol.Qcom.Abstractions\GeekFlashCore.Protocol.Qcom.Abstractions.csproj" />
     <ProjectReference Include="..\GeekFlashCore.Transport.SerialPort\GeekFlashCore.Transport.SerialPort.csproj" />
     <ProjectReference Include="..\GeekFlashCore.Transport.LibUsb\GeekFlashCore.Transport.LibUsb.csproj" />

@@ -133,8 +133,10 @@ public sealed partial class MtkProtocol
             var entries = ReadGpt(region);
             if (entries is null)
             {
-                if (region.WireId == _storage.UserRegionId && _da is Da.LegacySession && _options.LegacyPmtLayout is { } pmt)
-                    result.AddRange(ReadLegacyPmt(pmt).Select(p => (p.Name!, new MtkFlashRange(region.WireId, p.Offset!.Value, p.Length!.Value))));
+                if (region.WireId == _storage.UserRegionId && _da is Da.LegacySession &&
+                    (_options.LegacyPmtLayout is not null || region.Kind == MtkStorageKind.Emmc && region.BlockSize == 512 && region.Length >= 0x100000))
+                    result.AddRange(ReadLegacyPmt(_options.LegacyPmtLayout ?? MtkPmtLayout.DiskV1)
+                        .Select(p => (p.Name!, new MtkFlashRange(region.WireId, p.Offset!.Value, p.Length!.Value))));
                 else if (region.WireId == _storage.UserRegionId && region.Kind == MtkStorageKind.Nand && _da is Da.XmlSession)
                     result.AddRange(ReadXmlPartitionTable().Select(p => (p.Name!, new MtkFlashRange(region.WireId, p.Offset!.Value, p.Length!.Value))));
                 continue;

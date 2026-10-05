@@ -64,7 +64,7 @@ internal static class MtkProtocolHostAdapter
     };
     private static MtkPmtLayout? PmtLayout(string? layout) => layout switch
     {
-        null => null, "32" => MtkPmtLayout.Word32, "64" => MtkPmtLayout.Word64, "96" => MtkPmtLayout.Legacy96,
+        null => null, "32" => MtkPmtLayout.Word32, "64" => MtkPmtLayout.Word64, "96" => MtkPmtLayout.Legacy96, "disk" => MtkPmtLayout.DiskV1,
         _ => throw new ArgumentException(Strings.Cli_MtkMediaOptionsInvalid)
     };
     private static ITransport CreateUsb(UsbTransportIdentity id, CliOptions o) => LibUsbTransportFactory.Create(new LibUsbConnectionOptions
@@ -209,8 +209,8 @@ internal static class MtkProtocolHostAdapter
                         throw new CommandUsageException("mtk-register <read|write> <address> [value]");
                     break;
                 case "mtk-pmt":
-                    if (a.Length != 1 || a[0] is not ("32" or "64" or "96" or "xml"))
-                        throw new CommandUsageException("mtk-pmt <32|64|96|xml>");
+                    if (a.Length != 1 || a[0] is not ("32" or "64" or "96" or "disk" or "xml"))
+                        throw new CommandUsageException("mtk-pmt <32|64|96|disk|xml>");
                     break;
                 case "mtk-slot":
                     if (a.Length is not (4 or 6) || a[0] is not ("read" or "set") || a.Length != (a[0] == "read" ? 4 : 6))

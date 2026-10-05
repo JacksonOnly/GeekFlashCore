@@ -12,4 +12,5 @@
   <data name="ExploitCheckpoint" xml:space="preserve"><value>宿主扩展阶段 {0} 返回 {1}。</value></data>
   <data name="ProbeSnapshot" xml:space="preserve"><value>MTK 探测：HW=0x{0}，CPU={1}，DA=0x{2}，subcode=0x{3}，FD HW=0x{4}，FC HW=0x{5}，SW=0x{6}，BROM=0x{7}，Preloader=0x{8}，阶段={9}，安全配置=0x{10}，WDT={11}。</value></data>
 <data name="GptBackupSelected" xml:space="preserve"><value>存储区域 {0} 的主 GPT 不可用，已验证并使用备份 GPT。</value></data>
+<data name="PmtMirrorSelected" xml:space="preserve"><value>存储区域 {0} 的主磁盘 PMT 标记或版本无效，已验证并使用镜像表。</value></data>
 </root>

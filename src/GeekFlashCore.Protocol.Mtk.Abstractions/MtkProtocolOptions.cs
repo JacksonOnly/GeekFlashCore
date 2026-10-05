@@ -34,7 +34,7 @@ public sealed record MtkProtocolOptions
     public bool LegacyIoT { get; init; }
     /// <summary>Confirmed NOR erase alignment. Zero leaves erase unavailable; no erase geometry is guessed.</summary>
     public int NorEraseBlockSize { get; init; }
-    /// <summary>Confirmed Legacy PMT layout used when a user region contains no GPT.</summary>
+    /// <summary>Explicit Legacy PMT layout when USER has no GPT. Null uses DiskV1 on 512-byte eMMC only.</summary>
     public MtkPmtLayout? LegacyPmtLayout { get; init; }
     /// <summary>Explicit watchdog profile overriding known metadata. Unknown chips without a profile receive no writes.</summary>
     public MtkChipProfile? ChipProfile

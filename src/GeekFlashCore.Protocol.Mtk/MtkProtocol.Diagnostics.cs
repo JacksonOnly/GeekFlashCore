@@ -117,6 +117,7 @@ public sealed partial class MtkProtocol : IMtkDaDiagnostics
         Ready();
         if (!Enum.IsDefined(layout)) throw new ArgumentOutOfRangeException(nameof(layout));
         if (_da is not LegacySession legacy) throw new MtkCapabilityException("Legacy PMT");
+        if (layout == MtkPmtLayout.DiskV1) return ReadLegacyDiskPmt();
         byte[] bytes = legacy.ReadPmt();
         int stride = layout switch { MtkPmtLayout.Word32 => 76, MtkPmtLayout.Word64 => 88, _ => 96 };
         if (bytes.Length == 0 || bytes.Length % stride != 0 || bytes.Length / stride > 4096)

@@ -13,7 +13,7 @@ public interface IMtkDaDiagnostics
     uint ReadDaRegister(uint address, CancellationToken cancellationToken = default);
     /// <summary>Writes a single explicitly addressed, aligned register through Legacy or XML commands.</summary>
     void WriteDaRegister(uint address, uint value, CancellationToken cancellationToken = default);
-    /// <summary>Reads the Legacy PMT using the host-confirmed entry layout; no heuristic format guessing.</summary>
+    /// <summary>Reads the Legacy PMT using an explicit runtime layout or the validated eMMC disk format.</summary>
     IReadOnlyList<PartitionInfo> GetLegacyPartitionTable(MtkPmtLayout layout, CancellationToken cancellationToken = default);
     /// <summary>Reads a bounded native XML partition table and validates all user-region ranges.</summary>
     IReadOnlyList<PartitionInfo> GetXmlPartitionTable(CancellationToken cancellationToken = default);
@@ -31,5 +31,10 @@ public enum MtkDaQuery : uint
     HardwareInfo = 0x1000000
 }
 
-/// <summary>Host-confirmed Legacy PMT layouts: 76-byte, 88-byte or 96-byte entries.</summary>
-public enum MtkPmtLayout { Word32, Word64, Legacy96 }
+/// <summary>Legacy READ_PMT layouts (76/88/96-byte entries), or a versioned eMMC USER disk table.</summary>
+public enum MtkPmtLayout
+{
+    Word32, Word64, Legacy96,
+    /// <summary>4096-byte PT/MPT v1.0 blocks at the USER tail, with forty 88-byte entries. Requires 512-byte eMMC sectors.</summary>
+    DiskV1
+}

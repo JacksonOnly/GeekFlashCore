@@ -1,5 +1,10 @@
 # MediaTek implementation provenance
 
+Legacy eMMC disk PT/MPT v1.0 format facts were inspected on 2026-10-05 from
+[JacksonOnly/MtkPt README](https://github.com/JacksonOnly/MtkPt/blob/main/README.md): USER tail locations,
+4096-byte blocks, version and header/tail signatures, forty 88-byte entries and the low-byte sequence.
+The bounded C# parser is independently implemented; no MtkPt code is copied. Runtime READ_PMT layouts remain separate.
+
 GeekFlashCore's license remains the GNU Affero General Public License v3 in `LICENSE`. The MTK implementation is a bounded synchronous C# rewrite, with the following protocol/layout references and original attribution retained. No reference binaries, private keys, authentication services or exploit implementation are distributed.
 
 | Reference | Inspected revision | Original attribution / license | Referenced behavior |

@@ -12,8 +12,8 @@ public sealed partial class MtkProtocol
         _ = Range(new(region.WireId, offset, length));
         byte[] bytes = new byte[length];
         using var output = new MemoryStream(bytes, true);
-        _da!.Read(region, offset, length, output);
-        return bytes;
+        try { _da!.Read(region, offset, length, output); return bytes; }
+        catch { System.Security.Cryptography.CryptographicOperations.ZeroMemory(bytes); throw; }
     }
 
     private IReadOnlyList<GptEntry>? ReadGpt(MtkStorageRegion region)

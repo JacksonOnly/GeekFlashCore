@@ -5,8 +5,59 @@ using LibUsbDotNet.Main;
 
 namespace GeekFlashCore.Transport.LibUsb.Internals;
 
-internal class LibUsbTransport : ITransport, IControlTransferTransport
+internal class LibUsbTransport : IUsbTransport
 {
+    private readonly LibUsbConnectionOptions? _options;
+    public UsbTransportIdentity Identity { get; private set; } = new(0, 0);
+    public int InterfaceNumber => _claimedInterface;
+    private int? _controlInterfaceNumber;
+    public int? ControlInterfaceNumber => _controlInterfaceNumber;
+
+    internal LibUsbTransport(LibUsbConnectionOptions options):this(new UsbContext(),options) { }
+    internal LibUsbTransport(IUsbContext context,LibUsbConnectionOptions options)
+    {
+        _options = options;
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        List<IUsbDevice>? candidates=null;
+        try
+        {
+            ArgumentNullException.ThrowIfNull(options);options.Validate();
+            var finder = new UsbDeviceFinder { Vid = options.Identity.VendorId, Pid = options.Identity.ProductId,
+                SerialNumber = options.Identity.SerialNumber! };
+            candidates = _context.FindAll(finder).ToList();
+            var matches = candidates.Where(d => MatchesIdentity(d, options.Identity)).ToList();
+            if (matches.Count != 1)
+            {
+                throw new InvalidOperationException(matches.Count == 0 ? Strings.LibUsbTransport_DeviceMissing : Strings.LibUsbTransport_AmbiguousDevice);
+            }
+            _device = matches[0];
+            foreach (var device in candidates) if (!ReferenceEquals(device, _device)) device.Dispose();
+            Identity = GetIdentity(_device, options.Identity.SerialNumber);
+        }
+        catch
+        {
+            if(candidates is not null)foreach(var device in candidates)
+                try { device.Dispose(); } catch { /* Preserve the selection failure and release every candidate. */ }
+            try { _context.Dispose(); } catch { /* Preserve the primary construction failure. */ }
+            throw;
+        }
+        _requestedInterface = options.InterfaceNumber;
+        _bufferSize = options.BufferSize;
+        _readTimeout = options.ReadTimeoutMilliseconds;
+        _writeTimeout = options.WriteTimeoutMilliseconds;
+    }
+
+    internal static UsbTransportIdentity GetIdentity(IUsbDevice device, string? serial = null) =>
+        device is UsbDevice usb
+            ? new((ushort)device.VendorId, (ushort)device.ProductId, serial, usb.BusNumber, string.Join(".", usb.PortNumbers))
+            : new((ushort)device.VendorId, (ushort)device.ProductId, serial);
+
+    private static bool MatchesIdentity(IUsbDevice device, UsbTransportIdentity wanted)
+    {
+        var actual = GetIdentity(device, wanted.SerialNumber);
+        return (wanted.BusNumber is null || actual.BusNumber == wanted.BusNumber) &&
+            (wanted.PortPath is null || actual.PortPath == wanted.PortPath) && wanted.DevicePath is null;
+    }
     public bool IsOpen
     {
         get
@@ -51,6 +102,7 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
             ValidateTimeout(writeTimeout);
             _device = _context.Find(finder) ?? throw new InvalidOperationException(
                 Strings.LibUsbTransport_DeviceMissing);
+            Identity = GetIdentity(_device);
         }
         catch
         {
@@ -112,6 +164,8 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
                 {
                     if (usbInterfaceInfo.Number != _claimedInterface)
                         continue;
+                    if (usbInterfaceInfo.AlternateSetting != (_options?.AlternateSetting ?? 0))
+                        continue;
                     if (usbInterfaceInfo.Endpoints.Count > 1)
                     {
                         foreach (var usbEndpointInfo in usbInterfaceInfo.Endpoints)
@@ -163,6 +217,17 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
                 try { _device.Dispose(); }
                 finally { _context.Dispose(); }
             }
+        }
+    }
+
+    public void WriteZeroLengthPacket()
+    {
+        lock (_sync)
+        {
+            Error error = GetWriter().Write(ReadOnlySpan<byte>.Empty, _writeTimeout, out int transferred);
+            ThrowTransferError(error, "USB write", _writeTimeout);
+            if (transferred != 0)
+                throw new IOException(Strings.FormatLibUsbTransport_WriteIncomplete(0, transferred));
         }
     }
 
@@ -322,6 +387,7 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
         lock (_sync)
         {
             EnsureOpen();
+            EnsureFiniteControlTimeout();
             return _device.ControlTransfer(setupPacket, buffer, offset, length);
         }
     }
@@ -331,6 +397,7 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
         lock (_sync)
         {
             EnsureOpen();
+            EnsureFiniteControlTimeout();
             return _device.ControlTransfer(setupPacket);
         }
     }
@@ -378,6 +445,8 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
 
     private void ConfigureDevice()
     {
+        if (_options?.Configuration is { } requested && _device.Configuration != requested)
+            _device.SetConfiguration(requested);
         int activeConfiguration;
         try
         {
@@ -390,7 +459,8 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
         if (activeConfiguration == 0)
         {
             var configuration = _device.Configs.FirstOrDefault(config => config.Interfaces.Any(face =>
-                (_requestedInterface < 0 || face.Number == _requestedInterface) && HasBulkPair(face)));
+                (_requestedInterface < 0 || face.Number == _requestedInterface) &&
+                face.AlternateSetting==(_options?.AlternateSetting??0) && HasBulkPair(face)));
             if (configuration is null)
                 throw new InvalidOperationException(Strings.LibUsbTransport_BulkInterfaceMissing);
             _device.SetConfiguration(configuration.ConfigurationValue);
@@ -401,10 +471,25 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
         int selectedInterface = _requestedInterface >= 0 ? _requestedInterface : FindFirstInterfaceNumber();
         if (selectedInterface < 0)
             throw new InvalidOperationException(Strings.LibUsbTransport_BulkInterfaceMissing);
+        var activeFaces=_device.Configs.Where(c=>c.ConfigurationValue==_device.Configuration).SelectMany(c=>c.Interfaces).ToArray();
+        var selected=activeFaces.SingleOrDefault(f=>f.Number==selectedInterface&&f.AlternateSetting==(_options?.AlternateSetting??0));
+        if(selected is null||!HasBulkPair(selected))
+            throw new InvalidOperationException(Strings.LibUsbTransport_BulkInterfaceMissing);
+        _controlInterfaceNumber=_options?.ControlInterfaceNumber;
+        if(_options is not null&&_controlInterfaceNumber is null&&selected.Class==ClassCode.Data)
+        {
+            var control=activeFaces.Where(f=>f.Class==ClassCode.Comm).Select(f=>f.Number).Distinct().ToArray();
+            if(control.Length>1)throw new InvalidOperationException(Strings.LibUsbTransport_AmbiguousDevice);
+            if(control.Length==1)_controlInterfaceNumber=control[0];
+        }
+        if(_controlInterfaceNumber is { } controlNumber&&!activeFaces.Any(f=>f.Number==controlNumber))
+            throw new InvalidOperationException(Strings.LibUsbTransport_BulkInterfaceMissing);
         if (!_device.ClaimInterface(selectedInterface))
             throw new InvalidOperationException(
                 Strings.FormatLibUsbTransport_InterfaceClaimFailed(selectedInterface));
         _claimedInterface = selectedInterface;
+        if (_options is { } options && !_device.SetAltInterface(options.AlternateSetting))
+            throw new InvalidOperationException(Strings.LibUsbTransport_ConfigurationFailed);
     }
 
     private int FindFirstInterfaceNumber()
@@ -416,7 +501,8 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
                 continue;
             foreach (var usbInterface in config.Interfaces)
             {
-                if (usbInterface.Class is ClassCode.Data or ClassCode.VendorSpec && HasBulkPair(usbInterface))
+                if (usbInterface.AlternateSetting == (_options?.AlternateSetting ?? 0) &&
+                    usbInterface.Class is ClassCode.Data or ClassCode.VendorSpec && HasBulkPair(usbInterface))
                 {
                     return usbInterface.Number;
                 }
@@ -435,22 +521,19 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
         _reader = null;
         _writer = null;
 
-        if (_claimedInterface >= 0)
+        try
         {
-            try
+            if (_claimedInterface >= 0)
             {
-                _device.ReleaseInterface(_claimedInterface);
-            }
-            finally
-            {
-                _claimedInterface = -1;
+                try { _device.ReleaseInterface(_claimedInterface); }
+                finally { _claimedInterface=-1; }
             }
         }
-
-        if (_device.IsOpen)
-            _device.Close();
-
-        _opened = false;
+        finally
+        {
+            try { if (_device.IsOpen) _device.Close(); }
+            finally { _opened=false;_controlInterfaceNumber=null; }
+        }
     }
 
     private UsbEndpointReader GetReader()
@@ -476,6 +559,11 @@ internal class LibUsbTransport : ITransport, IControlTransferTransport
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(LibUsbTransport));
+    }
+    private void EnsureFiniteControlTimeout()
+    {
+        if(_options is not null&&UsbDevice.ControlTransferTimeout<=0)
+            throw new InvalidOperationException(Strings.FormatLibUsbTransport_TransferTimedOut("USB control",UsbDevice.ControlTransferTimeout));
     }
     private static int ValidateTimeout(int timeout)
     {

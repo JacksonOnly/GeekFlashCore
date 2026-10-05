@@ -18,4 +18,7 @@
   <data name="LibUsbTransport_DeviceMissing" xml:space="preserve"><value>No matching USB device was found.</value></data>
   <data name="LibUsbTransport_BulkInterfaceMissing" xml:space="preserve"><value>No USB interface with bulk input and output endpoints was found.</value></data>
   <data name="LibUsbTransport_ConfigurationFailed" xml:space="preserve"><value>无法设置 USB 设备配置。</value></data>
+  <data name="LibUsbTransport_AmbiguousDevice" xml:space="preserve"><value>多个 USB 设备匹配，请指定序列号或物理端口路径。</value></data>
+  <data name="LibUsbTransport_DevicePathUnsupported" xml:space="preserve"><value>此 LibUsb 后端不能按 Windows 设备路径匹配，请使用序列号或总线/端口路径。</value></data>
+  <data name="LibUsbTransport_IdentityInvalid" xml:space="preserve"><value>USB 序列号或总线/端口路径无效。</value></data>
 </root>

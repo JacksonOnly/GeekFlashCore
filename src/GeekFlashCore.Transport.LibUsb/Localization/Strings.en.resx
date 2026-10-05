@@ -18,4 +18,7 @@
   <data name="LibUsbTransport_DeviceMissing" xml:space="preserve"><value>No matching USB device was found.</value></data>
   <data name="LibUsbTransport_BulkInterfaceMissing" xml:space="preserve"><value>No USB interface with bulk input and output endpoints was found.</value></data>
   <data name="LibUsbTransport_ConfigurationFailed" xml:space="preserve"><value>Unable to set the USB device configuration.</value></data>
+  <data name="LibUsbTransport_AmbiguousDevice" xml:space="preserve"><value>Multiple USB devices match. Specify a serial number or physical port path.</value></data>
+  <data name="LibUsbTransport_DevicePathUnsupported" xml:space="preserve"><value>This LibUsb backend cannot match Windows device paths; use a serial number or bus/port path.</value></data>
+  <data name="LibUsbTransport_IdentityInvalid" xml:space="preserve"><value>The USB serial number or bus/port path is invalid.</value></data>
 </root>

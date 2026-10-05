@@ -1,5 +1,11 @@
 # Qualcomm Protocol Implementation Plan
 
+### NAV-01 / REVIEW-01（2026-10-05）：父目录别名与合并审查
+
+- `cd ..` 显式映射到 up，文件目录、文件系统分区、LP 和根目录返回行为一致；中英帮助已补充。导航目标 4/4、当前完整本地回归 126/126，Release 构建零警告零错误。
+- 审查 main 的 cbafc5b 基线之后本轮全部提交，未发现阻止合并的问题；用户已授权合并。真实设备风险与输出路径并发链接竞态仍按原文档保留。
+- 主工作区与 b6cf 开始时均干净；计划快进合并并验证主工作区原有测试。详见 `2026-10-05-browser-review-merge.md`。
+
 ### PRINT-01（2026-10-05）：浏览器帮助与 print
 
 - 浏览器帮助逐条解释 ls/cd/up/pwd/read/find/exit 并提供路径和导出示例；新增 `print <path>`，普通文件大小不超过 24 KiB（24576 字节，含）时直接显示文本，超限在读取内容前提示 read 导出。browse help/browse-image help 可脱离设备查看，已断连交互入口也能显示。

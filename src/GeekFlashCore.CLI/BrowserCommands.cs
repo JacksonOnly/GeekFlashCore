@@ -70,6 +70,11 @@ internal static class BrowserCommands
                     string[] tokens = CliApplication.Tokenize(line);
                     if (tokens.Length == 0) continue;
                     string command = tokens[0].ToLowerInvariant();
+                    if (command == "cd" && tokens.Length == 2 && tokens[1] == "..")
+                    {
+                        command = "up";
+                        tokens = ["up"];
+                    }
                     if (command is "exit" or "quit") return;
                     switch (command)
                     {

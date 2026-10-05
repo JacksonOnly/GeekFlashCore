@@ -161,7 +161,7 @@ Loader build time: {2}    Reported commands: {3}</value></data>
   <data name="Cli_BrowserHelp" xml:space="preserve"><value>Read-only browser:
   help                         Show this help; browse help also works at geekflash&gt;.
   ls [path] [page]             List a directory; path defaults to the current directory, 50 entries per page, pages start at 0.
-  cd &lt;path&gt;                    Enter a directory, for example cd /super/system_a/system.
+  cd &lt;path&gt;                    Enter a directory, for example cd /super/system_a/system; cd .. returns to its parent.
   up                           Go to the parent directory, like cd ..; /super/system_a returns to /super.
   pwd                          Show the current directory path, for example /super/system_a.
   read &lt;path&gt; &lt;output-file&gt;    Read a file or raw partition and save it on your computer; the output parent directory must exist.

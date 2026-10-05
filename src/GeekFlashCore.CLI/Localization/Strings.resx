@@ -161,7 +161,7 @@ Loader 构建时间：{2}    已报告命令：{3} 项</value></data>
   <data name="Cli_BrowserHelp" xml:space="preserve"><value>资源浏览器（只读）：
   help                         显示本帮助；在 geekflash&gt; 中也可输入 browse help。
   ls [path] [page]             列出目录内容；省略 path 时列出当前目录，每页 50 项，page 从 0 开始。
-  cd &lt;path&gt;                    进入指定目录，例如 cd /super/system_a/system。
+  cd &lt;path&gt;                    进入指定目录，例如 cd /super/system_a/system；cd .. 返回上一级目录。
   up                           返回上一级目录，与 cd .. 相同；/super/system_a 返回 /super。
   pwd                          显示当前目录路径，例如 /super/system_a。
   read &lt;path&gt; &lt;输出文件&gt;        读取文件或原始分区并保存到电脑；输出文件的父目录需要存在。

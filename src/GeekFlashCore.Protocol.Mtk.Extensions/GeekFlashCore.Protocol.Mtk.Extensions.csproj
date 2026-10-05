@@ -8,5 +8,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../GeekFlashCore.Protocol.Mtk.Abstractions/GeekFlashCore.Protocol.Mtk.Abstractions.csproj" />
+    <ProjectReference Include="../GeekFlashCore.Shared/GeekFlashCore.Shared.csproj" />
   </ItemGroup>
 </Project>

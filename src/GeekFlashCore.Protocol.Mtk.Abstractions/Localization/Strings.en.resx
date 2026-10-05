@@ -7,4 +7,5 @@
 <data name="SecurityWriteUnknown" xml:space="preserve"><value>seccfg may have been written. Reconnect and inspect lock state and backup.</value></data>
 <data name="ExtensionUnavailable" xml:space="preserve"><value>MTK extension context is unavailable or expired. Reconnect required.</value></data>
   <data name="ExploitStopped" xml:space="preserve"><value>The host extension returned {1} at {0}. Connection stopped; reconnect is required.</value></data>
+<data name="BootControlWriteUnknown" xml:space="preserve"><value>Boot slot metadata may have been written. Reconnect and inspect the device; do not retry automatically.</value></data>
 </root>

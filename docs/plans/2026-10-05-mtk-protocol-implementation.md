@@ -121,3 +121,5 @@ BROM-01～03 补齐 67 芯片标准目录、61 个普通 WDT 配置、FD 后初�
 恢复时依次读取 AGENTS、设计、本文、BROM 方法对应与宿主框架修订，检查 `git status --short` 与最近提交；先补充上述设备证据或具体 profile/夹具，再扩大支持矩阵。不得添加默认策略或漏洞实现。宿主同步回调必须合作取消；核心只能在回调返回后拒绝超期结果。
 
 2026-10-05 后续以 `penumbra-main` 为参考的正常能力补齐，新增 Legacy NAND/IoT、独立 SEJ/GCPU/DXCC、Scatter/native partition/eFuse、扩展新 ABI 和逻辑 Fill。历史缺口按日期保留；当前支持与未决风险以 [非漏洞能力补齐进度](2026-10-05-mtk-nonexploit-parity-implementation.md) 为准。
+
+2026-10-06 后续宿主接口范围：按用户明确授权增加四个非执行占位类及其通用离线依赖，Execute 保持 NotApplicable。最新资源清单、依赖构造、通用工具及验证见 [依赖层设计](2026-10-06-mtk-exploit-dependencies-design.md) 与 [实施记录](2026-10-06-mtk-exploit-dependencies-implementation.md)；不包含实际漏洞逻辑、攻击二进制、补丁或默认注册。

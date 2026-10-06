@@ -14,4 +14,7 @@
 <data name="GptBackupSelected" xml:space="preserve"><value>存储区域 {0} 的主 GPT 不可用，已验证并使用备份 GPT。</value></data>
 <data name="PmtMirrorSelected" xml:space="preserve"><value>存储区域 {0} 的主磁盘 PMT 标记或版本无效，已验证并使用镜像表。</value></data>
 <data name="OptionalCommandUnsupported" xml:space="preserve"><value>设备不支持可选命令 {0}，继续标准初始化。</value></data>
+<data name="ExploitCheckpointReached" xml:space="preserve"><value>已到达宿主扩展检查点 {0}。</value></data>
+<data name="ExploitCheckpointSkipped" xml:space="preserve"><value>宿主扩展检查点 {0} 未执行回调：{1}。</value></data>
+<data name="HandshakeStep" xml:space="preserve"><value>BROM 握手步骤 {0}/{1}。</value></data>
 </root>

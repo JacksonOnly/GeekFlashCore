@@ -3,6 +3,7 @@
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Mtk.Internals;
 using GeekFlashCore.Protocol.Mtk.Loaders;
+using Serilog;
 
 namespace GeekFlashCore.Protocol.Mtk.Brom;
 
@@ -15,6 +16,7 @@ internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions op
         ReadOnlySpan<byte> handshake = [0xa0, 0x0a, 0x50, 0x05];
         for (int i = 0; i < handshake.Length; i++)
         {
+            Log.ForContext<MtkBromSession>().Debug(Strings.HandshakeStep, i + 1, handshake.Length);
             wire.WriteByte(handshake[i]);
             byte response = wire.ReadByte();
             if (i == 0 && response == 0xa0)

@@ -14,4 +14,7 @@
 <data name="GptBackupSelected" xml:space="preserve"><value>The primary GPT in storage region {0} is unavailable; the validated backup GPT is being used.</value></data>
 <data name="PmtMirrorSelected" xml:space="preserve"><value>The primary disk PMT markers or version in storage region {0} are invalid; the validated mirror table is being used.</value></data>
 <data name="OptionalCommandUnsupported" xml:space="preserve"><value>Device does not support optional command {0}; continuing standard initialization.</value></data>
+<data name="ExploitCheckpointReached" xml:space="preserve"><value>Reached host extension checkpoint {0}.</value></data>
+<data name="ExploitCheckpointSkipped" xml:space="preserve"><value>Host extension checkpoint {0} skipped callback: {1}.</value></data>
+<data name="HandshakeStep" xml:space="preserve"><value>BROM handshake step {0}/{1}.</value></data>
 </root>

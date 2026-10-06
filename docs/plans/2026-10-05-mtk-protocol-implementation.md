@@ -125,3 +125,5 @@ BROM-01～03 补齐 67 芯片标准目录、61 个普通 WDT 配置、FD 后初�
 2026-10-06 后续宿主接口范围：按用户明确授权增加四个非执行占位类及其通用离线依赖，Execute 保持 NotApplicable。最新资源清单、依赖构造、通用工具及验证见 [依赖层设计](2026-10-06-mtk-exploit-dependencies-design.md) 与 [实施记录](2026-10-06-mtk-exploit-dependencies-implementation.md)；不包含实际漏洞逻辑、攻击二进制、补丁或默认注册。
 
 2026-10-06 WDT-CLI-01：用户报告等待 DA 输入时设备断开；CLI 原材料准备发生于 USB Open/Probe 前，已改为交互连接先 Probe/确认已知 WDT 写入并显示快照，再异步选择 DA，用同一 Probed 实例续接。核心线路和非交互预验证不变。新增 12 项测试先 11 失败/1 通过，修复后全部通过；CLI/MTK/Qcom 全量 88/389/294（合计 771）通过，Release 构建 0 警告/0 错误。设计、释放/失败边界、当前主项目修复版位置及硬件风险见 [选择前关闭看门狗记录](2026-10-06-mtk-watchdog-before-loader.md)。
+
+2026-10-06 STALL-01 / CP-LOG-01：用户 21:23 日志确认 BROM 握手读取 Pipe，21:24 日志确认 WDT Disabled、DAA 缺失。MTK CLI 显式启用首次单字节零传输 Pipe 的一次 IN ClearHalt/剩余预算续读；最终 Pipe 显示明确原因，后续读写不重试。第二份异常发生于 BeforeDa1 后的认证校验，原调用顺序已正确，CLI 无注入策略；新增检查点到达/跳过与握手步骤 Debug 日志，无默认注册或漏洞逻辑。新增 MTK 32 / CLI 3 项；当前五工程 MTK421/CLI91/Qcom457/Core9/LP55，共1033项通过，Release 0警告/0错误。设计、先失败证据与恢复风险见 [设计](2026-10-06-mtk-initial-usb-stall-design.md) 和 [实施记录](2026-10-06-mtk-initial-usb-stall-implementation.md)。旧日志无法确认失败握手字节，本轮尚无真机恢复或 DA 执行证据。

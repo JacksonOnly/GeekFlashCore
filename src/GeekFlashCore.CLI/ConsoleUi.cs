@@ -255,6 +255,7 @@ internal sealed class ConsoleUi
             TimeoutException => Strings.Cli_ResponseTimedOut,
             FirehoseNakException => Strings.Cli_DeviceRejected,
             UsbException { ErrorCode: Error.NoDevice } => Strings.Cli_UsbDisconnected,
+            UsbException { ErrorCode: Error.Pipe } => Strings.Cli_UsbEndpointStalled,
             MtkResourceException or MtkProtocolException or MtkCapabilityException or MtkExploitException or
             ArgumentException or FileNotFoundException or InvalidOperationException or QcomResourceException =>
                 exception.Message.Replace('\r', ' ').Replace('\n', ' '),

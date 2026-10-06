@@ -25,6 +25,9 @@ public sealed record LibUsbConnectionOptions
     public int BufferSize { get; init; } = 65536;
     public int ReadTimeoutMilliseconds { get; init; } = 3000;
     public int WriteTimeoutMilliseconds { get; init; } = 3000;
+    /// <summary>Opt-in recovery for the first single-byte bulk read after Open. Only a zero-byte Pipe
+    /// clears the IN halt once and continues reading within the original timeout; no writes are retried.</summary>
+    public bool RecoverInitialReadStall { get; init; }
     public void Validate()
     {
         ArgumentNullException.ThrowIfNull(Identity);

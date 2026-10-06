@@ -73,6 +73,7 @@ internal class LibUsbTransport : IUsbTransport
     private UsbEndpointWriter? _writer;
     private bool _disposed;
     private bool _opened;
+    private readonly InitialUsbReadRecovery _initialReadRecovery = new();
 
     private readonly IUsbContext _context;
     private readonly int _bufferSize;
@@ -139,6 +140,7 @@ internal class LibUsbTransport : IUsbTransport
                 _reader = _device.OpenEndpointReader(_readEndpointId.Value, _bufferSize);
                 _writer = _device.OpenEndpointWriter(_writeEndpointId.Value);
                 _opened = true;
+                _initialReadRecovery.Reset(_options?.RecoverInitialReadStall == true);
             }
             catch
             {
@@ -269,7 +271,10 @@ internal class LibUsbTransport : IUsbTransport
                 return 0;
 
             int timeout = ValidateTimeout(timeoutInMilliseconds ?? _readTimeout);
-            Error error = reader.Read(data, timeout, out int transferLength);
+            int transferLength;
+            Error error = _initialReadRecovery.IsPending
+                ? _initialReadRecovery.Read(data, timeout, reader.Read, ClearInitialReadHalt, out transferLength)
+                : reader.Read(data, timeout, out transferLength);
             ThrowTransferError(error, "USB read", timeout);
             return transferLength;
         }
@@ -291,6 +296,7 @@ internal class LibUsbTransport : IUsbTransport
                 return 0;
 
             int timeout = ValidateTimeout(timeoutInMilliseconds ?? _readTimeout);
+            _initialReadRecovery.Suppress();
             long deadline = Environment.TickCount64 + timeout;
             int totalRead = 0;
             while (totalRead < destination.Length)
@@ -317,6 +323,7 @@ internal class LibUsbTransport : IUsbTransport
             if (data.IsEmpty)
                 return 0;
             // libusb timeout 0 means an unlimited wait, including available-data probes.
+            _initialReadRecovery.Suppress();
             Error error = reader.Read(data, 1, out int transferLength);
             if (error == Error.Timeout)
                 return transferLength;
@@ -329,6 +336,7 @@ internal class LibUsbTransport : IUsbTransport
     {
         lock (_sync)
         {
+            _initialReadRecovery.Suppress();
             Error error = GetReader().ReadFlush();
             ThrowTransferError(error, "USB input flush", 0);
         }
@@ -518,6 +526,7 @@ internal class LibUsbTransport : IUsbTransport
 
     private void CloseCore()
     {
+        _initialReadRecovery.Suppress();
         _reader = null;
         _writer = null;
 
@@ -540,6 +549,12 @@ internal class LibUsbTransport : IUsbTransport
     {
         EnsureOpen();
         return _reader!;
+    }
+
+    private Error ClearInitialReadHalt()
+    {
+        EnsureFiniteControlTimeout();
+        return GetReader().ClearHalt();
     }
 
     private UsbEndpointWriter GetWriter()

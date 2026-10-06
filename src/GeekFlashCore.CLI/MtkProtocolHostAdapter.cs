@@ -67,15 +67,18 @@ internal static class MtkProtocolHostAdapter
         null => null, "32" => MtkPmtLayout.Word32, "64" => MtkPmtLayout.Word64, "96" => MtkPmtLayout.Legacy96, "disk" => MtkPmtLayout.DiskV1,
         _ => throw new ArgumentException(Strings.Cli_MtkMediaOptionsInvalid)
     };
-    private static ITransport CreateUsb(UsbTransportIdentity id, CliOptions o) => LibUsbTransportFactory.Create(new LibUsbConnectionOptions
+    private static ITransport CreateUsb(UsbTransportIdentity id, CliOptions o) =>
+        LibUsbTransportFactory.Create(CreateUsbOptions(id, o));
+    internal static LibUsbConnectionOptions CreateUsbOptions(UsbTransportIdentity id, CliOptions o) => new()
     {
         Identity = id with { SerialNumber = o.UsbSerial ?? id.SerialNumber, BusNumber = o.UsbBus ?? id.BusNumber, PortPath = o.UsbPortPath ?? id.PortPath },
         InterfaceNumber = o.UsbInterface,
         ControlInterfaceNumber = o.UsbControlInterface,
         AlternateSetting = o.UsbAlternateSetting,
         ReadTimeoutMilliseconds = o.ReadTimeout,
-        WriteTimeoutMilliseconds = o.WriteTimeout
-    });
+        WriteTimeoutMilliseconds = o.WriteTimeout,
+        RecoverInitialReadStall = true
+    };
     internal static async Task<IProtocol> CreatePreparedAsync(ProtocolHostContext context, ITransport transport,
         CancellationToken ct)
     {

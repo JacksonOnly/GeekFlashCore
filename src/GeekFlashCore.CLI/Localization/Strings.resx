@@ -424,4 +424,5 @@ Cache 命令阻止：{8}</value></data>
   connect
   help
   exit</value></data>
+  <data name="Cli_UsbEndpointStalled" xml:space="preserve"><value>USB 端点停滞（Pipe error），当前会话已中止，请重新连接设备。</value></data>
 </root>

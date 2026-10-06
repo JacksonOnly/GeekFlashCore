@@ -424,4 +424,5 @@ Keys go only to files.</value></data>
   connect
   help
   exit</value></data>
+  <data name="Cli_UsbEndpointStalled" xml:space="preserve"><value>USB endpoint stalled (Pipe error). The session has stopped. Reconnect the device.</value></data>
 </root>

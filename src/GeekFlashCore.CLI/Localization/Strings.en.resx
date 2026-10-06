@@ -13,7 +13,7 @@
   <data name="Cli_PartitionNotUnique" xml:space="preserve"><value>Partition {0} is missing or ambiguous; check its name and specify a LUN.</value></data>
   <data name="Cli_CommandCompleted" xml:space="preserve"><value>Command {0} completed.</value></data>
   <data name="Cli_StorageNotConfigured" xml:space="preserve"><value>Storage is not configured.</value></data>
-  <data name="Cli_CommandsMapped" xml:space="preserve"><value>Mapped {0} Firehose commands:</value></data>
+  <data name="Cli_CommandsMapped" xml:space="preserve"><value>Device commands =&gt; Host commands ({0} mappings):</value></data>
   <data name="Cli_NoCommandEvidence" xml:space="preserve"><value>The device did not report any mappable commands.</value></data>
   <data name="Cli_CommandListUnknown" xml:space="preserve"><value>The device did not report a Firehose command list. Explicitly requested CLI commands can run; device responses determine support.</value></data>
   <data name="Cli_LocalCommandsAvailable" xml:space="preserve"><value>CLI implements {0} Firehose commands (device capabilities unconfirmed):</value></data>
@@ -245,4 +245,19 @@ Examples (current directory /super/system_a):
   <data name="Cli_HelpMtkKeys" xml:space="preserve"><value>mtk-key id key-name 128|192|256 output-file | mtk-key input label-file salt-file 128|192|256 output-file. Key names use MtkKeyDeriveId (Rpmb, Fde, Tee, AesImageEncryption, AesCustom, Motorola, RootOfTrust); inputs are at most 32 bytes each; - means empty. Requires --mtk-extension-abi penumbra2, confirmed crypto addresses and an already legitimately loaded compatible extension. Keys go only to files.</value></data>
   <data name="Cli_MtkRpmbLockState" xml:space="preserve"><value>RPMB lock metadata version={0}, state={1}.</value></data>
   <data name="Cli_HelpMtkWriteExtras" xml:space="preserve"><value>mtk-fill region offset length byte-value performs a logical pattern overwrite through ordinary writes and verifies readback; byte-value is 0–255. mtk-rsc partition source-file updates XFlash RSC records. mtk-rpmb-lock read key-file | mtk-rpmb-lock lock|unlock key-file backup-file reads/changes XML/UFS RPMB lock metadata, requires confirmed --mtk-ufs-rpmb-blocks capacity and an existing 32-byte authentication key, and preserves the original block before writing.</value></data>
+  <data name="Cli_ScriptFileMissing" xml:space="preserve"><value>XML file not found or the pattern matched no files.</value></data>
+  <data name="Cli_ScriptImageMissing" xml:space="preserve"><value>An image referenced by the XML does not exist.</value></data>
+  <data name="Cli_ScriptImageOutsideDirectory" xml:space="preserve"><value>An XML image path is outside the XML directory.</value></data>
+  <data name="Cli_ScriptTooManyFiles" xml:space="preserve"><value>At most 1024 XML files may be executed at once.</value></data>
+  <data name="Cli_ScriptStarted" xml:space="preserve"><value>Executing XML: {0}</value></data>
+  <data name="Cli_ScriptCompleted" xml:space="preserve"><value>XML completed: {0} executed, {1} skipped, {2} written.</value></data>
+  <data name="Cli_ScriptSkipped" xml:space="preserve"><value>  Skipped {0}: {1} ({2})</value></data>
+  <data name="Cli_ScriptSkipUnsupported" xml:space="preserve"><value>XML command has no execution adapter (not sent)</value></data>
+  <data name="Cli_ScriptSkipDevice" xml:space="preserve"><value>command absent from the device's reported list</value></data>
+  <data name="Cli_ScriptSkipEmpty" xml:space="preserve"><value>empty program filename</value></data>
+  <data name="Cli_ScriptSkipNonDisk" xml:space="preserve"><value>patch filename is not DISK</value></data>
+  <data name="Cli_CommandDetailsHint" xml:space="preserve"><value>Details: help &lt;command&gt;; help qcom for reported device mappings; help all for all Host syntax.</value></data>
+  <data name="Cli_HelpDetailsHint" xml:space="preserve"><value>Use help &lt;command&gt; for syntax; help all for connection options and all Host commands (including configure / peek).</value></data>
+  <data name="Cli_InteractiveKeys" xml:space="preserve"><value>Interactive: Up/Down history, Tab/Shift+Tab command completion, Left/Right and Home/End editing, exit to quit.</value></data>
+  <data name="Cli_CommonCommandsSummary" xml:space="preserve"><value>Common commands: info | partitions | read | write | erase | browse | reboot | connect | help | exit</value></data>
 </root>

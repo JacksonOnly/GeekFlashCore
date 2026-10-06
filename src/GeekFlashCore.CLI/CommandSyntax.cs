@@ -17,7 +17,7 @@ internal static class CommandSyntax
         ["erase"] = "erase <partition> [lun] | erase sector <lun> <start> <count>",
         ["reboot"] = "reboot <system|download|poweroff>",
         ["info"] = "info", ["connect"] = "connect", ["devices"] = "devices",
-        ["help"] = "help", ["interactive"] = ""
+        ["help"] = "help [command|qcom|all]", ["interactive"] = ""
     };
 
     public static CliOptions Normalize(CliOptions options)
@@ -60,7 +60,8 @@ internal static class CommandSyntax
                     break;
                 case "partitions": Count(a, 1); if (!a[0].Equals("all", StringComparison.OrdinalIgnoreCase)) Lun(a[0]); break;
                 case "reboot": Count(a, 1); Choice(a[0], "system", "download", "poweroff"); break;
-                case "info": case "connect": case "devices": case "help": case "interactive": Count(a, 0); break;
+                case "help": if (a.Length > 1) throw new FormatException(); break;
+                case "info": case "connect": case "devices": case "interactive": Count(a, 0); break;
                 default: throw new FormatException();
             }
             if (a.Any(string.IsNullOrWhiteSpace)) throw new FormatException();

@@ -84,13 +84,29 @@ internal static class CommandLine
             : Enum.Parse<QcomAuthenticationKind>(value, true);
 
     public static void PrintHelp()
+        => PrintRequestedHelp([], new ConsoleUi());
+
+    internal static void PrintRequestedHelp(string[] arguments, ConsoleUi ui)
     {
+        string? requested = arguments.FirstOrDefault()?.ToLowerInvariant();
+        if (requested is not (null or "all" or "qcom"))
+        {
+            if (CommandSyntax.Usages.TryGetValue(requested, out string? common)) ui.WriteLine("  " + common);
+            else if (FirehoseCommands.Usages.TryGetValue(requested, out string? firehose)) ui.WriteLine("  " + firehose);
+            else throw new ArgumentException(Strings.FormatCli_UnknownCommand(requested));
+            return;
+        }
         Console.WriteLine(Strings.Cli_Title);
         Console.WriteLine(Strings.Cli_HelpUsage);
         Console.WriteLine(Strings.Cli_HelpCommands);
         foreach (string usage in CommandSyntax.Usages.Values.Where(x => x.Length > 0)) Console.WriteLine("  " + usage);
+        Console.WriteLine("  " + FirehoseCommands.Usages["rawprogram"]);
+        Console.WriteLine("  patch <xml-or-pattern> [...]");
+        Console.WriteLine(Strings.Cli_InteractiveKeys);
+        if (requested is null) { Console.WriteLine(Strings.Cli_HelpDetailsHint); return; }
         Console.WriteLine(Strings.Cli_HelpQcomCommands);
         foreach (string usage in FirehoseCommands.Usages.Values) Console.WriteLine("  " + usage);
+        if (requested == "qcom") return;
         Console.WriteLine(Strings.Cli_HelpOptionsPrimary);
         Console.WriteLine(Strings.Cli_HelpOptionsSecondary);
         Console.WriteLine(Strings.Cli_HelpVipOptions);

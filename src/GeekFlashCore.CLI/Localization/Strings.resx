@@ -13,7 +13,7 @@
   <data name="Cli_PartitionNotUnique" xml:space="preserve"><value>无法唯一确定分区 {0}，请检查名称并指定 LUN。</value></data>
   <data name="Cli_CommandCompleted" xml:space="preserve"><value>命令 {0} 已完成。</value></data>
   <data name="Cli_StorageNotConfigured" xml:space="preserve"><value>存储尚未配置。</value></data>
-  <data name="Cli_CommandsMapped" xml:space="preserve"><value>Firehose 命令映射成功，共 {0} 项：</value></data>
+  <data name="Cli_CommandsMapped" xml:space="preserve"><value>设备支持的命令 =&gt; Host 支持的命令（{0} 项）：</value></data>
   <data name="Cli_NoCommandEvidence" xml:space="preserve"><value>设备没有报告可映射的命令。</value></data>
   <data name="Cli_CommandListUnknown" xml:space="preserve"><value>设备未报告 Firehose 命令列表；可以显式执行 CLI 已实现的命令，是否支持以设备响应为准。</value></data>
   <data name="Cli_LocalCommandsAvailable" xml:space="preserve"><value>CLI 已实现 {0} 项 Firehose 命令（设备能力未确认）：</value></data>
@@ -245,4 +245,19 @@ find 搜索中按 Ctrl+C 取消本次搜索，等待当前读取及 ACK 完成�
   <data name="Cli_HelpMtkKeys" xml:space="preserve"><value>mtk-key id key-name 128|192|256 output-file | mtk-key input label-file salt-file 128|192|256 output-file。键名使用 MtkKeyDeriveId 枚举（Rpmb、Fde、Tee、AesImageEncryption、AesCustom、Motorola、RootOfTrust）；输入最多各 32 字节，- 表示空输入。必须指定 --mtk-extension-abi penumbra2 及对应加密基址，并已合法加载兼容扩展；密钥仅写入文件。</value></data>
   <data name="Cli_MtkRpmbLockState" xml:space="preserve"><value>RPMB 锁配置版本={0}，状态={1}。</value></data>
   <data name="Cli_HelpMtkWriteExtras" xml:space="preserve"><value>mtk-fill region offset length byte-value 使用普通写入进行逻辑填充并读回，byte-value 范围 0–255；mtk-rsc partition source-file 更新 XFlash RSC 记录；mtk-rpmb-lock read key-file | mtk-rpmb-lock lock|unlock key-file backup-file 读取/修改 XML/UFS RPMB 锁状态，要求已确认 --mtk-ufs-rpmb-blocks 容量和已有 32 字节认证密钥，写入前保留原始块。</value></data>
+  <data name="Cli_ScriptFileMissing" xml:space="preserve"><value>XML 文件不存在或通配符没有匹配结果。</value></data>
+  <data name="Cli_ScriptImageMissing" xml:space="preserve"><value>XML 引用的镜像不存在。</value></data>
+  <data name="Cli_ScriptImageOutsideDirectory" xml:space="preserve"><value>XML 镜像路径超出 XML 所在目录。</value></data>
+  <data name="Cli_ScriptTooManyFiles" xml:space="preserve"><value>一次最多执行 1024 个 XML 文件。</value></data>
+  <data name="Cli_ScriptStarted" xml:space="preserve"><value>执行 XML：{0}</value></data>
+  <data name="Cli_ScriptCompleted" xml:space="preserve"><value>XML 完成：执行 {0} 条，跳过 {1} 条，写入 {2}。</value></data>
+  <data name="Cli_ScriptSkipped" xml:space="preserve"><value>  跳过 {0} 条：{1}（{2}）</value></data>
+  <data name="Cli_ScriptSkipUnsupported" xml:space="preserve"><value>该 XML 命令尚无执行适配（不会发送）</value></data>
+  <data name="Cli_ScriptSkipDevice" xml:space="preserve"><value>设备声明的列表不包含此命令</value></data>
+  <data name="Cli_ScriptSkipEmpty" xml:space="preserve"><value>program 的 filename 为空</value></data>
+  <data name="Cli_ScriptSkipNonDisk" xml:space="preserve"><value>patch 的 filename 不是 DISK</value></data>
+  <data name="Cli_CommandDetailsHint" xml:space="preserve"><value>详情：help &lt;命令&gt;；help qcom 查看设备已报告的映射语法；help all 查看 Host 全部语法。</value></data>
+  <data name="Cli_HelpDetailsHint" xml:space="preserve"><value>help &lt;命令&gt; 查看用法；help all 查看连接选项及 Host 全部命令（如 configure / peek）。</value></data>
+  <data name="Cli_InteractiveKeys" xml:space="preserve"><value>交互：↑/↓ 浏览历史，Tab/Shift+Tab 补全命令，←/→、Home/End 编辑，exit 退出。</value></data>
+  <data name="Cli_CommonCommandsSummary" xml:space="preserve"><value>通用命令：info | partitions | read | write | erase | browse | reboot | connect | help | exit</value></data>
 </root>

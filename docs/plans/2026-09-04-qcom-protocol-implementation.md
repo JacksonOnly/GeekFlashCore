@@ -1,5 +1,12 @@
 # Qualcomm Protocol Implementation Plan
 
+### XML-01～03 / CLI-14～15（2026-10-06）：XML 刷机与交互命令
+
+- 已新增同步 rawprogram / DISK patch 文件入口及 CLI 通配符、直接文件输入；真实 alioth 12 份 XML 在模拟几何/合成镜像下通过，rawprogram1/2 的 xblgpt 保持原序。发送前预检当前文件，复用 Raw/Sparse/Digest/VIP 线路；未知命令跳过、错误停止不重放。
+- 帮助优先通用命令，设备 => Host 仅显示已报告交集；未上报列表不展开全部 Host 候选。新增本会话 Up/Down 历史与 Tab/Shift+Tab 命令补全，资源提示不记录。
+- 证据：Qcom 289、CLI 66、LP 55、Core 9 共 419 项通过；XML 512 MiB 流式执行分配低于 1 MiB；Release 构建 0 警告/0 错误，双语资源、diff、ignored/跟踪检查通过。本轮未操作硬件；CRC 方言、厂商响应和终端显示待复测。
+- 设计、具体适配范围、命令与风险见 `2026-10-06-qcom-xml-cli-design.md`、`2026-10-06-qcom-xml-cli-implementation.md` 和 `../cli-qcom.md`。本工作区恢复的是四套历史测试，不等同于其他工作树未迁入测试。
+
 ### MERGE-PBL-01（2026-10-05）：自动 Digest 与通用 PBL Patch 合并
 
 - 用户授权合并后，本地 main 从 c300957 无冲突快进纳入 f9ff352 和 9c42699。主工作区 Release 解决方案构建 0 警告/0 错误；同一源码提交的功能工作区完整 Qcom 412、CLI 55、Python 提取校验 4 项通过，首次并行共享 obj 写锁已通过串行重跑排除。源码一致性、diff 与 ignored/跟踪检查通过，未推送。详细证据与设备待验证风险见 `2026-10-05-pbl-patch-implementation.md` 的合并复核。

@@ -20,6 +20,7 @@
 - 完整当前本地回归：Qcom 289/289、CLI 66/66、Android LP 55/55、Core 9/9，共 419 项，无跳过。运行 dotnet test 四套工程 -c Release（Qcom/CLI 最终全量使用已生成 DLL 的 --no-build --no-restore）；dotnet build GeekFlashCore.slnx -c Release --no-restore，0 警告/0 错误。
 - EXE 离线 help、help patch 和 rawprogram 缺参用法输出符合预期；无设备连接。CLI 227 / Qcom 272 组双语资源键一致，git diff --check 通过；git ls-files .tests 为空，测试/夹具/日志/bin/obj 保持 ignored。
 - 最终范围复审：XML 不透传自定义命令和敏感字段；所有新增用户文本资源化；源和流所有权明确；分配不随 Raw 总长度增长；原数字 patch/write 路径回归通过。生产提交按 Core 与 CLI 拆分。
+- 提交：Core 为 `3dbd801 feat(qcom): execute validated rawprogram and disk patches`；CLI 独立提交 `feat(cli): add XML flashing and interactive command editing`。分支为 `codex/qcom-xml-cli-20261006`，仅本地提交，不合并或推送；构建输出位于本工作区 src/GeekFlashCore.CLI/bin/Release/net10.0/geekflash.exe。
 
 ## 未决风险
 

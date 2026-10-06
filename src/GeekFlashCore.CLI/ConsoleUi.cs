@@ -122,6 +122,9 @@ internal sealed class ConsoleUi
 
     public Task<string?> ReadInputAsync(CancellationToken cancellationToken) => _input.ReadAsync(false, cancellationToken);
 
+    internal Task<string?> ReadCommandAsync(string prompt, Func<string, IReadOnlyList<string>> complete, CancellationToken ct) =>
+        _input.ReadCommandAsync(prompt, complete, ct);
+
     public async Task<string?> SelectFileAsync(string prompt, string? configuredPath, string invalidMessage,
         CancellationToken cancellationToken, Func<string, bool>? validate = null, bool optional = false)
     {

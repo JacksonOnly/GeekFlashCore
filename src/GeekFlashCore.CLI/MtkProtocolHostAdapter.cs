@@ -3,6 +3,7 @@ using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Mtk;
 using GeekFlashCore.Protocol.Mtk.Abstractions;
 using GeekFlashCore.Protocol.Mtk.Extensions;
+using GeekFlashCore.Protocol.Mtk.Exploits;
 using GeekFlashCore.Protocol.Mtk.Loaders;
 using GeekFlashCore.Transport.Abstractions;
 using GeekFlashCore.Transport.LibUsb;
@@ -121,7 +122,9 @@ internal static class MtkProtocolHostAdapter
             ReadTimeoutMilliseconds = o.ReadTimeout,
             ConnectTimeoutMilliseconds = o.HasExplicitConnectTimeout ? o.ConnectTimeout : MtkProtocolOptions.DefaultConnectTimeoutMilliseconds,
             ResourceTimeoutMilliseconds = o.ResourceTimeout is > 0 ? o.ResourceTimeout.Value : 30000
-        }, resources: resources, leaveTransportOpen: true);
+        }, resources: resources, leaveTransportOpen: true, exploitStrategies:
+        [new UnfusedExploitStrategy(), new LineCodeExploitStrategy(),
+         new CarbonaraExploitStrategy(), new HeapBaitExploitStrategy()]);
     }
     private static MtkConnectionResources ResolveResources(CliOptions o, MtkTargetInfo target)
     {

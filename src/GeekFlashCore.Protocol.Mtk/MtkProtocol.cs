@@ -20,8 +20,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     private readonly IMtkEmiProvider? _emiProvider;
     private readonly IMtkAuthenticationProvider? _signer;
     private readonly Func<MtkTargetInfo, MtkConnectionResources>? _resources;
-    private readonly IMtkExploitStrategy? _exploitStrategy;
-    private readonly MtkExploitDescriptor? _exploitDescriptor;
+    private readonly ExploitRegistration[] _exploitRegistrations;
     private readonly bool _leaveTransportOpen;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly AsyncLocal<bool> _inside = new();
@@ -35,24 +34,29 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     private long _generation;
     private volatile MtkSessionState _state;
     private bool _openedHere;
+    /// <summary>Preserves the original single-strategy constructor signature for compiled hosts.
+    /// New source calls may use the constructor with optional ordered-strategy parameters.</summary>
+    public MtkProtocol(IUsbTransport transport, MtkProtocolOptions? options, IMtkDaProvider? daProvider,
+        IMtkEmiProvider? emiProvider, IMtkAuthenticationProvider? authenticationProvider,
+        Func<MtkTargetInfo, MtkConnectionResources>? resources, bool leaveTransportOpen, IMtkExploitStrategy? exploitStrategy)
+        : this(transport, options, daProvider, emiProvider, authenticationProvider, resources, leaveTransportOpen,
+            exploitStrategy, exploitStrategies: null) { }
     /// <summary>Creates a serialized session. Provider sources are borrowed; sensitive buffers returned by
     /// the resource factory transfer ownership. Borrowed transports are still closed after wire failures.
-    /// An optional host strategy is invoked only at its declared checkpoints; the core owns no strategies.</summary>
+    /// Optional host strategies are invoked in order at their declared checkpoints; the core owns no strategies.
+    /// Supply either exploitStrategy or exploitStrategies (at most 64), never both. The collection and
+    /// descriptors are captured before device access. NotApplicable advances to the next matching strategy;
+    /// Completed ends this checkpoint's attempts. Terminal outcomes stop the connection.</summary>
     public MtkProtocol(IUsbTransport transport, MtkProtocolOptions? options = null, IMtkDaProvider? daProvider = null,
         IMtkEmiProvider? emiProvider = null, IMtkAuthenticationProvider? authenticationProvider = null,
         Func<MtkTargetInfo, MtkConnectionResources>? resources = null, bool leaveTransportOpen = false,
-        IMtkExploitStrategy? exploitStrategy = null)
+        IMtkExploitStrategy? exploitStrategy = null, IReadOnlyList<IMtkExploitStrategy>? exploitStrategies = null)
     {
         ArgumentNullException.ThrowIfNull(transport);
         _transport = transport;
         _options = options ?? new();
         _options.Validate();
-        _exploitStrategy = exploitStrategy;
-        if (exploitStrategy is not null)
-        {
-            _exploitDescriptor = exploitStrategy.Descriptor ?? throw new MtkResourceException("extension descriptor");
-            _exploitDescriptor.Validate();
-        }
+        _exploitRegistrations = CaptureExploitStrategies(exploitStrategy, exploitStrategies);
         _daProvider = daProvider;
         _emiProvider = emiProvider;
         _signer = authenticationProvider;
@@ -61,18 +65,24 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         _wire = new(transport, _options);
         _brom = new(_wire, _options);
     }
-    /// <summary>Creates the production backend exclusively through LibUsb. The optional strategy must be
+    /// <summary>Preserves the original single-strategy USB factory signature for compiled hosts.</summary>
+    public static MtkProtocol CreateUsb(LibUsbConnectionOptions connection, MtkProtocolOptions? options,
+        IMtkDaProvider? daProvider, IMtkEmiProvider? emiProvider, IMtkAuthenticationProvider? signer,
+        IMtkExploitStrategy? exploitStrategy) =>
+        CreateUsb(connection, options, daProvider, emiProvider, signer, exploitStrategy, exploitStrategies: null);
+    /// <summary>Creates the production backend exclusively through LibUsb. The optional strategies must be
     /// explicitly supplied by the host; no strategy is registered by default.</summary>
     public static MtkProtocol CreateUsb(LibUsbConnectionOptions connection, MtkProtocolOptions? options = null,
         IMtkDaProvider? daProvider = null, IMtkEmiProvider? emiProvider = null, IMtkAuthenticationProvider? signer = null,
-        IMtkExploitStrategy? exploitStrategy = null)
+        IMtkExploitStrategy? exploitStrategy = null, IReadOnlyList<IMtkExploitStrategy>? exploitStrategies = null)
     {
         options ??= new();
         options.Validate();
         var transport = LibUsbTransportFactory.Create(connection);
         try
         {
-            return new(transport, options, daProvider, emiProvider, signer, exploitStrategy: exploitStrategy);
+            return new(transport, options, daProvider, emiProvider, signer,
+                exploitStrategy: exploitStrategy, exploitStrategies: exploitStrategies);
         }
         catch { try { transport.Dispose(); } catch { } throw; }
     }

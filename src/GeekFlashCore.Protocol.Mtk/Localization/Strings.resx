@@ -17,4 +17,5 @@
 <data name="ExploitCheckpointReached" xml:space="preserve"><value>已到达宿主扩展检查点 {0}。</value></data>
 <data name="ExploitCheckpointSkipped" xml:space="preserve"><value>宿主扩展检查点 {0} 未执行回调：{1}。</value></data>
 <data name="HandshakeStep" xml:space="preserve"><value>BROM 握手步骤 {0}/{1}。</value></data>
+<data name="ExploitStrategyStarting" xml:space="preserve"><value>宿主扩展阶段 {0} 正在调用策略 {1}/{2}。</value></data>
 </root>

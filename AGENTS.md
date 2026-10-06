@@ -64,7 +64,7 @@
 
 ## 安全和性能要求
 
-MTK 使用 LibUsb；BROM、三种 DA 与扩展共用串行化 gate、有限预算和会话代数。BROM 访问只在 Probe 后、DA 执行前开放，回调或跳转后通道失效。标准认证由宿主提供合法材料和签名。按用户最新授权，漏洞部分提供 `IMtkExploitStrategy` 及阶段/context/result 框架，另允许 LineCode、Carbonara、HeapBait、Unfused 的非执行接口占位类；占位类仅声明 descriptor、校验参数/取消并返回 NotApplicable，不读取设备上下文或执行 I/O。允许显式注入的宿主回调在连接阶段调用，不得添加具体漏洞策略逻辑、默认注册、漏洞算法、补丁生成或攻击载荷。默认连接不执行策略，完成结果不等于认证成功，终止结果要求重连。具体契约与阶段见 `docs/plans/2026-10-05-mtk-exploit-framework.md`，占位类范围见 `docs/plans/2026-10-06-mtk-exploit-placeholders.md`。扩展须验证 ACK/context；RPMB 不作为普通块设备，seccfg 写入必须备份、最小对齐写和回读，未知写结果不重试。
+MTK 使用 LibUsb；BROM、三种 DA 与扩展共用串行化 gate、有限预算和会话代数。BROM 访问只在 Probe 后、DA 执行前开放，回调或跳转后通道失效。标准认证由宿主提供合法材料和签名。按用户最新授权，漏洞部分提供 `IMtkExploitStrategy` 及阶段/context/result 框架，另允许 LineCode、Carbonara、HeapBait、Unfused 的非执行接口占位类；占位类仅声明 descriptor、校验参数/取消并返回 NotApplicable，不读取设备上下文或执行 I/O。允许显式注入的宿主回调在连接阶段调用，不得添加具体漏洞策略逻辑、核心默认注册、漏洞算法、补丁生成或攻击载荷。用户进一步要求 CLI 显式注入现有四项，并让 NotApplicable 继续下一匹配策略、全部尝试后仍校验 DAA 材料；核心支持有界有序集合，每次回调独立失效，Completed 结束本阶段尝试，终止结果不得降级继续。核心未注入的连接仍不执行策略，完成结果不等于认证成功，终止结果要求重连。具体契约与阶段见 `docs/plans/2026-10-05-mtk-exploit-framework.md`，占位类范围见 `docs/plans/2026-10-06-mtk-exploit-placeholders.md`，CLI 接入最新范围与证据见 `docs/plans/2026-10-06-mtk-cli-strategy-order-design.md` 及对应 implementation 记录。扩展须验证 ACK/context；RPMB 不作为普通块设备，seccfg 写入必须备份、最小对齐写和回读，未知写结果不重试。
 
 用户进一步授权补齐占位类依赖，范围是通用离线 DA 窗口、流式摘要/字节搜索、验证后的宿主元数据、资源清单/借用源读取及分析/变换接口；四个 Execute 不解析或调用这些依赖。不得把参考二进制、漏洞特征/地址表、参数填充、定位算法或补丁实现混入依赖层。宿主资源不自动下载/加载，默认仓库为空，真实无参构造保持。最新范围及验证见 `docs/plans/2026-10-06-mtk-exploit-dependencies-design.md` 与对应 implementation 记录。
 

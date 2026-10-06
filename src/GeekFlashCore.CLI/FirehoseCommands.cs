@@ -112,7 +112,8 @@ internal static class FirehoseCommands
             return;
         }
         else ui.WriteLine(Strings.FormatCli_CommandsMapped(mapped.Count));
-        if (mapped.Count > 0) ui.WriteLine("  " + string.Join("  |  ", mapped.Select(x => x + " => " + HostCommand(x))));
+        int width = mapped.Count > 0 ? mapped.Max(x => x.Length) : 0;
+        foreach (string command in mapped) ui.WriteLine("  " + command.PadRight(width) + " => " + HostCommand(command));
         if (mapped.Count == 0) ui.WriteLine(Strings.Cli_NoCommandEvidence);
         ui.WriteLine(Strings.Cli_CommandDetailsHint);
     }
@@ -124,7 +125,10 @@ internal static class FirehoseCommands
     {
         if (ReportedCommands(protocol).Count == 0) { ui.WriteLine(Strings.Cli_CommandListUnknown); return; }
         foreach (string command in MappedCommands(protocol))
-            ui.WriteLine("  " + (Usages.TryGetValue(command, out string? usage) ? usage : CommandSyntax.Usages[command]) + "  " + Description(command));
+        {
+            CommandLine.PrintUsage(Usages.TryGetValue(command, out string? usage) ? usage : CommandSyntax.Usages[command], ui);
+            ui.WriteLine("    " + Description(command));
+        }
     }
 
     private static string Description(string command) => command switch

@@ -43,22 +43,24 @@ internal sealed class ProgressDisplay(TimeProvider clock)
             : $"{current} / {(knownTotal ? record.Total.ToString(CultureInfo.InvariantCulture) : "?")}";
         string time = completed ? Strings.FormatCli_ProgressDuration(elapsed) : Strings.FormatCli_ProgressElapsed(elapsed);
         string details = $"{percent} {quantity}";
+        string? rate = null;
         if (record.Unit == ProgressUnit.Bytes)
         {
             double speed = seconds > 0 ? current / seconds : 0;
-            string rate = seconds > 0 ? Size((decimal)speed) + "/s" : "--";
-            details += " | " + Strings.FormatCli_ProgressSpeed(rate);
+            rate = Strings.FormatCli_ProgressSpeed(Rate(current, seconds));
             if (!completed)
             {
                 string eta = knownTotal && speed > 0 ? Duration((record.Total - current) / speed) : "--:--:--";
-                time += " | " + Strings.FormatCli_ProgressRemaining(eta);
+                time += Environment.NewLine + "  " + Strings.FormatCli_ProgressRemaining(eta);
             }
         }
-        details += " | " + time;
-        string label = record.Label.Replace('\r', ' ').Replace('\n', ' ').Replace('\t', ' ');
-        int width = Math.Min(24, terminalWidth - Cells(label) - Cells(details) - 5);
+        string label = SingleLine(record.Label);
+        int width = terminalWidth >= 60 ? Math.Min(24, terminalWidth - Cells(details) - 6) : 0;
         string bar = width >= 8 ? " [" + new string('#', (int)(ratio * width)) + new string('-', width - (int)(ratio * width)) + "]" : "";
-        return new ProgressFrame($"{label}{bar} {details}", completed);
+        string line = label + Environment.NewLine + "  " + details + bar;
+        if (rate is not null) line += Environment.NewLine + "  " + rate;
+        line += Environment.NewLine + "  " + time;
+        return new ProgressFrame(line, completed);
     }
 
     internal static string Size(decimal bytes)
@@ -68,12 +70,23 @@ internal sealed class ProgressDisplay(TimeProvider clock)
         return bytes.ToString("0.##", CultureInfo.InvariantCulture) + " " + Units[unit];
     }
 
-    private static string Duration(double seconds)
+    internal static string Rate(decimal bytes, double seconds) => seconds > 0 && double.IsFinite(seconds)
+        ? Size(bytes / (decimal)seconds) + "/s" : "--";
+
+    internal static string Duration(double seconds)
     {
         if (!double.IsFinite(seconds) || seconds < 0 || seconds > TimeSpan.MaxValue.TotalSeconds) return "--:--:--";
-        long whole = (long)seconds;
-        return $"{whole / 3600:00}:{whole / 60 % 60:00}:{whole % 60:00}";
+        long milliseconds = (long)Math.Round(seconds * 1000, MidpointRounding.AwayFromZero);
+        long whole = milliseconds / 1000;
+        return $"{whole / 3600:00}:{whole / 60 % 60:00}:{whole % 60:00}.{milliseconds % 1000:000}";
     }
+
+    internal static string SingleLine(string value) => string.Create(value.Length, value, static (output, input) =>
+    {
+        for (int i = 0; i < input.Length; i++) output[i] = char.IsControl(input[i]) ? ' ' : input[i];
+    });
+
+    internal static string Pad(string value, int cells) => value + new string(' ', Math.Max(0, cells - Cells(value)));
 
     internal static int Cells(string text)
     {
@@ -95,12 +108,13 @@ internal sealed class ProgressDisplay(TimeProvider clock)
     {
         // Reserve the final column to avoid terminal-dependent deferred wrapping.
         int available = Math.Max(2, terminalWidth - 1);
-        if (Cells(line) <= available) return (line, 1);
+        if (!line.Contains('\r') && !line.Contains('\n') && Cells(line) <= available) return (line, 1);
         var output = new StringBuilder(line.Length + 16);
         int column = 0, rows = 1;
         Span<char> characters = stackalloc char[2];
-        foreach (Rune rune in line.EnumerateRunes())
+        foreach (Rune rune in line.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').EnumerateRunes())
         {
+            if (rune.Value == '\n') { output.Append("\r\n"); column = 0; rows++; continue; }
             int cells = RuneCells(rune);
             if (column + cells > available) { output.Append("\r\n"); column = 0; rows++; }
             int count = rune.EncodeToUtf16(characters);

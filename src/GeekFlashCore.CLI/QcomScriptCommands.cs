@@ -39,32 +39,67 @@ internal static class QcomScriptCommands
     }
 
     internal static void Execute(IQcomProtocol protocol, string[] patterns, bool patchOnly, ConsoleUi ui,
-        IProgress<ProgressRecord> progress, CancellationToken ct)
+        IProgress<ProgressRecord> progress, CancellationToken ct, TimeProvider? timeProvider = null)
     {
         // Expand all patterns before sending; preserve explicit pattern order and remove duplicates.
-        foreach (string path in ExpandFiles(patterns))
+        var files = ExpandFiles(patterns);
+        var clock = timeProvider ?? TimeProvider.System;
+        long batchStarted = clock.GetTimestamp();
+        decimal bytes = 0; int executed = 0, skipped = 0;
+        foreach (string path in files)
         {
             ct.ThrowIfCancellationRequested();
             ui.WriteLine(Strings.FormatCli_ScriptStarted(Path.GetFileName(path)));
             string directory = Path.GetDirectoryName(path)!;
+            long started = clock.GetTimestamp();
             FirehoseScriptResult result = patchOnly
                 ? protocol.ExecutePatchFile(new FileDataSource(path), progress, ct)
                 : protocol.ExecuteRawProgram(new FileDataSource(path), name => ResolveImage(directory, name), progress, ct);
-            ui.WriteLine(Strings.FormatCli_ScriptCompleted(result.ExecutedCommands, result.SkippedEntries.Count,
-                ConsoleUi.FormatBytes(result.BytesWritten)));
-            foreach (var group in result.SkippedEntries.GroupBy(x => x.Reason))
-            {
-                string reason = group.Key switch
-                {
-                    FirehoseScriptSkipReason.UnsupportedCommand => Strings.Cli_ScriptSkipUnsupported,
-                    FirehoseScriptSkipReason.DeviceCommandUnavailable => Strings.Cli_ScriptSkipDevice,
-                    FirehoseScriptSkipReason.EmptyFileName => Strings.Cli_ScriptSkipEmpty,
-                    _ => Strings.Cli_ScriptSkipNonDisk
-                };
-                string names = string.Join(", ", group.Select(x => x.Command).Distinct().Take(8));
-                ui.WriteLine(Strings.FormatCli_ScriptSkipped(group.Count(), reason, names));
-            }
+            TimeSpan elapsed = clock.GetElapsedTime(started);
+            PrintStatistics(ui, Strings.FormatCli_ScriptFileSummary(ProgressDisplay.SingleLine(Path.GetFileName(path))),
+                result.ExecutedCommands, result.SkippedEntries.Count, result.BytesWritten, elapsed);
+            foreach (var entry in result.SkippedEntries) PrintSkipped(ui, entry);
+            bytes += result.BytesWritten; executed += result.ExecutedCommands; skipped += result.SkippedEntries.Count;
         }
+        PrintStatistics(ui, Strings.FormatCli_ScriptBatchSummary(files.Count), executed, skipped, bytes,
+            clock.GetElapsedTime(batchStarted));
+    }
+
+    private static void PrintStatistics(ConsoleUi ui, string title, int executed, int skipped, decimal bytes, TimeSpan elapsed)
+    {
+        double seconds = Math.Max(0, elapsed.TotalSeconds);
+        ui.WriteLine(title);
+        ui.WriteLine(Strings.FormatCli_ScriptStatistics(executed, skipped, ConsoleUi.FormatBytes(bytes), ProgressDisplay.Duration(seconds)));
+        if (bytes > 0) ui.WriteLine("  " + Strings.FormatCli_ProgressSpeed(ProgressDisplay.Rate(bytes, seconds)));
+    }
+
+    private static void PrintSkipped(ConsoleUi ui, FirehoseScriptSkippedEntry entry)
+    {
+        string reason = entry.Reason switch
+        {
+            FirehoseScriptSkipReason.UnsupportedCommand => Strings.Cli_ScriptSkipUnsupported,
+            FirehoseScriptSkipReason.DeviceCommandUnavailable => Strings.Cli_ScriptSkipDevice,
+            FirehoseScriptSkipReason.EmptyFileName => Strings.Cli_ScriptSkipEmpty,
+            _ => Strings.Cli_ScriptSkipNonDisk
+        };
+        string name = string.IsNullOrWhiteSpace(entry.Label) ? Strings.Cli_ScriptUnnamedPartition : entry.Label;
+        ui.WriteLine(Strings.FormatCli_ScriptSkippedEntry(entry.Index, ProgressDisplay.SingleLine(entry.Command), ProgressDisplay.SingleLine(name)));
+        if (entry.PhysicalPartitionNumber is not null || entry.PhysicalPartitionExpression is not null || entry.StartSectorExpression is not null)
+            ui.WriteLine(Strings.FormatCli_ScriptSkippedLocation(
+                Location(entry.PhysicalPartitionNumber, entry.PhysicalPartitionExpression),
+                Location(entry.StartSector, entry.StartSectorExpression), Location(entry.SectorCount, entry.SectorCountExpression)));
+        if (!string.IsNullOrWhiteSpace(entry.FileName))
+            ui.WriteLine(Strings.FormatCli_ScriptSkippedFile(ProgressDisplay.SingleLine(entry.FileName)));
+        ui.WriteLine(Strings.FormatCli_ScriptSkippedReason(reason));
+    }
+
+    private static string Location(long? resolved, string? expression)
+    {
+        string? number = resolved?.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string? raw = expression is null ? null : ProgressDisplay.SingleLine(expression);
+        if (string.IsNullOrWhiteSpace(raw)) return number ?? Strings.Cli_UnknownValue;
+        return number is null || raw.Trim().TrimEnd('.') == number ? number ?? raw
+            : Strings.FormatCli_ScriptResolvedLocation(number, raw);
     }
 
     internal static IDataSource ResolveImage(string directory, string filename)

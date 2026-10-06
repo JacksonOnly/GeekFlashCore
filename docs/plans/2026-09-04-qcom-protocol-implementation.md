@@ -1,5 +1,10 @@
 # Qualcomm Protocol Implementation Plan
 
+### OUTPUT-01（2026-10-06）：统计、跳过明细与对齐输出
+
+- 用户确认分区与整个 rawprogram 通配批次的统计都需改进。毫秒时间、最终 ACK 完成平均速度、每份 XML/整个批次的单调计时汇总、逐条跳过分区与 LUN/扇区位置已实现；命令映射逐项对齐，连接/帮助/存储/进度等宿主输出拆开独立字段。
+- Core 跳过元数据仅从既有有界 XML 与缓存几何取得，不发送额外命令；解析失败仍跳过。公共跳过 record 保留原构造，新增可选属性。目标 XML 41/41、CLI 输出/进度 20/20 通过，完整收尾证据与继续位置见 `2026-10-06-cli-output-statistics-implementation.md`。本轮不通信设备，真实终端与时延待用户复核。
+
 ### XML-PROGRESS-01（2026-10-06）：写入名称显示
 
 - 修复 ProgramProgress 丢失已有 Label/FileName 的问题；XML/显式 Program 从开始到最终 ACK 完成显示分区、LUN 和文件名，无 label 显示起始扇区。普通 CLI write/program 同样补充文件名，公共契约和线上报文保持兼容。

@@ -91,31 +91,36 @@ internal static class CommandLine
         string? requested = arguments.FirstOrDefault()?.ToLowerInvariant();
         if (requested is not (null or "all" or "qcom"))
         {
-            if (CommandSyntax.Usages.TryGetValue(requested, out string? common)) ui.WriteLine("  " + common);
-            else if (FirehoseCommands.Usages.TryGetValue(requested, out string? firehose)) ui.WriteLine("  " + firehose);
+            if (CommandSyntax.Usages.TryGetValue(requested, out string? common)) PrintUsage(common, ui);
+            else if (FirehoseCommands.Usages.TryGetValue(requested, out string? firehose)) PrintUsage(firehose, ui);
             else throw new ArgumentException(Strings.FormatCli_UnknownCommand(requested));
             return;
         }
-        Console.WriteLine(Strings.Cli_Title);
-        Console.WriteLine(Strings.Cli_HelpUsage);
-        Console.WriteLine(Strings.Cli_HelpCommands);
-        foreach (string usage in CommandSyntax.Usages.Values.Where(x => x.Length > 0)) Console.WriteLine("  " + usage);
-        Console.WriteLine("  " + FirehoseCommands.Usages["rawprogram"]);
-        Console.WriteLine("  patch <xml-or-pattern> [...]");
-        Console.WriteLine(Strings.Cli_InteractiveKeys);
-        if (requested is null) { Console.WriteLine(Strings.Cli_HelpDetailsHint); return; }
-        Console.WriteLine(Strings.Cli_HelpQcomCommands);
-        foreach (string usage in FirehoseCommands.Usages.Values) Console.WriteLine("  " + usage);
+        ui.WriteLine(Strings.Cli_Title);
+        ui.WriteLine(Strings.Cli_HelpUsage);
+        ui.WriteLine(Strings.Cli_HelpCommands);
+        foreach (string usage in CommandSyntax.Usages.Values.Where(x => x.Length > 0)) PrintUsage(usage, ui);
+        ui.WriteLine("  " + FirehoseCommands.Usages["rawprogram"]);
+        ui.WriteLine("  patch <xml-or-pattern> [...]");
+        ui.WriteLine(Strings.Cli_InteractiveKeys);
+        if (requested is null) { ui.WriteLine(Strings.Cli_HelpDetailsHint); return; }
+        ui.WriteLine(Strings.Cli_HelpQcomCommands);
+        foreach (string usage in FirehoseCommands.Usages.Values) PrintUsage(usage, ui);
         if (requested == "qcom") return;
-        Console.WriteLine(Strings.Cli_HelpOptionsPrimary);
-        Console.WriteLine(Strings.Cli_HelpOptionsSecondary);
-        Console.WriteLine(Strings.Cli_HelpVipOptions);
-        Console.WriteLine(Strings.Cli_HelpOptionsTimeouts);
-        Console.WriteLine(Strings.Cli_HelpOptionsLegacy);
-        Console.WriteLine(Strings.Cli_HelpMtk);
-        Console.WriteLine(Strings.Cli_HelpMtkStandard);
-        Console.WriteLine(Strings.Cli_HelpMtkParity);
-        Console.WriteLine(Strings.Cli_HelpMtkKeys);
-        Console.WriteLine(Strings.Cli_HelpMtkWriteExtras);
+        ui.WriteLine(Strings.Cli_HelpOptionsPrimary);
+        ui.WriteLine(Strings.Cli_HelpOptionsSecondary);
+        ui.WriteLine(Strings.Cli_HelpVipOptions);
+        ui.WriteLine(Strings.Cli_HelpOptionsTimeouts);
+        ui.WriteLine(Strings.Cli_HelpOptionsLegacy);
+        ui.WriteLine(Strings.Cli_HelpMtk);
+        ui.WriteLine(Strings.Cli_HelpMtkStandard);
+        ui.WriteLine(Strings.Cli_HelpMtkParity);
+        ui.WriteLine(Strings.Cli_HelpMtkKeys);
+        ui.WriteLine(Strings.Cli_HelpMtkWriteExtras);
+    }
+
+    internal static void PrintUsage(string usage, ConsoleUi ui)
+    {
+        foreach (string form in usage.Split(" | ", StringSplitOptions.RemoveEmptyEntries)) ui.WriteLine("  " + form);
     }
 }

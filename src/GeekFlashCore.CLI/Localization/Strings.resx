@@ -40,17 +40,27 @@
   <data name="Cli_XblGptDescription" xml:space="preserve"><value>执行指定 LUN 的 xblgpt 命令。</value></data>
   <data name="Cli_FixGptDescription" xml:space="preserve"><value>修复指定 LUN 的 GPT；grow=1 扩展最后分区。</value></data>
   <data name="Cli_ReconnectRequired" xml:space="preserve"><value>设备未连接或会话已失效，请先执行 connect 重新连接。</value></data>
-  <data name="Cli_ProgressSpeed" xml:space="preserve"><value>平均速度 {0}</value></data>
-  <data name="Cli_ProgressElapsed" xml:space="preserve"><value>已用 {0}</value></data>
-  <data name="Cli_ProgressDuration" xml:space="preserve"><value>总用时 {0}</value></data>
-  <data name="Cli_ProgressRemaining" xml:space="preserve"><value>剩余 {0}</value></data>
+  <data name="Cli_ProgressSpeed" xml:space="preserve"><value>平均速度：{0}</value></data>
+  <data name="Cli_ProgressElapsed" xml:space="preserve"><value>已用时间：{0}</value></data>
+  <data name="Cli_ProgressDuration" xml:space="preserve"><value>总用时  ：{0}</value></data>
+  <data name="Cli_ProgressRemaining" xml:space="preserve"><value>预计剩余：{0}</value></data>
   <data name="Cli_ProgressWriteFile" xml:space="preserve"><value>{0} | 文件 {1}</value></data>
   <data name="Cli_Title" xml:space="preserve"><value>GeekFlashCore CLI</value></data>
   <data name="Cli_Banner" xml:space="preserve"><value>GeekFlashCore CLI 0.1</value></data>
   <data name="Cli_HelpUsage" xml:space="preserve"><value>用法: geekflash [选项] &lt;命令&gt; [参数]</value></data>
-  <data name="Cli_HelpCommands" xml:space="preserve"><value>命令: devices | connect | info | partitions | read | write | erase | reboot</value></data>
-  <data name="Cli_HelpOptionsPrimary" xml:space="preserve"><value>选项: --port COM3 | --usb VID:PID | --protocol QualcommEdl | --loader FILE | --digest FILE | --oplus-digest FILE</value></data>
-  <data name="Cli_HelpOptionsSecondary" xml:space="preserve"><value>      --oplus-mode OplusDigestPt|OplusDigestLegacy | --oneplus-projid ID[,ID] | --vendor NAME | --auth xiaomi (覆盖内置签名) | --verbose</value></data>
+  <data name="Cli_HelpCommands" xml:space="preserve"><value>通用命令：</value></data>
+  <data name="Cli_HelpOptionsPrimary" xml:space="preserve"><value>连接选项：
+  --port COM3
+  --usb VID:PID
+  --protocol QualcommEdl
+  --loader FILE
+  --digest FILE
+  --oplus-digest FILE</value></data>
+  <data name="Cli_HelpOptionsSecondary" xml:space="preserve"><value>  --oplus-mode OplusDigestPt|OplusDigestLegacy
+  --oneplus-projid ID[,ID]
+  --vendor NAME
+  --auth xiaomi（覆盖内置签名）
+  --verbose</value></data>
   <data name="Cli_UnknownOption" xml:space="preserve"><value>未知选项 {0}。</value></data>
   <data name="Cli_MissingOptionValue" xml:space="preserve"><value>缺少 {0} 的值。</value></data>
   <data name="Cli_UnknownCommand" xml:space="preserve"><value>未知命令“{0}”。</value></data>
@@ -82,18 +92,39 @@
   <data name="Cli_AuthenticationPayloadInvalid" xml:space="preserve"><value>认证 payload 必须是十六进制。</value></data>
   <data name="Cli_InfoProtocol" xml:space="preserve"><value>通信协议：{0}</value></data>
   <data name="Cli_InfoVendor" xml:space="preserve"><value>通信策略：{0}</value></data>
-  <data name="Cli_InfoHardware" xml:space="preserve"><value>厂商：{0}    芯片：{1}    安全启动：{2}</value></data>
-  <data name="Cli_InfoSahara" xml:space="preserve"><value>Sahara：v{0}（最低 v{1}），最大包 {2} 字节，{3}</value></data>
-  <data name="Cli_InfoSaharaIdentity" xml:space="preserve"><value>序列号：{0}    SBL 版本：{1}</value></data>
+  <data name="Cli_InfoHardware" xml:space="preserve"><value>厂商    ：{0}
+芯片    ：{1}
+安全启动：{2}</value></data>
+  <data name="Cli_InfoSahara" xml:space="preserve"><value>Sahara 版本：v{0}
+最低版本   ：v{1}
+最大包长度 ：{2} 字节
+当前模式   ：{3}</value></data>
+  <data name="Cli_InfoSaharaIdentity" xml:space="preserve"><value>序列号  ：{0}
+SBL 版本：{1}</value></data>
   <data name="Cli_InfoSaharaPkHash" xml:space="preserve"><value>PkHash：{0}</value></data>
-  <data name="Cli_InfoHardwareIds" xml:space="preserve"><value>MSM ID：{0}    OEM ID：{1}    型号 ID：{2}
-防回滚版本：{3}    SoC 硬件版本：{4}</value></data>
-  <data name="Cli_InfoFirehose" xml:space="preserve"><value>Firehose：{0}    存储型号：{1}
-存储类型：{2}    扇区：{3} 字节    最大传输块：{4} 字节</value></data>
-  <data name="Cli_InfoFirehoseDevice" xml:space="preserve"><value>芯片：{0}    序列号：{1}
-Loader 构建时间：{2}    已报告命令：{3} 项</value></data>
-  <data name="Cli_InfoStorage" xml:space="preserve"><value>  {0} LUN {1}：{2} 块 × {3} 字节，容量 {4}</value></data>
-  <data name="Cli_StorageInfoLine" xml:space="preserve"><value>存储={0} lun={1} 块数={2} 扇区大小={3} 容量={4}</value></data>
+  <data name="Cli_InfoHardwareIds" xml:space="preserve"><value>MSM ID      ：{0}
+OEM ID      ：{1}
+型号 ID     ：{2}
+防回滚版本  ：{3}
+SoC 硬件版本：{4}</value></data>
+  <data name="Cli_InfoFirehose" xml:space="preserve"><value>Firehose    ：{0}
+存储型号    ：{1}
+存储类型    ：{2}
+扇区大小    ：{3} 字节
+最大传输块  ：{4} 字节</value></data>
+  <data name="Cli_InfoFirehoseDevice" xml:space="preserve"><value>Firehose 芯片  ：{0}
+序列号         ：{1}
+Loader 构建时间：{2}
+已报告命令     ：{3} 项</value></data>
+  <data name="Cli_InfoStorage" xml:space="preserve"><value>  存储 / LUN：{0} / {1}
+  块数      ：{2}
+  扇区大小  ：{3} 字节
+  容量      ：{4}</value></data>
+  <data name="Cli_StorageInfoLine" xml:space="preserve"><value>存储=     {0}
+lun=      {1}
+块数=     {2}
+扇区大小= {3}
+容量=     {4}</value></data>
   <data name="Cli_PartitionLine" xml:space="preserve"><value>{0} lun={1} 起始扇区={2} 偏移={3} 长度={4}</value></data>
   <data name="Cli_UnknownValue" xml:space="preserve"><value>未知</value></data>
   <data name="Cli_UsbDeviceFallback" xml:space="preserve"><value>USB 设备</value></data>
@@ -117,7 +148,8 @@ Loader 构建时间：{2}    已报告命令：{3} 项</value></data>
   Legacy 固定：容量 53，初始计数 0，分段 256 扇区，Digest 窗口 1000 ms，XML 上限 4096，内置 NOP
   --log-file FILE  指定详细日志路径；默认程序目录 logs 下自动生成</value></data>
   <data name="Cli_HelpQcomCommands" xml:space="preserve"><value>交互: interactive（默认）；Qualcomm 专用命令（设备需支持对应能力）：</value></data>
-  <data name="Cli_HelpVipOptions" xml:space="preserve"><value>      --vip-signed FILE | --vip-chained FILE（需配合 signed；与 Digest/Oplus 互斥）</value></data>
+  <data name="Cli_HelpVipOptions" xml:space="preserve"><value>  --vip-signed FILE
+  --vip-chained FILE（需配合 signed；与 Digest/Oplus 互斥）</value></data>
   <data name="Cli_OplusSignPrompt" xml:space="preserve"><value>Oplus Sign 文件路径（留空取消）</value></data>
   <data name="Cli_OplusSignRejected" xml:space="preserve"><value>Sign 未通过验证，请手动选择替换 Sign 文件。</value></data>
   <data name="Cli_OplusSignNeedsMode" xml:space="preserve"><value>--oplus-sign 需要 --oplus-mode 或 --oplus-digest。</value></data>
@@ -189,7 +221,8 @@ find 搜索中按 Ctrl+C 取消本次搜索，等待当前读取及 ACK 完成�
   <data name="Cli_BrowserFound" xml:space="preserve"><value>找到 {0} 个文件。</value></data>
   <data name="Cli_BrowserOutputPrompt" xml:space="preserve"><value>输出文件路径（留空跳过）</value></data>
   <data name="Cli_BrowserExported" xml:space="preserve"><value>已导出 {0} → {1}</value></data>
-  <data name="Cli_BrowserLocation" xml:space="preserve"><value>路径：{0}    类型：{1}</value></data>
+  <data name="Cli_BrowserLocation" xml:space="preserve"><value>路径：{0}
+类型：{1}</value></data>
   <data name="Cli_BrowserNextPage" xml:space="preserve"><value>更多条目：ls . {0}</value></data>
   <data name="Cli_BrowserExportProgress" xml:space="preserve"><value>正在导出文件</value></data>
   <data name="Cli_BrowserCleanupFailed" xml:space="preserve"><value>释放挂载资源失败。</value></data>
@@ -201,8 +234,34 @@ find 搜索中按 Ctrl+C 取消本次搜索，等待当前读取及 ACK 完成�
   <data name="Cli_MtkOptionConflict" xml:space="preserve"><value>指定选项与所选协议不兼容。</value></data>
   <data name="Cli_UsbIdentityInvalid" xml:space="preserve"><value>USB 身份、接口或 RPMB 容量选项无效；物理端口路径需要有效 bus 和点分隔端口号。</value></data>
   <data name="Cli_MtkDaModeInvalid" xml:space="preserve"><value>MTK DA 模式应为 auto、legacy、xflash 或 xml。</value></data>
-  <data name="Cli_MtkInfo" xml:space="preserve"><value>MTK HW 0x{0}；状态 {1}；能力 {2}</value></data>
-  <data name="Cli_HelpMtk" xml:space="preserve"><value>MTK: --protocol mtk --loader DA.bin [--mtk-preloader preloader.bin] [--mtk-da-mode auto|legacy|xflash|xml] [--mtk-auth-file auth.bin] [--mtk-cert cert.bin] [--usb-serial value | --usb-bus N --usb-port-path N.N] [--usb-interface N --usb-control-interface N --usb-alt N] [--mtk-ufs-rpmb-blocks N,N] [--mtk-sej-base ADDR --mtk-tzcc-base ADDR --mtk-ssr-base ADDR]；命令: devices | mtk-probe | mtk-capabilities | mtk-rpmb read|write region start count key-file data-file | mtk-memory read|write address length file | mtk-seccfg lock|unlock region offset length backup-file；MTK 默认连接预算 60000 ms、资源预算 30000 ms，均为有限时限；--connect-timeout 覆盖整个 MTK 连接。</value></data>
+  <data name="Cli_MtkInfo" xml:space="preserve"><value>MTK HW：0x{0}
+状态  ：{1}
+设备能力：
+{2}</value></data>
+  <data name="Cli_MtkCapabilities" xml:space="preserve"><value>  存储读写：{0}
+  内存访问：{1}
+  硬件加密：{2}
+  RPMB    ：{3}
+  安全配置：{4}</value></data>
+  <data name="Cli_HelpMtk" xml:space="preserve"><value>MTK 连接：
+  --protocol mtk --loader DA.bin
+  --mtk-preloader preloader.bin
+  --mtk-da-mode auto|legacy|xflash|xml
+  --mtk-auth-file auth.bin
+  --mtk-cert cert.bin
+  --usb-serial value | --usb-bus N --usb-port-path N.N
+  --usb-interface N --usb-control-interface N --usb-alt N
+  --mtk-ufs-rpmb-blocks N,N
+  --mtk-sej-base ADDR --mtk-tzcc-base ADDR --mtk-ssr-base ADDR
+MTK 命令：
+  devices
+  mtk-probe
+  mtk-capabilities
+  mtk-rpmb read|write region start count key-file data-file
+  mtk-memory read|write address length file
+  mtk-seccfg lock|unlock region offset length backup-file
+MTK 默认连接预算 60000 ms，资源预算 30000 ms，均为有限时限。
+--connect-timeout 覆盖整个 MTK 连接；--resource-timeout 覆盖每次资源请求预算。</value></data>
   <data name="Cli_UsbTopology" xml:space="preserve"><value>{0}:{1} bus={2} port={3}</value></data>
   <data name="Cli_UsbAmbiguous" xml:space="preserve"><value>匹配到多台 USB 设备，请通过序列号或总线/端口路径明确选择。</value></data>
   <data name="Cli_UsbNativeMissing" xml:space="preserve"><value>无法加载 USB 原生库 {0}（{1}）。请检查 runtimes 目录、DLL 架构和依赖；libusb-win32 还需要 libusb0.dll 与 libusbK.dll 桥接库。</value></data>
@@ -223,9 +282,25 @@ find 搜索中按 Ctrl+C 取消本次搜索，等待当前读取及 ACK 完成�
   <data name="Cli_MtkDaSelectionTimedOut" xml:space="preserve"><value>选择 MTK DA 文件超时；请通过 --loader 预先指定文件后重新连接。</value></data>
   <data name="Cli_UsbOpenDisconnectedRetry" xml:space="preserve"><value>USB 设备在开始协议通信前已断开，正在重新枚举并等待设备。</value></data>
   <data name="Cli_UsbDisconnected" xml:space="preserve"><value>USB 设备已断开或重新枚举；请重新连接设备后重试。</value></data>
-  <data name="Cli_MtkChip" xml:space="preserve"><value>MTK 芯片：{0} {1}；硬件编号 0x{2}，DA 编号 0x{3}。</value></data>
-  <data name="Cli_MtkVersions" xml:space="preserve"><value>版本：subcode=0x{0}，FD HW=0x{1}，FC HW=0x{2}，SW=0x{3}，BROM=0x{4}，Preloader=0x{5}；阶段 {6}。</value></data>
-  <data name="Cli_MtkSecurity" xml:space="preserve"><value>安全配置 0x{0}：SBC={1}，SLA={2}，DAA={3}，证书={4}，内存读认证={5}，内存写认证={6}，eMMC 启动参数={7}，Cache 命令阻止={8}。</value></data>
+  <data name="Cli_MtkChip" xml:space="preserve"><value>MTK 芯片：{0} {1}
+硬件编号：0x{2}
+DA 编号 ：0x{3}</value></data>
+  <data name="Cli_MtkVersions" xml:space="preserve"><value>Subcode 版本  ：0x{0}
+FD HW 版本    ：0x{1}
+FC HW 版本    ：0x{2}
+软件版本      ：0x{3}
+BROM 版本     ：0x{4}
+Preloader 版本：0x{5}
+当前阶段      ：{6}</value></data>
+  <data name="Cli_MtkSecurity" xml:space="preserve"><value>安全配置      ：0x{0}
+SBC           ：{1}
+SLA           ：{2}
+DAA           ：{3}
+证书          ：{4}
+内存读认证    ：{5}
+内存写认证    ：{6}
+eMMC 启动参数 ：{7}
+Cache 命令阻止：{8}</value></data>
   <data name="Cli_MtkWatchdog" xml:space="preserve"><value>看门狗：{0}。</value></data>
   <data name="Cli_MtkUnknownChip" xml:space="preserve"><value>未知芯片</value></data>
   <data name="Cli_MtkEnabled" xml:space="preserve"><value>开启</value></data>
@@ -239,20 +314,74 @@ find 搜索中按 Ctrl+C 取消本次搜索，等待当前读取及 ACK 完成�
   <data name="Cli_MtkSlotInfo" xml:space="preserve"><value>最高优先级槽位={0}，boot control 版本={1}，当前启动后缀槽位={2}。</value></data>
   <data name="Cli_MtkSlotState" xml:space="preserve"><value>槽位 {0}：优先级={1}，剩余尝试={2}，启动成功={3}，verity 损坏={4}。</value></data>
   <data name="Cli_MtkSlotWritten" xml:space="preserve"><value>槽位 {0} 已写入并读回校验，原始扇区已备份。</value></data>
-  <data name="Cli_HelpMtkStandard" xml:space="preserve"><value>MTK 标准命令：mtk-query query-name output-file | mtk-property key output-file | mtk-register read|write address [value] | mtk-pmt 32|64|96|disk|xml | mtk-slot read region offset length | mtk-slot set slot-index region offset length backup-file | mtk-rpmb erase region start count key-file。槽位从 0 开始，range 必须对应 misc/para 分区。查询名使用 MtkDaQuery 枚举名称，例如 Version、ChipId、DeviceFirmwareInfo、HardwareInfo；二进制结果仅写入文件。介质选项：--mtk-nand-write（显式允许逻辑页写入；擦除取决于 DA） --mtk-nand-capacity bytes（Legacy BMT/XML 的已确认可用容量） --mtk-iot（已知三段 Legacy IoT DA） --mtk-nor-erase-block bytes（已确认的擦除块） --mtk-pmt-layout 32|64|96|disk（Legacy 无 GPT 时的明确布局；disk 为 eMMC 磁盘 PT/MPT）。</value></data>
+  <data name="Cli_HelpMtkStandard" xml:space="preserve"><value>MTK 标准命令：
+  mtk-query query-name output-file
+  mtk-property key output-file
+  mtk-register read|write address [value]
+  mtk-pmt 32|64|96|disk|xml
+  mtk-slot read region offset length
+  mtk-slot set slot-index region offset length backup-file
+  mtk-rpmb erase region start count key-file
+槽位从 0 开始，range 必须对应 misc/para 分区。
+查询名使用 MtkDaQuery 枚举，如 Version、ChipId、DeviceFirmwareInfo、HardwareInfo；二进制结果仅写入文件。
+介质选项：
+  --mtk-nand-write       显式允许逻辑页写入；擦除取决于 DA
+  --mtk-nand-capacity bytes  Legacy BMT/XML 的已确认可用容量
+  --mtk-iot              已知三段 Legacy IoT DA
+  --mtk-nor-erase-block bytes  已确认的擦除块
+  --mtk-pmt-layout 32|64|96|disk  Legacy 无 GPT 时的明确布局；disk 为 eMMC 磁盘 PT/MPT</value></data>
   <data name="Cli_MtkScatterRange" xml:space="preserve"><value>{0} 区域={1} 偏移={2} 长度={3} 文件={4}</value></data>
-  <data name="Cli_HelpMtkParity" xml:space="preserve"><value>MTK 扩展命令：mtk-scatter plan scatter-file | mtk-scatter flash|update scatter-file image-directory backup-directory（update 重建 GPT 并保留保护分区）；mtk-efuse read output-file | mtk-efuse write image-file backup-file（永久编程前保存原始数据）；mtk-partition read|write name maximum-length file | mtk-partition erase name。--mtk-iot 选择 Legacy IoT Loader 流程；--mtk-nand-capacity bytes 提供已确认的 NAND 逻辑容量；--mtk-nand-write 显式允许已确认容量的逻辑写入。备份文件不得已存在。</value></data>
+  <data name="Cli_HelpMtkParity" xml:space="preserve"><value>MTK 扩展命令：
+  mtk-scatter plan scatter-file
+  mtk-scatter flash|update scatter-file image-directory backup-directory
+    update 重建 GPT 并保留保护分区。
+  mtk-efuse read output-file
+  mtk-efuse write image-file backup-file
+    永久编程前保存原始数据。
+  mtk-partition read|write name maximum-length file
+  mtk-partition erase name
+介质选项：
+  --mtk-iot              选择 Legacy IoT Loader 流程
+  --mtk-nand-capacity bytes  提供已确认的 NAND 逻辑容量
+  --mtk-nand-write       显式允许已确认容量的逻辑写入
+备份文件不得已存在。</value></data>
   <data name="Cli_MtkExtensionAbiInvalid" xml:space="preserve"><value>MTK 扩展 ABI 应为 legacy 或 penumbra2；必须与设备上已经加载的扩展一致。</value></data>
-  <data name="Cli_HelpMtkKeys" xml:space="preserve"><value>mtk-key id key-name 128|192|256 output-file | mtk-key input label-file salt-file 128|192|256 output-file。键名使用 MtkKeyDeriveId 枚举（Rpmb、Fde、Tee、AesImageEncryption、AesCustom、Motorola、RootOfTrust）；输入最多各 32 字节，- 表示空输入。必须指定 --mtk-extension-abi penumbra2 及对应加密基址，并已合法加载兼容扩展；密钥仅写入文件。</value></data>
+  <data name="Cli_HelpMtkKeys" xml:space="preserve"><value>MTK 密钥命令：
+  mtk-key id key-name 128|192|256 output-file
+  mtk-key input label-file salt-file 128|192|256 output-file
+键名使用 MtkKeyDeriveId 枚举：
+  Rpmb、Fde、Tee、AesImageEncryption、AesCustom、Motorola、RootOfTrust。
+输入最多各 32 字节，- 表示空输入。
+必须指定 --mtk-extension-abi penumbra2 及对应加密基址，并已合法加载兼容扩展。
+密钥仅写入文件。</value></data>
   <data name="Cli_MtkRpmbLockState" xml:space="preserve"><value>RPMB 锁配置版本={0}，状态={1}。</value></data>
-  <data name="Cli_HelpMtkWriteExtras" xml:space="preserve"><value>mtk-fill region offset length byte-value 使用普通写入进行逻辑填充并读回，byte-value 范围 0–255；mtk-rsc partition source-file 更新 XFlash RSC 记录；mtk-rpmb-lock read key-file | mtk-rpmb-lock lock|unlock key-file backup-file 读取/修改 XML/UFS RPMB 锁状态，要求已确认 --mtk-ufs-rpmb-blocks 容量和已有 32 字节认证密钥，写入前保留原始块。</value></data>
+  <data name="Cli_HelpMtkWriteExtras" xml:space="preserve"><value>MTK 写入命令：
+  mtk-fill region offset length byte-value
+    使用普通写入进行逻辑填充并读回，byte-value 范围 0–255。
+  mtk-rsc partition source-file
+    更新 XFlash RSC 记录。
+  mtk-rpmb-lock read key-file
+  mtk-rpmb-lock lock|unlock key-file backup-file
+    读取/修改 XML/UFS RPMB 锁状态。
+    要求已确认 --mtk-ufs-rpmb-blocks 容量和已有 32 字节认证密钥。
+    写入前保留原始块。</value></data>
   <data name="Cli_ScriptFileMissing" xml:space="preserve"><value>XML 文件不存在或通配符没有匹配结果。</value></data>
   <data name="Cli_ScriptImageMissing" xml:space="preserve"><value>XML 引用的镜像不存在。</value></data>
   <data name="Cli_ScriptImageOutsideDirectory" xml:space="preserve"><value>XML 镜像路径超出 XML 所在目录。</value></data>
   <data name="Cli_ScriptTooManyFiles" xml:space="preserve"><value>一次最多执行 1024 个 XML 文件。</value></data>
   <data name="Cli_ScriptStarted" xml:space="preserve"><value>执行 XML：{0}</value></data>
-  <data name="Cli_ScriptCompleted" xml:space="preserve"><value>XML 完成：执行 {0} 条，跳过 {1} 条，写入 {2}。</value></data>
-  <data name="Cli_ScriptSkipped" xml:space="preserve"><value>  跳过 {0} 条：{1}（{2}）</value></data>
+  <data name="Cli_ScriptFileSummary" xml:space="preserve"><value>XML 完成：{0}</value></data>
+  <data name="Cli_ScriptBatchSummary" xml:space="preserve"><value>批次完成：{0} 份 XML</value></data>
+  <data name="Cli_ScriptStatistics" xml:space="preserve"><value>  执行命令：{0}
+  跳过命令：{1}
+  写入数据：{2}
+  总用时  ：{3}</value></data>
+  <data name="Cli_ScriptUnnamedPartition" xml:space="preserve"><value>（无分区名）</value></data>
+  <data name="Cli_ScriptSkippedEntry" xml:space="preserve"><value>  #{0} {1}：{2}</value></data>
+  <data name="Cli_ScriptSkippedLocation" xml:space="preserve"><value>    位置：LUN {0}，起始扇区 {1}，扇区数 {2}</value></data>
+  <data name="Cli_ScriptSkippedFile" xml:space="preserve"><value>    文件：{0}</value></data>
+  <data name="Cli_ScriptSkippedReason" xml:space="preserve"><value>    原因：{0}</value></data>
+  <data name="Cli_ScriptResolvedLocation" xml:space="preserve"><value>{0}（{1}）</value></data>
   <data name="Cli_ScriptSkipUnsupported" xml:space="preserve"><value>该 XML 命令尚无执行适配（不会发送）</value></data>
   <data name="Cli_ScriptSkipDevice" xml:space="preserve"><value>设备声明的列表不包含此命令</value></data>
   <data name="Cli_ScriptSkipEmpty" xml:space="preserve"><value>program 的 filename 为空</value></data>
@@ -260,5 +389,15 @@ find 搜索中按 Ctrl+C 取消本次搜索，等待当前读取及 ACK 完成�
   <data name="Cli_CommandDetailsHint" xml:space="preserve"><value>详情：help &lt;命令&gt;；help qcom 查看设备已报告的映射语法；help all 查看 Host 全部语法。</value></data>
   <data name="Cli_HelpDetailsHint" xml:space="preserve"><value>help &lt;命令&gt; 查看用法；help all 查看连接选项及 Host 全部命令（如 configure / peek）。</value></data>
   <data name="Cli_InteractiveKeys" xml:space="preserve"><value>交互：↑/↓ 浏览历史，Tab/Shift+Tab 补全命令，←/→、Home/End 编辑，exit 退出。</value></data>
-  <data name="Cli_CommonCommandsSummary" xml:space="preserve"><value>通用命令：info | partitions | read | write | erase | browse | reboot | connect | help | exit</value></data>
+  <data name="Cli_CommonCommandsSummary" xml:space="preserve"><value>通用命令：
+  info
+  partitions
+  read
+  write
+  erase
+  browse
+  reboot
+  connect
+  help
+  exit</value></data>
 </root>

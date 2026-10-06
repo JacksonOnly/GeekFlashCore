@@ -132,7 +132,10 @@ internal static class MtkProtocolHostAdapter
         var p = (IMtkProtocol)protocol;
         if (p.SessionState == MtkSessionState.Probed && p.TargetInfo is { } target)
             PresentTarget(target, ui);
-        ui.WriteLine(Strings.FormatCli_MtkInfo(p.TargetInfo?.HardwareCode.ToString("X4") ?? "?", p.SessionState, p.Capabilities));
+        var capabilities = p.Capabilities;
+        ui.WriteLine(Strings.FormatCli_MtkInfo(p.TargetInfo?.HardwareCode.ToString("X4") ?? "?", p.SessionState,
+            Strings.FormatCli_MtkCapabilities(capabilities.Flash, capabilities.Memory, capabilities.Crypto,
+                capabilities.Rpmb, capabilities.SecurityConfiguration)));
         if (p.IsConnected)
             foreach (var r in p.GetStorageInfo().Regions)
                 ui.WriteLine($"{r.WireId} {r.Name} {r.Length} / {r.BlockSize}");

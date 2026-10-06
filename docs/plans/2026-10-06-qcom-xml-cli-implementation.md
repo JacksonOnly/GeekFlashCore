@@ -4,6 +4,8 @@
 
 设计见 2026-10-06-qcom-xml-cli-design.md。范围与接口依据用户本轮需求确定，无额外审批要求。
 
+最新输出恢复来源：`2026-10-06-cli-output-statistics-implementation.md`（OUTPUT-01）。已补充毫秒分区计时、XML/批次用时与平均速度、逐条跳过分区/地址和多行对齐输出；最终四套 Release 回归共 434 项通过。
+
 ## 进度
 
 - XML-01：已读取 alioth 六组 XML、现有 Program/Storage/会话 gate 和 CLI 命令证据逻辑，确定采用专用领域转换与流式写入。

@@ -31,13 +31,26 @@ rawprogram 的适配命令包括 `program`、`patch`、`erase`、`nop`、`setboo
 
 写入进度在开始、传输和最终 ACK 成功后均显示当前分区、LUN 与镜像文件，例如 `写入分区 boot_a (LUN 0) | 文件 boot.img`；各条 program 切换时更新名称。XML 未提供 label 时显示 LUN 与起始扇区，filename 保留 XML 中的相对路径。普通 `write/program <partition> <file>` 的进度同样显示分区及文件名；sector 形式显示实际写入位置。
 
+进度采用多行布局，名称、数量/百分比、平均速度、用时分别显示；时间精度为毫秒，例如 `00:00:00.125`。分区平均速度按实际写入字节除以从开始到最终 ACK 的单调计时时长计算；传完数据仍等待 ACK 时不会提前完成。每份 XML 和整个通配批次另有独立汇总，列出执行数、跳过数、写入总量、总用时和平均速度；XML/批次速度包含预检、其他设备命令及批次展示开销，数值可能低于单个分区的速度。未写入字节的 patch 批次不显示写入速度，零计时时长显示未知速度。
+
+跳过条目逐条列出 XML 序号、命令、分区名、LUN、起始扇区和扇区数及原因；没有分区名时用位置识别。`NUM_DISK_SECTORS` 等表达式能够依据会话缓存解析时同时显示数值和原表达式；无效或无法解析的位置保留原文为诊断信息，不为跳过条目发送设备命令。扇区数 0 在明细中保留原 XML 值，不代表实际擦除或写入了该区域。
+
 patch 文件仅发送 filename=DISK 的 patch，不修改本地 GPT 镜像；普通数字 patch 语法继续有效。支持数字、十六进制、尾随小数点、`NUM_DISK_SECTORS` 的加减表达式及 `CRC32(start,length)`，CRC 范围在发送前检查并由设备计算。所有 LUN、扇区大小、容量、offset 和整数运算都检查边界；首个命令失败或 RAW 中取消后停止并要求重连，不重放写入。
 
 Core 宿主可调用同步 `IQcomProtocol.ExecuteRawProgram(IDataSource, Func<string,IDataSource>, progress, cancellationToken)` 与 `ExecutePatchFile(IDataSource, progress, cancellationToken)`。方法持有整个文件执行的会话 gate；只释放自己打开的流，调用方拥有 IDataSource，镜像 resolver 必须返回内容稳定、可重开的资源。返回结果含执行数、实际写入字节数与带序号/原因的跳过条目。
 
 ## 命令显示与交互编辑
 
-联机、info 和 help 将通用命令置前，Firehose 摘要按“设备支持的命令 => Host 支持的命令”显示已实现交集，例如 `program => write / rawprogram`。设备未上报列表时只显示未知提示，不展开包含 xblgpt 等厂商命令的 Host 候选列表。`help qcom` 查看设备已报告的映射语法，`help patch` 等查看单个命令；`help all` 的全部列表是 Host 能力说明。
+联机、info 和 help 按“设备支持的命令 => Host 支持的命令”显示已实现交集，一项一行，箭头按最长命令名对齐。设备未上报列表时只显示未知提示，不展开包含 xblgpt 等厂商命令的 Host 候选列表。联机/info 的通用命令摘要位于映射之后、提示符之前，便于立即查看；默认 help 优先显示通用语法。`help qcom` 查看设备已报告的映射语法，`help patch` 等查看单个命令；`help all` 的全部列表是 Host 能力说明。
+
+连接信息、存储信息和帮助中的独立字段/用法分别换行；分区列表按显示宽度对齐名称、LUN、起始扇区、偏移和长度，中文名称也计入列宽。浏览器路径和类型分行，MTK 的 CLI 信息与帮助也采用分行模板；这里只改变宿主展示，不修改设备协议或能力判断。
+
+```text
+  benchmark               => benchmark
+  program                 => write / rawprogram
+  read                    => read / partitions / browse
+  setbootablestoragedrive => setbootablestoragedrive
+```
 
 交互命令行支持 ↑/↓ 浏览本会话最近 200 条命令，↓ 越过最新记录恢复当前草稿；Tab/Shift+Tab 循环命令补全，←/→、Home/End、Backspace/Delete 编辑，Esc 清空。命令历史仅存在内存，不保存到磁盘，Loader、认证等资源提示不进入历史。输入或输出重定向时保留逐行输入，不运行补全；取消仍使用 Ctrl+C。
 

@@ -203,8 +203,8 @@ internal sealed class CliApplication
     private void ShowQcomCommands(IProtocol protocol)
     {
         if (protocol is not GeekFlashCore.Protocol.Qcom.Abstractions.IQcomProtocol) return;
-        _ui.WriteLine(Strings.Cli_CommonCommandsSummary);
         FirehoseCommands.PrintMapping(protocol, _ui);
+        _ui.WriteLine(Strings.Cli_CommonCommandsSummary);
     }
 
     private int ListDevices(CliOptions options, ProtocolRegistration? registration)

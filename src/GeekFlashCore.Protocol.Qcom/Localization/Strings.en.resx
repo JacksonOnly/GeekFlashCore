@@ -502,6 +502,9 @@ Current {0}, expected {1}</value>
   <data name="Qcom_StoragePolicyMappingInvalid" xml:space="preserve"><value>The storage policy returned an invalid or incomplete sector mapping.</value></data>
   <data name="Qcom_FirehoseExpectedState" xml:space="preserve"><value>The Firehose operation requires state {0}, but the session is {1}.</value></data>
   <data name="Progress_Writing" xml:space="preserve"><value>Writing</value></data>
+  <data name="Progress_WritingPartition" xml:space="preserve"><value>Writing partition {0} (LUN {1})</value></data>
+  <data name="Progress_WritingSector" xml:space="preserve"><value>Writing LUN {0}, start sector {1}</value></data>
+  <data name="Progress_WritingFile" xml:space="preserve"><value>{0} | File {1}</value></data>
   <data name="Progress_Reading" xml:space="preserve"><value>Reading</value></data>
   <data name="Progress_Uploading" xml:space="preserve"><value>Uploading Loader</value></data>
   <data name="Firehose_ResponseNotXml" xml:space="preserve"><value>The Firehose command did not receive a valid XML response.</value></data>
@@ -548,4 +551,12 @@ Current {0}, expected {1}</value>
   <data name="Qcom_LogPblLoaderTransfer" xml:space="preserve"><value>PBL Patch exchange completed; continuing Loader upload.</value></data>
   <data name="Qcom_PblLoaderRangeInvalid" xml:space="preserve"><value>The Loader read request after PBL Patch is out of bounds or exceeds 4 MiB.</value></data>
   <data name="Qcom_PblBootstrapRequestInvalid" xml:space="preserve"><value>The Snapdragon 665 PBL Patch request does not match the captured bootstrap ranges or order.</value></data>
+  <data name="Qcom_ScriptAttributeMissing" xml:space="preserve"><value>XML command {0} is missing attribute {1}.</value></data>
+  <data name="Qcom_ScriptInvalid" xml:space="preserve"><value>Invalid XML script structure or command attributes.</value></data>
+  <data name="Qcom_ScriptExpressionInvalid" xml:space="preserve"><value>The XML script contains an unsupported or out-of-range expression.</value></data>
+  <data name="Qcom_ScriptPowerMustBeLast" xml:space="preserve"><value>power must be the last executed command in an XML script.</value></data>
+  <data name="Qcom_ScriptCommandFailed" xml:space="preserve"><value>An XML script command failed; reconnect the session.</value></data>
+  <data name="Qcom_ScriptReadbackUnsupported" xml:space="preserve"><value>XML readbackverify is not implemented for program.</value></data>
+  <data name="Qcom_ScriptSourceInvalid" xml:space="preserve"><value>XML image sources must be nonempty, readable and seekable with valid file offsets.</value></data>
+  <data name="Qcom_ScriptExecuting" xml:space="preserve"><value>XML {0}/{1}: {2}</value></data>
 </root>

@@ -48,6 +48,20 @@ public interface IQcomProtocol : IProtocol,IBlockDeviceProvider
 
     FirehoseCommandResult ExecuteFirehoseXml(string xml);
 
+    /// <summary>Preflight and execute a rawprogram data document in order using synchronous I/O.</summary>
+    /// <param name="xml">XML source owned by the caller. Streams opened by the protocol are disposed.</param>
+    /// <param name="imageResolver">Resolve XML filenames to stable, reopenable caller-owned image sources.</param>
+    /// <param name="progress">Optional per-command and byte progress.</param>
+    /// <param name="cancellationToken">Cancellation checked during preflight and transfer boundaries.</param>
+    FirehoseScriptResult ExecuteRawProgram(IDataSource xml, Func<string, IDataSource> imageResolver,
+        IProgress<ProgressRecord>? progress = null, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
+    /// <summary>Execute only filename=DISK patch entries from a patches (or data) document.</summary>
+    /// <remarks>CRC32 values are validated and calculated by the device. No local image is patched.</remarks>
+    FirehoseScriptResult ExecutePatchFile(IDataSource xml, IProgress<ProgressRecord>? progress = null,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
     IReadOnlyList<uint> GetPhysicalPartitions() => throw new NotSupportedException();
     FirehoseStorageInfo GetStorageInfo(uint physicalPartitionNumber) => throw new NotSupportedException();
     Task<IReadOnlyList<PartitionInfo>> GetPartitionsAsync(uint physicalPartitionNumber,

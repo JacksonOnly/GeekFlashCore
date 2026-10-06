@@ -35,7 +35,7 @@ internal sealed class CliApplication
             ProtocolRegistry.TryResolveCommand(options.Command, out requestedRegistration);
         try { options = NormalizeAndValidate(options, requestedRegistration); }
         catch (CommandUsageException exception) { _ui.WriteLine(exception.Message); return 2; }
-        if (options.Command == "help") { CommandLine.PrintHelp(); return 0; }
+        if (options.Command == "help") { CommandLine.PrintRequestedHelp(options.Arguments, _ui); return 0; }
         if (options.Command is "browse" or "browse-image" && BrowserCommands.ShowHelp(options.Arguments, _ui)) return 0;
         if (options.Command == "browse-image")
         {
@@ -77,6 +77,7 @@ internal sealed class CliApplication
             _ui.WriteLine(Strings.Cli_Connecting);
             await protocol.ConnectAsync(_progress, ct).ConfigureAwait(false);
             _ui.WriteLine(Strings.FormatCli_ConnectedHelp(connection.Registration.DisplayName));
+            ShowQcomCommands(protocol);
             return await ReadCommandsAsync(protocol, connection.Registration, ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException) { _ui.ShowCancelled(); return 130; }
@@ -87,8 +88,8 @@ internal sealed class CliApplication
     {
         while (!ct.IsCancellationRequested)
         {
-            _ui.Write("geekflash> ");
-            string line = await _ui.ReadInputAsync(ct).ConfigureAwait(false) ?? "exit";
+            string line = await _ui.ReadCommandAsync("geekflash> ",
+                prefix => CommandCompletion.Complete(prefix, protocol, registration), ct).ConfigureAwait(false) ?? "exit";
             if (line.Equals("exit", StringComparison.OrdinalIgnoreCase) || line.Equals("quit", StringComparison.OrdinalIgnoreCase)) break;
             try
             {
@@ -96,6 +97,7 @@ internal sealed class CliApplication
                 if (parsed.Command.Equals("interactive", StringComparison.OrdinalIgnoreCase)) continue;
                 int result = await ExecuteCommandAsync(protocol, registration, parsed, _progress, ct).ConfigureAwait(false);
                 bool endsSession = parsed.Command is "reboot" or "power" ||
+                    result == 0 && !protocol.IsConnected ||
                     parsed.Command == "qcom" && parsed.Arguments.Length > 0 &&
                     parsed.Arguments[0].Equals("power", StringComparison.OrdinalIgnoreCase);
                 if (result == 0 && endsSession)
@@ -130,9 +132,11 @@ internal sealed class CliApplication
                 _ui.WriteLine(Strings.Cli_Connecting);
                 await protocol.ConnectAsync(progress, ct).ConfigureAwait(false);
                 _ui.WriteLine(Strings.FormatCli_ConnectedHelp(registration.DisplayName));
+                ShowQcomCommands(protocol);
                 return 0;
             case "info":
                 registration.InfoPresenter?.Invoke(protocol, _ui);
+                ShowQcomCommands(protocol);
                 return 0;
             case "browse":
                 await BrowserCommands.BrowseDeviceAsync(protocol, options.Arguments, _ui, progress, ct).ConfigureAwait(false);
@@ -149,7 +153,15 @@ internal sealed class CliApplication
                 if (!await protocol.RebootAsync(mode, progress, ct).ConfigureAwait(false))
                     throw new InvalidOperationException(Strings.FormatCli_CommandUnsuccessful("reboot"));
                 return 0;
-            case "help": CommandLine.PrintHelp(); registration.CommandSet?.PrintHelp(protocol, _ui); return 0;
+            case "help":
+                if (options.Arguments.Length == 1 && options.Arguments[0].Equals("qcom", StringComparison.OrdinalIgnoreCase) && protocol is GeekFlashCore.Protocol.Qcom.Abstractions.IQcomProtocol qcom)
+                    FirehoseCommands.PrintDetails(qcom, _ui);
+                else
+                {
+                    CommandLine.PrintRequestedHelp(options.Arguments, _ui);
+                    if (options.Arguments.Length == 0) registration.CommandSet?.PrintHelp(protocol, _ui);
+                }
+                return 0;
             default: throw new ArgumentException(Strings.FormatCli_UnknownCommand(options.Command));
         }
     }
@@ -187,6 +199,13 @@ internal sealed class CliApplication
 
     private static IProtocolCommandHandler? FindSpecialHandler(ProtocolRegistration registration, CliOptions options) =>
         registration.CommandHandlers.FirstOrDefault(handler => handler.Name.Equals(options.Command, StringComparison.OrdinalIgnoreCase) && handler.Handles(options.Arguments));
+
+    private void ShowQcomCommands(IProtocol protocol)
+    {
+        if (protocol is not GeekFlashCore.Protocol.Qcom.Abstractions.IQcomProtocol) return;
+        FirehoseCommands.PrintMapping(protocol, _ui);
+        _ui.WriteLine(Strings.Cli_CommonCommandsSummary);
+    }
 
     private int ListDevices(CliOptions options, ProtocolRegistration? registration)
     {

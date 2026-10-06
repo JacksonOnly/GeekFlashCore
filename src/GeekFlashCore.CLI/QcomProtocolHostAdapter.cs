@@ -60,7 +60,8 @@ internal static class QcomProtocolHostAdapter
 
     private sealed class CommandSet : IProtocolCommandSet
     {
-        public bool Handles(string command) => command.Equals("qcom", StringComparison.OrdinalIgnoreCase) || FirehoseCommands.Usages.ContainsKey(command);
+        public bool Handles(string command) => command.Equals("qcom", StringComparison.OrdinalIgnoreCase) ||
+            FirehoseCommands.Usages.ContainsKey(command) || QcomScriptCommands.DirectCommand(command) is not null;
         public CliOptions Normalize(CliOptions options) => FirehoseCommands.Normalize(options);
         public void Validate(CliOptions options) => FirehoseCommands.Validate(options);
         public bool RequiresConnection(string command) => command is not ("configure" or "probe-sahara");
@@ -77,6 +78,10 @@ internal static class QcomProtocolHostAdapter
             if (protocol is not IQcomProtocol qcom) throw new NotSupportedException(Strings.Cli_QcomRequired);
             switch (options.Command)
             {
+                case "rawprogram":
+                case "patch" when options.Arguments.All(QcomScriptCommands.IsXml):
+                    QcomScriptCommands.Execute(qcom, options.Arguments, options.Command == "patch", ui, progress, ct);
+                    return 0;
                 case "program":
                     await StorageCommands.ExecuteAsync(protocol, "write", options.Arguments, ui, progress, ct);
                     return 0;

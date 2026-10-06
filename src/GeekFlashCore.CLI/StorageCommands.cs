@@ -34,13 +34,17 @@ internal static class StorageCommands
                 Serilog.Log.Warning(Strings.Cli_NoPartitions);
                 ui.WriteLine(Strings.Cli_NoPartitions);
             }
-            foreach (var item in partitions)
-                ui.WriteLine(Strings.FormatCli_PartitionLine(
-                    (item.Name ?? string.Empty).PadRight(32),
-                    PartitionLun(item),
-                    item.Address?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? Strings.Cli_UnknownValue,
-                    FormatSize(item.Offset),
-                    FormatSize(item.Length)));
+            var rows = partitions.Select(item => new[] {
+                ProgressDisplay.SingleLine(item.Name ?? string.Empty),
+                PartitionLun(item).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                item.Address?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? Strings.Cli_UnknownValue,
+                FormatSize(item.Offset), FormatSize(item.Length)
+            }).ToArray();
+            var widths = Enumerable.Range(0, 5).Select(column => rows.Select(row => ProgressDisplay.Cells(row[column])).DefaultIfEmpty(0).Max()).ToArray();
+            widths[0] = Math.Max(32, widths[0]);
+            foreach (var row in rows)
+                ui.WriteLine(Strings.FormatCli_PartitionLine(ProgressDisplay.Pad(row[0], widths[0]), ProgressDisplay.Pad(row[1], widths[1]),
+                    ProgressDisplay.Pad(row[2], widths[2]), ProgressDisplay.Pad(row[3], widths[3]), row[4]));
             return;
         }
 
@@ -80,7 +84,13 @@ internal static class StorageCommands
                 await AtomicReadOutput.WriteAsync(file!, stream => protocol.ReadAsync(
                     new ReadDestination { Target = target, OutputStream = stream, OwnsStream = false }, progress, ct), ct);
             }
-            else await protocol.WriteAsync(new WriteSource { Source = new FileDataSource(file!), Target = target }, progress, ct);
+            else
+            {
+                string filename = Path.GetFileName(file!);
+                var writeProgress = new ImmediateProgress<ProgressRecord>(record => progress.Report(record.Unit == ProgressUnit.Bytes
+                    ? record with { Label = Strings.FormatCli_ProgressWriteFile(record.Label, filename) } : record));
+                await protocol.WriteAsync(new WriteSource { Source = new FileDataSource(file!), Target = target }, writeProgress, ct);
+            }
         }
         ui.WriteLine(Strings.FormatCli_CommandCompleted(command));
     }

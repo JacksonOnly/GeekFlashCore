@@ -1,5 +1,27 @@
 # Qualcomm Protocol Implementation Plan
 
+### MERGE-XML-01（2026-10-06）：主分支集成
+
+- 按用户授权，将 codex/qcom-xml-cli-20261006 的五项 XML/CLI 提交合并至本地 main；main 原有两项 MTK 提交保留，无冲突。
+- 主工作区 Release 构建零警告/零错误，Qcom 294、CLI 76、MTK 337、LP 55、Core 9 共 771 项测试通过，无失败/跳过；主工作区 EXE 的 help all 冒烟通过。未推送、未通信设备，详细命令、恢复入口和风险见 `2026-10-06-cli-output-statistics-implementation.md` 的主分支集成记录。
+
+### OUTPUT-01（2026-10-06）：统计、跳过明细与对齐输出
+
+- 用户确认分区与整个 rawprogram 通配批次的统计都需改进。毫秒时间、最终 ACK 完成平均速度、每份 XML/整个批次的单调计时汇总、逐条跳过分区与 LUN/扇区位置已实现；命令映射逐项对齐，连接/帮助/存储/进度等宿主输出拆开独立字段。
+- Core 跳过元数据仅从既有有界 XML 与缓存几何取得，不发送额外命令；解析失败仍跳过。公共跳过 record 保留原构造，新增可选属性。目标 XML 41/41、CLI 输出/进度 20/20 通过，完整收尾证据与继续位置见 `2026-10-06-cli-output-statistics-implementation.md`。本轮不通信设备，真实终端与时延待用户复核。
+
+### XML-PROGRESS-01（2026-10-06）：写入名称显示
+
+- 修复 ProgramProgress 丢失已有 Label/FileName 的问题；XML/显式 Program 从开始到最终 ACK 完成显示分区、LUN 和文件名，无 label 显示起始扇区。普通 CLI write/program 同样补充文件名，公共契约和线上报文保持兼容。
+- 新增 4 项先失败后通过；完整 Qcom 292/292、CLI 67/67 通过，无跳过。本轮为模拟/代理证据，真实刷写终端效果待复核；详情与继续位置见 `2026-10-06-qcom-xml-cli-implementation.md` 的 XML-PROGRESS-01。
+
+### XML-01～03 / CLI-14～15（2026-10-06）：XML 刷机与交互命令
+
+- 已新增同步 rawprogram / DISK patch 文件入口及 CLI 通配符、直接文件输入；真实 alioth 12 份 XML 在模拟几何/合成镜像下通过，rawprogram1/2 的 xblgpt 保持原序。发送前预检当前文件，复用 Raw/Sparse/Digest/VIP 线路；未知命令跳过、错误停止不重放。
+- 帮助优先通用命令，设备 => Host 仅显示已报告交集；未上报列表不展开全部 Host 候选。新增本会话 Up/Down 历史与 Tab/Shift+Tab 命令补全，资源提示不记录。
+- 证据：Qcom 289、CLI 66、LP 55、Core 9 共 419 项通过；XML 512 MiB 流式执行分配低于 1 MiB；Release 构建 0 警告/0 错误，双语资源、diff、ignored/跟踪检查通过。本轮未操作硬件；CRC 方言、厂商响应和终端显示待复测。
+- 设计、具体适配范围、命令与风险见 `2026-10-06-qcom-xml-cli-design.md`、`2026-10-06-qcom-xml-cli-implementation.md` 和 `../cli-qcom.md`。本工作区恢复的是四套历史测试，不等同于其他工作树未迁入测试。
+
 ### MERGE-PBL-01（2026-10-05）：自动 Digest 与通用 PBL Patch 合并
 
 - 用户授权合并后，本地 main 从 c300957 无冲突快进纳入 f9ff352 和 9c42699。主工作区 Release 解决方案构建 0 警告/0 错误；同一源码提交的功能工作区完整 Qcom 412、CLI 55、Python 提取校验 4 项通过，首次并行共享 obj 写锁已通过串行重跑排除。源码一致性、diff 与 ignored/跟踪检查通过，未推送。详细证据与设备待验证风险见 `2026-10-05-pbl-patch-implementation.md` 的合并复核。

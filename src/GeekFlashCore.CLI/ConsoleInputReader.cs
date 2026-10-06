@@ -7,8 +7,37 @@ internal sealed class ConsoleInputReader(TextReader? input = null)
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private Task<string?>? _pendingLine;
+    private readonly List<string> _history = [];
 
     internal bool CanPrompt => input is not null || !Console.IsInputRedirected;
+
+    internal async Task<string?> ReadCommandAsync(string prompt, Func<string, IReadOnlyList<string>> complete, CancellationToken ct)
+    {
+        if (input is not null || Console.IsInputRedirected || Console.IsOutputRedirected)
+        { Console.Write(prompt); return await ReadAsync(false, ct).ConfigureAwait(false); }
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        var renderer = new ConsoleLineRenderer(prompt);
+        try
+        {
+            var editor = new InteractiveLineEditor(_history, complete);
+            renderer.Render(editor);
+            while (true)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!Console.KeyAvailable) { await Task.Delay(25, ct).ConfigureAwait(false); continue; }
+                var key = Console.ReadKey(intercept: true);
+                if (key.Key == ConsoleKey.Enter)
+                {
+                    string line = editor.Text;
+                    if (!string.IsNullOrWhiteSpace(line) && (_history.Count == 0 || _history[^1] != line))
+                    { if (_history.Count == 200) _history.RemoveAt(0); _history.Add(line); }
+                    return line;
+                }
+                editor.Handle(key); renderer.Render(editor);
+            }
+        }
+        finally { try { renderer.Finish(); } finally { _gate.Release(); } }
+    }
 
     internal async Task<string?> ReadAsync(bool secret, CancellationToken cancellationToken)
     {

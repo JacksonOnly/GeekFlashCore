@@ -13,7 +13,7 @@
   <data name="Cli_PartitionNotUnique" xml:space="preserve"><value>Partition {0} is missing or ambiguous; check its name and specify a LUN.</value></data>
   <data name="Cli_CommandCompleted" xml:space="preserve"><value>Command {0} completed.</value></data>
   <data name="Cli_StorageNotConfigured" xml:space="preserve"><value>Storage is not configured.</value></data>
-  <data name="Cli_CommandsMapped" xml:space="preserve"><value>Mapped {0} Firehose commands:</value></data>
+  <data name="Cli_CommandsMapped" xml:space="preserve"><value>Device commands =&gt; Host commands ({0} mappings):</value></data>
   <data name="Cli_NoCommandEvidence" xml:space="preserve"><value>The device did not report any mappable commands.</value></data>
   <data name="Cli_CommandListUnknown" xml:space="preserve"><value>The device did not report a Firehose command list. Explicitly requested CLI commands can run; device responses determine support.</value></data>
   <data name="Cli_LocalCommandsAvailable" xml:space="preserve"><value>CLI implements {0} Firehose commands (device capabilities unconfirmed):</value></data>
@@ -40,16 +40,27 @@
   <data name="Cli_XblGptDescription" xml:space="preserve"><value>Execute xblgpt for the selected LUN.</value></data>
   <data name="Cli_FixGptDescription" xml:space="preserve"><value>Fix GPT on a LUN; grow=1 expands the last partition.</value></data>
   <data name="Cli_ReconnectRequired" xml:space="preserve"><value>The device is disconnected or the session is invalid. Run connect before retrying.</value></data>
-  <data name="Cli_ProgressSpeed" xml:space="preserve"><value>Average {0}</value></data>
-  <data name="Cli_ProgressElapsed" xml:space="preserve"><value>Elapsed {0}</value></data>
-  <data name="Cli_ProgressDuration" xml:space="preserve"><value>Duration {0}</value></data>
-  <data name="Cli_ProgressRemaining" xml:space="preserve"><value>Remaining {0}</value></data>
+  <data name="Cli_ProgressSpeed" xml:space="preserve"><value>Average speed : {0}</value></data>
+  <data name="Cli_ProgressElapsed" xml:space="preserve"><value>Elapsed       : {0}</value></data>
+  <data name="Cli_ProgressDuration" xml:space="preserve"><value>Total duration: {0}</value></data>
+  <data name="Cli_ProgressRemaining" xml:space="preserve"><value>Remaining     : {0}</value></data>
+  <data name="Cli_ProgressWriteFile" xml:space="preserve"><value>{0} | File {1}</value></data>
   <data name="Cli_Title" xml:space="preserve"><value>GeekFlashCore CLI</value></data>
   <data name="Cli_Banner" xml:space="preserve"><value>GeekFlashCore CLI 0.1</value></data>
   <data name="Cli_HelpUsage" xml:space="preserve"><value>Usage: geekflash [options] &lt;command&gt; [arguments]</value></data>
-  <data name="Cli_HelpCommands" xml:space="preserve"><value>Commands: devices | connect | info | partitions | read | write | erase | reboot</value></data>
-  <data name="Cli_HelpOptionsPrimary" xml:space="preserve"><value>Options: --port COM3 | --usb VID:PID | --protocol QualcommEdl | --loader FILE | --digest FILE | --oplus-digest FILE</value></data>
-  <data name="Cli_HelpOptionsSecondary" xml:space="preserve"><value>         --oplus-mode OplusDigestPt|OplusDigestLegacy | --oneplus-projid ID[,ID] | --vendor NAME | --auth xiaomi (overrides built-in signature) | --verbose</value></data>
+  <data name="Cli_HelpCommands" xml:space="preserve"><value>Common commands:</value></data>
+  <data name="Cli_HelpOptionsPrimary" xml:space="preserve"><value>Connection options:
+  --port COM3
+  --usb VID:PID
+  --protocol QualcommEdl
+  --loader FILE
+  --digest FILE
+  --oplus-digest FILE</value></data>
+  <data name="Cli_HelpOptionsSecondary" xml:space="preserve"><value>  --oplus-mode OplusDigestPt|OplusDigestLegacy
+  --oneplus-projid ID[,ID]
+  --vendor NAME
+  --auth xiaomi (override built-in signature)
+  --verbose</value></data>
   <data name="Cli_UnknownOption" xml:space="preserve"><value>Unknown option {0}.</value></data>
   <data name="Cli_MissingOptionValue" xml:space="preserve"><value>Option {0} requires a value.</value></data>
   <data name="Cli_UnknownCommand" xml:space="preserve"><value>Unknown command '{0}'.</value></data>
@@ -81,18 +92,39 @@
   <data name="Cli_AuthenticationPayloadInvalid" xml:space="preserve"><value>The authentication payload must be hexadecimal.</value></data>
   <data name="Cli_InfoProtocol" xml:space="preserve"><value>Protocol: {0}</value></data>
   <data name="Cli_InfoVendor" xml:space="preserve"><value>Communication strategy: {0}</value></data>
-  <data name="Cli_InfoHardware" xml:space="preserve"><value>Manufacturer: {0}    Chip: {1}    Secure boot: {2}</value></data>
-  <data name="Cli_InfoSahara" xml:space="preserve"><value>Sahara: v{0} (minimum v{1}), maximum packet {2} bytes, {3}</value></data>
-  <data name="Cli_InfoSaharaIdentity" xml:space="preserve"><value>Serial: {0}    SBL version: {1}</value></data>
+  <data name="Cli_InfoHardware" xml:space="preserve"><value>Manufacturer: {0}
+Chip        : {1}
+Secure boot : {2}</value></data>
+  <data name="Cli_InfoSahara" xml:space="preserve"><value>Sahara version: v{0}
+Minimum       : v{1}
+Maximum packet: {2} bytes
+Current mode  : {3}</value></data>
+  <data name="Cli_InfoSaharaIdentity" xml:space="preserve"><value>Serial     : {0}
+SBL version: {1}</value></data>
   <data name="Cli_InfoSaharaPkHash" xml:space="preserve"><value>PkHash: {0}</value></data>
-  <data name="Cli_InfoHardwareIds" xml:space="preserve"><value>MSM ID: {0}    OEM ID: {1}    Model ID: {2}
-Anti-rollback version: {3}    SoC hardware version: {4}</value></data>
-  <data name="Cli_InfoFirehose" xml:space="preserve"><value>Firehose: {0}    Storage model: {1}
-Storage: {2}    Sector: {3} bytes    Maximum payload: {4} bytes</value></data>
-  <data name="Cli_InfoFirehoseDevice" xml:space="preserve"><value>Chip: {0}    Serial: {1}
-Loader build time: {2}    Reported commands: {3}</value></data>
-  <data name="Cli_InfoStorage" xml:space="preserve"><value>  {0} LUN {1}: {2} blocks × {3} bytes, capacity {4}</value></data>
-  <data name="Cli_StorageInfoLine" xml:space="preserve"><value>Storage={0} lun={1} blocks={2} sector={3} capacity={4}</value></data>
+  <data name="Cli_InfoHardwareIds" xml:space="preserve"><value>MSM ID               : {0}
+OEM ID               : {1}
+Model ID             : {2}
+Anti-rollback version: {3}
+SoC hardware version : {4}</value></data>
+  <data name="Cli_InfoFirehose" xml:space="preserve"><value>Firehose       : {0}
+Storage model  : {1}
+Storage        : {2}
+Sector size    : {3} bytes
+Maximum payload: {4} bytes</value></data>
+  <data name="Cli_InfoFirehoseDevice" xml:space="preserve"><value>Firehose chip    : {0}
+Serial           : {1}
+Loader build time: {2}
+Reported commands: {3}</value></data>
+  <data name="Cli_InfoStorage" xml:space="preserve"><value>  Storage / LUN: {0} / {1}
+  Blocks       : {2}
+  Sector size  : {3} bytes
+  Capacity     : {4}</value></data>
+  <data name="Cli_StorageInfoLine" xml:space="preserve"><value>Storage=  {0}
+lun=      {1}
+blocks=   {2}
+sector=   {3}
+capacity= {4}</value></data>
   <data name="Cli_PartitionLine" xml:space="preserve"><value>{0} lun={1} start={2} offset={3} length={4}</value></data>
   <data name="Cli_UnknownValue" xml:space="preserve"><value>unknown</value></data>
   <data name="Cli_UsbDeviceFallback" xml:space="preserve"><value>USB device</value></data>
@@ -116,7 +148,8 @@ Loader build time: {2}    Reported commands: {3}</value></data>
   Legacy fixed values: capacity 53, initial count 0, 256 sectors, Digest window 1000 ms, XML limit 4096, built-in NOP
   --log-file FILE  Detailed log path; defaults to a unique file under the executable's logs directory</value></data>
   <data name="Cli_HelpQcomCommands" xml:space="preserve"><value>Interactive: interactive (default); Qualcomm commands (require corresponding device capabilities):</value></data>
-  <data name="Cli_HelpVipOptions" xml:space="preserve"><value>      --vip-signed FILE | --vip-chained FILE (requires signed; mutually exclusive with Digest/Oplus)</value></data>
+  <data name="Cli_HelpVipOptions" xml:space="preserve"><value>  --vip-signed FILE
+  --vip-chained FILE (requires signed; exclusive with Digest/Oplus)</value></data>
   <data name="Cli_OplusSignPrompt" xml:space="preserve"><value>Oplus Sign file path (leave blank to cancel)</value></data>
   <data name="Cli_OplusSignRejected" xml:space="preserve"><value>Sign verification failed. Select a replacement Sign file manually.</value></data>
   <data name="Cli_OplusSignNeedsMode" xml:space="preserve"><value>--oplus-sign requires --oplus-mode or --oplus-digest.</value></data>
@@ -188,7 +221,8 @@ Examples (current directory /super/system_a):
   <data name="Cli_BrowserFound" xml:space="preserve"><value>Found {0} files.</value></data>
   <data name="Cli_BrowserOutputPrompt" xml:space="preserve"><value>Output file path (blank to skip)</value></data>
   <data name="Cli_BrowserExported" xml:space="preserve"><value>Exported {0} → {1}</value></data>
-  <data name="Cli_BrowserLocation" xml:space="preserve"><value>Path: {0}    Type: {1}</value></data>
+  <data name="Cli_BrowserLocation" xml:space="preserve"><value>Path: {0}
+Type: {1}</value></data>
   <data name="Cli_BrowserNextPage" xml:space="preserve"><value>More entries: ls . {0}</value></data>
   <data name="Cli_BrowserExportProgress" xml:space="preserve"><value>Exporting file</value></data>
   <data name="Cli_BrowserCleanupFailed" xml:space="preserve"><value>Failed to release mount resources.</value></data>
@@ -200,8 +234,34 @@ Examples (current directory /super/system_a):
   <data name="Cli_MtkOptionConflict" xml:space="preserve"><value>The specified options are incompatible with the selected protocol.</value></data>
   <data name="Cli_UsbIdentityInvalid" xml:space="preserve"><value>Invalid USB identity, interface or RPMB capacity options; topology selection needs a bus and dot-separated port numbers.</value></data>
   <data name="Cli_MtkDaModeInvalid" xml:space="preserve"><value>MTK DA mode must be auto, legacy, xflash or xml.</value></data>
-  <data name="Cli_MtkInfo" xml:space="preserve"><value>MTK HW 0x{0}; state {1}; capabilities {2}</value></data>
-  <data name="Cli_HelpMtk" xml:space="preserve"><value>MTK: --protocol mtk --loader DA.bin [--mtk-preloader preloader.bin] [--mtk-da-mode auto|legacy|xflash|xml] [--mtk-auth-file auth.bin] [--mtk-cert cert.bin] [--usb-serial value | --usb-bus N --usb-port-path N.N] [--usb-interface N --usb-control-interface N --usb-alt N] [--mtk-ufs-rpmb-blocks N,N] [--mtk-sej-base ADDR --mtk-tzcc-base ADDR --mtk-ssr-base ADDR]; commands: devices | mtk-probe | mtk-capabilities | mtk-rpmb read|write region start count key-file data-file | mtk-memory read|write address length file | mtk-seccfg lock|unlock region offset length backup-file; MTK defaults: 60000 ms for the entire connection, 30000 ms per resource request; finite budgets, overridden by --connect-timeout / --resource-timeout.</value></data>
+  <data name="Cli_MtkInfo" xml:space="preserve"><value>MTK HW: 0x{0}
+State : {1}
+Device capabilities:
+{2}</value></data>
+  <data name="Cli_MtkCapabilities" xml:space="preserve"><value>  Flash access : {0}
+  Memory access: {1}
+  Crypto       : {2}
+  RPMB         : {3}
+  Security cfg : {4}</value></data>
+  <data name="Cli_HelpMtk" xml:space="preserve"><value>MTK connection:
+  --protocol mtk --loader DA.bin
+  --mtk-preloader preloader.bin
+  --mtk-da-mode auto|legacy|xflash|xml
+  --mtk-auth-file auth.bin
+  --mtk-cert cert.bin
+  --usb-serial value | --usb-bus N --usb-port-path N.N
+  --usb-interface N --usb-control-interface N --usb-alt N
+  --mtk-ufs-rpmb-blocks N,N
+  --mtk-sej-base ADDR --mtk-tzcc-base ADDR --mtk-ssr-base ADDR
+MTK commands:
+  devices
+  mtk-probe
+  mtk-capabilities
+  mtk-rpmb read|write region start count key-file data-file
+  mtk-memory read|write address length file
+  mtk-seccfg lock|unlock region offset length backup-file
+MTK defaults: connection budget 60000 ms, resource budget 30000 ms; both are finite.
+--connect-timeout covers the entire MTK connection; --resource-timeout overrides the per-resource budget.</value></data>
   <data name="Cli_UsbTopology" xml:space="preserve"><value>{0}:{1} bus={2} port={3}</value></data>
   <data name="Cli_UsbAmbiguous" xml:space="preserve"><value>Multiple USB devices match; select a serial number or bus/port path.</value></data>
   <data name="Cli_UsbNativeMissing" xml:space="preserve"><value>Cannot load USB native library {0} ({1}). Check runtimes, DLL architecture and dependencies; libusb-win32 also requires libusb0.dll and the libusbK.dll bridge.</value></data>
@@ -222,9 +282,25 @@ Examples (current directory /super/system_a):
   <data name="Cli_MtkDaSelectionTimedOut" xml:space="preserve"><value>MTK DA selection timed out; specify the file with --loader before reconnecting.</value></data>
   <data name="Cli_UsbOpenDisconnectedRetry" xml:space="preserve"><value>USB device disconnected before protocol communication; enumerating again and waiting for the device.</value></data>
   <data name="Cli_UsbDisconnected" xml:space="preserve"><value>USB device disconnected or enumerated again; reconnect it and retry.</value></data>
-  <data name="Cli_MtkChip" xml:space="preserve"><value>MTK chip: {0} {1}; hardware code 0x{2}, DA code 0x{3}.</value></data>
-  <data name="Cli_MtkVersions" xml:space="preserve"><value>Versions: subcode=0x{0}, FD HW=0x{1}, FC HW=0x{2}, SW=0x{3}, BROM=0x{4}, Preloader=0x{5}; stage {6}.</value></data>
-  <data name="Cli_MtkSecurity" xml:space="preserve"><value>Security 0x{0}: SBC={1}, SLA={2}, DAA={3}, certificate={4}, memory read auth={5}, memory write auth={6}, eMMC boot parameter={7}, cache command blocked={8}.</value></data>
+  <data name="Cli_MtkChip" xml:space="preserve"><value>MTK chip     : {0} {1}
+Hardware code: 0x{2}
+DA code      : 0x{3}</value></data>
+  <data name="Cli_MtkVersions" xml:space="preserve"><value>Subcode version  : 0x{0}
+FD HW version    : 0x{1}
+FC HW version    : 0x{2}
+Software version : 0x{3}
+BROM version     : 0x{4}
+Preloader version: 0x{5}
+Current stage    : {6}</value></data>
+  <data name="Cli_MtkSecurity" xml:space="preserve"><value>Security          : 0x{0}
+SBC               : {1}
+SLA               : {2}
+DAA               : {3}
+Certificate       : {4}
+Memory read auth  : {5}
+Memory write auth : {6}
+eMMC boot param   : {7}
+Cache cmd blocked : {8}</value></data>
   <data name="Cli_MtkWatchdog" xml:space="preserve"><value>Watchdog: {0}.</value></data>
   <data name="Cli_MtkUnknownChip" xml:space="preserve"><value>Unknown chip</value></data>
   <data name="Cli_MtkEnabled" xml:space="preserve"><value>enabled</value></data>
@@ -238,11 +314,90 @@ Examples (current directory /super/system_a):
   <data name="Cli_MtkSlotInfo" xml:space="preserve"><value>Highest-priority slot={0}; boot control version={1}; current boot suffix slot={2}.</value></data>
   <data name="Cli_MtkSlotState" xml:space="preserve"><value>Slot {0}: priority={1}, tries remaining={2}, boot successful={3}, verity corrupted={4}.</value></data>
   <data name="Cli_MtkSlotWritten" xml:space="preserve"><value>Slot {0} written and verified by readback; original sectors backed up.</value></data>
-  <data name="Cli_HelpMtkStandard" xml:space="preserve"><value>MTK standard commands: mtk-query query-name output-file | mtk-property key output-file | mtk-register read|write address [value] | mtk-pmt 32|64|96|disk|xml | mtk-slot read region offset length | mtk-slot set slot-index region offset length backup-file | mtk-rpmb erase region start count key-file. Slots are zero-based; range must describe the misc/para partition. Query names use MtkDaQuery enum names, such as Version, ChipId, DeviceFirmwareInfo and HardwareInfo; binary results go only to files. Media options: --mtk-nand-write (explicit logical page writes; erase depends on DA), --mtk-nand-capacity bytes (confirmed usable capacity for Legacy BMT/XML), --mtk-iot (known three-region Legacy IoT DA), --mtk-nor-erase-block bytes (confirmed erase block), --mtk-pmt-layout 32|64|96|disk (explicit Legacy layout when no GPT exists; disk selects eMMC PT/MPT).</value></data>
+  <data name="Cli_HelpMtkStandard" xml:space="preserve"><value>MTK standard commands:
+  mtk-query query-name output-file
+  mtk-property key output-file
+  mtk-register read|write address [value]
+  mtk-pmt 32|64|96|disk|xml
+  mtk-slot read region offset length
+  mtk-slot set slot-index region offset length backup-file
+  mtk-rpmb erase region start count key-file
+Slots are zero-based; range must describe the misc/para partition.
+Query names use MtkDaQuery, e.g. Version, ChipId, DeviceFirmwareInfo, HardwareInfo; binary results go only to files.
+Media options:
+  --mtk-nand-write       Explicit logical page writes; erase depends on DA
+  --mtk-nand-capacity bytes  Confirmed usable capacity for Legacy BMT/XML
+  --mtk-iot              Known three-region Legacy IoT DA
+  --mtk-nor-erase-block bytes  Confirmed erase block
+  --mtk-pmt-layout 32|64|96|disk  Explicit Legacy layout without GPT; disk selects eMMC PT/MPT</value></data>
   <data name="Cli_MtkScatterRange" xml:space="preserve"><value>{0} region={1} offset={2} length={3} file={4}</value></data>
-  <data name="Cli_HelpMtkParity" xml:space="preserve"><value>MTK additional commands: mtk-scatter plan scatter-file | mtk-scatter flash|update scatter-file image-directory backup-directory (update rebuilds GPT and preserves protected partitions); mtk-efuse read output-file | mtk-efuse write image-file backup-file (persist original data before permanent programming); mtk-partition read|write name maximum-length file | mtk-partition erase name. --mtk-iot selects the Legacy IoT loader flow; --mtk-nand-capacity bytes supplies confirmed NAND logical capacity; --mtk-nand-write explicitly enables logical writes with confirmed capacity. Backup files must not already exist.</value></data>
+  <data name="Cli_HelpMtkParity" xml:space="preserve"><value>MTK additional commands:
+  mtk-scatter plan scatter-file
+  mtk-scatter flash|update scatter-file image-directory backup-directory
+    update rebuilds GPT and preserves protected partitions.
+  mtk-efuse read output-file
+  mtk-efuse write image-file backup-file
+    Preserve original data before permanent programming.
+  mtk-partition read|write name maximum-length file
+  mtk-partition erase name
+Media options:
+  --mtk-iot              Select the Legacy IoT loader flow
+  --mtk-nand-capacity bytes  Supply confirmed NAND logical capacity
+  --mtk-nand-write       Explicitly enable logical writes with confirmed capacity
+Backup files must not already exist.</value></data>
   <data name="Cli_MtkExtensionAbiInvalid" xml:space="preserve"><value>MTK extension ABI must be legacy or penumbra2 and must match the extension already loaded on the device.</value></data>
-  <data name="Cli_HelpMtkKeys" xml:space="preserve"><value>mtk-key id key-name 128|192|256 output-file | mtk-key input label-file salt-file 128|192|256 output-file. Key names use MtkKeyDeriveId (Rpmb, Fde, Tee, AesImageEncryption, AesCustom, Motorola, RootOfTrust); inputs are at most 32 bytes each; - means empty. Requires --mtk-extension-abi penumbra2, confirmed crypto addresses and an already legitimately loaded compatible extension. Keys go only to files.</value></data>
+  <data name="Cli_HelpMtkKeys" xml:space="preserve"><value>MTK key commands:
+  mtk-key id key-name 128|192|256 output-file
+  mtk-key input label-file salt-file 128|192|256 output-file
+Key names use MtkKeyDeriveId:
+  Rpmb, Fde, Tee, AesImageEncryption, AesCustom, Motorola, RootOfTrust.
+Inputs are at most 32 bytes each; - means empty.
+Requires --mtk-extension-abi penumbra2, confirmed crypto addresses and an already legitimately loaded compatible extension.
+Keys go only to files.</value></data>
   <data name="Cli_MtkRpmbLockState" xml:space="preserve"><value>RPMB lock metadata version={0}, state={1}.</value></data>
-  <data name="Cli_HelpMtkWriteExtras" xml:space="preserve"><value>mtk-fill region offset length byte-value performs a logical pattern overwrite through ordinary writes and verifies readback; byte-value is 0–255. mtk-rsc partition source-file updates XFlash RSC records. mtk-rpmb-lock read key-file | mtk-rpmb-lock lock|unlock key-file backup-file reads/changes XML/UFS RPMB lock metadata, requires confirmed --mtk-ufs-rpmb-blocks capacity and an existing 32-byte authentication key, and preserves the original block before writing.</value></data>
+  <data name="Cli_HelpMtkWriteExtras" xml:space="preserve"><value>MTK write commands:
+  mtk-fill region offset length byte-value
+    Logical pattern overwrite through ordinary writes with readback verification; byte-value is 0–255.
+  mtk-rsc partition source-file
+    Update XFlash RSC records.
+  mtk-rpmb-lock read key-file
+  mtk-rpmb-lock lock|unlock key-file backup-file
+    Read/change XML/UFS RPMB lock metadata.
+    Requires confirmed --mtk-ufs-rpmb-blocks capacity and an existing 32-byte authentication key.
+    Preserve the original block before writing.</value></data>
+  <data name="Cli_ScriptFileMissing" xml:space="preserve"><value>XML file not found or the pattern matched no files.</value></data>
+  <data name="Cli_ScriptImageMissing" xml:space="preserve"><value>An image referenced by the XML does not exist.</value></data>
+  <data name="Cli_ScriptImageOutsideDirectory" xml:space="preserve"><value>An XML image path is outside the XML directory.</value></data>
+  <data name="Cli_ScriptTooManyFiles" xml:space="preserve"><value>At most 1024 XML files may be executed at once.</value></data>
+  <data name="Cli_ScriptStarted" xml:space="preserve"><value>Executing XML: {0}</value></data>
+  <data name="Cli_ScriptFileSummary" xml:space="preserve"><value>XML completed: {0}</value></data>
+  <data name="Cli_ScriptBatchSummary" xml:space="preserve"><value>Batch completed: {0} XML files</value></data>
+  <data name="Cli_ScriptStatistics" xml:space="preserve"><value>  Commands executed: {0}
+  Commands skipped : {1}
+  Bytes written    : {2}
+  Total duration   : {3}</value></data>
+  <data name="Cli_ScriptUnnamedPartition" xml:space="preserve"><value>(unnamed partition)</value></data>
+  <data name="Cli_ScriptSkippedEntry" xml:space="preserve"><value>  #{0} {1}: {2}</value></data>
+  <data name="Cli_ScriptSkippedLocation" xml:space="preserve"><value>    Location: LUN {0}, start sector {1}, sectors {2}</value></data>
+  <data name="Cli_ScriptSkippedFile" xml:space="preserve"><value>    File    : {0}</value></data>
+  <data name="Cli_ScriptSkippedReason" xml:space="preserve"><value>    Reason  : {0}</value></data>
+  <data name="Cli_ScriptResolvedLocation" xml:space="preserve"><value>{0} ({1})</value></data>
+  <data name="Cli_ScriptSkipUnsupported" xml:space="preserve"><value>XML command has no execution adapter (not sent)</value></data>
+  <data name="Cli_ScriptSkipDevice" xml:space="preserve"><value>command absent from the device's reported list</value></data>
+  <data name="Cli_ScriptSkipEmpty" xml:space="preserve"><value>empty program filename</value></data>
+  <data name="Cli_ScriptSkipNonDisk" xml:space="preserve"><value>patch filename is not DISK</value></data>
+  <data name="Cli_CommandDetailsHint" xml:space="preserve"><value>Details: help &lt;command&gt;; help qcom for reported device mappings; help all for all Host syntax.</value></data>
+  <data name="Cli_HelpDetailsHint" xml:space="preserve"><value>Use help &lt;command&gt; for syntax; help all for connection options and all Host commands (including configure / peek).</value></data>
+  <data name="Cli_InteractiveKeys" xml:space="preserve"><value>Interactive: Up/Down history, Tab/Shift+Tab command completion, Left/Right and Home/End editing, exit to quit.</value></data>
+  <data name="Cli_CommonCommandsSummary" xml:space="preserve"><value>Common commands:
+  info
+  partitions
+  read
+  write
+  erase
+  browse
+  reboot
+  connect
+  help
+  exit</value></data>
 </root>

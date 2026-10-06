@@ -26,19 +26,22 @@ internal sealed class BrowserRoot : BrowserNode
     internal override IEnumerable<BrowserNode> Children(CancellationToken ct) { ct.ThrowIfCancellationRequested(); return Mounts; }
 }
 
-internal sealed class BrowserMount(string name, BrowserNode parent, Func<BrowserNode, BrowserNode> mount, long size = 0)
+internal sealed class BrowserMount(string name, BrowserNode parent, Func<BrowserNode, BrowserNode> mount, long size = 0,
+    Func<Stream>? openRaw = null, Func<IReadableBlockDevice>? openDevice = null)
     : BrowserNode(name, parent)
 {
     private BrowserNode? _content;
     private long _size = size;
     internal void SetSize(long value) => _size = value;
+    internal void Reset() => _content = null;
+    internal IReadableBlockDevice OpenDevice() => openDevice?.Invoke() ?? throw new NotSupportedException(Strings.Cli_LpNotWritable);
     private BrowserNode Content => _content ??= mount(this);
     internal override bool IsDirectory => Content.IsDirectory;
     internal override long Size => _size;
     internal override string Kind => _content?.Kind ?? "mount";
     internal override object? DirectoryIdentity => Content.DirectoryIdentity;
     internal override IEnumerable<BrowserNode> Children(CancellationToken ct) => Content.Children(ct);
-    internal override Stream OpenRead() => Content.OpenRead();
+    internal override Stream OpenRead() => openRaw?.Invoke() ?? Content.OpenRead();
 }
 
 internal sealed class BrowserRawNode(BrowserNode mount, IReadableBlockDevice device)

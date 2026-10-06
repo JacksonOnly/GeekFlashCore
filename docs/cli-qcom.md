@@ -180,7 +180,7 @@ geekflash --port COM7 --loader programmer.elf --non-interactive read sector 0 0 
 
 读取先写入目标同目录的唯一临时文件，协议成功且未取消后才替换目标。失败或取消会删除临时文件，保留已有输出；进程被强制终止时可能遗留 `.tmp` 文件。未执行真实硬件读写验证。
 
-## 只读挂载与资源浏览器
+## LP 挂载、分区读写与元数据编辑
 
 连接后的交互提示符中执行 `browse <partition> [lun] [lp-slot]`，例如 `browse super`、`browse super 0 1` 或 `browse system_a`。`browse help` 显示浏览器命令的含义和示例，进入浏览器后输入 `help` 可再次查看。也可在命令行连接后直接进入：
 
@@ -193,7 +193,7 @@ geekflash browse help
 
 `browse-image <raw-image> [lp-slot]` 无需设备，支持 raw LP/EROFS/Ext 镜像；不直接处理 Android Sparse 容器。设备入口使用 GPT 字节范围切片，LP 按 extent 映射读取，均不会先转储完整 Super。LP slot 默认 0，最后一个参数可选择 1 等槽位，不自动猜测活动槽。设备分区同名时需要显式 LUN，LP 外部块设备名存在歧义时拒绝挂载；本地多设备 LP 需要额外源，当前单镜像入口会明确拒绝。
 
-进入后显示当前路径、类型、大小、编号和返回项。输入编号或目录路径进入；输入文件路径可选择输出文件。挂载层和普通目录使用同一条路径，例如 `/super/system_a/etc/settings.conf`，路径和搜索区分大小写：
+进入后只显示一行命令提示，以及当前路径、类型、大小、编号和返回项。`help` 按导航、读写、LP 编辑分组列出命令，`help read`、`help write`、`help find`、`help lp` 查看具体语法与示例。输入编号或目录路径进入；输入文件路径可选择输出文件。挂载层和普通目录使用同一条路径，例如 `/super/system_a/etc/settings.conf`，路径和搜索区分大小写：
 
 ```text
 cd /super/system_a/etc
@@ -212,10 +212,40 @@ exit
 
 `print <path>` 直接在终端显示普通文件文本，默认只允许不超过 24 KiB（24576 字节，含）的文件，当前没有扩大上限参数；大文件使用 `read` 保存到电脑。支持 UTF-8，以及带 BOM 的 UTF-16/UTF-32；其他编码或二进制文件可用 read 导出。换行与制表符保留，其他控制字符显示为 `\uXXXX`，文件内容只显示在终端，不写入诊断日志。短读、无效文本或取消时不打印部分内容，读取仍使用同步文件系统与完整 Firehose RAW/ACK。`browse help` 和 `browse-image help` 均无需连接设备或打开镜像。
 
-`read <path> <输出文件>` 导出一个普通文件或 raw 分区；父输出目录需要存在。`find <文件名通配符> [path] [输出目录]` 递归搜索 EROFS/Ext 的普通文件，支持 `*`、`?`，默认找到第一个匹配文件后停止；指定输出目录时导出该文件后停止。需要全部结果或批量导出时使用 `find --all <文件名通配符> [path] [输出目录]`。不指定输出目录时仅打印完整虚拟路径；指定时创建并保留相对搜索起点的目录结构，例如上述全量搜索输出 `D:\backup\system_a\etc\settings.conf`。搜索 LP 容器会按需访问各逻辑分区。
+`read <path> <输出文件>` 导出一个普通文件或完整 Raw 分区镜像；即使该分区已识别为 Ext/EROFS 目录，`read system_a system_a.img` 仍导出整个分区。位于 `/super/system_a` 时，`read . system_a.img` 导出当前分区；文件路径仍导出对应文件。父输出目录需要存在。`find <文件名通配符> [path] [输出目录]` 递归搜索 EROFS/Ext 的普通文件，支持 `*`、`?`，默认找到第一个匹配文件后停止；指定输出目录时导出该文件后停止。需要全部结果或批量导出时使用 `find --all <文件名通配符> [path] [输出目录]`。不指定输出目录时仅打印完整虚拟路径；指定时创建并保留相对搜索起点的目录结构，例如上述全量搜索输出 `D:\backup\system_a\etc\settings.conf`。搜索 LP 容器会按需访问各逻辑分区。
 
 搜索期间按 Ctrl+C 只取消本次搜索（包含搜索导出），等当前设备读取及最终 ACK 完成后返回当前浏览器目录，可继续 `ls`、`cd`、`read` 或再次 `find`。取消不会中断 Firehose RAW 通信、关闭传输或要求重连；已完成导出保留，正在导出的文件取消时保留原目标并删除临时文件。若设备自身超时/断连，仍报告通信错误并要求重连。搜索以外的 Ctrl+C 保持原程序取消行为。
 
 不跟随符号链接，不导出设备节点/Socket 等特殊文件；目录循环有检测，目录深度和节点数有上限。每个文件用池化缓冲流式复制并原子替换，取消/短读保留该文件原输出，成功时显示导出进度；批量导出中已成功的文件会保留，后续失败停止本次搜索。输出不能越出指定目录、通过链接目录写入、覆盖挂载源镜像，多个结果映射同一路径时停止。交互命令错误可以重试，设备会话失效则退出浏览器并要求重连。
 
 可给 `browse-image` 的 stdin 提供命令脚本；配合 `--non-interactive` 时，命令错误立即返回失败退出码，不等待文件输出提示，脚本使用显式 `read`/`find` 输出路径。设备脚本还需提供连接资源；所有厂商证据未知时必须加 `--vendor`。用户已在真机完成 Firehose 续接、Super→Ext 浏览和 build.prop 定位；本轮首个停止与安全取消仍需真机复测，建议先搜索小目录、导出一个小文件。
+
+连接后可直接列表和读写，不必先 `browse`：
+
+```text
+ls super
+ls super/system_a
+read super/system_a system_a.img
+write super/system_a system_a.img
+read super/system_b system_b.img 0 1
+```
+
+主提示符 `ls <partition/path> [lun] [lp-slot]` 只支持可挂载的 LP、Ext、EROFS；列表后立即返回原提示符。LP 列表不会探测每个子分区的文件系统。挂载内 `ls [path] [page]` 保留分页语法。主命令 `read/write <partition/path> <file> [lun] [lp-slot]` 的最后两个参数选择物理 LUN 和 LP 元数据槽；slot 默认 0，使用槽 1 需要同时给出 LUN。完整分区读取不需要探测子分区文件系统，损坏或未知文件系统仍可导出 Raw。
+
+在 `/super` 内可执行 `write system_a system_a.img`，在 `/super/system_a` 内可执行 `write . system_a.img`。写入支持 Raw 和 Android Sparse 展开，保持原分区容量，短镜像的剩余区域填零；超过容量时在任何写入前拒绝，使用 `lp resize` 显式调整。编辑器优先使用空闲 extent，只有计划需要时才原位覆盖；原位覆盖中断不保证数据回滚。写入后回读验证 LP 元数据并返回重新加载的 LP 容器；旧卷/路径节点失效。本地 `browse-image super.img` 支持相同 LP 写入操作，编辑时独占打开原文件，成功前不自动复制整个镜像。
+
+LP 元数据通过 `lp` 子命令编辑，主命令末尾可加 `[lun] [lp-slot]`，挂载内使用当前 slot。`lp help` 或 `help lp` 无需连接设备。`info` 显示有效名称、原始名称、属性、大小和分组；其他操作立即校验并提交。
+
+```text
+lp info super
+lp rename super system_a system_new
+lp resize super system_new 4294967296
+lp attributes super system_new ReadOnly
+lp group-add super dynamic 8589934592 None
+lp move super system_new dynamic
+lp group-resize super dynamic 9663676416
+```
+
+在 `/super` 中把上述 `super` 换成 `.`；从文件系统目录中使用 `/super`。还有 `lp add`、`lp remove`、`lp group-rename`、`lp group-flags` 和 `lp group-remove`，完整参数见 `help lp`。名称区分大小写，分区/组选择支持 info 显示的有效或原始名称；新名称使用原始名称，带 `SlotSuffixed` 属性时自动追加槽后缀。数值支持十进制/`0x` 十六进制，大小按 LP 逻辑块向上对齐；flags 使用枚举名称、逗号分隔组合或数值。分区属性支持 `None`、`ReadOnly`、`SlotSuffixed`、`Updated`、`Disabled`，分组支持 `None`、`SlotSuffixed`，实际允许值仍受元数据版本约束。默认分组受保护，删除分组要求为空。
+
+计划会验证名称、容量、空闲空间与其他槽占用，不通过时零写入。元数据沿用核心主/备副本提交和回读校验；进入主备提交临界区后的取消会先完成两份副本，再观察取消。任何写入/回读失败都不自动重试，并清除浏览缓存；传输/Raw 错误继续由 Core 要求重连，完整非 Raw NAK 沿用既有可恢复规则。分区内配置文件仍只支持读取/导出；此处编辑的配置是 LP 元数据。本轮仅本地合成镜像与模拟 Firehose 验证，真实设备 LP 写入仍待复测。

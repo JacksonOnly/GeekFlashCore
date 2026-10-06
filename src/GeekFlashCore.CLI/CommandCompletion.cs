@@ -16,7 +16,7 @@ internal static class CommandCompletion
             if (reported is { Count: > 0 })
             {
                 if (!reported.Contains("program", StringComparer.OrdinalIgnoreCase)) names.Remove("write");
-                if (!reported.Contains("read", StringComparer.OrdinalIgnoreCase)) names.RemoveAll(x => x is "read" or "partitions" or "browse");
+                if (!reported.Contains("read", StringComparer.OrdinalIgnoreCase)) names.RemoveAll(x => x is "read" or "partitions" or "browse" or "ls" or "lp");
                 if (!reported.Contains("erase", StringComparer.OrdinalIgnoreCase)) names.Remove("erase");
                 if (!reported.Contains("power", StringComparer.OrdinalIgnoreCase)) names.Remove("reboot");
             }
@@ -29,6 +29,7 @@ internal static class CommandCompletion
         {
             "qcom" => FirehoseCommands.Usages.Keys.Select(x => "qcom " + x).Where(x => names.Contains(x[5..])),
             "help" => names.Concat(["all", "qcom"]).Select(x => "help " + x),
+            "lp" => LpCommands.Usages.Keys.Select(x => "lp " + x),
             "reboot" => new[] { "system", "download", "poweroff" }.Select(x => "reboot " + x),
             "power" => new[] { "reset", "reset_to_edl", "off" }.Select(x => "power " + x),
             _ => []

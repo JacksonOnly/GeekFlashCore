@@ -562,6 +562,12 @@
 
 ## 未决风险
 
+### LPCLI（2026-10-06）
+
+- CLI 新增未挂载 `ls`、`read/write super/system_a` 与 LP 元数据编辑，挂载内支持完整分区镜像读写；每次编辑后释放旧视图并重新加载，帮助改成简短入口/分组详情。Core 协议线路与公共契约保持，设备写入通过 CLI 有界扇区适配复用原 FirehoseBlockDevice。
+- 本轮目标 29/29；完整本地 Qcom/CLI/LP/Core/MTK 合计 926 项通过，Release 构建零警告零错误、资源键和 diff 检查通过。完整行为、命令与证据见 `2026-10-06-cli-lp-edit-design.md` 和 `2026-10-06-cli-lp-edit-implementation.md`。
+- 无真实设备写入证据，多源 LP、取消延迟、原位写数据回滚与 AVB/文件系统调整仍是风险；先从 `ls super`、`lp info super` 与导出核对开始复测。
+
 ### CLI-10：联机信息与重连（2026-09-05）
 
 - 行为结论：保留两条 NOP 探测入口的响应，启动日志与 NOP 响应均解析 `Binary build date`（兼容 `@` 分隔符）；configure 的 Build Time/DateTime 仍可回填。UFS `prod_name` 映射到 UfsName，configure TargetName 写回目标信息。函数列表优先识别结束标记，避免将后续诊断当作命令。

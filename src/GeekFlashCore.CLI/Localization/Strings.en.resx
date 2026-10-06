@@ -187,25 +187,47 @@ capacity= {4}</value></data>
   <data name="Cli_VendorUnknown" xml:space="preserve"><value>Startup logs, Loader and Sahara did not identify a vendor. Select a strategy:</value></data>
   <data name="Cli_VendorPrompt" xml:space="preserve"><value>Vendor number or name (blank to cancel)</value></data>
   <data name="Cli_VendorInvalid" xml:space="preserve"><value>Select a listed vendor; Auto is not a selection.</value></data>
-  <data name="Cli_BrowserHelp" xml:space="preserve"><value>Read-only browser:
-  help                         Show this help; browse help also works at geekflash&gt;.
-  ls [path] [page]             List a directory; path defaults to the current directory, 50 entries per page, pages start at 0.
-  cd &lt;path&gt;                    Enter a directory, for example cd /super/system_a/system; cd .. returns to its parent.
-  up                           Go to the parent directory, like cd ..; /super/system_a returns to /super.
-  pwd                          Show the current directory path, for example /super/system_a.
-  read &lt;path&gt; &lt;output-file&gt;    Read a file or raw partition and save it on your computer; the output parent directory must exist.
-  print &lt;path&gt;                 Print file contents directly; the default limit is 24 KiB (24576 bytes, inclusive). Use read for larger files.
-  find [--all] &lt;glob&gt; [path] [output-directory]
-                               Search filenames recursively using * or ?; path defaults to the current directory.
-                               Stop at the first match by default; --all finds every match. An output directory exports matching files.
-  exit                         Return to geekflash&gt;; exit the program when started as a standalone command.
-Enter a number or directory path to open; file paths prompt for export. Use / in paths, match case and quote spaces; symbolic links are not followed.
-Ctrl+C during find cancels this search after the current read and ACK complete, then returns to the current directory.
-Examples (current directory /super/system_a):
-  print system/build.prop
-  read system/build.prop "D:\backup\build.prop"
-  find build.prop
-  find --all *.conf . "D:\backup\system_a"</value></data>
+  <data name="Cli_BrowserHint" xml:space="preserve"><value>Mounted. Enter a number/path, ls to list, up to return; help for commands, help lp for metadata.</value></data>
+  <data name="Cli_BrowserHelp" xml:space="preserve"><value>Browse and navigate:
+  ls [path] [page]    List 50 entries per page (zero-based)
+  cd &lt;path&gt; | up     Enter a directory or return; cd .. is up
+  pwd                Display the current path
+Read and write:
+  read &lt;path&gt; &lt;file&gt;  Export a file or complete partition image
+  write &lt;path&gt; &lt;file&gt; Write an LP image (Raw/Sparse, retain capacity)
+  print &lt;path&gt;       Display text (up to 24 KiB)
+  find [...]         Search files; help find for options
+LP metadata:
+  lp &lt;operation&gt; &lt;path&gt; ...  Edit names, flags, sizes and groups; help lp for syntax
+  help [command]     Show help
+  exit               Leave the mount
+Paths use / and are case-sensitive. Quote spaces. Numbers enter directories; links are not followed.</value></data>
+  <data name="Cli_BrowserReadHelp" xml:space="preserve"><value>read &lt;path&gt; &lt;file&gt;: file paths export files; partition paths export complete Raw images.
+At /super: read system_a system_a.img; at /super/system_a: read . system_a.img.
+read system_a/system/build.prop build.prop exports a file. The output parent must exist.</value></data>
+  <data name="Cli_BrowserWriteHelp" xml:space="preserve"><value>write &lt;partition-path&gt; &lt;image&gt;: write an LP logical partition from Raw/Sparse, retaining capacity.
+At /super: write system_a system_a.img; at /super/system_a: write . system_a.img.
+Use lp resize before writing a larger image. Writes return to the refreshed LP container. Interrupted in-place writes cannot roll back data.</value></data>
+  <data name="Cli_BrowserFindHelp" xml:space="preserve"><value>find [--all] &lt;pattern&gt; [path] [output-directory]
+Supports * and ?. Stops at the first match by default; --all searches all. An output directory exports matches.
+Ctrl+C returns after the current read and ACK complete.</value></data>
+  <data name="Cli_LpNotWritable" xml:space="preserve"><value>This mount does not provide writable LP block devices.</value></data>
+  <data name="Cli_LpPartitionRequired" xml:space="preserve"><value>write requires an LP logical partition path such as system_a or /super/system_a.</value></data>
+  <data name="Cli_LpContainerRequired" xml:space="preserve"><value>lp requires a top-level LP container path such as super or /super; use . inside the container.</value></data>
+  <data name="Cli_LpImageTooLarge" xml:space="preserve"><value>The expanded image exceeds logical partition capacity. Use lp resize explicitly first.</value></data>
+  <data name="Cli_LpPlanFailed" xml:space="preserve"><value>LP plan validation failed: {0}. Changes were not committed.</value></data>
+  <data name="Cli_LpPlan" xml:space="preserve"><value>LP commit plan: slot={0}, data ranges={1}, in-place overwrite={2}.</value></data>
+  <data name="Cli_LpCommitFailed" xml:space="preserve"><value>LP commit or read-back verification did not succeed: phase={0}, verification={1}. Read the state again; no automatic retry.</value></data>
+  <data name="Cli_LpCommitted" xml:space="preserve"><value>LP changes and read-back verification completed; the mount view was reloaded.</value></data>
+  <data name="Cli_LpPartitionInfo" xml:space="preserve"><value>Partition {0}  raw-name={1}  bytes={2}  attributes={3}  group={4}</value></data>
+  <data name="Cli_LpGroupInfo" xml:space="preserve"><value>Group {0}  raw-name={1}  maximum-bytes={2}  flags={3}</value></data>
+  <data name="Cli_LpHelp" xml:space="preserve"><value>LP metadata operations (info reads; other operations validate and commit immediately):</value></data>
+  <data name="Cli_LpHelpOptions" xml:space="preserve"><value>Append [lun] [lp-slot] in the main shell; mounted commands use the current slot without these arguments.
+container is super or /super; use . inside the LP container. Select partitions by the name shown in info.
+new-name is a raw name; SlotSuffixed appends the slot suffix automatically.
+bytes accepts decimal or 0x hexadecimal, aligned to the LP logical block; flags accepts None, comma-separated enum names, or numbers.
+Partition flags: ReadOnly,SlotSuffixed,Updated,Disabled; group flags: None,SlotSuffixed.
+group-remove requires an empty group; the default group is protected. Example: lp rename . system_a system_new</value></data>
   <data name="Cli_BrowserPrintNotFile" xml:space="preserve"><value>print requires a regular file, not a directory, link, raw partition or special file.</value></data>
   <data name="Cli_BrowserPrintTooLarge" xml:space="preserve"><value>print supports files up to 24 KiB (24576 bytes); the file size is invalid or too large. Use read to export it.</value></data>
   <data name="Cli_BrowserPrintInvalidText" xml:space="preserve"><value>Cannot decode file text; print supports UTF-8 or UTF-16/UTF-32 with a BOM. Use read to export other encodings or binary files.</value></data>
@@ -396,6 +418,8 @@ Keys go only to files.</value></data>
   write
   erase
   browse
+  ls
+  lp
   reboot
   connect
   help

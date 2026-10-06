@@ -36,6 +36,7 @@ internal sealed class CliApplication
         try { options = NormalizeAndValidate(options, requestedRegistration); }
         catch (CommandUsageException exception) { _ui.WriteLine(exception.Message); return 2; }
         if (options.Command == "help") { CommandLine.PrintRequestedHelp(options.Arguments, _ui); return 0; }
+        if (options.Command == "lp" && LpCommands.IsHelp(options.Arguments)) { LpCommands.PrintHelp(_ui); return 0; }
         if (options.Command is "browse" or "browse-image" && BrowserCommands.ShowHelp(options.Arguments, _ui)) return 0;
         if (options.Command == "browse-image")
         {
@@ -118,6 +119,7 @@ internal sealed class CliApplication
         try { options = NormalizeAndValidate(options, registration); }
         catch (CommandUsageException exception) { _ui.WriteLine(exception.Message); return 2; }
         ct.ThrowIfCancellationRequested();
+        if (options.Command == "lp" && LpCommands.IsHelp(options.Arguments)) { LpCommands.PrintHelp(_ui); return 0; }
         if (options.Command is "browse" or "browse-image" && BrowserCommands.ShowHelp(options.Arguments, _ui)) return 0;
         registration.CommandSet?.ValidateAvailability(protocol, options.Command);
         if (registration.CommandSet is { } commands && commands.Handles(options.Command))
@@ -140,6 +142,12 @@ internal sealed class CliApplication
                 return 0;
             case "browse":
                 await BrowserCommands.BrowseDeviceAsync(protocol, options.Arguments, _ui, progress, ct).ConfigureAwait(false);
+                return 0;
+            case "ls":
+                await BrowserCommands.ListDeviceAsync(protocol, options.Arguments, _ui, progress, ct).ConfigureAwait(false);
+                return 0;
+            case "lp":
+                await LpCommands.ExecuteDeviceAsync(protocol, options.Arguments, _ui, progress, ct).ConfigureAwait(false);
                 return 0;
             case "browse-image":
                 await BrowserCommands.BrowseImageAsync(options.Arguments, _ui, ct).ConfigureAwait(false);

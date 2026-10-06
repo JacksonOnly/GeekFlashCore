@@ -18,6 +18,17 @@ internal static class StorageCommands
     private static async Task ExecuteCoreAsync(IProtocol protocol, string command, string[] args, ConsoleUi ui,
         IProgress<ProgressRecord> progress, CancellationToken ct)
     {
+        if (command is "read" or "write" && args[0].Contains('/'))
+        {
+            if (command == "write" && protocol is IQcomProtocol qcom) FirehoseCommands.Require(qcom, "program");
+            using var session = await BrowserCommands.CreateDeviceSessionAsync(protocol,
+                [args[0], .. args.Skip(2)], progress, ct).ConfigureAwait(false);
+            string path = "/" + args[0].TrimStart('/');
+            if (command == "read") await session.ExportAsync(session.Resolve(path, ct), args[1], ct, progress).ConfigureAwait(false);
+            else await session.WritePartitionAsync(path, args[1], ui, ct).ConfigureAwait(false);
+            ui.WriteLine(Strings.FormatCli_CommandCompleted(command));
+            return;
+        }
         if (command == "partitions")
         {
             if (protocol is IQcomProtocol partitionDevice) FirehoseCommands.Require(partitionDevice, "read");

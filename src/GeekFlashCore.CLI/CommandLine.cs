@@ -89,6 +89,7 @@ internal static class CommandLine
     internal static void PrintRequestedHelp(string[] arguments, ConsoleUi ui)
     {
         string? requested = arguments.FirstOrDefault()?.ToLowerInvariant();
+        if (requested == "lp") { LpCommands.PrintHelp(ui); return; }
         if (requested is not (null or "all" or "qcom"))
         {
             if (CommandSyntax.Usages.TryGetValue(requested, out string? common)) PrintUsage(common, ui);

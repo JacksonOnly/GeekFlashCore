@@ -8,15 +8,18 @@ using GeekFlashCore.BlockDevice.Abstractions;
 using GeekFlashCore.FileSystem.Abstractions;
 using GeekFlashCore.FileSystem.Erofs;
 using GeekFlashCore.FileSystem.Ext;
+using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.CLI.Localization;
 
 namespace GeekFlashCore.CLI;
 
-internal sealed class BrowserSession(int slot = 0, ILpBlockDeviceResolver? resolver = null, string? sourcePath = null) : IDisposable
+internal sealed class BrowserSession(int slot = 0, ILpBlockDeviceResolver? resolver = null, string? sourcePath = null,
+    ILpWritableBlockDeviceResolver? writableResolver = null) : IDisposable
 {
     private const int MaximumPrintBytes = 24 * 1024;
     private readonly Stack<IDisposable> _resources = new();
     private readonly Dictionary<string, BrowserMount> _mounts = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, LpMetadataDocument> _lpDocuments = new(StringComparer.Ordinal);
     private readonly FileSystemReadLimits _limits = new(maximumCacheBytes: 1024 * 1024, maximumWorkingBytes: 4 * 1024 * 1024);
     private bool _disposed;
     private CancellationToken _operationToken;
@@ -39,7 +42,8 @@ internal sealed class BrowserSession(int slot = 0, ILpBlockDeviceResolver? resol
         string path = parent.Path.TrimEnd('/') + "/" + name;
         if (_mounts.TryGetValue(path, out var existing)) return existing;
         if (_mounts.Count >= 128) throw new IOException(Strings.Cli_BrowserLimit);
-        var mount = new BrowserMount(name, parent, node => Mount(node, open), size);
+        var mount = new BrowserMount(name, parent, node => Mount(node, open), size,
+            () => new BlockDeviceStream(new BrowserReadDevice(open(), this), DeviceOwnership.Transfer), open);
         _mounts.Add(path, mount);
         return mount;
     }
@@ -59,6 +63,7 @@ internal sealed class BrowserSession(int slot = 0, ILpBlockDeviceResolver? resol
             {
                 var set = Own(LpMetadataSet.Open(source, DeviceOwnership.Borrow));
                 var document = Own(set.OpenPreferredSlot(slot));
+                _lpDocuments[node.Path] = document;
                 return new BrowserLpNode(node, document, this);
             }
             foreach (IFileSystemDriver driver in new IFileSystemDriver[] { new ErofsFileSystemDriver(), new ExtFileSystemDriver() })
@@ -186,39 +191,45 @@ internal sealed class BrowserSession(int slot = 0, ILpBlockDeviceResolver? resol
         return encoding.GetString(bytes[prefix..]);
     }
 
-    internal async Task ExportAsync(BrowserNode node, string destination, CancellationToken ct, Action<long, long>? progress = null)
+    internal async Task ExportAsync(BrowserNode node, string destination, CancellationToken ct, IProgress<ProgressRecord>? progress = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ct.ThrowIfCancellationRequested();
         _operationToken = ct;
-        if (node.IsDirectory) throw new IOException(Strings.Cli_BrowserNotFile);
+        if (node is not BrowserMount && node.IsDirectory) throw new IOException(Strings.Cli_BrowserNotFile);
         destination = Path.GetFullPath(ConsolePath.Normalize(destination)!);
         if (sourcePath is not null && string.Equals(destination, Path.GetFullPath(sourcePath),
             OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
             throw new IOException(Strings.Cli_BrowserSourceOverwrite);
         RejectLinkedAncestors(destination);
         using Stream input = node.OpenRead();
+        long total = node is BrowserMount ? input.Length : node.Size;
         await AtomicReadOutput.WriteAsync(destination, async output =>
         {
+            Report(0, ProgressPhase.Started);
             byte[] buffer = ArrayPool<byte>.Shared.Rent(128 * 1024);
             try
             {
                 long copied = 0;
-                while (copied < node.Size)
+                while (copied < total)
                 {
                     ct.ThrowIfCancellationRequested();
-                    int size = (int)Math.Min(buffer.Length, node.Size - copied);
+                    int size = (int)Math.Min(buffer.Length, total - copied);
                     // Keep filesystem and transport reads synchronous; async is only for the local output.
                     int read = input.Read(buffer, 0, size);
                     if (read == 0) throw new EndOfStreamException(Strings.Cli_BrowserShortRead);
                     await output.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
                     copied = checked(copied + read);
-                    progress?.Invoke(copied, node.Size);
+                    if (copied < total) Report(copied, ProgressPhase.Running);
                 }
             }
             finally { ArrayPool<byte>.Shared.Return(buffer); }
         }, ct).ConfigureAwait(false);
-        if (node.Size == 0) progress?.Invoke(0, 0);
+        // Flush and replace the destination before publishing successful completion.
+        Report(total, ProgressPhase.Completed);
+
+        void Report(long current, ProgressPhase phase) => progress?.Report(new ProgressRecord(total, current, Strings.Cli_BrowserExportProgress)
+            { Unit = ProgressUnit.Bytes, Phase = phase });
     }
 
     internal static void RejectLinkedAncestors(string destination)
@@ -231,13 +242,97 @@ internal sealed class BrowserSession(int slot = 0, ILpBlockDeviceResolver? resol
         }
     }
 
+    internal async Task WritePartitionAsync(string path, string input, ConsoleUi ui, CancellationToken ct)
+    {
+        var node = Resolve(path, ct);
+        if (node is not BrowserMount || node.Parent is not BrowserLpNode)
+            throw new IOException(Strings.Cli_LpPartitionRequired);
+        string container = node.Parent.Path, name = node.Name;
+        input = Path.GetFullPath(ConsolePath.Normalize(input)!);
+        if (sourcePath is not null && string.Equals(input, Path.GetFullPath(sourcePath),
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            throw new IOException(Strings.Cli_BrowserSourceOverwrite);
+        using var image = LpPartitionImageSource.FromBlockDevice(new FileBlockDevice(input), DeviceOwnership.Transfer);
+        await EditLpAsync(container, draft =>
+        {
+            var partition = draft.FindPartition(name);
+            long capacity = draft.GetPartition(partition).LogicalSize;
+            if (image.LogicalLength > capacity) throw new IOException(Strings.Cli_LpImageTooLarge);
+            draft.ReplacePartitionImage(partition, image);
+            draft.ResizePartition(partition, capacity);
+        }, ui, ct, allowInPlace: true).ConfigureAwait(false);
+    }
+
+    internal async Task EditLpAsync(string path, Action<LpDraft> edit, ConsoleUi ui, CancellationToken ct,
+        bool allowInPlace = false)
+    {
+        var mount = Resolve(path, ct) as BrowserMount;
+        if (mount is null || mount.Parent != Root || !IsLpMount(mount))
+            throw new IOException(Strings.Cli_LpContainerRequired);
+        if (sourcePath is null && writableResolver is null) throw new NotSupportedException(Strings.Cli_LpNotWritable);
+        string container = mount.Path;
+        Reset();
+        try
+        {
+            using IReadableBlockDevice source = sourcePath is not null ? new WritableFileBlockDevice(sourcePath) :
+                new BrowserReadDevice(mount.OpenDevice(), this);
+            using var editor = resolver is null ? new LpEditor().Open(source, DeviceOwnership.Borrow, slot) :
+                await new LpEditor().OpenAsync(source, DeviceOwnership.Borrow, slot, resolver, cancellationToken: ct).ConfigureAwait(false);
+            edit(editor.Draft);
+            var result = editor.CreatePlan(new LpPlanOptions { AllowInPlaceDataOverwrite = allowInPlace }, ct);
+            if (result is LpPlanFailure failure) throw new IOException(Strings.FormatCli_LpPlanFailed(failure.Failure.ErrorCode));
+            var plan = ((LpPlanSuccess)result).Plan;
+            ui.WriteLine(Strings.FormatCli_LpPlan(plan.SlotNumber, plan.DataWrites.Length, plan.UsesInPlaceDataOverwrite));
+            var committed = await editor.CommitAsync(plan, sourcePath is not null ?
+                new SingleFileWritableResolver((IWritableBlockDevice)source) : writableResolver!, cancellationToken: ct).ConfigureAwait(false);
+            if (!committed.CommitSucceeded || committed.VerificationStatus != VerificationStatus.Succeeded)
+                throw new IOException(Strings.FormatCli_LpCommitFailed(committed.LastCompletedPhase, committed.VerificationStatus));
+        }
+        finally { Reset(); }
+        ChangeDirectory(container, ct);
+        ui.WriteLine(Strings.Cli_LpCommitted);
+    }
+
+    private static bool IsLpMount(BrowserMount mount) { _ = mount.IsDirectory; return mount.Kind == "lp"; }
+
+    private void Reset()
+    {
+        var failures = ReleaseResources(0);
+        _mounts.Clear();
+        _lpDocuments.Clear();
+        foreach (BrowserMount mount in Root.Mounts)
+        {
+            mount.Reset();
+            _mounts.Add(mount.Path, mount);
+        }
+        Current = Root;
+        if (failures is not null) throw new AggregateException(Strings.Cli_BrowserCleanupFailed, failures);
+    }
+
+    internal LpMetadataDocument GetLpDocument(string path, CancellationToken ct)
+    {
+        var mount = Resolve(path, ct);
+        if (mount is BrowserMount) _ = mount.IsDirectory;
+        return _lpDocuments.TryGetValue(mount.Path, out var document) ? document :
+            throw new IOException(Strings.Cli_LpContainerRequired);
+    }
+
+    private sealed class SingleFileWritableResolver(IWritableBlockDevice device) : ILpWritableBlockDeviceResolver
+    {
+        public ValueTask<IWritableBlockDeviceLease> ResolveAsync(LpBlockDevice blockDevice, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult<IWritableBlockDeviceLease>(new WritableBlockDeviceLease(device, DeviceOwnership.Borrow));
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
         List<Exception>? failures;
         try { failures = ReleaseResources(0); }
-        finally { _mounts.Clear(); }
+        finally { _mounts.Clear(); _lpDocuments.Clear(); }
         if (failures is not null) throw new AggregateException(Strings.Cli_BrowserCleanupFailed, failures);
     }
 

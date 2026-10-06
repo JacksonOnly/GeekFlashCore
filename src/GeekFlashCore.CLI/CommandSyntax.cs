@@ -12,8 +12,10 @@ internal static class CommandSyntax
         ["partitions"] = "partitions <all|lun>",
         ["browse"] = "browse <partition> [lun] [lp-slot]",
         ["browse-image"] = "browse-image <raw-image> [lp-slot]",
-        ["read"] = "read <partition> <file> [lun] | read sector <lun> <start> <count> <file>",
-        ["write"] = "write <partition> <file> [lun] | write sector <lun> <start> <count> <file>",
+        ["ls"] = "ls <partition/path> [lun] [lp-slot]",
+        ["lp"] = "lp <operation> <container> [...] [lun] [lp-slot] | lp help",
+        ["read"] = "read <partition/path> <file> [lun] [lp-slot] | read sector <lun> <start> <count> <file>",
+        ["write"] = "write <partition/path> <file> [lun] [lp-slot] | write sector <lun> <start> <count> <file>",
         ["erase"] = "erase <partition> [lun] | erase sector <lun> <start> <count>",
         ["reboot"] = "reboot <system|download|poweroff>",
         ["info"] = "info", ["connect"] = "connect", ["devices"] = "devices",
@@ -37,11 +39,12 @@ internal static class CommandSyntax
         {
             switch (command)
             {
-                case "browse":
+                case "browse": case "ls":
                     if (a.Length is < 1 or > 3) throw new FormatException();
                     if (a.Length > 1) Lun(a[1]);
                     if (a.Length > 2 && Number(a[2]) > 25) throw new FormatException();
                     break;
+                case "lp": LpCommands.Validate(a); break;
                 case "browse-image":
                     if (a.Length is < 1 or > 2) throw new FormatException();
                     if (a.Length > 1 && Number(a[1]) > 25) throw new FormatException();
@@ -54,8 +57,11 @@ internal static class CommandSyntax
                     }
                     else
                     {
-                        if (a.Length < (erase ? 1 : 2) || a.Length > (erase ? 2 : 3)) throw new FormatException();
-                        if (a.Length == (erase ? 2 : 3)) Lun(a[^1]);
+                        int mandatory = erase ? 1 : 2;
+                        bool nested = !erase && a.Length > 0 && a[0].Contains('/');
+                        if (a.Length < mandatory || a.Length > mandatory + (nested ? 2 : 1)) throw new FormatException();
+                        if (a.Length > mandatory) Lun(a[mandatory]);
+                        if (a.Length > mandatory + 1 && Number(a[mandatory + 1]) > 25) throw new FormatException();
                     }
                     break;
                 case "partitions": Count(a, 1); if (!a[0].Equals("all", StringComparison.OrdinalIgnoreCase)) Lun(a[0]); break;

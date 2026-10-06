@@ -25,17 +25,44 @@ internal static class BrowserCommands
         IProgress<ProgressRecord> progress, CancellationToken ct)
     {
         if (ShowHelp(args, ui)) return;
+        using var session = await CreateDeviceSessionAsync(protocol, args, progress, ct).ConfigureAwait(false);
+        await RunAsync(session, ui, ct, () => protocol.IsConnected, "/" + args[0].TrimStart('/')).ConfigureAwait(false);
+    }
+
+    internal static async Task<BrowserSession> CreateDeviceSessionAsync(IProtocol protocol, string[] args,
+        IProgress<ProgressRecord> progress, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        string path = BrowserPath.Normalize("/", args[0]);
+        string name = path.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ??
+            throw new ArgumentException(Strings.Cli_BrowserInvalidPath);
         if (protocol is not IBlockDeviceProvider provider) throw new NotSupportedException(Strings.Cli_BrowserBlockDeviceRequired);
         if (protocol is IQcomProtocol qcom) FirehoseCommands.Require(qcom, "read");
         IReadOnlyList<PartitionInfo> partitions = await protocol.GetPartitionsAsync(progress, ct).ConfigureAwait(false);
         uint? lun = args.Length > 1 ? CommandSyntax.Lun(args[1]) : null;
-        var matches = partitions.Where(x => x.Name == args[0] && (lun is null || StorageCommands.PartitionLun(x) == lun)).ToArray();
-        if (matches.Length != 1) throw new ArgumentException(Strings.FormatCli_PartitionNotUnique(args[0]));
-        var resolver = new PartitionResolver(provider, partitions, matches[0]);
+        var matches = partitions.Where(x => x.Name == name && (lun is null || StorageCommands.PartitionLun(x) == lun)).ToArray();
+        if (matches.Length != 1) throw new ArgumentException(Strings.FormatCli_PartitionNotUnique(name));
+        var resolver = new PartitionDeviceResolver(provider, partitions, matches[0],
+            protocol is IQcomProtocol device ? () => FirehoseCommands.Require(device, "program") : null);
         int slot = args.Length > 2 ? checked((int)CommandSyntax.Number(args[2])) : 0;
-        using var session = new BrowserSession(slot, resolver);
-        session.AddMount(args[0], () => resolver.Open(matches[0]));
-        await RunAsync(session, ui, ct, () => protocol.IsConnected).ConfigureAwait(false);
+        var session = new BrowserSession(slot, resolver, writableResolver: resolver);
+        try { session.AddMount(name, () => resolver.Open(matches[0])); return session; }
+        catch { session.Dispose(); throw; }
+    }
+
+    internal static async Task ListDeviceAsync(IProtocol protocol, string[] args, ConsoleUi ui,
+        IProgress<ProgressRecord> progress, CancellationToken ct)
+    {
+        bool previous = ui.SuppressDiagnosticLogs;
+        ui.SuppressDiagnosticLogs = true;
+        try
+        {
+            using var session = await CreateDeviceSessionAsync(protocol, args, progress, ct).ConfigureAwait(false);
+            var node = session.Resolve("/" + args[0].TrimStart('/'), ct);
+            if (!node.IsDirectory) throw new IOException(Strings.Cli_BrowserNotDirectory);
+            List(node, 0, ui, ct);
+        }
+        finally { ui.SuppressDiagnosticLogs = previous; }
     }
 
     internal static bool ShowHelp(string[] args, ConsoleUi ui)
@@ -45,7 +72,8 @@ internal static class BrowserCommands
         return true;
     }
 
-    internal static async Task RunAsync(BrowserSession session, ConsoleUi ui, CancellationToken ct, Func<bool>? connected = null)
+    internal static async Task RunAsync(BrowserSession session, ConsoleUi ui, CancellationToken ct, Func<bool>? connected = null,
+        string? initialPath = null)
     {
         bool previous = ui.SuppressDiagnosticLogs;
         ui.SuppressDiagnosticLogs = true;
@@ -53,9 +81,9 @@ internal static class BrowserCommands
         {
             ct.ThrowIfCancellationRequested();
             if (connected?.Invoke() == false) throw new InvalidOperationException(Strings.Cli_ReconnectRequired);
-            ui.WriteLine(Strings.Cli_BrowserHelp);
+            ui.WriteLine(Strings.Cli_BrowserHint);
             // Enter the initial mount when it is a container, otherwise show the raw image at /.
-            var initial = session.Resolve(session.Root.Mounts.Single().Path, ct);
+            var initial = session.Resolve(initialPath ?? session.Root.Mounts.Single().Path, ct);
             if (initial.IsDirectory) session.ChangeDirectory(initial.Path, ct);
             List(session.Current, 0, ui, ct);
             while (true)
@@ -78,18 +106,29 @@ internal static class BrowserCommands
                     if (command is "exit" or "quit") return;
                     switch (command)
                     {
-                        case "help": Require(tokens, 1); ui.WriteLine(Strings.Cli_BrowserHelp); break;
+                        case "help":
+                            if (tokens.Length is < 1 or > 2) throw new CommandUsageException("help [command]");
+                            PrintHelp(tokens.Length == 2 ? tokens[1].ToLowerInvariant() : null, ui);
+                            break;
                         case "pwd": Require(tokens, 1); ui.WriteLine(session.Current.Path); break;
                         case "up": Require(tokens, 1); session.ChangeDirectory("..", ct); List(session.Current, 0, ui, ct); break;
                         case "cd": Require(tokens, 2); session.ChangeDirectory(tokens[1], ct); List(session.Current, 0, ui, ct); break;
                         case "ls":
-                            if (tokens.Length is < 1 or > 3) throw new CommandUsageException(Strings.Cli_BrowserHelp);
+                            if (tokens.Length is < 1 or > 3) throw new CommandUsageException("ls [path] [page]");
                             List(tokens.Length > 1 ? session.Resolve(tokens[1], ct) : session.Current,
                                 tokens.Length > 2 ? checked((int)CommandSyntax.Number(tokens[2])) : 0, ui, ct);
                             break;
                         case "read":
                             Require(tokens, 3);
                             await ExportAsync(session, session.Resolve(tokens[1], ct), tokens[2], ui, ct).ConfigureAwait(false);
+                            break;
+                        case "write":
+                            Require(tokens, 3, "write <partition-path> <image>");
+                            await session.WritePartitionAsync(tokens[1], tokens[2], ui, ct).ConfigureAwait(false);
+                            List(session.Current, 0, ui, ct);
+                            break;
+                        case "lp":
+                            await LpCommands.ExecuteMountedAsync(session, tokens[1..], ui, ct).ConfigureAwait(false);
                             break;
                         case "print":
                             Require(tokens, 2);
@@ -131,7 +170,7 @@ internal static class BrowserCommands
         bool all = tokens.Length > 1 && tokens[1].Equals("--all", StringComparison.OrdinalIgnoreCase);
         int first = all ? 2 : 1;
         int arguments = tokens.Length - first;
-        if (arguments is < 1 or > 3) throw new CommandUsageException(Strings.Cli_BrowserHelp);
+        if (arguments is < 1 or > 3) throw new CommandUsageException("find [--all] <pattern> [path] [output-directory]");
         string start = arguments > 1 ? tokens[first + 1] : ".";
         int found = 0;
         using var search = ui.BeginSearch(ct);
@@ -169,8 +208,7 @@ internal static class BrowserCommands
 
     private static async Task ExportAsync(BrowserSession session, BrowserNode node, string output, ConsoleUi ui, CancellationToken ct)
     {
-        await session.ExportAsync(node, output, ct,
-            (copied, total) => ui.Report(new ProgressRecord(copied, total, Strings.Cli_BrowserExportProgress))).ConfigureAwait(false);
+        await session.ExportAsync(node, output, ct, new ImmediateProgress<ProgressRecord>(ui.Report)).ConfigureAwait(false);
         ui.WriteLine(Strings.FormatCli_BrowserExported(node.Path, Path.GetFullPath(ConsolePath.Normalize(output)!)));
     }
 
@@ -188,32 +226,27 @@ internal static class BrowserCommands
         }
     }
 
-    private static void Require(string[] tokens, int count)
+    private static void PrintHelp(string? command, ConsoleUi ui)
     {
-        if (tokens.Length != count) throw new CommandUsageException(Strings.Cli_BrowserHelp);
+        if (command is null) { ui.WriteLine(Strings.Cli_BrowserHelp); return; }
+        if (command == "lp") { LpCommands.PrintHelp(ui); return; }
+        string usage = command switch
+        {
+            "read" => Strings.Cli_BrowserReadHelp,
+            "write" => Strings.Cli_BrowserWriteHelp,
+            "find" => Strings.Cli_BrowserFindHelp,
+            "ls" => "ls [path] [page]",
+            "cd" => "cd <path> | cd ..", "up" => "up", "pwd" => "pwd", "print" => "print <path>\n" + Strings.Cli_BrowserPrintTooLarge,
+            "exit" or "quit" => "exit", _ => throw new ArgumentException(Strings.FormatCli_UnknownCommand(command))
+        };
+        ui.WriteLine(usage);
     }
 
-    private sealed class PartitionResolver(IBlockDeviceProvider provider, IReadOnlyList<PartitionInfo> partitions, PartitionInfo primary) : ILpBlockDeviceResolver
+    private static void Require(string[] tokens, int count, string? usage = null)
     {
-        internal IReadableBlockDevice Open(PartitionInfo partition)
+        if (tokens.Length != count) throw new CommandUsageException(usage ?? tokens[0] switch
         {
-            uint lun = StorageCommands.PartitionLun(partition);
-            var descriptor = provider.GetBlockDevices().SingleOrDefault(x => x.PhysicalPartitionNumber == lun) ??
-                throw new InvalidOperationException(Strings.Cli_StorageNotConfigured);
-            if (partition.Offset is not { } offset || partition.Length is not { } length)
-                throw new InvalidOperationException(Strings.Cli_StorageNotConfigured);
-            IReadableBlockDevice source = provider.OpenBlockDevice(descriptor.Id, new BlockDeviceOpenOptions { Writable = false });
-            try { return new SliceBlockDevice(source, new BlockDeviceId($"{descriptor.Id}/{partition.Name}"), offset, length, DeviceOwnership.Transfer); }
-            catch { source.Dispose(); throw; }
-        }
-
-        public ValueTask<IReadableBlockDeviceLease> ResolveAsync(LpBlockDevice blockDevice, CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var matches = primary.Name == blockDevice.PartitionName ? new[] { primary } :
-                partitions.Where(x => x.Name == blockDevice.PartitionName).ToArray();
-            if (matches.Length != 1) throw new ArgumentException(Strings.FormatCli_PartitionNotUnique(blockDevice.PartitionName));
-            return ValueTask.FromResult<IReadableBlockDeviceLease>(new BlockDeviceLease(Open(matches[0]), DeviceOwnership.Transfer));
-        }
+            "read" => "read <path> <file>", "print" => "print <path>", "cd" => "cd <path>", _ => tokens[0]
+        });
     }
 }

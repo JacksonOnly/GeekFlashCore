@@ -1,5 +1,15 @@
 # Qualcomm Protocol Implementation Plan
 
+### MERGE-LP-01（2026-10-06）：LP 编辑与进度主分支集成
+
+- 用户授权将 `700b35d` 与 `9e32ace` 合入本地 main，合并前 main 为 `ebfe456`。自动合并无冲突，已有 MTK 离线依赖与 Loader 提示前 WDT 初始化改动保留。
+- 主工作区 Qcom/浏览器 457、CLI 88、MTK 389、LP 55、Core 9，共 998 项通过；Release 构建零警告零错误，资源/diff/ignored 审查与主工作区 EXE 的 LP 读写、元数据和进度离线冒烟通过。恢复入口及未决硬件风险见 `2026-10-06-cli-lp-edit-implementation.md` 的 MERGE-LP-01；未推送，未通信设备。
+
+### LPCLI-06（2026-10-06）：LP 导出进度修复
+
+- 用户实机日志发现 LP 导出每块反复显示 100%。CLI 导出适配传反 Total/Current 且默认使用 Steps；现集中发布固定总量的 Bytes 进度，成功保存并替换输出后只发布一次 Completed，失败或取消不误报完成。
+- 新目标 8/8、完整 Qcom（含浏览器）457/457 与 CLI 76/76 通过；Release 构建零警告零错误，1 MiB Raw/32 KiB LP 的新版 EXE 离线导出统计通过。沿用现有资源与协议线路，真实终端待用户复测；详细行为、命令与识别误报撤回记录见 `2026-10-06-cli-lp-edit-implementation.md` 的 LPCLI-06。
+
 ### MERGE-XML-01（2026-10-06）：主分支集成
 
 - 按用户授权，将 codex/qcom-xml-cli-20261006 的五项 XML/CLI 提交合并至本地 main；main 原有两项 MTK 提交保留，无冲突。
@@ -561,6 +571,12 @@
 - 风险：未在真实 Qualcomm/Oplus/OnePlus/Nothing 设备验证；同步 Transport 无法中断正在阻塞的读；LibUsb 分配优化缺少真实传输测量，本轮未修改。
 
 ## 未决风险
+
+### LPCLI（2026-10-06）
+
+- CLI 新增未挂载 `ls`、`read/write super/system_a` 与 LP 元数据编辑，挂载内支持完整分区镜像读写；每次编辑后释放旧视图并重新加载，帮助改成简短入口/分组详情。Core 协议线路与公共契约保持，设备写入通过 CLI 有界扇区适配复用原 FirehoseBlockDevice。
+- 本轮目标 29/29；完整本地 Qcom/CLI/LP/Core/MTK 合计 926 项通过，Release 构建零警告零错误、资源键和 diff 检查通过。完整行为、命令与证据见 `2026-10-06-cli-lp-edit-design.md` 和 `2026-10-06-cli-lp-edit-implementation.md`。
+- 无真实设备写入证据，多源 LP、取消延迟、原位写数据回滚与 AVB/文件系统调整仍是风险；先从 `ls super`、`lp info super` 与导出核对开始复测。
 
 ### CLI-10：联机信息与重连（2026-09-05）
 

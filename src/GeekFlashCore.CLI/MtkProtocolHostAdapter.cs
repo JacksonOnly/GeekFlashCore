@@ -76,7 +76,30 @@ internal static class MtkProtocolHostAdapter
         ReadTimeoutMilliseconds = o.ReadTimeout,
         WriteTimeoutMilliseconds = o.WriteTimeout
     });
-    private static IProtocol Create(ProtocolHostContext context, ITransport transport)
+    internal static async Task<IProtocol> CreatePreparedAsync(ProtocolHostContext context, ITransport transport,
+        CancellationToken ct)
+    {
+        CliOptions options = context.Options;
+        IProtocol protocol = Create(context, transport, target => ResolveResources(options, target));
+        try
+        {
+            var target = ((IMtkProtocol)protocol).Probe(ct);
+            PresentTarget(target, context.Ui);
+            options = await SelectLoaderAsync(options, context.Ui, ct).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
+            return protocol;
+        }
+        catch { await protocol.DisposeAsync().ConfigureAwait(false); throw; }
+    }
+    private static IProtocol Create(ProtocolHostContext context, ITransport transport) =>
+        Create(context, transport, target =>
+        {
+            PresentTarget(target, context.Ui);
+            return ResolveResources(context.Options, target);
+        });
+
+    private static IProtocol Create(ProtocolHostContext context, ITransport transport,
+        Func<MtkTargetInfo, MtkConnectionResources> resources)
     {
         if (transport is not IUsbTransport usb)
             throw new ArgumentException(Strings.Cli_MtkRequiresUsb);
@@ -95,24 +118,25 @@ internal static class MtkProtocolHostAdapter
             ReadTimeoutMilliseconds = o.ReadTimeout,
             ConnectTimeoutMilliseconds = o.HasExplicitConnectTimeout ? o.ConnectTimeout : MtkProtocolOptions.DefaultConnectTimeoutMilliseconds,
             ResourceTimeoutMilliseconds = o.ResourceTimeout is > 0 ? o.ResourceTimeout.Value : 30000
-        }, resources: target =>
+        }, resources: resources, leaveTransportOpen: true);
+    }
+    private static MtkConnectionResources ResolveResources(CliOptions o, MtkTargetInfo target)
+    {
+        if (o.Loader is null)
+            throw new MtkResourceException("DA --loader");
+        var kind = DaKind(o.MtkDaMode) ?? (o.MtkIoT ? MtkDaKind.Legacy : (MtkDaKind?)null);
+        var image = MtkDaParser.Select(new FileDataSource(ConsolePath.Normalize(o.Loader)!), target, kind);
+        var emi = o.MtkPreloader is null ? null : MtkEmiParser.Parse(new FileDataSource(ConsolePath.Normalize(o.MtkPreloader)!));
+        MtkSensitiveBuffer? auth = null, cert = null;
+        try
         {
-            PresentTarget(target, context.Ui);
-            if (o.Loader is null)
-                throw new MtkResourceException("DA --loader");
-            var image = MtkDaParser.Select(new FileDataSource(ConsolePath.Normalize(o.Loader)!), target, kind);
-            var emi = o.MtkPreloader is null ? null : MtkEmiParser.Parse(new FileDataSource(ConsolePath.Normalize(o.MtkPreloader)!));
-            MtkSensitiveBuffer? auth = null, cert = null;
-            try
-            {
-                if (o.MtkAuthenticationFile is not null)
-                    auth = new(ReadBounded(o.MtkAuthenticationFile, 1048576));
-                if (o.MtkCertificateFile is not null)
-                    cert = new(ReadBounded(o.MtkCertificateFile, 1048576));
-                return new(image, emi, auth, cert);
-            }
-            catch { auth?.Dispose(); cert?.Dispose(); throw; }
-        }, leaveTransportOpen: true);
+            if (o.MtkAuthenticationFile is not null)
+                auth = new(ReadBounded(o.MtkAuthenticationFile, 1048576));
+            if (o.MtkCertificateFile is not null)
+                cert = new(ReadBounded(o.MtkCertificateFile, 1048576));
+            return new(image, emi, auth, cert);
+        }
+        catch { auth?.Dispose(); cert?.Dispose(); throw; }
     }
     private static byte[] ReadBounded(string path, int maximum)
     {

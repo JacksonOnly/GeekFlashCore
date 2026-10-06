@@ -106,7 +106,7 @@ internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, C
     }
     private async Task<TransportResolution> ResolveNativeUsbAsync(ProtocolRegistration registration, CliOptions options, CancellationToken ct)
     {
-        // Resolve host input before acquiring a USB snapshot that can expire while the user selects a DA.
+        // Validate options before acquiring USB; interactive DA selection follows Probe/WDT preparation.
         if (prepareOptions is not null)
             options = await prepareOptions(registration, options, ct).ConfigureAwait(false);
         NativeUsbRuntime.EnsureAvailable();

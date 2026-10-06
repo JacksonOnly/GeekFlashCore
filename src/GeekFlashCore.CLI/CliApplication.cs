@@ -170,20 +170,37 @@ internal sealed class CliApplication
     {
         TransportResolution resolution = await _transportResolver.ResolveAsync(options, ct, requested).ConfigureAwait(false);
         ProtocolRegistration registration = requested ?? resolution.Registration;
+        IProtocol protocol = await CreateProtocolAsync(registration, resolution.Transport,
+            resolution.PreparedOptions ?? options, ct).ConfigureAwait(false);
+        return (protocol, resolution.Transport, registration);
+    }
+
+    internal async Task<IProtocol> CreateProtocolAsync(ProtocolRegistration registration, ITransport transport,
+        CliOptions options, CancellationToken ct)
+    {
         try
         {
-            return (registration.Factory(new ProtocolHostContext(_ui, resolution.PreparedOptions ?? options), resolution.Transport), resolution.Transport, registration);
+            ct.ThrowIfCancellationRequested();
+            var context = new ProtocolHostContext(_ui, options);
+            if (RequiresMtkLoader(registration, options) && _ui.CanPrompt)
+                return await MtkProtocolHostAdapter.CreatePreparedAsync(context, transport, ct).ConfigureAwait(false);
+            return registration.Factory(context, transport);
         }
-        catch { resolution.Transport.Dispose(); throw; }
+        catch { transport.Dispose(); throw; }
     }
+
+    private static bool RequiresMtkLoader(ProtocolRegistration registration, CliOptions options) =>
+        registration.Type == ProtocolType.Mtk && options.Command is not ("help" or "devices") &&
+        !(registration.CommandSet is { } commands && commands.Handles(options.Command) && !commands.RequiresConnection(options.Command));
 
     internal Task<CliOptions> PrepareConnectionOptionsAsync(ProtocolRegistration registration, CliOptions options, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         if (registration.Type != ProtocolType.Mtk) return Task.FromResult(options);
         MtkProtocolHostAdapter.ValidateOptions(options);
-        if (options.Command is "help" or "devices" ||
-            registration.CommandSet is { } commands && commands.Handles(options.Command) && !commands.RequiresConnection(options.Command))
+        // Interactive selection must follow Probe/WDT initialization on the acquired transport.
+        // Noninteractive validation can still fail before acquiring any USB resources.
+        if (!RequiresMtkLoader(registration, options) || _ui.CanPrompt)
             return Task.FromResult(options);
         return MtkProtocolHostAdapter.SelectLoaderAsync(options, _ui, ct);
     }

@@ -2,6 +2,8 @@
 
 日期：2026-10-05。起点 ff14fa8，工作区 clean。用户两份真实日志分别证明：14:04:40 驱动安装与注册表复核成功，14:05:04 在 UsbDevice.Open 返回 NoDevice，尚未进行 BROM；第二次 14:05:10 已握手且 Probed，随后资源 factory 因未指定 DA --loader 失败，ConsoleUi 的异常允许列表未包括 MtkResourceException，隐藏了可操作原因。第一份日志不能证明所有断开均由过滤器安装引起，也不能证明 DA 线路正确。
 
+2026-10-06 顺序修订：交互 DA 提示早于 USB/Probe 导致 WDT 初始化尚未执行，现改为先 Probe/关闭已知 WDT，再等待 DA 并复用同一会话。下文保留 REC 当时的实现证据，材料等待顺序以 [WDT-CLI-01 修复记录](2026-10-06-mtk-watchdog-before-loader.md) 为准；非交互预验证和协议创建前 NoDevice 重试边界不变。
+
 ## 设计与步骤
 
 1. ignored CLI 测试先复现 MTK 资源错误被隐藏，再定义文件选择与 Open 重试边界。

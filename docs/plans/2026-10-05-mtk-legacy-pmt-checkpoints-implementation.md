@@ -40,3 +40,11 @@
 ## 未决风险
 
 无真实设备证据。DiskV1 仅适用 eMMC USER/512/v1.0，格式无 CRC，头尾通过不能代替条目边界检查；未知介质、版本、第三方固件 Unsupported 生命周期和实际宿主策略需要另行硬件验证。仅精确 ERR!UNSUPPORTED ACK 加完整 END 可继续，其他响应失败。同步宿主回调仍依赖合作取消；Borrowed DA source 必须稳定可重开。框架测试不证明任何具体漏洞可用。
+
+## 主分支集成（2026-10-06）
+
+- 用户授权“并入主分支”。目标工作区 D:/Code/CSharp/GeekFlashCore，main 原提交 173d1bb，合并前已跟踪工作区干净。
+- `git merge-base --is-ancestor main codex/mtk-protocol` 成功；`git merge --ff-only codex/mtk-protocol` 将全部 22 个功能/修订提交快进至 bd271cf，无冲突。包含标准 MTK 框架、Legacy/NAND/IoT、硬件加密、CLI、磁盘 PMT 与宿主检查点，不增加具体漏洞实现。
+- 主工作区 `dotnet build GeekFlashCore.slnx -c Release --verbosity quiet` 成功，0 警告/0 错误。
+- 原功能工作区保留 ignored 测试夹具，运行 MTK Release `--no-build --no-restore`：277 通过，0 失败/跳过。`git diff --exit-code main codex/mtk-protocol -- src GeekFlashCore.slnx` 无差异，确认测试代码版本与合并后的生产代码一致。
+- `git diff --check` 通过。合并后仅追加本验收记录并独立提交；原功能工作区的两个未跟踪 Kamakiri 文档保留，不纳入 main。未执行远端推送；硬件兼容性风险保持上述记录。

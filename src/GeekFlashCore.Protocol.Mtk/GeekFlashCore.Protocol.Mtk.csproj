@@ -18,5 +18,6 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Exploits/Resources/dependencies.json" LogicalName="GeekFlashCore.Protocol.Mtk.Exploits.Dependencies.json" />
+    <EmbeddedResource Include="Exploits/Resources/Payloads/*.bin" LogicalName="GeekFlashCore.Protocol.Mtk.Exploits.Payloads.%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

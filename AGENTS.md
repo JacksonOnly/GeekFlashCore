@@ -64,7 +64,7 @@
 
 ## 安全和性能要求
 
-MTK 使用 LibUsb；BROM、三种 DA 与扩展共用串行化 gate、有限预算和会话代数。BROM 访问只在 Probe 后、DA 执行前开放，回调或跳转后通道失效。标准认证由宿主提供合法材料和签名。按用户最新授权，漏洞部分仅提供 `IMtkExploitStrategy` 及阶段/context/result 框架；允许显式注入的宿主回调在连接阶段调用，不得添加任何策略实现、默认注册、漏洞算法、补丁生成或攻击载荷。默认连接不执行策略，完成结果不等于认证成功，终止结果要求重连。具体契约与阶段见 `docs/plans/2026-10-05-mtk-exploit-framework.md`。扩展须验证 ACK/context；RPMB 不作为普通块设备，seccfg 写入必须备份、最小对齐写和回读，未知写结果不重试。
+MTK 使用 LibUsb；BROM、三种 DA 与扩展共用串行化 gate、有限预算和会话代数。BROM 访问只在 Probe 后、DA 执行前开放，回调或跳转后通道失效。标准认证由宿主提供合法材料和签名。按用户最新授权，漏洞部分提供 `IMtkExploitStrategy` 及阶段/context/result 框架，另允许 LineCode、Carbonara、HeapBait、Unfused 的非执行接口占位类；占位类仅声明 descriptor、校验参数/取消并返回 NotApplicable，不读取设备上下文或执行 I/O。允许显式注入的宿主回调在连接阶段调用，不得添加具体漏洞策略逻辑、默认注册、漏洞算法、补丁生成或攻击载荷。默认连接不执行策略，完成结果不等于认证成功，终止结果要求重连。具体契约与阶段见 `docs/plans/2026-10-05-mtk-exploit-framework.md`，占位类范围见 `docs/plans/2026-10-06-mtk-exploit-placeholders.md`。扩展须验证 ACK/context；RPMB 不作为普通块设备，seccfg 写入必须备份、最小对齐写和回读，未知写结果不重试。
 
 - 所有外部长度、扇区范围、Payload、XML 大小、计数器和整数转换在分配或读写前校验，并使用 `checked` 或有界逻辑。
 - 大文件和大型资源使用 `IDataSource`、流式处理、窗口化和池化缓冲；不得按镜像总大小展开 Raw、Sparse 或 Digest 映射。

@@ -62,7 +62,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         _brom = new(_wire, _options);
     }
     /// <summary>Creates the production backend exclusively through LibUsb. The optional strategy must be
-    /// explicitly supplied by the host; no built-in strategies are available.</summary>
+    /// explicitly supplied by the host; no strategy is registered by default.</summary>
     public static MtkProtocol CreateUsb(LibUsbConnectionOptions connection, MtkProtocolOptions? options = null,
         IMtkDaProvider? daProvider = null, IMtkEmiProvider? emiProvider = null, IMtkAuthenticationProvider? signer = null,
         IMtkExploitStrategy? exploitStrategy = null)

@@ -68,6 +68,8 @@ MTK 使用 LibUsb；BROM、三种 DA 与扩展共用串行化 gate、有限预�
 
 用户进一步授权补齐占位类依赖，范围是通用离线 DA 窗口、流式摘要/字节搜索、验证后的宿主元数据、资源清单/借用源读取及分析/变换接口；四个 Execute 不解析或调用这些依赖。最新授权允许原样复制 `penumbra-main/core/payloads` 七个 .bin 并嵌入程序集，通过显式 `MtkExploitResourceStore.FromEmbeddedResources()` 惰性读取与长度/摘要校验；这替代此前不分发参考二进制的范围。资源层不得添加设备执行、漏洞特征/地址表、参数填充、定位算法或补丁实现。宿主资源不自动下载/加载，默认仓库仍为空，真实无参构造保持。通用依赖见 `docs/plans/2026-10-06-mtk-exploit-dependencies-design.md`；最新嵌入范围及验证见 `docs/plans/2026-10-06-mtk-embedded-payload-resources-design.md` 与对应 implementation 记录。
 
+用户另明确要求加入 Penumbra 的通用 utils/analysis；允许 `GeekFlashCore.Protocol.Mtk.Analysis` 的 Arch、IArchAnalyzer/ArchAnalyzer、Analyzer 和 ARM/AArch64/Thumb2 分析器实现通用离线指令解码、地址换算、调用方字符串引用、函数前导与有限寄存器回溯。该授权扩展此前仅提供宿主分析契约的范围；不得内置 MTK 专用定位特征、堆/DPC算法、漏洞参数或补丁，且不接入四个 Execute 或默认依赖。源保持借用、可定位、稳定可重开，使用有界缓存和取消；启发式结果不是执行地址或认证证明。最新范围、方法映射和验证见 `docs/plans/2026-10-06-mtk-architecture-analysis-design.md` 与对应 implementation 记录。
+
 - 所有外部长度、扇区范围、Payload、XML 大小、计数器和整数转换在分配或读写前校验，并使用 `checked` 或有界逻辑。
 - 大文件和大型资源使用 `IDataSource`、流式处理、窗口化和池化缓冲；不得按镜像总大小展开 Raw、Sparse 或 Digest 映射。
 - 明确 Stream 所有权：协议只释放自己打开的流；调用方提供的资源、敏感载荷和迟到响应必须按接口约定释放或清零。

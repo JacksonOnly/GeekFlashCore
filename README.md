@@ -90,3 +90,12 @@ var info = MtkExploitDependencyCatalog.GetResourceInfo(MtkExploitResourceKind.Br
 using Stream stream = store.OpenRead(info.Kind); // Offline bytes; dispose the stream after use.
 var dependencies = new MtkExploitDependencies(store); // Optional explicit injection; Execute remains NotApplicable.
 ```
+
+`GeekFlashCore.Protocol.Mtk.Analysis` supplies Penumbra-style offline `Arch`, `IArchAnalyzer` / `ArchAnalyzer`, `Analyzer`, `ArmAnalyzer`, `Aarch64Analyzer` and `Thumb2Analyzer`. An explicitly selected analyzer borrows a stable, seekable `IDataSource` and a host-provided base address. It supports little-endian reads, address conversions, direct B/BL decoding and scanning, caller-supplied string references, common function prologues and bounded register-value heuristics. Queries open and dispose independent streams using a fixed 64 KiB cache, and accept cancellation; sources are limited to 256 MiB and register lookback to 4096 instructions. Thumb offset zero must be an instruction boundary. No full disassembly/control-flow guarantee, target-specific patterns, DA modification or automatic strategy invocation is supplied. `IMtkExploitDaAnalyzer` remains an optional host-level contract. See [analysis design](docs/plans/2026-10-06-mtk-architecture-analysis-design.md) and [method mapping and verification](docs/plans/2026-10-06-mtk-architecture-analysis-implementation.md).
+
+```csharp
+// regionSource and regionBaseAddress are explicitly supplied by the host.
+IArchAnalyzer analyzer = new Analyzer(Arch.Aarch64, regionSource, regionBaseAddress);
+uint? word = analyzer.ReadUInt32(0, cancellationToken);
+long? nextCall = analyzer.NextBranchLinkFromOffset(0, cancellationToken);
+```

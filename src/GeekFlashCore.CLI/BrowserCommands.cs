@@ -208,8 +208,7 @@ internal static class BrowserCommands
 
     private static async Task ExportAsync(BrowserSession session, BrowserNode node, string output, ConsoleUi ui, CancellationToken ct)
     {
-        await session.ExportAsync(node, output, ct,
-            (copied, total) => ui.Report(new ProgressRecord(copied, total, Strings.Cli_BrowserExportProgress))).ConfigureAwait(false);
+        await session.ExportAsync(node, output, ct, new ImmediateProgress<ProgressRecord>(ui.Report)).ConfigureAwait(false);
         ui.WriteLine(Strings.FormatCli_BrowserExported(node.Path, Path.GetFullPath(ConsolePath.Normalize(output)!)));
     }
 

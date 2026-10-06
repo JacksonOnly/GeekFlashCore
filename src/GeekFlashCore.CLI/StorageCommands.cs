@@ -24,8 +24,7 @@ internal static class StorageCommands
             using var session = await BrowserCommands.CreateDeviceSessionAsync(protocol,
                 [args[0], .. args.Skip(2)], progress, ct).ConfigureAwait(false);
             string path = "/" + args[0].TrimStart('/');
-            if (command == "read") await session.ExportAsync(session.Resolve(path, ct), args[1], ct,
-                (copied, total) => progress.Report(new ProgressRecord(copied, total, Strings.Cli_BrowserExportProgress))).ConfigureAwait(false);
+            if (command == "read") await session.ExportAsync(session.Resolve(path, ct), args[1], ct, progress).ConfigureAwait(false);
             else await session.WritePartitionAsync(path, args[1], ui, ct).ConfigureAwait(false);
             ui.WriteLine(Strings.FormatCli_CommandCompleted(command));
             return;

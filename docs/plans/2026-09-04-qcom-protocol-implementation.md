@@ -1,5 +1,10 @@
 # Qualcomm Protocol Implementation Plan
 
+### LPCLI-06（2026-10-06）：LP 导出进度修复
+
+- 用户实机日志发现 LP 导出每块反复显示 100%。CLI 导出适配传反 Total/Current 且默认使用 Steps；现集中发布固定总量的 Bytes 进度，成功保存并替换输出后只发布一次 Completed，失败或取消不误报完成。
+- 新目标 8/8、完整 Qcom（含浏览器）457/457 与 CLI 76/76 通过；Release 构建零警告零错误，1 MiB Raw/32 KiB LP 的新版 EXE 离线导出统计通过。沿用现有资源与协议线路，真实终端待用户复测；详细行为、命令与识别误报撤回记录见 `2026-10-06-cli-lp-edit-implementation.md` 的 LPCLI-06。
+
 ### MERGE-XML-01（2026-10-06）：主分支集成
 
 - 按用户授权，将 codex/qcom-xml-cli-20261006 的五项 XML/CLI 提交合并至本地 main；main 原有两项 MTK 提交保留，无冲突。

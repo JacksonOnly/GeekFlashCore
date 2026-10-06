@@ -8,6 +8,7 @@ using GeekFlashCore.BlockDevice.Abstractions;
 using GeekFlashCore.FileSystem.Abstractions;
 using GeekFlashCore.FileSystem.Erofs;
 using GeekFlashCore.FileSystem.Ext;
+using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.CLI.Localization;
 
 namespace GeekFlashCore.CLI;
@@ -190,7 +191,7 @@ internal sealed class BrowserSession(int slot = 0, ILpBlockDeviceResolver? resol
         return encoding.GetString(bytes[prefix..]);
     }
 
-    internal async Task ExportAsync(BrowserNode node, string destination, CancellationToken ct, Action<long, long>? progress = null)
+    internal async Task ExportAsync(BrowserNode node, string destination, CancellationToken ct, IProgress<ProgressRecord>? progress = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ct.ThrowIfCancellationRequested();
@@ -205,6 +206,7 @@ internal sealed class BrowserSession(int slot = 0, ILpBlockDeviceResolver? resol
         long total = node is BrowserMount ? input.Length : node.Size;
         await AtomicReadOutput.WriteAsync(destination, async output =>
         {
+            Report(0, ProgressPhase.Started);
             byte[] buffer = ArrayPool<byte>.Shared.Rent(128 * 1024);
             try
             {
@@ -218,12 +220,16 @@ internal sealed class BrowserSession(int slot = 0, ILpBlockDeviceResolver? resol
                     if (read == 0) throw new EndOfStreamException(Strings.Cli_BrowserShortRead);
                     await output.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
                     copied = checked(copied + read);
-                    progress?.Invoke(copied, total);
+                    if (copied < total) Report(copied, ProgressPhase.Running);
                 }
             }
             finally { ArrayPool<byte>.Shared.Return(buffer); }
         }, ct).ConfigureAwait(false);
-        if (total == 0) progress?.Invoke(0, 0);
+        // Flush and replace the destination before publishing successful completion.
+        Report(total, ProgressPhase.Completed);
+
+        void Report(long current, ProgressPhase phase) => progress?.Report(new ProgressRecord(total, current, Strings.Cli_BrowserExportProgress)
+            { Unit = ProgressUnit.Bytes, Phase = phase });
     }
 
     internal static void RejectLinkedAncestors(string destination)

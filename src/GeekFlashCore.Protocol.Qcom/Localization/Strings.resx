@@ -445,4 +445,12 @@
   <data name="Qcom_LogPblLoaderTransfer" xml:space="preserve"><value>PBL Patch 交互已完成，继续上传 Loader。</value></data>
   <data name="Qcom_PblLoaderRangeInvalid" xml:space="preserve"><value>PBL Patch 后的 Loader 读取请求越界或超过 4 MiB。</value></data>
   <data name="Qcom_PblBootstrapRequestInvalid" xml:space="preserve"><value>Snapdragon 665 PBL Patch 请求与已捕获的补丁资源范围或顺序不符。</value></data>
+  <data name="Qcom_ScriptAttributeMissing" xml:space="preserve"><value>XML 命令 {0} 缺少属性 {1}。</value></data>
+  <data name="Qcom_ScriptInvalid" xml:space="preserve"><value>XML 脚本格式或命令属性无效。</value></data>
+  <data name="Qcom_ScriptExpressionInvalid" xml:space="preserve"><value>XML 脚本包含不支持或越界的表达式。</value></data>
+  <data name="Qcom_ScriptPowerMustBeLast" xml:space="preserve"><value>power 必须是 XML 脚本中最后一个执行的命令。</value></data>
+  <data name="Qcom_ScriptCommandFailed" xml:space="preserve"><value>XML 脚本命令未成功，会话需要重新连接。</value></data>
+  <data name="Qcom_ScriptReadbackUnsupported" xml:space="preserve"><value>XML 的 readbackverify 尚未实现，无法执行该 program。</value></data>
+  <data name="Qcom_ScriptSourceInvalid" xml:space="preserve"><value>XML 镜像资源必须非空、可读取、可定位，并具有有效的文件偏移。</value></data>
+  <data name="Qcom_ScriptExecuting" xml:space="preserve"><value>XML {0}/{1}: {2}</value></data>
 </root>

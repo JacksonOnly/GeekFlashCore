@@ -264,7 +264,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             throw new ArgumentException(Strings.Qcom_TargetSectorSizeMismatch, nameof(request));
         ValidateCachedSectorRange(new TargetRange(request.PhysicalPartitionNumber, request.StartSector,
             request.SectorCount, request.SectorSizeInBytes, request.Label));
-        return _storage!.Program(request, ProgramProgress(progress), cancellationToken);
+        return _storage!.Program(request, ProgramProgress(progress, request), cancellationToken);
     }
 
     public long Read(FirehoseReadRequest request, Stream destination, IProgress<ProgressRecord>? progress = null, CancellationToken cancellationToken = default)
@@ -1052,8 +1052,16 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             finally { owner._gate.Release(); }
         }
     }
-    private static IProgress<long>? ProgramProgress(IProgress<ProgressRecord>? progress) =>
-        progress is null ? null : new TransferProgress(progress, Strings.Progress_Writing);
+    private static IProgress<long>? ProgramProgress(IProgress<ProgressRecord>? progress, FirehoseProgramRequest request)
+    {
+        if (progress is null) return null;
+        string label = string.IsNullOrWhiteSpace(request.Label)
+            ? Strings.FormatProgress_WritingSector(request.PhysicalPartitionNumber, request.StartSector)
+            : Strings.FormatProgress_WritingPartition(request.Label, request.PhysicalPartitionNumber);
+        if (!string.IsNullOrWhiteSpace(request.FileName))
+            label = Strings.FormatProgress_WritingFile(label, request.FileName);
+        return new TransferProgress(progress, label);
+    }
 
     private long ReadWithProgress(FirehoseReadRequest request, Stream destination, IProgress<ProgressRecord>? progress, CancellationToken ct)
     {

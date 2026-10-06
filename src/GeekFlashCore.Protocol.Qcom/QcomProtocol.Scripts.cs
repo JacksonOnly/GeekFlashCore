@@ -130,7 +130,7 @@ public sealed partial class QcomProtocol
                     };
                     request.Validate();
                     using var plan = FirehoseProgramPlanner.Create(request, stream, ct);
-                    return () => _storage!.Program(request, ProgramProgress(progress), ct);
+                    return () => _storage!.Program(request, ProgramProgress(progress, request), ct);
                 }
             case "patch":
                 ValidateScriptAttributes(e, "SECTOR_SIZE_IN_BYTES physical_partition_number start_sector byte_offset size_in_bytes value filename what");

@@ -29,6 +29,8 @@ rawprogram 的适配命令包括 `program`、`patch`、`erase`、`nop`、`setboo
 
 空 filename 的 program 不写入。Raw 按 `file_sector_offset * SECTOR_SIZE_IN_BYTES` 定位，声明范围限制来源窗口，只补齐实际数据的最后一扇区，不把整个分区填零；扇区数为 0 时以设备剩余容量为上限。Sparse 按实际文件头判断（XML 的 sparse 为提示），复用流式 RAW/Fill/Don't Care 路径。需要 readbackverify 的 program 暂时拒绝，避免忽略校验要求。
 
+写入进度在开始、传输和最终 ACK 成功后均显示当前分区、LUN 与镜像文件，例如 `写入分区 boot_a (LUN 0) | 文件 boot.img`；各条 program 切换时更新名称。XML 未提供 label 时显示 LUN 与起始扇区，filename 保留 XML 中的相对路径。普通 `write/program <partition> <file>` 的进度同样显示分区及文件名；sector 形式显示实际写入位置。
+
 patch 文件仅发送 filename=DISK 的 patch，不修改本地 GPT 镜像；普通数字 patch 语法继续有效。支持数字、十六进制、尾随小数点、`NUM_DISK_SECTORS` 的加减表达式及 `CRC32(start,length)`，CRC 范围在发送前检查并由设备计算。所有 LUN、扇区大小、容量、offset 和整数运算都检查边界；首个命令失败或 RAW 中取消后停止并要求重连，不重放写入。
 
 Core 宿主可调用同步 `IQcomProtocol.ExecuteRawProgram(IDataSource, Func<string,IDataSource>, progress, cancellationToken)` 与 `ExecutePatchFile(IDataSource, progress, cancellationToken)`。方法持有整个文件执行的会话 gate；只释放自己打开的流，调用方拥有 IDataSource，镜像 resolver 必须返回内容稳定、可重开的资源。返回结果含执行数、实际写入字节数与带序号/原因的跳过条目。

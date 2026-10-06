@@ -399,6 +399,9 @@
   <data name="Qcom_StoragePolicyMappingInvalid" xml:space="preserve"><value>存储策略返回了无效或不完整的扇区映射。</value></data>
   <data name="Qcom_FirehoseExpectedState" xml:space="preserve"><value>Firehose 操作要求状态为 {0}，当前状态为 {1}。</value></data>
   <data name="Progress_Writing" xml:space="preserve"><value>写入</value></data>
+  <data name="Progress_WritingPartition" xml:space="preserve"><value>写入分区 {0} (LUN {1})</value></data>
+  <data name="Progress_WritingSector" xml:space="preserve"><value>写入 LUN {0}，起始扇区 {1}</value></data>
+  <data name="Progress_WritingFile" xml:space="preserve"><value>{0} | 文件 {1}</value></data>
   <data name="Progress_Reading" xml:space="preserve"><value>读取</value></data>
   <data name="Progress_Uploading" xml:space="preserve"><value>上传 Loader</value></data>
   <data name="Firehose_ResponseNotXml" xml:space="preserve"><value>Firehose 命令未收到有效的 XML 响应。</value></data>

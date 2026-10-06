@@ -36,7 +36,7 @@ public sealed partial class QcomProtocol
         var request = new FirehoseProgramRequest { Source = source.Source, PhysicalPartitionNumber = range.Partition,
             StartSector = range.Start, SectorCount = range.Count, SectorSizeInBytes = range.SectorSize, Label = range.Label,
             PadToSectorCount = source.Target is not PartitionTarget };
-        long written = _storage!.Program(request, ProgramProgress(progress), ct);
+        long written = _storage!.Program(request, ProgramProgress(progress, request), ct);
         return Task.FromResult(written);
     }
 

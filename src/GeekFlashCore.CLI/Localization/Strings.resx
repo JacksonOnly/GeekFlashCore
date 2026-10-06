@@ -44,6 +44,7 @@
   <data name="Cli_ProgressElapsed" xml:space="preserve"><value>已用 {0}</value></data>
   <data name="Cli_ProgressDuration" xml:space="preserve"><value>总用时 {0}</value></data>
   <data name="Cli_ProgressRemaining" xml:space="preserve"><value>剩余 {0}</value></data>
+  <data name="Cli_ProgressWriteFile" xml:space="preserve"><value>{0} | 文件 {1}</value></data>
   <data name="Cli_Title" xml:space="preserve"><value>GeekFlashCore CLI</value></data>
   <data name="Cli_Banner" xml:space="preserve"><value>GeekFlashCore CLI 0.1</value></data>
   <data name="Cli_HelpUsage" xml:space="preserve"><value>用法: geekflash [选项] &lt;命令&gt; [参数]</value></data>

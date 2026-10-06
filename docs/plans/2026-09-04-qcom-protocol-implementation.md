@@ -1,5 +1,10 @@
 # Qualcomm Protocol Implementation Plan
 
+### XML-PROGRESS-01（2026-10-06）：写入名称显示
+
+- 修复 ProgramProgress 丢失已有 Label/FileName 的问题；XML/显式 Program 从开始到最终 ACK 完成显示分区、LUN 和文件名，无 label 显示起始扇区。普通 CLI write/program 同样补充文件名，公共契约和线上报文保持兼容。
+- 新增 4 项先失败后通过；完整 Qcom 292/292、CLI 67/67 通过，无跳过。本轮为模拟/代理证据，真实刷写终端效果待复核；详情与继续位置见 `2026-10-06-qcom-xml-cli-implementation.md` 的 XML-PROGRESS-01。
+
 ### XML-01～03 / CLI-14～15（2026-10-06）：XML 刷机与交互命令
 
 - 已新增同步 rawprogram / DISK patch 文件入口及 CLI 通配符、直接文件输入；真实 alioth 12 份 XML 在模拟几何/合成镜像下通过，rawprogram1/2 的 xblgpt 保持原序。发送前预检当前文件，复用 Raw/Sparse/Digest/VIP 线路；未知命令跳过、错误停止不重放。

@@ -80,7 +80,13 @@ internal static class StorageCommands
                 await AtomicReadOutput.WriteAsync(file!, stream => protocol.ReadAsync(
                     new ReadDestination { Target = target, OutputStream = stream, OwnsStream = false }, progress, ct), ct);
             }
-            else await protocol.WriteAsync(new WriteSource { Source = new FileDataSource(file!), Target = target }, progress, ct);
+            else
+            {
+                string filename = Path.GetFileName(file!);
+                var writeProgress = new ImmediateProgress<ProgressRecord>(record => progress.Report(record.Unit == ProgressUnit.Bytes
+                    ? record with { Label = Strings.FormatCli_ProgressWriteFile(record.Label, filename) } : record));
+                await protocol.WriteAsync(new WriteSource { Source = new FileDataSource(file!), Target = target }, writeProgress, ct);
+            }
         }
         ui.WriteLine(Strings.FormatCli_CommandCompleted(command));
     }

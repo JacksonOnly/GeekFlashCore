@@ -12,6 +12,16 @@
 - CLI-14：加入直接文件输入、rawprogram/patch 命令、qcom 前缀与 program XML 别名；通配匹配有上限、稳定排序、去重，路径含空格可用，镜像相对 XML 所在目录解析且限制在目录内；旧数字 patch 和 write/program 语法保持。
 - CLI-15：默认帮助优先通用命令，连接/info/help 展示设备支持 => Host 支持交集，未知列表仅显示未知；细节由 help qcom、help 命令或 help all 展示。交互命令历史最多 200 条，仅内存；Up/Down 与草稿恢复、光标/删除、Tab/Shift+Tab 循环补全，资源输入不进入历史，重定向不调用补全。Windows 输入期间启用 VT 并在结束时恢复原模式。
 
+### XML-PROGRESS-01（2026-10-06）：写入分区与文件名
+
+- 启动：基线 bc77ab0，分支 codex/qcom-xml-cli-20261006，工作区干净。用户反馈写入时缺少分区名和文件名；原因是 ProgramProgress 丢弃请求中已有的 Label/FileName，使用固定“写入”文本。
+- 行为：同步 Program、XML program 和通用 WriteAsync 共用带分区/LUN 的进度标签；XML/显式 Program 同时使用请求 FileName，无 label 时回退到 LUN 与起始扇区。普通 CLI write/program 在字节进度中追加本地镜像文件名；步骤进度保持原内容。名称在每条写入开始时确定并保留到最终 ACK 成功的完成记录，字节数、阶段和时序沿用既有回调，不改协议报文或公共契约。
+- 范围：Qcom 三处 ProgramProgress 调用与标签构造、CLI StorageCommands 写入进度适配、对应中英文资源及使用文档；没有修改 Read/Patch 或其他协议线路。
+- 测试先行：新增 4 项用模拟传输/宿主代理复现缺失名称，均先失败；覆盖中英文、连续三条 XML program（同文件不同分区与缺失 label）、开始/传输/完成名称和字节统计。修复后 Qcom 进度/XML 目标 48/48、完整 Qcom 292/292、CLI 67/67，共 359 项通过，无跳过。
+- 验证命令与结果：dotnet test 两套工程 -c Release --no-restore（Qcom 最终全量使用 --no-build）；dotnet build GeekFlashCore.slnx -c Release --no-restore，0 警告/0 错误；git diff --check 通过，CLI 228 / Qcom 275 组中英文资源键一致。git ls-files .tests 为空，测试与 bin/obj 仍 ignored。
+- 提交范围：独立提交 `fix(cli): show partition and filename during writes`，仅含本轮生产代码和文档；完成后工作区应干净，不合并或推送。
+- 风险与继续：本轮没有设备通信或可见终端复测；请用本工作区更新后的 EXE 复核实际刷写时的名称、窄终端换行与完成行。Core 每条写入仅生成一次上下文标签，镜像资源和流式线路保持既有行为。
+
 ## 验证证据（2026-10-06）
 
 - 恢复 D:/Code/CSharp/GeekFlashCore 的四套 ignored 历史测试源，不复制 bin/obj。初始协议/CLI 目标测试分别出现 5/7 项预期失败，确认入口缺失和未知列表误显示 xblgpt；其后负例收紧到领域异常，防止缺失入口被宽泛异常断言误判通过。

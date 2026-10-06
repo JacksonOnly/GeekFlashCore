@@ -44,6 +44,7 @@
   <data name="Cli_ProgressElapsed" xml:space="preserve"><value>Elapsed {0}</value></data>
   <data name="Cli_ProgressDuration" xml:space="preserve"><value>Duration {0}</value></data>
   <data name="Cli_ProgressRemaining" xml:space="preserve"><value>Remaining {0}</value></data>
+  <data name="Cli_ProgressWriteFile" xml:space="preserve"><value>{0} | File {1}</value></data>
   <data name="Cli_Title" xml:space="preserve"><value>GeekFlashCore CLI</value></data>
   <data name="Cli_Banner" xml:space="preserve"><value>GeekFlashCore CLI 0.1</value></data>
   <data name="Cli_HelpUsage" xml:space="preserve"><value>Usage: geekflash [options] &lt;command&gt; [arguments]</value></data>

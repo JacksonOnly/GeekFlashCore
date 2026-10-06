@@ -50,7 +50,7 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         byte[] environment = new byte[20];
         BinaryPrimitives.WriteUInt32LittleEndian(environment, 2);
         BinaryPrimitives.WriteUInt32LittleEndian(environment.AsSpan(4), 1);
-        BinaryPrimitives.WriteUInt32LittleEndian(environment.AsSpan(8), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(environment.AsSpan(8), OperatingSystem.IsWindows() ? 0u : 1u);
         Parameters(MtkWire.Le32(0x10100), environment);
         Parameters(MtkWire.Le32(0x10101), new byte[4]);
         wire.ReadStatus(0x434e5953);

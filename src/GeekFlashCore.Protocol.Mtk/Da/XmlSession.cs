@@ -5,6 +5,7 @@ using System.Xml.Linq;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Mtk.Internals;
 using GeekFlashCore.Protocol.Mtk.Loaders;
+using Serilog;
 
 namespace GeekFlashCore.Protocol.Mtk.Da;
 
@@ -47,12 +48,47 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         Begin(name, parameters);
         Lifetime("END");
     }
+    private bool BeginOptional(string name, IReadOnlyDictionary<string, string> parameters)
+    {
+        byte[] data = MtkXmlCodec.Create(name, parameters);
+        Lifetime("START");
+        wire.SendFrame(data);
+        string ack = ReceiveText(64);
+        if (ack is "OK" or "OK@0x0")
+            return true;
+        if (ack != "ERR!UNSUPPORTED")
+            throw wire.Failure();
+        // Unsupported is recoverable only after the complete command lifetime is confirmed.
+        var end = ReceiveXml();
+        if (MtkXmlCodec.Value(end, "command") != "CMD:END")
+            throw wire.Failure();
+        var results = end.Descendants("result").ToArray();
+        if (results.Length != 1 || results[0].HasElements)
+            throw wire.Failure();
+        if (results[0].Value != "OK")
+        {
+            var messages = end.Descendants("message").ToArray();
+            if (results[0].Value != "ERR" || messages.Length != 1 || messages[0].HasElements ||
+                messages[0].Value != "ERR!UNSUPPORTED")
+                throw wire.Failure();
+        }
+        Ack();
+        wire.Check();
+        Log.ForContext<XmlSession>().ForContext("BootStage", wire.Stage).Warning(Strings.OptionalCommandUnsupported, name);
+        return false;
+    }
+    private void AdvertiseHostCommands()
+    {
+        if (BeginOptional("HOST-SUPPORTED-COMMANDS", Args(("host_capability",
+            "CMD:DOWNLOAD-FILE^1@CMD:FILE-SYS-OPERATION^1@CMD:PROGRESS-REPORT^1@CMD:UPLOAD-FILE^1@"))))
+            Lifetime("END");
+    }
     public void InitializeDa1()
     {
         wire.Stage = MtkBootStage.Da1;
         Simple("SET-RUNTIME-PARAMETER", Args(("checksum_level", "NONE"), ("battery_exist", "AUTO-DETECT"), ("da_log_level", "INFO"),
-            ("log_channel", "UART"), ("system_os", "LINUX"), ("initialize_dram", "YES")));
-        Simple("HOST-SUPPORTED-COMMANDS", Args(("host_capability", "CMD:DOWNLOAD-FILE^1@CMD:FILE-SYS-OPERATION^1@CMD:PROGRESS-REPORT^1@CMD:UPLOAD-FILE^1@")));
+            ("log_channel", "UART"), ("system_os", OperatingSystem.IsWindows() ? "WINDOWS" : "LINUX"), ("initialize_dram", "YES")));
+        AdvertiseHostCommands();
         Simple("SET-HOST-INFO", Args(("info", "GeekFlashCore")));
         Begin("NOTIFY-INIT-HW", Args());
         Progress();
@@ -70,7 +106,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         Download(length, source);
         Lifetime("END");
         wire.Stage = MtkBootStage.Da2;
-        Simple("HOST-SUPPORTED-COMMANDS", Args(("host_capability", "CMD:DOWNLOAD-FILE^1@CMD:FILE-SYS-OPERATION^1@CMD:PROGRESS-REPORT^1@CMD:UPLOAD-FILE^1@")));
+        AdvertiseHostCommands();
         Begin("NOTIFY-INIT-HW", Args());
         Progress();
         Lifetime("END");
@@ -79,22 +115,8 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
     public MtkDaAuthenticationState AuthenticationState { get; private set; }
     private bool BeginSlaProperty()
     {
-        byte[] data = MtkXmlCodec.Create("GET-SYS-PROPERTY", Args(("key", "DA.SLA"), ("target_file", "MEM://0x0:0x200000")));
-        Lifetime("START"); wire.SendFrame(data);
-        string ack = ReceiveText(64);
-        if (ack is "OK" or "OK@0x0") return true;
-        if (ack != "ERR!UNSUPPORTED") throw wire.Failure();
-        var end = ReceiveXml();
-        if (MtkXmlCodec.Value(end, "command") != "CMD:END") throw wire.Failure();
-        var results = end.Descendants("result").ToArray();
-        if (results.Length != 1 || results[0].HasElements) throw wire.Failure();
-        if (results[0].Value != "OK")
-        {
-            var messages = end.Descendants("message").ToArray();
-            if (results[0].Value != "ERR" || messages.Length != 1 || messages[0].HasElements || messages[0].Value != "ERR!UNSUPPORTED")
-                throw wire.Failure();
-        }
-        Ack();
+        if (BeginOptional("GET-SYS-PROPERTY", Args(("key", "DA.SLA"), ("target_file", "MEM://0x0:0x200000"))))
+            return true;
         AuthenticationState = MtkDaAuthenticationState.Unsupported;
         return false;
     }

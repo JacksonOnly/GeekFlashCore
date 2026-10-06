@@ -13,4 +13,5 @@
   <data name="ProbeSnapshot" xml:space="preserve"><value>MTK probe: HW=0x{0}, CPU={1}, DA=0x{2}, subcode=0x{3}, FD HW=0x{4}, FC HW=0x{5}, SW=0x{6}, BROM=0x{7}, Preloader=0x{8}, stage={9}, security=0x{10}, WDT={11}.</value></data>
 <data name="GptBackupSelected" xml:space="preserve"><value>The primary GPT in storage region {0} is unavailable; the validated backup GPT is being used.</value></data>
 <data name="PmtMirrorSelected" xml:space="preserve"><value>The primary disk PMT markers or version in storage region {0} are invalid; the validated mirror table is being used.</value></data>
+<data name="OptionalCommandUnsupported" xml:space="preserve"><value>Device does not support optional command {0}; continuing standard initialization.</value></data>
 </root>

@@ -48,3 +48,17 @@
 - 主工作区 `dotnet build GeekFlashCore.slnx -c Release --verbosity quiet` 成功，0 警告/0 错误。
 - 原功能工作区保留 ignored 测试夹具，运行 MTK Release `--no-build --no-restore`：277 通过，0 失败/跳过。`git diff --exit-code main codex/mtk-protocol -- src GeekFlashCore.slnx` 无差异，确认测试代码版本与合并后的生产代码一致。
 - `git diff --check` 通过。合并后仅追加本验收记录并独立提交；原功能工作区的两个未跟踪 Kamakiri 文档保留，不纳入 main。未执行远端推送；硬件兼容性风险保持上述记录。
+
+## 参考 EXP 阶段分析（2026-10-06 / EXP-AUDIT-01）
+
+用户要求分析 `D:/Code/Rust/penumbra-main` 全部 EXP 的位置、前后命令和条件。完整源码证据、调用时序、34 个 Linecode HW code 与关键文件 SHA256 记录于 [阶段分析](2026-10-06-penumbra-exploit-stage-analysis.md)。本轮只新增分析记录，未修改生产代码或参考目录。
+
+静态结论：当前快照有 Linecode/Carbonara/HeapBait 三个漏洞策略和 Unfused 补丁入口；XML 默认上传没有 Linecode；Carbonara 在 DA1 初始化之后（XML 还在 DA1 SLA 之后），HeapBait 在 XML 第二次 HOST/NOTIFY/progress/END 后、DA2 SLA 前。后续扩展加载在 DA2 SLA 流程返回后，XFlash 还需再次查询包长。`patched` 导致候选策略互斥，错误吞掉和部分补丁未命中使它不能表示已认证或扩展已就绪。
+
+验证：主工作区 Release/no-restore 构建 0 警告/0 错误；原功能工作区现有阶段/认证框架定向测试 56 通过，0 失败/跳过；main 与 codex/mtk-protocol 的 src/slnx 比对无差异。`git diff --check` 通过，新增文档 no-index 检查无空白错误；30 个源码链接有效，参考 8 个关键文件指纹复查一致。工作区只有分析与实施记录两处预期文档变更，本轮未提交。上述测试不执行 Rust EXP，没有新增硬件或漏洞成功证据。后续从分析文档及实际 DA 版本/正常协议抓包核对继续。
+
+## 正常连接流程补齐（2026-10-06 / FLOW-01）
+
+用户进一步授权在当前项目实现流程，明确不实现任何 EXP。保留既有四检查点、三 DA 和标准认证编排，补齐 XML 两次可选 HostSupported 的精确 Unsupported/完整 END 回退，并修正 XFlash/XML 的宿主 OS 参数。BeforeDa1 的公共边界保持在标准 BROM 认证前；没有增加策略、默认注册、载荷、补丁或自动扩展上传。
+
+新增 40 项正常协议/观察回调测试，先记录 18 失败，再修复至定向 96、MTK 全量 317 通过。主工作区 CLI/Qcom/Core/LP 55/251/9/55 通过，五工程合计 687，Release 构建 0 警告/0 错误；资源键、产物忽略与差异检查通过。没有真机或漏洞运行证据，完整设计、变更和验证命令见 [实施记录](2026-10-06-mtk-connection-flow-implementation.md)。

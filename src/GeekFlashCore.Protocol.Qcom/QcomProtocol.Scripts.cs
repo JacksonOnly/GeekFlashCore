@@ -43,7 +43,7 @@ public sealed partial class QcomProtocol
                         ? FirehoseScriptSkipReason.EmptyFileName
                         : supported is { Count: > 0 } && !supported.Contains(entry.Name, StringComparer.OrdinalIgnoreCase)
                             ? FirehoseScriptSkipReason.DeviceCommandUnavailable : null;
-            if (skip is { } reason) { skipped.Add(new(index, entry.Name, reason)); continue; }
+            if (skip is { } reason) { skipped.Add(DescribeSkippedEntry(index, entry, reason)); continue; }
             if (actions.LastOrDefault().Name == "power") throw new ArgumentException(Strings.Qcom_ScriptPowerMustBeLast);
             try { actions.Add((entry.Name, PrepareScriptCommand(entry, resolver, progress, ct))); }
             catch (Exception error) when (error is FormatException or OverflowException)
@@ -60,6 +60,35 @@ public sealed partial class QcomProtocol
                 progress?.Report(new ProgressRecord(actions.Count, completed, Strings.FormatQcom_ScriptExecuting(completed, actions.Count, action.Name)));
         }
         return new(completed, bytes, skipped.AsReadOnly());
+    }
+
+    private FirehoseScriptSkippedEntry DescribeSkippedEntry(int index, FirehoseScriptElement entry, FirehoseScriptSkipReason reason)
+    {
+        string? lunText = entry.Optional(entry.Name == "xblgpt" ? "lun" : "physical_partition_number");
+        uint? lun = null;
+        try
+        {
+            if (lunText is not null) lun = checked((uint)FirehoseScriptParser.Evaluate(lunText, null));
+            else if (entry.Name is "program" or "patch") lun = 0;
+        }
+        catch (Exception error) when (error is ArgumentException or FormatException or OverflowException)
+        {
+            // Optional diagnostics must not turn a skipped entry into a validation failure.
+        }
+        ulong? capacity = _targetInfo!.Firehose!.StorageInfos.FirstOrDefault(x => x.PhysicalPartitionNumber == lun)?.BlockCount;
+        long? Resolve(string? expression)
+        {
+            if (expression is null) return null;
+            try { return checked((long)FirehoseScriptParser.Evaluate(expression, capacity)); }
+            catch (Exception error) when (error is ArgumentException or FormatException or OverflowException) { return null; }
+        }
+        return new(index, entry.Name, reason)
+        {
+            Label = entry.Optional("label"), FileName = entry.Optional("filename"),
+            PhysicalPartitionExpression = lunText, PhysicalPartitionNumber = lun,
+            StartSectorExpression = entry.Optional("start_sector"), StartSector = Resolve(entry.Optional("start_sector")),
+            SectorCountExpression = entry.Optional("num_partition_sectors"), SectorCount = Resolve(entry.Optional("num_partition_sectors"))
+        };
     }
 
     private static readonly HashSet<string> ScriptCommands = new(StringComparer.Ordinal)

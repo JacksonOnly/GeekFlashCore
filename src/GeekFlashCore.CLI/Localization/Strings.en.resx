@@ -425,4 +425,7 @@ Keys go only to files.</value></data>
   help
   exit</value></data>
   <data name="Cli_UsbEndpointStalled" xml:space="preserve"><value>USB endpoint stalled (Pipe error). The session has stopped. Reconnect the device.</value></data>
+  <data name="Cli_FirmwareCatalog" xml:space="preserve"><value>Firmware format: {0}, entries: {1}.</value></data>
+  <data name="Cli_FirmwareExtracted" xml:space="preserve"><value>Extracted {0}, {1}.</value></data>
+  <data name="Cli_FirmwareScriptSyntax" xml:space="preserve"><value>Package script syntax is &lt;package&gt;::&lt;entry.xml&gt;.</value></data>
 </root>

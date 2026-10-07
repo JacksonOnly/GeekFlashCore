@@ -1,6 +1,8 @@
 using GeekFlashCore.CLI.Localization;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
+using GeekFlashCore.Firmware;
+using System.IO.Enumeration;
 
 namespace GeekFlashCore.CLI;
 
@@ -14,55 +16,115 @@ internal static class QcomScriptCommands
             name.StartsWith("patch", StringComparison.OrdinalIgnoreCase) ? "patch" : null;
     }
 
-    internal static IReadOnlyList<string> ExpandFiles(string[] patterns)
+    internal static bool TryPackageScript(string value, out string package, out string entry)
+    {
+        int delimiter = value.IndexOf("::", StringComparison.Ordinal);
+        package = entry = "";
+        if (delimiter < 0) return false;
+        if (delimiter == 0 || delimiter + 2 == value.Length || value.IndexOf("::", delimiter + 2, StringComparison.Ordinal) >= 0)
+            throw new ArgumentException(Strings.Cli_FirmwareScriptSyntax);
+        package = Path.GetFullPath(ConsolePath.Normalize(value[..delimiter])!);
+        entry = value[(delimiter + 2)..].Replace('\\', '/');
+        if (entry.StartsWith('/') || entry.Contains(':') || entry.Any(char.IsControl) ||
+            entry.Split('/').Any(s => s is "" or "." or "..")) throw new ArgumentException(Strings.Cli_ScriptImageOutsideDirectory);
+        return true;
+    }
+
+    internal static IReadOnlyList<string> ExpandFiles(string[] patterns) => ExpandFilesCore(patterns, default);
+
+    private static IReadOnlyList<string> ExpandFilesCore(string[] patterns, CancellationToken ct)
     {
         var files = new List<string>();
         var seen = new HashSet<string>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
-        foreach (string pattern in patterns)
+        var packageSeen = new HashSet<string>(StringComparer.Ordinal);
+        var packages = new Dictionary<string, FirmwarePackage>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        try
         {
-            string full = Path.GetFullPath(ConsolePath.Normalize(pattern)!);
-            string directory = Path.GetDirectoryName(full)!, name = Path.GetFileName(full);
-            if (!Directory.Exists(directory)) throw new FileNotFoundException(Strings.Cli_ScriptFileMissing, pattern);
-            IEnumerable<string> matches = name.IndexOfAny(['*', '?']) < 0 ? new[] {full} :
-                Directory.EnumerateFiles(directory, name, SearchOption.TopDirectoryOnly).Order(StringComparer.OrdinalIgnoreCase);
-            bool found = false;
-            foreach (string file in matches)
+            foreach (string pattern in patterns)
             {
-                if (!IsXml(file) || !File.Exists(file)) throw new FileNotFoundException(Strings.Cli_ScriptFileMissing, file);
-                found = true;
-                if (seen.Add(file)) files.Add(file);
-                if (files.Count > 1024) throw new ArgumentException(Strings.Cli_ScriptTooManyFiles);
+                ct.ThrowIfCancellationRequested();
+                if (TryPackageScript(pattern, out string packagePath, out string entryPattern))
+                {
+                    if (!packages.TryGetValue(packagePath, out var package))
+                        packages.Add(packagePath, package = FirmwareUnpacker.Open(packagePath, cancellationToken: ct));
+                    var entryMatches = package.Entries.Where(e => IsXml(e.Name) && FileSystemName.MatchesSimpleExpression(entryPattern, e.Name, ignoreCase: false))
+                        .OrderBy(e => e.Name, StringComparer.Ordinal).ToArray();
+                    if (entryMatches.Length == 0) throw new FileNotFoundException(Strings.Cli_ScriptFileMissing, pattern);
+                    foreach (var entry in entryMatches)
+                    {
+                        package.GetEntry(entry.Name); // Reject ambiguous paths before any device command.
+                        string key = (OperatingSystem.IsWindows() ? packagePath.ToUpperInvariant() : packagePath) + "::" + entry.Name;
+                        if (packageSeen.Add(key)) files.Add(packagePath + "::" + entry.Name);
+                        if (files.Count > 1024) throw new ArgumentException(Strings.Cli_ScriptTooManyFiles);
+                    }
+                    continue;
+                }
+                string full = Path.GetFullPath(ConsolePath.Normalize(pattern)!);
+                string directory = Path.GetDirectoryName(full)!, name = Path.GetFileName(full);
+                if (!Directory.Exists(directory)) throw new FileNotFoundException(Strings.Cli_ScriptFileMissing, pattern);
+                IEnumerable<string> matches = name.IndexOfAny(['*', '?']) < 0 ? new[] { full } :
+                    Directory.EnumerateFiles(directory, name, SearchOption.TopDirectoryOnly).Order(StringComparer.OrdinalIgnoreCase);
+                bool found = false;
+                foreach (string file in matches)
+                {
+                    if (!IsXml(file) || !File.Exists(file)) throw new FileNotFoundException(Strings.Cli_ScriptFileMissing, file);
+                    found = true;
+                    if (seen.Add(file)) files.Add(file);
+                    if (files.Count > 1024) throw new ArgumentException(Strings.Cli_ScriptTooManyFiles);
+                }
+                if (!found) throw new FileNotFoundException(Strings.Cli_ScriptFileMissing, pattern);
             }
-            if (!found) throw new FileNotFoundException(Strings.Cli_ScriptFileMissing, pattern);
+            return files;
         }
-        return files;
+        finally { foreach (var package in packages.Values) package.Dispose(); }
     }
 
     internal static void Execute(IQcomProtocol protocol, string[] patterns, bool patchOnly, ConsoleUi ui,
         IProgress<ProgressRecord> progress, CancellationToken ct, TimeProvider? timeProvider = null)
     {
         // Expand all patterns before sending; preserve explicit pattern order and remove duplicates.
-        var files = ExpandFiles(patterns);
-        var clock = timeProvider ?? TimeProvider.System;
-        long batchStarted = clock.GetTimestamp();
-        decimal bytes = 0; int executed = 0, skipped = 0;
-        foreach (string path in files)
+        var files = ExpandFilesCore(patterns, ct);
+        var packages = new Dictionary<string, FirmwarePackage>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        try
         {
-            ct.ThrowIfCancellationRequested();
-            ui.WriteLine(Strings.FormatCli_ScriptStarted(Path.GetFileName(path)));
-            string directory = Path.GetDirectoryName(path)!;
-            long started = clock.GetTimestamp();
-            FirehoseScriptResult result = patchOnly
-                ? protocol.ExecutePatchFile(new FileDataSource(path), progress, ct)
-                : protocol.ExecuteRawProgram(new FileDataSource(path), name => ResolveImage(directory, name), progress, ct);
-            TimeSpan elapsed = clock.GetElapsedTime(started);
-            PrintStatistics(ui, Strings.FormatCli_ScriptFileSummary(ProgressDisplay.SingleLine(Path.GetFileName(path))),
-                result.ExecutedCommands, result.SkippedEntries.Count, result.BytesWritten, elapsed);
-            foreach (var entry in result.SkippedEntries) PrintSkipped(ui, entry);
-            bytes += result.BytesWritten; executed += result.ExecutedCommands; skipped += result.SkippedEntries.Count;
+            var scripts = new List<(string Name, IDataSource Source, Func<string, IDataSource> Resolver)>();
+            // Open all package catalogs and resolve script names before the batch sends anything.
+            foreach (string path in files)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (TryPackageScript(path, out string packagePath, out string entryName))
+                {
+                    if (!packages.TryGetValue(packagePath, out var package))
+                        packages.Add(packagePath, package = FirmwareUnpacker.Open(packagePath, cancellationToken: ct));
+                    scripts.Add((entryName, package.GetEntry(entryName), name => package.ResolveEntry(entryName, name)));
+                }
+                else
+                {
+                    string directory = Path.GetDirectoryName(path)!;
+                    scripts.Add((Path.GetFileName(path), new FileDataSource(path), name => ResolveImage(directory, name)));
+                }
+            }
+            var clock = timeProvider ?? TimeProvider.System;
+            long batchStarted = clock.GetTimestamp();
+            decimal bytes = 0; int executed = 0, skipped = 0;
+            foreach (var script in scripts)
+            {
+                ct.ThrowIfCancellationRequested();
+                ui.WriteLine(Strings.FormatCli_ScriptStarted(script.Name));
+                long started = clock.GetTimestamp();
+                FirehoseScriptResult result = patchOnly
+                    ? protocol.ExecutePatchFile(script.Source, progress, ct)
+                    : protocol.ExecuteRawProgram(script.Source, script.Resolver, progress, ct);
+                TimeSpan elapsed = clock.GetElapsedTime(started);
+                PrintStatistics(ui, Strings.FormatCli_ScriptFileSummary(ProgressDisplay.SingleLine(script.Name)),
+                    result.ExecutedCommands, result.SkippedEntries.Count, result.BytesWritten, elapsed);
+                foreach (var entry in result.SkippedEntries) PrintSkipped(ui, entry);
+                bytes += result.BytesWritten; executed += result.ExecutedCommands; skipped += result.SkippedEntries.Count;
+            }
+            PrintStatistics(ui, Strings.FormatCli_ScriptBatchSummary(files.Count), executed, skipped, bytes,
+                clock.GetElapsedTime(batchStarted));
         }
-        PrintStatistics(ui, Strings.FormatCli_ScriptBatchSummary(files.Count), executed, skipped, bytes,
-            clock.GetElapsedTime(batchStarted));
+        finally { foreach (var package in packages.Values) package.Dispose(); }
     }
 
     private static void PrintStatistics(ConsoleUi ui, string title, int executed, int skipped, decimal bytes, TimeSpan elapsed)

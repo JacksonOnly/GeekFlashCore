@@ -10,10 +10,10 @@ internal static class FirehoseCommands
     internal static readonly IReadOnlyDictionary<string, string> Usages = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["program"] = "program <partition> <file> [lun] | program sector <lun> <start> <count> <file> (alias: write)",
-        ["rawprogram"] = "rawprogram <xml-or-pattern> [xml-or-pattern ...]",
+        ["rawprogram"] = "rawprogram <xml-or-pattern> [xml-or-pattern ...] | rawprogram <package>::<entry.xml>",
         ["nop"] = "nop", ["configure"] = "configure", ["power"] = "power <reset|reset_to_edl|off>",
         ["getstorageinfo"] = "getstorageinfo <all|lun>", ["setbootablestoragedrive"] = "setbootablestoragedrive <lun>",
-        ["patch"] = "patch <xml-or-pattern> [...] | patch <lun> <start> <byte-offset> <size:1|2|4|8> <value>",
+        ["patch"] = "patch <xml-or-pattern> [...] | patch <lun> <start> <byte-offset> <size:1|2|4|8> <value> | patch <package>::<entry.xml>",
         ["benchmark"] = "benchmark <lun> <read|write|digest> <trials>",
         ["getsha256digest"] = "getsha256digest <lun> <start> <count>",
         ["xblgpt"] = "xblgpt <lun>", ["fixgpt"] = "fixgpt <lun> <grow:0|1>",

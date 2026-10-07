@@ -669,3 +669,9 @@
 - 风险：仍未覆盖真实 Qualcomm/Oplus/OnePlus/Nothing 设备矩阵；同步传输正在阻塞时的取消延迟取决于传输实现；严格 GPT/存储校验可能拒绝厂商非标准介质，需以脱敏抓包分析。
 - 合并结果：第二轮独立复审 Critical/Important/Minor 均为 0；本地 `main` 已由 `a03eb99` 快进到 `536231f`。合并后 Qcom 250/250、CLI 55/55、Android LP 55/55、Core 9/9 分别通过，Release 构建 0 警告/0 错误；远端尚未推送。
 - 2026-09-07 合并后续复核：`git fetch origin main` 成功，`origin/main` 仍为本地 `main` 的祖先且无远端分歧；四套 Release 测试再次通过（Qcom 250、CLI 55、Android LP 55、Core 9），解决方案构建 0 警告/0 错误，`git diff --check` 和 `.tests` 跟踪检查通过。未执行推送或远端分支删除；真实设备矩阵仍是后续风险。
+
+### FW-03：包内脚本和镜像直读（2026-10-07）
+
+- 新增独立 `GeekFlashCore.Firmware`，OFP/OPS 的 rawprogram/patch 作为 IDataSource 直接传入现有 Qcom 门面，镜像从同一固件目录解析。CLI 接受 `package::entry.xml`；Qcom 同步协议、Raw/Sparse、ACK/NAK、取消和会话代数未变。
+- 合成 OFP + 模拟传输验证明文写入字节及 program/patch 顺序；NAK 后失效且不执行 patch，缺图在预检阶段停止并保持未发送命令。Qcom 457、CLI 102、Firmware 58 项通过；解决方案 Release 构建 0 警告/0 错误。
+- 真实固件证据仅覆盖 PAC 目录与大偏移读取，不代表 OFP 或 Qcom 硬件验证；下一步从真实 OFP 的虚拟 XML 与镜像流开始复核。详细范围、所有权、格式限制和风险见 `2026-10-07-firmware-streaming-design.md` 与对应 implementation。

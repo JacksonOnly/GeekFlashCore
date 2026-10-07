@@ -425,4 +425,7 @@ Cache 命令阻止：{8}</value></data>
   help
   exit</value></data>
   <data name="Cli_UsbEndpointStalled" xml:space="preserve"><value>USB 端点停滞（Pipe error），当前会话已中止，请重新连接设备。</value></data>
+  <data name="Cli_FirmwareCatalog" xml:space="preserve"><value>固件格式：{0}，条目：{1}。</value></data>
+  <data name="Cli_FirmwareExtracted" xml:space="preserve"><value>已导出 {0}，{1}。</value></data>
+  <data name="Cli_FirmwareScriptSyntax" xml:space="preserve"><value>包内脚本格式为 &lt;package&gt;::&lt;entry.xml&gt;。</value></data>
 </root>

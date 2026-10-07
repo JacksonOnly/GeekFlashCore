@@ -456,4 +456,7 @@
   <data name="Qcom_ScriptReadbackUnsupported" xml:space="preserve"><value>XML 的 readbackverify 尚未实现，无法执行该 program。</value></data>
   <data name="Qcom_ScriptSourceInvalid" xml:space="preserve"><value>XML 镜像资源必须非空、可读取、可定位，并具有有效的文件偏移。</value></data>
   <data name="Qcom_ScriptExecuting" xml:space="preserve"><value>XML {0}/{1}: {2}</value></data>
+  <data name="Qcom_SignedTableAnnouncementInvalid" xml:space="preserve"><value>签名表等待响应不是完整有效的日志 XML，请重新连接。</value></data>
+  <data name="Qcom_SignedTableModeRequired" xml:space="preserve"><value>设备正在等待签名表。请明确选择 Oplus/OnePlus 及 DigestPt 或 Legacy 并提供 Digest、Sign；通用 VIP 设备请配置 VIP 签名表。</value></data>
+  <data name="Qcom_LogSignedTableAwaitingSelection" xml:space="preserve"><value>已识别正在等待签名表的 Firehose；将在选择品牌和认证模式后请求材料。</value></data>
 </root>

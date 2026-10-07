@@ -669,3 +669,28 @@
 - 风险：仍未覆盖真实 Qualcomm/Oplus/OnePlus/Nothing 设备矩阵；同步传输正在阻塞时的取消延迟取决于传输实现；严格 GPT/存储校验可能拒绝厂商非标准介质，需以脱敏抓包分析。
 - 合并结果：第二轮独立复审 Critical/Important/Minor 均为 0；本地 `main` 已由 `a03eb99` 快进到 `536231f`。合并后 Qcom 250/250、CLI 55/55、Android LP 55/55、Core 9/9 分别通过，Release 构建 0 警告/0 错误；远端尚未推送。
 - 2026-09-07 合并后续复核：`git fetch origin main` 成功，`origin/main` 仍为本地 `main` 的祖先且无远端分歧；四套 Release 测试再次通过（Qcom 250、CLI 55、Android LP 55、Core 9），解决方案构建 0 警告/0 错误，`git diff --check` 和 `.tests` 跟踪检查通过。未执行推送或远端分支删除；真实设备矩阵仍是后续风险。
+
+### FW-03：包内脚本和镜像直读（2026-10-07）
+
+- 新增独立 `GeekFlashCore.Firmware`，OFP/OPS 的 rawprogram/patch 作为 IDataSource 直接传入现有 Qcom 门面，镜像从同一固件目录解析。CLI 接受 `package::entry.xml`；Qcom 同步协议、Raw/Sparse、ACK/NAK、取消和会话代数未变。
+- 合成 OFP + 模拟传输验证明文写入字节及 program/patch 顺序；NAK 后失效且不执行 patch，缺图在预检阶段停止并保持未发送命令。Qcom 457、CLI 102、Firmware 58 项通过；解决方案 Release 构建 0 警告/0 错误。
+- 真实固件证据仅覆盖 PAC 目录与大偏移读取，不代表 OFP 或 Qcom 硬件验证；下一步从真实 OFP 的虚拟 XML 与镜像流开始复核。详细范围、所有权、格式限制和风险见 `2026-10-07-firmware-streaming-design.md` 与对应 implementation。
+
+### FWSP-03：OFP 分片 Sparse Super（2026-10-07）
+
+- Sparse/Firmware 将按序分割的 Super 映射为虚拟 Sparse super.img，原始 rawprogram0.xml 直接解析该 IDataSource；CLI 支持已解包目录与 ZIP::OFP::脚本，Qcom 生产协议、预检和同步 Sparse 发送没有改动。
+- 模拟传输确认叠加后的精确字节分别写入 10/11/12 扇区；DontCare 跳过 11，仅发送 10/12；首区间 NAK 后失效并停止。Qcom 457 项、CLI 104 项、Firmware 76 项及另外三套共 1227 项通过；Release 0 警告/0 错误。
+- 真实 PEHM00 目录的 1327 个窗口和 ZIP 内 OFP 的原始脚本/首窗口只读通过，不是设备写入证据。Oplus Digest/VIP 对映射后包序要求仍须硬件验证。最新事实和恢复入口见 `2026-10-07-ofp-sparse-super-design.md` 与对应 implementation。
+
+### FHST-01：等待签名表时选择 Oplus 模式（2026-10-07）
+
+- 修复用户日志中的已运行 Firehose 拒绝 Sahara HELLO，NOP 随后宣布等待签名表却因没有 ACK 提前退出的问题。严格识别完整 log-only 等待帧后，CLI 先选择品牌与 DigestPt/Legacy，再请求 Digest、Sign 并沿既有认证线路继续；已经指定的品牌/模式保留。
+- 内部等待状态与 ACK、认证成功分开；半帧、普通 NAK、RAW、无响应不降级为成功，通用 VIP 必须显式配置，Oplus 资源与其他 Digest/VIP 保持互斥。普通命令线路和显式 resume 重发规则未放宽。
+- 新增 49 项回归含 CLI 默认适配器完整交互、两种认证模式、材料拒绝、取消/超时、资源释放和失败后重连；Qcom 506/506、CLI 106/106 通过，Release 构建 0 警告/0 错误，资源与差异检查通过。
+- 尚未连接真实设备。详细范围与继续入口见 `2026-10-07-firehose-signed-table-selection-design.md` 和对应 implementation。
+
+### MERGE-FW-01：固件分支主分支集成（2026-10-07）
+
+- 按用户明确要求，将功能分支 `7396a06` 的 12 项提交与 main=`bd401b7` 合并，覆盖固件流式解包、Super 映射、目录性能优化及等待签名表的品牌/模式交互恢复；自动合并无冲突，main 原有 MTK 改动保留。
+- 主工作区新鲜还原、Release 解决方案构建 0 警告/0 错误；Qcom 506、CLI 106、Core 38、LP 63、MTK 552、Firmware 111，共 1376 项通过，含完整真实包离线回归和内存/首次 metadata 回调护栏。资源、diff、ignored 检查与主目录 CLI 的虚拟 Super 列目录冒烟通过。
+- 主目录 Release EXE 已重建，没有远端推送或设备通信。合并提交、继续入口、测试范围和未决硬件风险见 `2026-10-07-firmware-main-merge.md`。

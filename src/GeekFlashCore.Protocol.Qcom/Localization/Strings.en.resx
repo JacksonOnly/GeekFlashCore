@@ -559,4 +559,7 @@ Current {0}, expected {1}</value>
   <data name="Qcom_ScriptReadbackUnsupported" xml:space="preserve"><value>XML readbackverify is not implemented for program.</value></data>
   <data name="Qcom_ScriptSourceInvalid" xml:space="preserve"><value>XML image sources must be nonempty, readable and seekable with valid file offsets.</value></data>
   <data name="Qcom_ScriptExecuting" xml:space="preserve"><value>XML {0}/{1}: {2}</value></data>
+  <data name="Qcom_SignedTableAnnouncementInvalid" xml:space="preserve"><value>The signed-table waiting response is not a complete, valid log XML document. Reconnect the target.</value></data>
+  <data name="Qcom_SignedTableModeRequired" xml:space="preserve"><value>The target is waiting for a signed table. Explicitly select Oplus/OnePlus and DigestPt or Legacy, then provide Digest and Sign. Configure VIP signed tables for generic VIP targets.</value></data>
+  <data name="Qcom_LogSignedTableAwaitingSelection" xml:space="preserve"><value>Firehose is waiting for a signed table; materials will be requested after vendor and authentication mode selection.</value></data>
 </root>

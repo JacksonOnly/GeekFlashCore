@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="InvalidOptions" xml:space="preserve"><value>固件解包配置超出支持范围。</value></data>
+  <data name="EntryMissing" xml:space="preserve"><value>固件包中找不到指定条目。</value></data>
+  <data name="AmbiguousEntry" xml:space="preserve"><value>固件包包含同名条目，请通过目录索引选择。</value></data>
+  <data name="UnsafePath" xml:space="preserve"><value>固件条目必须是安全的相对路径。</value></data>
+  <data name="InvalidSeek" xml:space="preserve"><value>定位位置超出固件条目范围。</value></data>
+  <data name="ReadOnly" xml:space="preserve"><value>固件条目只支持读取。</value></data>
+  <data name="InvalidSource" xml:space="preserve"><value>固件源必须可读、可定位、稳定且长度一致。</value></data>
+  <data name="InvalidRange" xml:space="preserve"><value>固件元数据中的范围超出源边界。</value></data>
+  <data name="Truncated" xml:space="preserve"><value>固件数据已截断。</value></data>
+  <data name="LengthMismatch" xml:space="preserve"><value>固件解码长度与声明不一致。</value></data>
+  <data name="Unsupported" xml:space="preserve"><value>不支持该固件格式、版本或密钥。</value></data>
+  <data name="InvalidMetadata" xml:space="preserve"><value>固件元数据无效或超出配置限制。</value></data>
+  <data name="UnsupportedOperation" xml:space="preserve"><value>该 payload 包含依赖旧镜像的操作或不支持的操作。</value></data>
+  <data name="OfpSuperVariantRequired" xml:space="preserve"><value>OFP 的 NVList 包含不同 Super 分片序列，请设置 OfpSuperNvId。</value></data>
+  <data name="OfpSuperVariantMissing" xml:space="preserve"><value>OFP 的 NVList 中找不到指定的 Super 配置。</value></data>
+  <data name="SuperDefinitionInvalid" xml:space="preserve"><value>Super 定义无效、超过限额或与包内 LP 元数据不一致。</value></data>
+  <data name="SuperReferenceInvalid" xml:space="preserve"><value>Super 镜像路径引用循环或超过允许层数。</value></data>
+  <data name="SuperRegionIncomplete" xml:space="preserve"><value>Super 写入回调未完整读取当前数据区域。</value></data>
+  <data name="SuperSourceAlreadyOpened" xml:space="preserve"><value>当前 Super 写入区域的数据流只能打开一次。</value></data>
+  <data name="SuperSourceForwardOnly" xml:space="preserve"><value>Super 写入区域的数据流只能向前读取。</value></data>
+</root>

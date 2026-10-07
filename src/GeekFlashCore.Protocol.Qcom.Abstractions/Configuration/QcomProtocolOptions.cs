@@ -23,7 +23,7 @@ public sealed record QcomProtocolOptions
     public FirehoseDigestConfiguration FirehoseDigest { get; init; } = new();
     public FirehoseVipConfiguration FirehoseVip { get; init; } = new();
     public OplusDigestConfiguration OplusDigest { get; init; } = new();
-    /// <summary>Request Digest resources for Pt/Legacy detection after VIP startup only when both Sahara and Loader identify Oplus.</summary>
+    /// <summary>Allow Pt/Legacy detection when Sahara and Loader identify Oplus, or explicit host selection after a running target announces signed-table receive.</summary>
     public bool AllowOplusModeSelection { get; init; }
     /// <summary>Automatically run PBL Patch before Loader upload for Sahara-identified SDM845, SDM710 and SM6125 devices of any brand. Disabled by default.</summary>
     public bool EnablePblPatch { get; init; }

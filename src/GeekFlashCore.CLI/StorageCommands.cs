@@ -97,10 +97,12 @@ internal static class StorageCommands
             }
             else
             {
-                string filename = Path.GetFileName(file!);
+                using var input = FirmwarePackageInput.Open(file!, ct);
+                string filename = input.Name;
                 var writeProgress = new ImmediateProgress<ProgressRecord>(record => progress.Report(record.Unit == ProgressUnit.Bytes
                     ? record with { Label = Strings.FormatCli_ProgressWriteFile(record.Label, filename) } : record));
-                await protocol.WriteAsync(new WriteSource { Source = new FileDataSource(file!), Target = target }, writeProgress, ct);
+                if (input.SuperPlan is { } plan) await FirmwareSuperImageWriter.WriteAsync(protocol, plan, target, writeProgress, ct);
+                else await protocol.WriteAsync(new WriteSource { Source = input.Source!, Target = target }, writeProgress, ct);
             }
         }
         ui.WriteLine(Strings.FormatCli_CommandCompleted(command));

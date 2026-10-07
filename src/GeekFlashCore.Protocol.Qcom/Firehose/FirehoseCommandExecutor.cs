@@ -39,9 +39,20 @@ internal sealed class FirehoseCommandExecutor
     }
 
     internal bool StartupDataReceived => _receiver.StartupDataReceived;
+    internal bool StartupAwaitingSignedTable => _receiver.StartupAwaitingSignedTable;
 
     public FirehoseResponse ReceiveStartupLogs(int? timeoutMilliseconds = null, int? probeRejectionTimeoutMilliseconds = null) =>
         _receiver.ReceiveStartupLog(timeoutMilliseconds, probeRejectionTimeoutMilliseconds);
+
+    internal FirehoseProbeResult Probe(string? xmlDeclarationAttribute)
+    {
+        string xml = new NopCommand().Build();
+        ValidateXml(xml);
+        SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute), null);
+        FirehoseProbeResult result = _receiver.ReceiveProbe();
+        if (!result.AwaitingSignedTable) ValidateResponse(result.Response, expectedRawMode: false);
+        return result;
+    }
 
     public FirehoseCommandResult Execute(
         BaseCommand command,

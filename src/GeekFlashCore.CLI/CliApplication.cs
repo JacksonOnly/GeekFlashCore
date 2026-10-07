@@ -36,6 +36,7 @@ internal sealed class CliApplication
         try { options = NormalizeAndValidate(options, requestedRegistration); }
         catch (CommandUsageException exception) { _ui.WriteLine(exception.Message); return 2; }
         if (options.Command == "help") { CommandLine.PrintRequestedHelp(options.Arguments, _ui); return 0; }
+        if (options.Command == "firmware") { FirmwareCommands.Execute(options.Arguments, _ui, ct); return 0; }
         if (options.Command == "lp" && LpCommands.IsHelp(options.Arguments)) { LpCommands.PrintHelp(_ui); return 0; }
         if (options.Command is "browse" or "browse-image" && BrowserCommands.ShowHelp(options.Arguments, _ui)) return 0;
         if (options.Command == "browse-image")
@@ -119,6 +120,7 @@ internal sealed class CliApplication
         try { options = NormalizeAndValidate(options, registration); }
         catch (CommandUsageException exception) { _ui.WriteLine(exception.Message); return 2; }
         ct.ThrowIfCancellationRequested();
+        if (options.Command == "firmware") { FirmwareCommands.Execute(options.Arguments, _ui, ct); return 0; }
         if (options.Command == "lp" && LpCommands.IsHelp(options.Arguments)) { LpCommands.PrintHelp(_ui); return 0; }
         if (options.Command is "browse" or "browse-image" && BrowserCommands.ShowHelp(options.Arguments, _ui)) return 0;
         registration.CommandSet?.ValidateAvailability(protocol, options.Command);

@@ -12,6 +12,7 @@ internal static class CommandSyntax
         ["partitions"] = "partitions <all|lun>",
         ["browse"] = "browse <partition> [lun] [lp-slot]",
         ["browse-image"] = "browse-image <raw-image> [lp-slot]",
+        ["firmware"] = FirmwareCommands.Usage,
         ["ls"] = "ls <partition/path> [lun] [lp-slot]",
         ["lp"] = "lp <operation> <container> [...] [lun] [lp-slot] | lp help",
         ["read"] = "read <partition/path> <file> [lun] [lp-slot] | read sector <lun> <start> <count> <file>",
@@ -39,6 +40,7 @@ internal static class CommandSyntax
         {
             switch (command)
             {
+                case "firmware": FirmwareCommands.Validate(a); break;
                 case "browse": case "ls":
                     if (a.Length is < 1 or > 3) throw new FormatException();
                     if (a.Length > 1) Lun(a[1]);

@@ -425,4 +425,20 @@ Cache 命令阻止：{8}</value></data>
   help
   exit</value></data>
   <data name="Cli_UsbEndpointStalled" xml:space="preserve"><value>USB 端点停滞（Pipe error），当前会话已中止，请重新连接设备。</value></data>
+  <data name="Cli_FirmwareCatalog" xml:space="preserve"><value>固件格式：{0}，条目：{1}。</value></data>
+  <data name="Cli_FirmwareDeferredLength" xml:space="preserve"><value>按需解析</value></data>
+  <data name="Cli_FirmwareSuperInfo" xml:space="preserve"><value>Super：{0}，逻辑大小={1}，metadata 大小={2}，槽位={3}，块大小={4}，flags={5}。</value></data>
+  <data name="Cli_FirmwareSuperTargetInvalid" xml:space="preserve"><value>Super 布局超出目标容量、未按设备块大小对齐或目标不支持写入。</value></data>
+  <data name="Cli_FirmwareSuperProtocolUnsupported" xml:space="preserve"><value>当前协议未提供 Super 所需的原始区域写入接口。</value></data>
+  <data name="Cli_FirmwareExtracted" xml:space="preserve"><value>已导出 {0}，{1}。</value></data>
+  <data name="Cli_FirmwareScriptSyntax" xml:space="preserve"><value>包内脚本格式为 &lt;package&gt;::&lt;entry.xml&gt;。</value></data>
+  <data name="Cli_FirmwareSuperCleanupFailed" xml:space="preserve"><value>Super 部分写入失败后关闭会话未成功，异常类型：{0}。</value></data>
+  <data name="Cli_SignedTableWaiting" xml:space="preserve"><value>设备正在等待签名表。请选择品牌和 Oplus 认证模式，随后提供 Digest、Sign 继续连接。</value></data>
+  <data name="Cli_SignedTableVendorInvalid" xml:space="preserve"><value>此交互恢复需要选择 Oplus 或 OnePlus；其他 VIP 设备请取消并配置 VIP 签名表后连接。</value></data>
+  <data name="Cli_OplusModeChoices" xml:space="preserve"><value>请选择 Oplus 认证模式：
+  1. DigestPt
+  2. Legacy</value></data>
+  <data name="Cli_OplusModePrompt" xml:space="preserve"><value>模式编号或名称（留空取消）</value></data>
+  <data name="Cli_OplusModeInvalid" xml:space="preserve"><value>请选择 1 / DigestPt 或 2 / Legacy。</value></data>
+  <data name="Cli_OplusModeSelectionRequired" xml:space="preserve"><value>设备等待签名表，非交互模式请指定 --vendor Oplus 和 --oplus-mode OplusDigestPt 或 OplusDigestLegacy，并提供 --oplus-digest、--oplus-sign；通用 VIP 设备请配置 --vip-signed。</value></data>
 </root>

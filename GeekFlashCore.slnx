@@ -19,6 +19,9 @@
   <Folder Name="/Disk/">
     <Project Path="src/GeekFlashCore.Gpt/GeekFlashCore.Gpt.csproj" />
   </Folder>
+  <Folder Name="/Firmware/">
+    <Project Path="src/GeekFlashCore.Firmware/GeekFlashCore.Firmware.csproj" />
+  </Folder>
   <Folder Name="/FileSystem/">
     <Project Path="src/GeekFlashCore.BlockDevice/GeekFlashCore.BlockDevice.csproj" />
     <Project Path="src/GeekFlashCore.FileSystem.Erofs/GeekFlashCore.FileSystem.Erofs.csproj" />

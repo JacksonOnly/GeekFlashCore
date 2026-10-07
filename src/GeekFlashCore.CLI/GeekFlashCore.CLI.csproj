@@ -10,6 +10,7 @@
     <RootNamespace>GeekFlashCore.CLI</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\GeekFlashCore.Firmware\GeekFlashCore.Firmware.csproj" />
     <ProjectReference Include="..\GeekFlashCore.Android.Lp\GeekFlashCore.Android.Lp.csproj" />
     <ProjectReference Include="..\GeekFlashCore.FileSystem.Erofs\GeekFlashCore.FileSystem.Erofs.csproj" />
     <ProjectReference Include="..\GeekFlashCore.FileSystem.Ext\GeekFlashCore.FileSystem.Ext.csproj" />

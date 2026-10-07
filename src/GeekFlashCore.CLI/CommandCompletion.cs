@@ -30,6 +30,7 @@ internal static class CommandCompletion
             "qcom" => FirehoseCommands.Usages.Keys.Select(x => "qcom " + x).Where(x => names.Contains(x[5..])),
             "help" => names.Concat(["all", "qcom"]).Select(x => "help " + x),
             "lp" => LpCommands.Usages.Keys.Select(x => "lp " + x),
+            "firmware" => new[] { "list", "extract" }.Select(x => "firmware " + x),
             "reboot" => new[] { "system", "download", "poweroff" }.Select(x => "reboot " + x),
             "power" => new[] { "reset", "reset_to_edl", "off" }.Select(x => "power " + x),
             _ => []

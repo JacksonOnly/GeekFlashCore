@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="InvalidOptions" xml:space="preserve"><value>Firmware unpacking options exceed supported limits.</value></data>
+  <data name="EntryMissing" xml:space="preserve"><value>The requested entry was not found in the firmware package.</value></data>
+  <data name="AmbiguousEntry" xml:space="preserve"><value>The firmware package has ambiguous entry names; select by catalog index.</value></data>
+  <data name="UnsafePath" xml:space="preserve"><value>A firmware entry must use a safe relative path.</value></data>
+  <data name="InvalidSeek" xml:space="preserve"><value>The seek position is outside the firmware entry.</value></data>
+  <data name="ReadOnly" xml:space="preserve"><value>Firmware entries are read-only.</value></data>
+  <data name="InvalidSource" xml:space="preserve"><value>The firmware source must be readable, seekable, stable, and have a consistent length.</value></data>
+  <data name="InvalidRange" xml:space="preserve"><value>A firmware metadata range exceeds the source bounds.</value></data>
+  <data name="Truncated" xml:space="preserve"><value>The firmware data is truncated.</value></data>
+  <data name="LengthMismatch" xml:space="preserve"><value>The decoded firmware length differs from its declaration.</value></data>
+  <data name="Unsupported" xml:space="preserve"><value>The firmware format, version, or key is unsupported.</value></data>
+  <data name="InvalidMetadata" xml:space="preserve"><value>Firmware metadata is invalid or exceeds configured limits.</value></data>
+  <data name="UnsupportedOperation" xml:space="preserve"><value>The payload contains an operation requiring an old image or an unsupported operation.</value></data>
+</root>

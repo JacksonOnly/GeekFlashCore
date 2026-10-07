@@ -102,6 +102,8 @@ internal static class MtkProtocolHostAdapter
             return ResolveResources(context.Options, target);
         });
 
+    private static readonly MtkExploitDependencies ExploitDependencies = new(
+        MtkExploitResourceStore.FromEmbeddedResources());
     private static IProtocol Create(ProtocolHostContext context, ITransport transport,
         Func<MtkTargetInfo, MtkConnectionResources> resources)
     {
@@ -123,8 +125,12 @@ internal static class MtkProtocolHostAdapter
             ConnectTimeoutMilliseconds = o.HasExplicitConnectTimeout ? o.ConnectTimeout : MtkProtocolOptions.DefaultConnectTimeoutMilliseconds,
             ResourceTimeoutMilliseconds = o.ResourceTimeout is > 0 ? o.ResourceTimeout.Value : 30000
         }, resources: resources, leaveTransportOpen: true, exploitStrategies:
-        [new UnfusedExploitStrategy(), new LineCodeExploitStrategy(),
-         new CarbonaraExploitStrategy(), new HeapBaitExploitStrategy()]);
+        [
+            new UnfusedExploitStrategy(ExploitDependencies),
+            new LineCodeExploitStrategy(ExploitDependencies),
+            new CarbonaraExploitStrategy(ExploitDependencies),
+            new HeapBaitExploitStrategy(ExploitDependencies)
+        ]);
     }
     private static MtkConnectionResources ResolveResources(CliOptions o, MtkTargetInfo target)
     {

@@ -17,6 +17,8 @@
 - `src/GeekFlashCore.Protocol.Mtk.Abstractions`：MTK 稳定契约、BROM 命令/会话、资源与安全能力。
 - `src/GeekFlashCore.Protocol.Mtk`：同步 LibUsb BROM/Preloader、Legacy/XFlash/XML、DA/EMI 与流式存储。
 - `src/GeekFlashCore.Protocol.Mtk.Extensions`：可选已加载 DA 扩展、SEJ、RPMB、seccfg；核心不反向依赖。
+- `src/GeekFlashCore.Protocol.Sprd.Abstractions`：SPRD BSL 稳定契约、显式 FDL/profile、分区和资源所有权。
+- `src/GeekFlashCore.Protocol.Sprd`：同步 BootROM/FDL1/FDL2、有限预算帧、命名分区流式操作和会话代数视图。
 - `src/GeekFlashCore.Protocol.Abstractions`：跨协议公共抽象。
 - `src/GeekFlashCore.Android.Sparse`：Android Sparse 解析、计划和流式区域访问。
 - `src/GeekFlashCore.Transport.*`：SerialPort、LibUsb 和传输抽象。
@@ -117,6 +119,8 @@ git status --short --ignored
 7. 最终汇报包含修改文件、行为变化、验证结果、提交号、工作区状态和后续风险。
 
 ## 当前进度来源
+
+开始 SPRD 工作前，读取 `docs/plans/2026-10-07-sprd-protocol-design.md`、`docs/plans/2026-10-07-sprd-protocol-implementation.md` 和 `docs/sprd.md`，再检查工作区与最近提交。参考源为 `D:\Code\CSharp\SPRDClientCore-Xia` 和 `D:\Code\CPlusPlus\SPD_Flash_Tool_Source_Code`；当前没有实机证据。Loader 地址、容量单位、64 位布局、禁转义及奇数补零必须显式确认，不自动重发写命令或试探容量。测试位于 ignored `.tests/GeekFlashCore.Protocol.Sprd.Tests`。
 
 开始 Qualcomm 相关工作前，依次阅读：
 

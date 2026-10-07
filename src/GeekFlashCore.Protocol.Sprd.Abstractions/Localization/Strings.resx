@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+<resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader>
+<data name="InvalidOptions" xml:space="preserve"><value>SPRD 配置、预算或帧大小无效。</value></data>
+<data name="InvalidPartitions" xml:space="preserve"><value>SPRD 分区清单包含重复名称或无效容量。</value></data>
+<data name="InvalidPartitionName" xml:space="preserve"><value>SPRD 分区名称必须为 1～35 个有效 UTF-16 字符。</value></data>
+<data name="LoaderRequired" xml:space="preserve"><value>当前 SPRD 入口需要宿主提供 FDL 资源和加载地址。</value></data>
+<data name="InvalidLoader" xml:space="preserve"><value>SPRD Loader 长度或加载地址范围无效。</value></data>
+<data name="WireFailure" xml:space="preserve"><value>SPRD 命令 0x{0} 响应无效（0x{1}），需要重新连接。</value></data>
+</root>

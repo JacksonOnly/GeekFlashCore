@@ -441,4 +441,15 @@ Keys go only to files.</value></data>
   <data name="Cli_OplusModePrompt" xml:space="preserve"><value>Mode number or name (blank to cancel)</value></data>
   <data name="Cli_OplusModeInvalid" xml:space="preserve"><value>Select 1 / DigestPt or 2 / Legacy.</value></data>
   <data name="Cli_OplusModeSelectionRequired" xml:space="preserve"><value>The target is waiting for a signed table. In non-interactive mode, specify --vendor Oplus and --oplus-mode OplusDigestPt or OplusDigestLegacy with --oplus-digest and --oplus-sign. Configure --vip-signed for generic VIP targets.</value></data>
+<data name="Cli_SprdOptionConflict" xml:space="preserve"><value>SPRD options require explicit --protocol sprd and cannot be mixed with another protocol's resources or specific options.</value></data>
+<data name="Cli_SprdLoaderMissing" xml:space="preserve"><value>The device-compatible SPRD loader file was not found.</value></data>
+<data name="Cli_SprdUnitRequired" xml:space="preserve"><value>SPRD storage commands require explicit --sprd-partition-unit BYTES; confirm the size unit for the device.</value></data>
+<data name="Cli_SprdCommandUnsupported" xml:space="preserve"><value>SPRD supports named partitions in the default region and normal reset/power off; this command or addressing mode is unavailable.</value></data>
+<data name="Cli_SprdProfileInvalid" xml:space="preserve"><value>Invalid SPRD profile; entry is brom/fdl1/fdl2 and length layout is 32/64/64-reserved.</value></data>
+<data name="Cli_SprdWaiting" xml:space="preserve"><value>Explicitly select the SPRD download port with --port COMx or --usb VID:PID.</value></data>
+<data name="Cli_SprdInfo" xml:space="preserve"><value>SPRD session: {0}.</value></data>
+<data name="Cli_SprdLoadersRequired" xml:space="preserve"><value>SPRD Boot ROM requires --loader, --sprd-fdl1-address, --sprd-fdl2 and --sprd-fdl2-address; FDL1 entry only requires FDL2.</value></data>
+<data name="Cli_SprdLoaderPrompt" xml:space="preserve"><value>Select the device-compatible {0} file</value></data>
+<data name="Cli_SprdAddressPrompt" xml:space="preserve"><value>Enter the confirmed {0} load address (0x prefix supported)</value></data>
+<data name="Cli_HelpSprd" xml:space="preserve"><value>SPRD: --protocol sprd --port COMx (or --usb VID:PID). Boot ROM: --loader FDL1.bin --sprd-fdl1-address ADDRESS --sprd-fdl2 FDL2.bin --sprd-fdl2-address ADDRESS. Loaded entry: --sprd-entry brom|fdl1|fdl2. Explicit capacity unit: --sprd-partition-unit BYTES; length layout: --sprd-length 32|64|64-reserved. Compatibility: --sprd-pad-odd, --sprd-disable-transcode, --sprd-entry-transcode-disabled. Resource wait defaults to 30 seconds and must be finite. Commands: connect, info, partitions all, read boot boot.img, write boot boot.img, erase boot, reboot system|poweroff. NV writes/erase, whole-disk sector access, DIAG, repartition and browser/LP are unavailable.</value></data>
 </root>

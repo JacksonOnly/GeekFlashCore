@@ -23,6 +23,10 @@ geekflash --port COM73 qcom configure
 
 When a loader, Digest, VIP table, or vendor authentication response is needed and no corresponding option was supplied, the CLI asks for it through the protocol Provider. `--verbose` enables package-level Debug logs; normal output keeps protocol stages and progress visible without exposing sensitive payloads.
 
+## SPRD / Unisoc
+
+`GeekFlashCore.Protocol.Sprd.Abstractions` and `GeekFlashCore.Protocol.Sprd` provide .NET 8 BSL contracts and a serialized synchronous core. BootROM/FDL1/FDL2, named-partition reads, streamed Raw/Sparse writes, erase, reset and power off are exposed through `IProtocol` and the CLI registry. Select `--protocol sprd` and an explicit `--port` or `--usb`, supply matching FDL images and confirmed load addresses, and configure native partition-table size units explicitly. See [SPRD API, CLI profiles and current limits](docs/sprd.md). Hardware validation is pending.
+
 ## MediaTek
 
 MediaTek uses LibUsb for BROM/Preloader and independent Legacy, XFlash and XML DA sessions. The reusable .NET 8 contracts, protocol and optional extension services are in `GeekFlashCore.Protocol.Mtk.Abstractions`, `GeekFlashCore.Protocol.Mtk` and `GeekFlashCore.Protocol.Mtk.Extensions`. Sync wire operations share a session gate; async providers resolve DA/EMI and legitimate SLA responses. The CLI is the .NET 10 host.

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+<resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader>
+<data name="Timeout" xml:space="preserve"><value>SPRD operation or resource request timed out.</value></data>
+<data name="LoaderRequired" xml:space="preserve"><value>The selected SPRD entry requires host-supplied FDL resources and load addresses.</value></data>
+<data name="Unavailable" xml:space="preserve"><value>SPRD session unavailable; disconnect and reconnect.</value></data>
+<data name="Reentry" xml:space="preserve"><value>SPRD callbacks cannot reenter the protocol session.</value></data>
+<data name="Phase" xml:space="preserve"><value>SPRD stage: {0}.</value></data>
+<data name="Transfer" xml:space="preserve"><value>SPRD {0}: partition {1}, offset {2}, bytes {3}.</value></data>
+<data name="Command" xml:space="preserve"><value>SPRD command {0}, payload bytes {1}.</value></data>
+<data name="Faulted" xml:space="preserve"><value>SPRD session faulted; reconnect required.</value></data>
+<data name="UnsupportedTarget" xml:space="preserve"><value>SPRD supports named partitions in the default region only.</value></data>
+<data name="PartitionUnitsRequired" xml:space="preserve"><value>Supply verified partitions or the native table size unit; capacities cannot be guessed.</value></data>
+<data name="PartitionMissing" xml:space="preserve"><value>No unique SPRD partition found: {0}.</value></data>
+<data name="InvalidSource" xml:space="preserve"><value>SPRD source is unreadable, changed length or ended unexpectedly.</value></data>
+<data name="NvUnsupported" xml:space="preserve"><value>SPRD NV-specific write and erase formats are not implemented.</value></data>
+<data name="WidthUnsupported" xml:space="preserve"><value>The SPRD 32-bit profile cannot represent this range; explicitly select a verified 64-bit layout.</value></data>
+<data name="RebootUnsupported" xml:space="preserve"><value>SPRD implements normal reset and power off only.</value></data>
+<data name="SparseSeekRequired" xml:space="preserve"><value>SPRD Sparse writes require a stable seekable source.</value></data>
+</root>

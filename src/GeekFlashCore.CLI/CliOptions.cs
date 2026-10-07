@@ -8,6 +8,17 @@ internal sealed record CliOptions
     public string? Usb { get; init; }
     public string? Protocol { get; init; }
     public string? Loader { get; init; }
+    public string? SprdFdl2 { get; init; }
+    public uint? SprdFdl1Address { get; init; }
+    public uint? SprdFdl2Address { get; init; }
+    public GeekFlashCore.Protocol.Sprd.Abstractions.SprdBootStage? SprdEntry { get; init; }
+    public long? SprdPartitionUnit { get; init; }
+    public GeekFlashCore.Protocol.Sprd.Abstractions.SprdPartitionLengthEncoding? SprdLengthEncoding { get; init; }
+    public bool SprdPadOdd { get; init; }
+    public bool SprdDisableTranscode { get; init; }
+    public bool SprdEntryTranscodeDisabled { get; init; }
+    internal bool HasSprdOptions => SprdFdl2 is not null || SprdFdl1Address is not null || SprdFdl2Address is not null ||
+        SprdEntry is not null || SprdPartitionUnit is not null || SprdLengthEncoding is not null || SprdPadOdd || SprdDisableTranscode || SprdEntryTranscodeDisabled;
     public string? MtkPreloader { get; init; }
     public string? MtkDaMode { get; init; }
     public string? MtkAuthenticationFile { get; init; }
@@ -79,6 +90,10 @@ internal sealed record CliOptions
         if (NonInteractive && EffectiveOplusMode != OplusDigestMode.None &&
             (string.IsNullOrWhiteSpace(OplusDigest) || string.IsNullOrWhiteSpace(OplusSign)))
             throw new ArgumentException(Localization.Strings.Cli_OplusResourcesRequired);
+        bool sprd = Protocol is not null && ProtocolRegistry.TryResolve(Protocol, out var sprdRegistration) &&
+            sprdRegistration.Type == GeekFlashCore.Protocol.Abstractions.ProtocolType.Sprd;
+        if (sprd) { SprdProtocolHostAdapter.ValidateOptions(this); return; }
+        if (HasSprdOptions) throw new ArgumentException(Localization.Strings.Cli_SprdOptionConflict);
         bool mtk = Protocol is not null && ProtocolRegistry.TryResolve(Protocol, out var registration) && registration.Type == GeekFlashCore.Protocol.Abstractions.ProtocolType.Mtk ||
             Protocol is null && Usb is { } identity && TransportResolver.TryParseUsb(identity, out int vid, out int pid) && GeekFlashCore.Protocol.Mtk.MtkDeviceIdentify.IsSupported((ushort)vid, (ushort)pid) ||
             Protocol is null && Command.StartsWith("mtk-", StringComparison.OrdinalIgnoreCase);

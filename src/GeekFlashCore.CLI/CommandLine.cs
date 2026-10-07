@@ -15,11 +15,38 @@ internal static class CommandLine
             if (arg is "-h" or "--help") return builder with { Command = "help" };
             if (arg is "-v" or "--verbose") { builder = builder with { Verbose = true }; continue; }
             if (arg == "--non-interactive") { builder = builder with { NonInteractive = true }; continue; }
+            if (arg == "--sprd-pad-odd") { builder = builder with { SprdPadOdd = true }; continue; }
+            if (arg == "--sprd-disable-transcode") { builder = builder with { SprdDisableTranscode = true }; continue; }
+            if (arg == "--sprd-entry-transcode-disabled") { builder = builder with { SprdEntryTranscodeDisabled = true }; continue; }
             if (arg == "--oplus-resume") { builder = builder with { OplusResume = true }; continue; }
             if (arg == "--mtk-nand-write") { builder = builder with { MtkNandWrite = true }; continue; }
             if (arg == "--mtk-iot") { builder = builder with { MtkIoT = true }; continue; }
             string? value = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..] : null;
             string name = arg.Contains('=') ? arg[..arg.IndexOf('=')] : arg;
+            if (name is "--sprd-fdl2" or "--sprd-fdl1-address" or "--sprd-fdl2-address" or "--sprd-entry" or "--sprd-partition-unit" or "--sprd-length")
+            {
+                value ??= i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] :
+                    throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
+                if (string.IsNullOrWhiteSpace(value)) throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
+                builder = name switch
+                {
+                    "--sprd-fdl2" => builder with { SprdFdl2 = value },
+                    "--sprd-fdl1-address" => builder with { SprdFdl1Address = checked((uint)CommandSyntax.Number(value)) },
+                    "--sprd-fdl2-address" => builder with { SprdFdl2Address = checked((uint)CommandSyntax.Number(value)) },
+                    "--sprd-partition-unit" => builder with { SprdPartitionUnit = checked((long)CommandSyntax.Number(value)) },
+                    "--sprd-entry" => builder with { SprdEntry = value.ToLowerInvariant() switch
+                    { "brom" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdBootStage.BootRom,
+                      "fdl1" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdBootStage.Fdl1,
+                      "fdl2" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdBootStage.Fdl2,
+                      _ => throw new ArgumentException(Strings.Cli_SprdProfileInvalid) } },
+                    _ => builder with { SprdLengthEncoding = value.ToLowerInvariant() switch
+                    { "32" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdPartitionLengthEncoding.UInt32,
+                      "64" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdPartitionLengthEncoding.UInt64,
+                      "64-reserved" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdPartitionLengthEncoding.UInt64WithReserved,
+                      _ => throw new ArgumentException(Strings.Cli_SprdProfileInvalid) } }
+                };
+                continue;
+            }
             if(name=="--mtk-extension-abi")
             {
                 value??=i+1<args.Length?args[++i]:throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
@@ -90,6 +117,7 @@ internal static class CommandLine
     {
         string? requested = arguments.FirstOrDefault()?.ToLowerInvariant();
         if (requested == "lp") { LpCommands.PrintHelp(ui); return; }
+        if (requested is "sprd" or "unisoc" or "spreadtrum") { ui.WriteLine(Strings.Cli_HelpSprd); return; }
         if (requested is not (null or "all" or "qcom"))
         {
             if (CommandSyntax.Usages.TryGetValue(requested, out string? common)) PrintUsage(common, ui);
@@ -118,6 +146,7 @@ internal static class CommandLine
         ui.WriteLine(Strings.Cli_HelpMtkParity);
         ui.WriteLine(Strings.Cli_HelpMtkKeys);
         ui.WriteLine(Strings.Cli_HelpMtkWriteExtras);
+        ui.WriteLine(Strings.Cli_HelpSprd);
     }
 
     internal static void PrintUsage(string usage, ConsoleUi ui)

@@ -95,4 +95,7 @@
   <data name="Errors_Lp_LinearExtentOutOfRange" xml:space="preserve"><value>Linear extent 超出其块设备范围。</value></data>
   <data name="Errors_Lp_PartitionRangeInvalid" xml:space="preserve"><value>分区 extent 范围或分区组索引无效。</value></data>
   <data name="Errors_Lp_SourceSmallerThanBlockDevice" xml:space="preserve"><value>提供的源小于 LP block-device。</value></data>
+  <data name="SuperImageInvalid" xml:space="preserve"><value>Super 布局、元数据或映射来源无效。</value></data>
+  <data name="SuperImageUnsupported" xml:space="preserve"><value>Super 流式映射要求单设备、显式分区名称、互不重叠且按逻辑块对齐的 Linear extent。</value></data>
+  <data name="SuperImageMissingImage" xml:space="preserve"><value>Super 的非空逻辑分区缺少镜像来源。</value></data>
 </root>

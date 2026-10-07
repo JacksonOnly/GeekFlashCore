@@ -95,4 +95,7 @@
   <data name="Errors_Lp_LinearExtentOutOfRange" xml:space="preserve"><value>The linear extent is outside its block device.</value></data>
   <data name="Errors_Lp_PartitionRangeInvalid" xml:space="preserve"><value>The partition extent range or group index is invalid.</value></data>
   <data name="Errors_Lp_SourceSmallerThanBlockDevice" xml:space="preserve"><value>The supplied source is smaller than the LP block device.</value></data>
+  <data name="SuperImageInvalid" xml:space="preserve"><value>The Super layout, metadata or mapped source is invalid.</value></data>
+  <data name="SuperImageUnsupported" xml:space="preserve"><value>Streaming Super mapping requires one device, explicit partition names and disjoint, logical-block-aligned linear extents.</value></data>
+  <data name="SuperImageMissingImage" xml:space="preserve"><value>A nonempty Super logical partition has no image source.</value></data>
 </root>

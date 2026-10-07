@@ -78,6 +78,8 @@ using var dz = FirmwareUnpacker.Open(kdz.GetEntry("firmware.dz"));
 
 OFP 分片 Super 会按 NVList 映射为虚拟 `super.img`，保持 Sparse 格式。`Open` 也接受已解包目录；CLI 本地 rawprogram 缺少 `super.img` 时会使用同目录分片，并支持 `ZIP::OFP::entry.xml` 嵌套路径。算法、NV 选择、实际命令和生命周期见 [分片 Super 直读说明](ofp-sparse-super.md)。
 
+Oplus 散包的独立逻辑分区使用 `FirmwareSuperImagePlan`：读取 `super_def` 和 LP metadata 后，先写 metadata，再直接消费各分区 Sparse，默认不扫描全包 payload。CLI 的 `firmware super-info` 与 `write super "package::META/super_def.*.json"` 使用这条路线；SDK 原始窗口回调、显式完整索引入口和性能证据见 [散包 Super 说明](oplus-loose-super.md)。普通 `write` 也可直接读取 `package::image`。
+
 ## 格式与限制
 
 | 格式 | 已实现行为 | 明确边界 |

@@ -3,7 +3,7 @@ A communication protocol and flashing development framework targeting various ch
 
 ## Firmware
 
-`GeekFlashCore.Firmware` exposes ZIP/OZIP, Qualcomm/MediaTek OFP, OPS, PAC, KDZ/DZ, UPDATE.APP and full Android payload v2 entries as seekable, reopenable `IDataSource` instances. The CLI provides `firmware list/extract` and accepts `package::entry.xml` in `rawprogram` and `patch`, so package images can feed the existing Qcom pipeline without extraction files. See [firmware API, CLI examples and format limits](docs/firmware.md).
+`GeekFlashCore.Firmware` exposes ZIP/OZIP, Qualcomm/MediaTek OFP, OPS, PAC, KDZ/DZ, UPDATE.APP and full Android payload v2 entries as seekable, reopenable `IDataSource` instances. The CLI provides `firmware list/extract/super-info` and accepts package entries in `write`, `rawprogram` and `patch`. Oplus loose Super packages use a metadata-first plan that streams each Sparse partition once without a payload pre-scan or extraction files. See [firmware API, CLI examples and format limits](docs/firmware.md) and [loose Super writing](docs/oplus-loose-super.md).
 
 Split OFP Super images map to a virtual sparse `super.img` through the reusable Sparse composer, including ordered overlap handling and preserved DONT_CARE gaps. Unpacked directories and `ZIP::OFP::script.xml` references work with the same Qcom script pipeline. See [split Super streaming examples and budgets](docs/ofp-sparse-super.md).
 

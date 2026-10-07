@@ -5,16 +5,32 @@ namespace GeekFlashCore.CLI;
 
 internal static class FirmwareCommands
 {
-    internal const string Usage = "firmware list <package> | firmware extract <package> <entry> <output>";
+    internal const string Usage = "firmware list <package> | firmware extract <package> <entry> <output> | firmware super-info <package::definition.json>";
     internal static void Validate(string[] args)
     {
-        if (args.Length == 2 && args[0].Equals("list", StringComparison.OrdinalIgnoreCase) ||
+        if (args.Length == 2 && (args[0].Equals("list", StringComparison.OrdinalIgnoreCase) || args[0].Equals("super-info", StringComparison.OrdinalIgnoreCase)) ||
            args.Length == 4 && args[0].Equals("extract", StringComparison.OrdinalIgnoreCase)) return;
         throw new CommandUsageException(Usage);
     }
     internal static void Execute(string[] args, ConsoleUi ui, CancellationToken ct)
     {
         Validate(args);
+        if (args[0].Equals("super-info", StringComparison.OrdinalIgnoreCase))
+        {
+            using var input = FirmwarePackageInput.Open(args[1], ct, requireSuper: true);
+            var image = input.SuperPlan!; var layout = image.Layout;
+            ui.WriteLine(Strings.FormatCli_FirmwareSuperInfo(image.Name, image.LogicalLength,
+                layout.Geometry.MetadataMaxSize, layout.Geometry.MetadataSlotCount, layout.Geometry.LogicalBlockSize, layout.Header.Flags));
+            foreach (var partition in layout.Partitions.Span)
+            {
+                ct.ThrowIfCancellationRequested();
+                ui.WriteLine(Strings.FormatCli_LpPartitionInfo(partition.Name, partition.RawName, partition.LogicalSize,
+                    partition.Attributes, layout.Groups.Span[checked((int)partition.GroupIndex)].Name));
+            }
+            foreach (var group in layout.Groups.Span)
+            { ct.ThrowIfCancellationRequested(); ui.WriteLine(Strings.FormatCli_LpGroupInfo(group.Name, group.RawName, group.MaximumSize, group.Flags)); }
+            return;
+        }
         using var reference = FirmwarePackageReference.Open(args[1], ct);
         var package = reference.Package;
         ui.WriteLine(Strings.FormatCli_FirmwareCatalog(package.Format, package.Entries.Count));

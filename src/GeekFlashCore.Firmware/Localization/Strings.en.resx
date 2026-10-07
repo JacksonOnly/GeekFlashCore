@@ -19,4 +19,9 @@
   <data name="UnsupportedOperation" xml:space="preserve"><value>The payload contains an operation requiring an old image or an unsupported operation.</value></data>
   <data name="OfpSuperVariantRequired" xml:space="preserve"><value>OFP NVList declares different Super fragment sequences; set OfpSuperNvId.</value></data>
   <data name="OfpSuperVariantMissing" xml:space="preserve"><value>The selected Super configuration is absent from the OFP NVList.</value></data>
+  <data name="SuperDefinitionInvalid" xml:space="preserve"><value>The Super definition is invalid, exceeds limits or differs from the package LP metadata.</value></data>
+  <data name="SuperReferenceInvalid" xml:space="preserve"><value>A Super image path reference cycles or exceeds the allowed depth.</value></data>
+  <data name="SuperRegionIncomplete" xml:space="preserve"><value>The Super writer did not fully consume the current data region.</value></data>
+  <data name="SuperSourceAlreadyOpened" xml:space="preserve"><value>The current Super data region can be opened only once.</value></data>
+  <data name="SuperSourceForwardOnly" xml:space="preserve"><value>Super data region streams support forward reads only.</value></data>
 </root>

@@ -19,4 +19,9 @@
   <data name="UnsupportedOperation" xml:space="preserve"><value>该 payload 包含依赖旧镜像的操作或不支持的操作。</value></data>
   <data name="OfpSuperVariantRequired" xml:space="preserve"><value>OFP 的 NVList 包含不同 Super 分片序列，请设置 OfpSuperNvId。</value></data>
   <data name="OfpSuperVariantMissing" xml:space="preserve"><value>OFP 的 NVList 中找不到指定的 Super 配置。</value></data>
+  <data name="SuperDefinitionInvalid" xml:space="preserve"><value>Super 定义无效、超过限额或与包内 LP 元数据不一致。</value></data>
+  <data name="SuperReferenceInvalid" xml:space="preserve"><value>Super 镜像路径引用循环或超过允许层数。</value></data>
+  <data name="SuperRegionIncomplete" xml:space="preserve"><value>Super 写入回调未完整读取当前数据区域。</value></data>
+  <data name="SuperSourceAlreadyOpened" xml:space="preserve"><value>当前 Super 写入区域的数据流只能打开一次。</value></data>
+  <data name="SuperSourceForwardOnly" xml:space="preserve"><value>Super 写入区域的数据流只能向前读取。</value></data>
 </root>

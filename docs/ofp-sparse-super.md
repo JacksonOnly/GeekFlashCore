@@ -1,5 +1,7 @@
 # OFP 分片 Super 直读与刷写
 
+PGT110 等含 `super_def`、LP metadata 和独立逻辑分区镜像的散包使用 [metadata 优先写入路线](oplus-loose-super.md)，不在默认写入前建立整包 Sparse 索引。本文描述同几何 `super.N.*.img` 分片叠加。
+
 `super.0.*.img`、`super.1.*.img` 等文件可能各自声明完整 Super 的逻辑大小。它们的 DontCare 区表示这一分片没有携带该区域，Raw/Fill 区可以重叠。框架按明确的分片顺序叠加：后片数据覆盖前片，DontCare 保留前片数据，所有输入都未覆盖的位置继续保持 DontCare。
 
 输出是虚拟 Sparse 1.0 编码。框架只保存 chunk 区间、来源偏移和 Fill 值，按需生成头并直接读取原分片 payload，没有合并文件、Raw 镜像或按分区尺寸增长的缓存。Qcom 沿用现有 Sparse 计划，只发送实际数据区。

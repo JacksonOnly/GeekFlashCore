@@ -10,9 +10,16 @@ public static partial class SparseImageComposer
 {
     /// <summary>Validates sources and maps later RAW/FILL data over earlier data without expanding RAW.</summary>
     /// <remarks>Each factory transfers ownership of its opened stream to this API, at any position. Factories remain borrowed.
-    /// Source checksums, when present, are verified before publishing the result; output checksum is absent.</remarks>
+    /// Source checksums, when present, are verified before publishing the result; output checksum is absent.
+    /// The parse token also governs output streams.</remarks>
     public static SparseImageComposition Compose(IReadOnlyList<Func<CancellationToken, Stream>> sources,
         SparseImageCompositionOptions? options = null, CancellationToken cancellationToken = default)
+        => Compose(sources, options, cancellationToken, cancellationToken);
+
+    /// <summary>Builds a validated encoding with separate parse and cached-result lifetime cancellation.</summary>
+    /// <remarks>Parsing observes cancellationToken. Output streams observe lifetimeCancellationToken and their own open token.</remarks>
+    public static SparseImageComposition Compose(IReadOnlyList<Func<CancellationToken, Stream>> sources,
+        SparseImageCompositionOptions? options, CancellationToken cancellationToken, CancellationToken lifetimeCancellationToken)
     {
         ArgumentNullException.ThrowIfNull(sources); options ??= new(); options.Validate(); cancellationToken.ThrowIfCancellationRequested();
         int sourceCount = sources.Count;
@@ -48,7 +55,7 @@ public static partial class SparseImageComposer
                         chunk.PayloadOffset, chunk.Type, chunk.FillValue));
             }
         }
-        return Build(snapshots, ranges, blockSize, totalBlocks, options, cancellationToken);
+        return Build(snapshots, ranges, blockSize, totalBlocks, options, cancellationToken, lifetimeCancellationToken);
     }
 
     internal static void ValidateSource(Stream? source, int minimumLength = 28)
@@ -58,7 +65,7 @@ public static partial class SparseImageComposer
     }
 
     private static SparseImageComposition Build(CompositionSource[] sources, List<DataRange> ranges,
-        uint blockSize, uint totalBlocks, SparseImageCompositionOptions options, CancellationToken ct)
+        uint blockSize, uint totalBlocks, SparseImageCompositionOptions options, CancellationToken ct, CancellationToken? lifetimeCancellationToken = null)
     {
         var events = new Boundary[checked(ranges.Count * 2)];
         for (int i = 0; i < ranges.Count; i++) { ct.ThrowIfCancellationRequested(); events[i * 2] = new(ranges[i].Start, i, true); events[i * 2 + 1] = new(ranges[i].End, i, false); }
@@ -80,7 +87,7 @@ public static partial class SparseImageComposer
             long payload = chunk.Type == SparseChunkType.Raw ? checked((long)chunk.BlockCount * blockSize) : chunk.Type == SparseChunkType.Fill ? 4 : 0;
             encoded = checked(encoded + 12 + payload);
         }
-        return new(sources, chunks.ToArray(), blockSize, totalBlocks, encoded, options.MaximumOpenSources, ct);
+        return new(sources, chunks.ToArray(), blockSize, totalBlocks, encoded, options.MaximumOpenSources, lifetimeCancellationToken ?? ct);
 
         void Emit(long start, long end)
         {

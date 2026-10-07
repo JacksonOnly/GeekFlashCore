@@ -33,7 +33,7 @@ internal static class ZipParser
                 if (h.AsSpan(0, 12).SequenceEqual("OPPOENCRYPT!"u8))
                 { OzipParser.ZipEntry(c, name, length, decode); encrypted = true; c.Package.SetFormat(FirmwareFormat.Ozip); }
             }
-            if (!encrypted) c.Add(name, length, ct => new ReplayStream(() => decode(ct), length, c.Options.BufferSize, ct));
+            if (!encrypted) c.Add(name, length, ct => new ReplayStream(() => decode(ct), length, c.Options.BufferSize, ct, historySize: 128 * 1024));
         }
     }
     private static Stream OpenEntry(ParseContext c, int index, ushort method, CancellationToken ct)

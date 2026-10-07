@@ -116,25 +116,27 @@ internal sealed class DecoderInputStream(Stream inner, CancellationToken ct) : S
     protected override void Dispose(bool disposing) { if (disposing) inner.Dispose(); base.Dispose(disposing); }
 }
 
-// Seek uses replay, never a temporary file or a growing in-memory cache.
-internal sealed class ReplayStream(Func<Stream> factory, long length, int bufferSize, CancellationToken ct, long maximumPadding = 0) : ReadOnlyStream(ct)
+// Seek outside the optional fixed read history uses replay; no temporary file or growing cache.
+internal sealed class ReplayStream(Func<Stream> factory, long length, int bufferSize, CancellationToken ct,
+    long maximumPadding = 0, int historySize = 0) : ReadOnlyStream(ct)
 {
     private Stream? _decoder;
     private long _decoded;
     private bool _ended;
+    private byte[]? _history;
     public override long Length { get { Check(); return length; } }
     private void Align()
     {
-        if (_decoder is null || _decoded > Cursor)
+        if (_decoder is null || Cursor < Math.Max(0, _decoded - historySize))
         { _decoder?.Dispose(); _decoder = null; _decoder = factory(); _decoded = 0; _ended = false; }
-        if (_decoded == Cursor) return;
+        if (_decoded >= Cursor) return;
         byte[] scratch = ArrayPool<byte>.Shared.Rent(bufferSize);
         try
         {
             while (_decoded < Cursor)
             {
                 Check(); int size = (int)Math.Min(bufferSize, Cursor - _decoded);
-                int n = Decode(scratch.AsSpan(0, size)); _decoded += n;
+                int n = Decode(scratch.AsSpan(0, size)); Remember(scratch.AsSpan(0, n)); _decoded += n;
             }
         }
         finally { ArrayPool<byte>.Shared.Return(scratch, clearArray: true); }
@@ -150,14 +152,38 @@ internal sealed class ReplayStream(Func<Stream> factory, long length, int buffer
         }
         return n;
     }
+    private void Remember(ReadOnlySpan<byte> bytes)
+    {
+        if (historySize == 0 || bytes.IsEmpty) return;
+        _history ??= ArrayPool<byte>.Shared.Rent(historySize);
+        long start = _decoded;
+        if (bytes.Length > historySize) { start += bytes.Length - historySize; bytes = bytes[^historySize..]; }
+        int index = (int)(start % historySize), first = Math.Min(bytes.Length, historySize - index);
+        bytes[..first].CopyTo(_history.AsSpan(index)); bytes[first..].CopyTo(_history);
+    }
     public override int Read(Span<byte> buffer)
     {
         Check(); if (buffer.Length == 0) return 0; Align();
+        if (Cursor < _decoded)
+        {
+            int cached = (int)Math.Min(buffer.Length, _decoded - Cursor), index = (int)(Cursor % historySize);
+            int first = Math.Min(cached, historySize - index);
+            _history.AsSpan(index, first).CopyTo(buffer); _history.AsSpan(0, cached - first).CopyTo(buffer[first..]);
+            Cursor += cached; return cached;
+        }
         int count = (int)Math.Min(buffer.Length, length - Cursor);
         if (count == 0) { if (!_ended && _decoder!.ReadByte() != -1) throw new InvalidDataException(Strings.LengthMismatch); _ended = true; return 0; }
-        int n = Decode(buffer[..count]); Cursor += n; _decoded += n;
+        int n = Decode(buffer[..count]); Remember(buffer[..n]); Cursor += n; _decoded += n;
         if (Cursor == length) { if (!_ended && _decoder!.ReadByte() != -1) throw new InvalidDataException(Strings.LengthMismatch); _ended = true; }
         return n;
     }
-    protected override void Dispose(bool disposing) { if (disposing) _decoder?.Dispose(); base.Dispose(disposing); }
+    protected override void Dispose(bool disposing)
+    {
+        try { if (disposing && CanRead) _decoder?.Dispose(); }
+        finally
+        {
+            if (disposing && _history is { } history) { _history = null; ArrayPool<byte>.Shared.Return(history, clearArray: true); }
+            base.Dispose(disposing);
+        }
+    }
 }

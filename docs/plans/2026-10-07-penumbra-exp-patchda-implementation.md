@@ -64,6 +64,68 @@
   R0rt1z2、Chimera、kamakiri/chaosmaster/xyzz、mtkclient 字符串来源）与偏离说明。
 - 全量回归后提交。
 
+### EXP-PORT-01D（2026-10-07）：真机裁决与 Kamakiri2 变体切换
+
+- 真机（MT6893 Dimensity 1200，hw 0x0950，SBC/SLA/DAA 全开）：Penumbra linecode 变体
+  （0xA1/0x21 7 字节、SET 12 字节、GET_DESCRIPTOR 0x0200）在第一次 sys_region_access（读
+  ptr_usbdl，offset 0xE75C）收到 BROM 状态 0x1D1A（BE 读法；mtkclient LE 0x1A1D，即
+  "Kamakiri2 执行漏洞失败, 缓存问题"）——缓存指针 corrupt 未生效。echo/Read32/控制传输全部完成
+  （第二次运行全程 16ms），排除传输层与移植偏差。
+- penumbra 原版实测同样失败：antumbra 2.0.0（本地构建，nightly + VS2022 完整工具链）输出
+  "Device is vulnerable to Linecode! Exploiting..." 后无 "Linecode done!"，`exploit!` 宏吞掉
+  trigger 错误后继续 DA1 上传，最终报 SLA challenge not completed（0x1d0d）。证明 C# 移植忠实、
+  失败源于变体本身而非移植 bug。
+- 裁决：MT6893 需要 mtkclient kamakiri2 变体——取线编码 0xA1/0x25 8 字节 + 终止零（9 字节）、
+  SET_LINE_CODING 13 字节（指针落在偏移 9，比 Penumbra 变体晚 1 字节）、GET_DESCRIPTOR 0x02FF、
+  先做 brom_register_access(0,1) 缓存探针。用户自研 GeekFlashTool（基于 mtkclient）对本机
+  ChipConfig[0x950] 明确使用 KAMAKIRI2，与裁决一致。
+- 修改：`PenumbraLinecodeTrigger.ControlSequence` 改 13 字节 SET + 0x02FF；`Linecode()` 前置容错
+  缓存探针（读 1 字节 @ 0，失败忽略且不吞取消）；策略取线编码改 0xA1/0x25 8 字节；异常消息携带
+  状态码；trigger 条目/指针/访问 Debug 日志。
+- 测试更新（linecode 8 个）：13 字节 SET、指针在 w[9..]、0x02FF 断言、探针 wire 字节。MTK 553
+  全通过、CLI Debug 构建 0 警告 0 错误、git diff --check 通过。
+- 真机复验（第二轮）：0xA1/0x25 取线编码请求被 MT6893 BROM 直接 STALL（LibUsbDotNet
+  UsbException "Input/Output Error"），触发前即失败。对照 mtkclient kamakiri2.py：其 0x25
+  首次尝试失败被 except 吞掉，`exploit()` 主路径回退 `ctrl_transfer(0xA1, 0x21, 0, 0, 7)` 取 7
+  字节线编码 + 终止零（8 字节）。据此修正为单变量实验：取码回退 0xA1/0x21（8 字节）、SET 回退
+  12 字节（指针在偏移 8）、GET_DESCRIPTOR 保持 0x02FF——即 Penumbra 变体唯一改 0x0200→0x02FF；
+  缓存探针同步移除（mtkclient 中 try/except 说明非必需）。
+- 待验证：真机重跑；若仍 0x1D1A 则逐一回退探针/变体差异（0x02FF 索引、13 字节长度）。
+
+### EXP-PORT-01E（2026-10-07）：与 mtkclient 逐项对照后的线编码修复
+
+- 现象：真机（MT6893，hw 0x0950，SBC/SLA/DAA 全开）在 `Run` 的第一次 `Linecode`
+  访问（读 ptr_usbdl）失败，异常 `linecode status 0x1D1A`。堆栈定位：`Linecode` 内
+  部 try 块中的一字节缓存 prime 已被拒绝（吞掉），控制序列后真正的区域读再被
+  BROM 以同一状态拒绝，说明 usbdl 指针没有被修复。
+- 逐项对照三个参考实现（mtkclient `Library/Exploit/kamakiri2.py`、
+  GeekFlashTool `Exploit/Kamakiri2*.cs`、penumbra `core/src/exploit/linecode.rs`）：
+  - 三者都把**设备线编码读回值**当作 SET_LINE_CODING 的前缀。GeekFlashTool 用
+    `Serial.ControlTransfer(0xA1, 0x25, …)` 的 1 ms 读回结果（其 `UsbDevice.ControlTransfer`
+    经 `PinnedHandle` 把控制传输的 IN 数据写回同一 byte[]），mtkclient 用
+    `0xA1/0x21` 的 7 字节 + 终止零，penumbra 用 `ctrl_in(0xA1, 0x21, 0, 0, 7)` 后
+    `push(0)`。**上一版 C# 丢弃读回值、改用 8 个零字节，与三者都不一致。**
+  - BROM 的 SET_LINE_CODING 处理器用该缓存记账，第二个字节是缓冲区内索引；索引被
+    置零后改写的是无关字，usbdl 指针保持损坏 → 后续 `sys_region_access` 返回
+    0x1A1D（mtkclient 的 “Kamakiri2 failed, cache issue”）。
+  - 载荷长度：mtkclient 是 13 字节（7 字节线编码 + 终止零 + 4 字节地址，指针落在
+    偏移 9），GeekFlashTool 是 12 字节（8 字节缓存 + 指针落在偏移 8）。两者都在
+    0x950 上可用，说明 BROM 使用的是 8 字节缓存，指针应落在偏移 8；本实现保持 12
+    字节，只把前缀换成真实线编码。
+  - 状态字：`brom_register_access` 与 GeekFlashTool 都以本机序（小端）解析 2 字节
+    状态；上一版按大端解析，0x1A1D 被显示成 0x1D1A。已改为小端，异常消息与参考一致。
+  - 多余的 `0xA1/0x25`：mtkclient 主路径不发该请求（MT6893 直接 STALL，第二轮真机
+    日志已证实），已从 `ControlSequence` 移除，只保留 0xA1/0x21 取码。
+- 修改：`PenumbraLinecodeTrigger.ControlSequence` 去掉 0xA1/0x25、状态字改小端；
+  `LineCodeExploitStrategy` 把 `0xA1/0x21` 读到的 7 字节 + 终止零交给触发序列。
+- 测试更新（linecode 17 个）：新增 `ControlSequenceCarriesDeviceLineCodingBytes`
+  （断言设备线编码原样上线、指针在偏移 8、载荷 12 字节）、`DoesNotContain(0xA1/0x25)`、
+  探针测试改为小端状态。MTK 556 全通过，CLI 106 / Qcom 506 / Core 38 / Android.Lp 63 /
+  Firmware 111 全通过，Release 构建 0 警告 0 错误，`git diff --check` 通过。
+- 真机复验脚本（ignored，不提交）：`.tests/tmp/mtk_linecode_ab.py`
+  （`zeros` = 修复前行为，`device` = mtkclient 行为），每次运行需要重新插拔；脚本逐步
+  打印控制传输字节、两种字节序的状态字与失败点。
+
 ## 验证汇总（EXP-PORT-01B 时点）
 
 | 验证命令 | 结果 |
@@ -77,8 +139,13 @@
 
 ## 未决风险
 
-- 无真机验证：LineCode 的 BE/LE 字节解释按参考逐字节复刻，但与 mtkclient BE 惯例冲突，需硬件
-  证据裁决；Carbonara XFlash boot_to 后不读中间状态（参考如此），与本项目标准 DA2 上传线路不同。
+- LineCode 已获真机裁决：Penumbra 变体在 MT6893 上被 BROM 以 0x1A1D（缓存问题）拒绝，
+  penumbra 原版同样失败；本实现已切换为 mtkclient kamakiri2 变体（EXP-PORT-01D），并在
+  EXP-PORT-01E 修复了线编码前缀与状态字字节序。**修复后的序列尚未真机复验**：预期第一次
+  `Linecode` 访问的 prime 仍可能被拒绝（参考同样吞掉），但控制序列后的区域读必须成功；
+  若仍为 0x1A1D，用 `.tests/tmp/mtk_linecode_ab.py` 对比 `zeros`/`device` 两种前缀确定剩余
+  偏差（下一候选：0x02FF 索引、12/13 字节长度、控制传输间隔）。Carbonara XFlash boot_to 后
+  不读中间状态（参考如此），与本项目标准 DA2 上传线路不同。
 - HeapBait 的雪橇在参考中为约 50MiB 连续分配；本实现按 3MiB 有界窗口流式发送，设备端行为是否
   等价未验证。失败后的容忍性读可能造成 XML 流失步。
 - 保护特征/补丁规则只证明静态移植，不构成漏洞适用性证明；Completed 不等于设备接受补丁。

@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
+using System.Text;
 using System.Xml;
 using GeekFlashCore.Firmware.Internals;
 using GeekFlashCore.Firmware.Localization;
@@ -10,11 +11,32 @@ namespace GeekFlashCore.Firmware;
 /// <summary>Opens firmware containers as catalogs of streaming plaintext data sources.</summary>
 public static class FirmwareUnpacker
 {
-    /// <summary>Opens a local package. Streams opened by this method are owned by the package entries.</summary>
+    /// <summary>Opens a local firmware container or unpacked directory as a read-only catalog.</summary>
+    /// <remarks>The catalog owns its internal resources; callers dispose each opened entry stream.</remarks>
     public static FirmwarePackage Open(string path, FirmwareOpenOptions? options = null, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        return Open(new PathSource(Path.GetFullPath(path)), options, cancellationToken);
+        path = Path.GetFullPath(path);
+        if (System.IO.Directory.Exists(path)) return OpenDirectory(path, options, cancellationToken);
+        return Open(new PathSource(path), options, cancellationToken);
+    }
+    private static FirmwarePackage OpenDirectory(string path, FirmwareOpenOptions? options, CancellationToken ct)
+    {
+        options ??= new(); options.Validate(); ct.ThrowIfCancellationRequested();
+        if (options.Format is not (FirmwareFormat.Auto or FirmwareFormat.Directory)) throw new NotSupportedException(Strings.Unsupported);
+        var package = new FirmwarePackage(FirmwareFormat.Directory, options, ct);
+        try
+        {
+            var catalog = new FirmwareCatalog(package, ct);
+            var enumeration = new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint, IgnoreInaccessible = false };
+            foreach (string file in System.IO.Directory.EnumerateFiles(path, "*", enumeration))
+            {
+                catalog.Check(); var source = new PathSource(file);
+                catalog.Add(Path.GetRelativePath(path, file), source.Length, token => SourceStream.Slice(source, 0, source.Length, token));
+            }
+            OfpSuperMapper.Directory(catalog); package.Initialize(catalog.Entries); return package;
+        }
+        catch { package.Dispose(); throw; }
     }
     /// <summary>Parses bounded metadata from a borrowed, stable, seekable, reopenable source.</summary>
     /// <remarks>Keep the returned package alive while Qcom consumes its entries. No extraction directory is created.</remarks>
@@ -42,7 +64,7 @@ public static class FirmwareUnpacker
             }
             cancellationToken.ThrowIfCancellationRequested(); package.Initialize(context.Entries); return package;
         }
-        catch (Exception e) when (e is EndOfStreamException or OverflowException or XmlException or CryptographicException)
+        catch (Exception e) when (e is EndOfStreamException or OverflowException or XmlException or CryptographicException or DecoderFallbackException)
         { package.Dispose(); throw new InvalidDataException(Strings.InvalidMetadata, e); }
         catch { package.Dispose(); throw; }
     }

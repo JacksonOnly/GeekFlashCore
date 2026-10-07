@@ -11,6 +11,9 @@ internal sealed class CfbStream : ReadOnlyStream
     private readonly Aes _aes;
     private readonly byte[] _iv;
     private readonly byte[] _cipher = ArrayPool<byte>.Shared.Rent(65536);
+    private readonly byte[] _plain = ArrayPool<byte>.Shared.Rent(65536);
+    private long _cacheOffset = -1;
+    private int _cacheLength;
     internal CfbStream(Stream source, long encryptedLength, byte[] key, byte[] iv, CancellationToken ct) : base(ct)
     {
         _source = source; _encryptedLength = encryptedLength; _iv = iv.ToArray();
@@ -19,7 +22,7 @@ internal sealed class CfbStream : ReadOnlyStream
         catch
         {
             try { source.Dispose(); }
-            finally { aes?.Dispose(); CryptographicOperations.ZeroMemory(_iv); ArrayPool<byte>.Shared.Return(_cipher, true); }
+            finally { aes?.Dispose(); CryptographicOperations.ZeroMemory(_iv); ArrayPool<byte>.Shared.Return(_cipher, true); ArrayPool<byte>.Shared.Return(_plain, true); }
             throw;
         }
     }
@@ -29,18 +32,29 @@ internal sealed class CfbStream : ReadOnlyStream
         Check(); int count = (int)Math.Min(buffer.Length, Length - Cursor); if (count == 0) return 0;
         if (Cursor >= _encryptedLength)
         { _source.Position = Cursor; int read = _source.Read(buffer[..count]); Cursor += read; return read; }
-        count = (int)Math.Min(count, _encryptedLength - Cursor);
-        long block = Cursor / 16 * 16; int within = (int)(Cursor - block);
+        long block = Cursor / 65536 * 65536;
+        if (_cacheOffset != block) Fill(block);
+        int within = (int)(Cursor - block); count = Math.Min(count, _cacheLength - within);
+        _plain.AsSpan(within, count).CopyTo(buffer); Cursor += count; return count;
+    }
+    private void Fill(long block)
+    {
         Span<byte> feedback = stackalloc byte[16];
-        if (block == 0) _iv.CopyTo(feedback); else { _source.Position = block - 16; _source.ReadExactly(feedback); }
-        if (within == 0 && count >= 16)
+        if (block == 0) _iv.CopyTo(feedback);
+        else if (_cacheOffset + _cacheLength == block && _cacheLength >= 16 && _cacheLength % 16 == 0)
+            _cipher.AsSpan(_cacheLength - 16, 16).CopyTo(feedback);
+        else { _source.Position = block - 16; _source.ReadExactly(feedback); }
+        _cacheOffset = -1;
+        int count = (int)Math.Min(65536, _encryptedLength - block), complete = count / 16 * 16;
+        _source.Position = block; _source.ReadExactly(_cipher.AsSpan(0, count));
+        if (complete > 0) _aes.DecryptCfb(_cipher.AsSpan(0, complete), feedback, _plain, PaddingMode.None, 128);
+        if (complete < count)
         {
-            int size = Math.Min(65536, count / 16 * 16); _source.Position = Cursor; _source.ReadExactly(_cipher.AsSpan(0, size));
-            _aes.DecryptCfb(_cipher.AsSpan(0, size), feedback, buffer, PaddingMode.None, 128); Cursor += size; return size;
+            if (complete >= 16) _cipher.AsSpan(complete - 16, 16).CopyTo(feedback);
+            Span<byte> mask = stackalloc byte[16]; _aes.EncryptEcb(feedback, mask, PaddingMode.None);
+            for (int i = complete; i < count; i++) _plain[i] = (byte)(_cipher[i] ^ mask[i - complete]);
         }
-        Span<byte> mask = stackalloc byte[16]; _aes.EncryptEcb(feedback, mask, PaddingMode.None);
-        int n = Math.Min(count, 16 - within); _source.Position = Cursor; _source.ReadExactly(buffer[..n]);
-        for (int i = 0; i < n; i++) buffer[i] ^= mask[within + i]; Cursor += n; return n;
+        _cacheLength = count; _cacheOffset = block;
     }
     protected override void Dispose(bool disposing)
     {
@@ -49,7 +63,7 @@ internal sealed class CfbStream : ReadOnlyStream
             if (disposing && CanRead)
             {
                 try { _source.Dispose(); }
-                finally { _aes.Dispose(); CryptographicOperations.ZeroMemory(_iv); ArrayPool<byte>.Shared.Return(_cipher, true); }
+                finally { _aes.Dispose(); CryptographicOperations.ZeroMemory(_iv); ArrayPool<byte>.Shared.Return(_cipher, true); ArrayPool<byte>.Shared.Return(_plain, true); }
             }
         }
         finally { base.Dispose(disposing); }

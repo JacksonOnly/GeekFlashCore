@@ -10,9 +10,9 @@ internal static class FirmwareXml
 {
     private const string ProgramAttributes = "SECTOR_SIZE_IN_BYTES file_sector_offset filename label num_partition_sectors partofsingleimage physical_partition_number readbackverify size_in_KB sparse start_byte_hex start_sector";
     private const string PatchAttributes = "SECTOR_SIZE_IN_BYTES byte_offset filename physical_partition_number size_in_bytes start_sector value what";
-    internal static XElement Parse(ParseContext c, byte[] bytes)
+    internal static XElement Parse(ParseContext c, ReadOnlySpan<byte> bytes)
     {
-        string text = Encoding.UTF8.GetString(bytes).TrimEnd('\0', ' ', '\r', '\n', '\t');
+        string text = new UTF8Encoding(false, true).GetString(bytes).TrimEnd('\0', ' ', '\r', '\n', '\t');
         var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = c.Options.MaximumMetadataBytes, IgnoreComments = true };
         using (var reader = XmlReader.Create(new StringReader(text), settings))
         {
@@ -24,6 +24,14 @@ internal static class FirmwareXml
             }
         }
         using var final = XmlReader.Create(new StringReader(text), settings); return XElement.Load(final);
+    }
+    internal static XElement ParseOfp(ParseContext c, ReadOnlySpan<byte> bytes)
+    {
+        // Some Qualcomm OFP lengths include one opaque terminator after the complete XML root.
+        static ReadOnlySpan<byte> Trim(ReadOnlySpan<byte> value)
+        { while (!value.IsEmpty && value[^1] is 0 or 32 or 13 or 10 or 9) value = value[..^1]; return value; }
+        if (bytes.Length > 1 && !Trim(bytes).EndsWith("</ProFile>"u8) && Trim(bytes[..^1]).EndsWith("</ProFile>"u8)) bytes = bytes[..^1];
+        return Parse(c, bytes);
     }
     internal static long Number(XElement e, string attribute, long fallback = 0)
     {
@@ -53,13 +61,22 @@ internal static class FirmwareXml
                 string? name = (string?)e.Attribute("filename") ?? (string?)e.Attribute("Path");
                 if (string.IsNullOrWhiteSpace(name)) continue;
                 long size = Number(e, "SizeInByteInSrc"), start = Offset(e, page); bool encrypted = section is not ("ChainedTableOfDigests" or "DigestsToSign");
+                if (section == "ProgramList" && size == 0 && (string?)e.Attribute("label") == "super" && Section(root, "Super") is not null) continue;
                 name = FirmwarePath.Normalize(name); var layout = (start, size, encrypted);
                 if (known.TryGetValue(name, out var previous)) { if (previous != layout) throw new InvalidDataException(Strings.AmbiguousEntry); continue; }
                 known.Add(name, layout);
                 if (encrypted) c.Encrypted(name, start, size, Math.Min(size, 0x40000), key, iv); else c.Slice(name, start, size);
             }
         }
-        if (Section(root, "ProgramList") is { } programs) Script(c, "rawprogram.xml", programs.Elements("program"), false);
+        bool hasSuper = OfpSuperMapper.Ofp(c, root);
+        if (Section(root, "ProgramList") is { } programs)
+        {
+            Script(c, "rawprogram.xml", programs.Elements("program").Select(e =>
+            {
+                if (!hasSuper || (string?)e.Attribute("label") != "super" || !string.IsNullOrWhiteSpace((string?)e.Attribute("filename"))) return e;
+                var fixedProgram = new XElement(e); fixedProgram.SetAttributeValue("filename", "super.img"); return fixedProgram;
+            }), false);
+        }
         if (Section(root, "Super") is { } super) Script(c, "rawprogram_super.xml", super.Elements("program"), false);
         if (Section(root, "PatchList") is { } patches) Script(c, "patch.xml", patches.Elements("patch"), true);
     }

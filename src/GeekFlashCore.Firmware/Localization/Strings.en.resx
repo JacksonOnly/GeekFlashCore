@@ -17,4 +17,6 @@
   <data name="Unsupported" xml:space="preserve"><value>The firmware format, version, or key is unsupported.</value></data>
   <data name="InvalidMetadata" xml:space="preserve"><value>Firmware metadata is invalid or exceeds configured limits.</value></data>
   <data name="UnsupportedOperation" xml:space="preserve"><value>The payload contains an operation requiring an old image or an unsupported operation.</value></data>
+  <data name="OfpSuperVariantRequired" xml:space="preserve"><value>OFP NVList declares different Super fragment sequences; set OfpSuperNvId.</value></data>
+  <data name="OfpSuperVariantMissing" xml:space="preserve"><value>The selected Super configuration is absent from the OFP NVList.</value></data>
 </root>

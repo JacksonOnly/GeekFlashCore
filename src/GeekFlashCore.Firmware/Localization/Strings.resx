@@ -17,4 +17,6 @@
   <data name="Unsupported" xml:space="preserve"><value>不支持该固件格式、版本或密钥。</value></data>
   <data name="InvalidMetadata" xml:space="preserve"><value>固件元数据无效或超出配置限制。</value></data>
   <data name="UnsupportedOperation" xml:space="preserve"><value>该 payload 包含依赖旧镜像的操作或不支持的操作。</value></data>
+  <data name="OfpSuperVariantRequired" xml:space="preserve"><value>OFP 的 NVList 包含不同 Super 分片序列，请设置 OfpSuperNvId。</value></data>
+  <data name="OfpSuperVariantMissing" xml:space="preserve"><value>OFP 的 NVList 中找不到指定的 Super 配置。</value></data>
 </root>

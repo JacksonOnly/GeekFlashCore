@@ -2,6 +2,8 @@ using System.Buffers.Binary;
 using SharpCompress.Archives.Zip;
 using SharpCompress.Archives;
 using SharpCompress.Readers;
+using NativeZipArchive = System.IO.Compression.ZipArchive;
+using NativeZipMode = System.IO.Compression.ZipArchiveMode;
 using GeekFlashCore.Firmware.Localization;
 
 namespace GeekFlashCore.Firmware.Internals;
@@ -12,17 +14,18 @@ internal static class ZipParser
     {
         if (c.Source.Length >= 12 && c.Read(0, 12).AsSpan().SequenceEqual("OPPOENCRYPT!"u8))
         { OzipParser.Payload(c); return; }
-        Preflight(c);
+        ushort[] methods = Preflight(c);
         c.Input.Position = 0;
-        using var archive = ZipArchive.OpenArchive(c.Input, new ReaderOptions { LeaveStreamOpen = true, BufferSize = c.Options.BufferSize });
+        using var archive = new NativeZipArchive(c.Input, NativeZipMode.Read, leaveOpen: true);
         int index = 0;
         foreach (var e in archive.Entries)
         {
             c.Check(); int slot = index++;
-            if (e.IsDirectory) { FirmwarePath.Normalize((e.Key ?? string.Empty).TrimEnd('/', '\\')); continue; }
-            string name = FirmwarePath.Normalize(e.Key ?? throw new InvalidDataException(Strings.InvalidMetadata)); long length = e.Size;
+            bool directory = e.Name.Length == 0 || (e.ExternalAttributes & 0x10) != 0 || (e.ExternalAttributes & unchecked((int)0xF0000000)) == 0x40000000;
+            if (directory) { FirmwarePath.Normalize(e.FullName.TrimEnd('/', '\\')); continue; }
+            string name = FirmwarePath.Normalize(e.FullName); long length = e.Length;
             if (length < 0) throw new InvalidDataException(Strings.InvalidRange);
-            Func<CancellationToken, Stream> decode = ct => OpenEntry(c, slot, ct);
+            Func<CancellationToken, Stream> decode = ct => OpenEntry(c, slot, methods[slot], ct);
             bool encrypted = false;
             if (length >= 0x60)
             {
@@ -33,18 +36,23 @@ internal static class ZipParser
             if (!encrypted) c.Add(name, length, ct => new ReplayStream(() => decode(ct), length, c.Options.BufferSize, ct));
         }
     }
-    private static Stream OpenEntry(ParseContext c, int index, CancellationToken ct)
+    private static Stream OpenEntry(ParseContext c, int index, ushort method, CancellationToken ct)
     {
         c.Check(); ct.ThrowIfCancellationRequested();
-        Stream source = new DecoderInputStream(SourceStream.Open(c.Source), ct); IArchive? archive = null;
+        Stream source = new DecoderInputStream(SourceStream.Open(c.Source), ct); IDisposable? archive = null;
         try
         {
-            archive = ZipArchive.OpenArchive(source, new ReaderOptions { LeaveStreamOpen = false, BufferSize = c.Options.BufferSize });
-            var e = archive.Entries.ElementAt(index); return new OwnedStream(e.OpenEntryStream(), archive);
+            if (method == 12)
+            {
+                var fallback = ZipArchive.OpenArchive(source, new ReaderOptions { LeaveStreamOpen = false, BufferSize = c.Options.BufferSize }); archive = fallback;
+                return new OwnedStream(fallback.Entries.ElementAt(index).OpenEntryStream(), archive);
+            }
+            var native = new NativeZipArchive(source, NativeZipMode.Read, leaveOpen: false); archive = native;
+            return new OwnedStream(native.Entries[index].Open(), archive);
         }
         catch { archive?.Dispose(); source.Dispose(); throw; }
     }
-    private static void Preflight(ParseContext c)
+    private static ushort[] Preflight(ParseContext c)
     {
         // Fixed signature-search scratch is separate from the serialized metadata budget.
         int size = (int)Math.Min(65557, c.Source.Length); byte[] tail = new byte[size];
@@ -65,7 +73,7 @@ internal static class ZipParser
         }
         c.Limit(count, c.Options.MaximumEntries); c.Limit(length, c.Options.MaximumMetadataBytes); SourceStream.Range(c.Source.Length, offset, length);
         // Count the central headers too: do not trust only the EOCD's count before the archive allocates its catalog.
-        long cursor = offset, limit = checked(offset + length), actual = 0;
+        long cursor = offset, limit = checked(offset + length), actual = 0; var methods = new List<ushort>();
         while (cursor < limit)
         {
             byte[] h = c.Read(cursor, 46); if (ParseContext.U32(h, 0) != 0x02014B50) throw new InvalidDataException(Strings.InvalidMetadata);
@@ -74,8 +82,10 @@ internal static class ZipParser
             ushort method = BinaryPrimitives.ReadUInt16LittleEndian(h.AsSpan(10));
             if (method is not (0 or 8 or 12)) throw new NotSupportedException(Strings.Unsupported);
             c.Limit(++actual, c.Options.MaximumEntries);
+            methods.Add(method);
             cursor = checked(cursor + 46 + BinaryPrimitives.ReadUInt16LittleEndian(h.AsSpan(28)) + BinaryPrimitives.ReadUInt16LittleEndian(h.AsSpan(30)) + BinaryPrimitives.ReadUInt16LittleEndian(h.AsSpan(32)));
         }
         if (cursor != limit || actual != count) throw new InvalidDataException(Strings.InvalidMetadata);
+        return methods.ToArray();
     }
 }

@@ -80,7 +80,7 @@ internal static class OfpParser
                 byte[] plain = Decrypt(cipher, pair.Key, pair.Iv);
                 try
                 {
-                    var xml = FirmwareXml.Parse(c, plain);
+                    var xml = FirmwareXml.ParseOfp(c, plain);
                     if (xml.Name != "ProFile") throw new InvalidDataException(Strings.InvalidMetadata);
                     c.Package.Secret(pair.Key); c.Package.Secret(pair.Iv); keep = true;
                     FirmwareXml.OfpEntries(c, xml, page, pair.Key, pair.Iv); return;

@@ -433,4 +433,12 @@ Keys go only to files.</value></data>
   <data name="Cli_FirmwareScriptSyntax" xml:space="preserve"><value>Package script syntax is &lt;package&gt;::&lt;entry.xml&gt;.</value></data>
   <data name="Cli_FirmwareSuperCleanupFailed" xml:space="preserve"><value>Failed to close the session after partial Super writing; exception type: {0}.</value></data>
   <data name="Cli_FirmwareDeferredLength" xml:space="preserve"><value>On demand</value></data>
+  <data name="Cli_SignedTableWaiting" xml:space="preserve"><value>The target is waiting for a signed table. Select the vendor and Oplus authentication mode, then provide Digest and Sign to continue.</value></data>
+  <data name="Cli_SignedTableVendorInvalid" xml:space="preserve"><value>Select Oplus or OnePlus for this interactive recovery. For other VIP targets, cancel and configure VIP signed tables before connecting.</value></data>
+  <data name="Cli_OplusModeChoices" xml:space="preserve"><value>Select the Oplus authentication mode:
+  1. DigestPt
+  2. Legacy</value></data>
+  <data name="Cli_OplusModePrompt" xml:space="preserve"><value>Mode number or name (blank to cancel)</value></data>
+  <data name="Cli_OplusModeInvalid" xml:space="preserve"><value>Select 1 / DigestPt or 2 / Legacy.</value></data>
+  <data name="Cli_OplusModeSelectionRequired" xml:space="preserve"><value>The target is waiting for a signed table. In non-interactive mode, specify --vendor Oplus and --oplus-mode OplusDigestPt or OplusDigestLegacy with --oplus-digest and --oplus-sign. Configure --vip-signed for generic VIP targets.</value></data>
 </root>

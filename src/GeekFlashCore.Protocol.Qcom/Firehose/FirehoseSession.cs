@@ -89,6 +89,8 @@ public sealed class FirehoseSession : IDisposable
 
     internal bool StartupDataReceived => _executor.StartupDataReceived;
 
+    internal bool AwaitingSignedTable { get; private set; }
+
     public FirehoseResponse Start(int? startupTimeoutMilliseconds = null) =>
         StartCore(startupTimeoutMilliseconds, null);
 
@@ -101,6 +103,7 @@ public sealed class FirehoseSession : IDisposable
         try
         {
             FirehoseResponse response = _executor.ReceiveStartupLogs(startupTimeoutMilliseconds, probeRejectionTimeoutMilliseconds);
+            AwaitingSignedTable = _executor.StartupAwaitingSignedTable;
             SetState(FirehoseSessionState.Started);
             return response;
         }
@@ -117,7 +120,7 @@ public sealed class FirehoseSession : IDisposable
         SetState(FirehoseSessionState.Started);
     }
 
-    /// <summary>Probes an already running Firehose session with a bounded NOP exchange.</summary>
+    /// <summary>Identifies command receive or a signed-table wait with a bounded NOP exchange.</summary>
     internal bool TryProbe(int timeoutMilliseconds, out FirehoseResponse? response)
     {
         response = null;
@@ -125,12 +128,9 @@ public sealed class FirehoseSession : IDisposable
         _receiver.SetReadTimeout(timeoutMilliseconds);
         try
         {
-            FirehoseCommandResult result = _executor.Execute(new NopCommand(), expectedRawMode: false,
-                xmlDeclarationAttribute: _xmlDeclarationAttribute);
-            if (!result.IsSuccess)
-                return false;
-            response = new FirehoseResponse(result.Logs, result.Attributes, result.Status, result.RawMode,
-                result.PayloadElements);
+            FirehoseProbeResult result = _executor.Probe(_xmlDeclarationAttribute);
+            response = result.Response;
+            AwaitingSignedTable = result.AwaitingSignedTable;
             SetState(FirehoseSessionState.Started);
             return true;
         }

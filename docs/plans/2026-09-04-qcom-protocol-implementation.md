@@ -681,3 +681,10 @@
 - Sparse/Firmware 将按序分割的 Super 映射为虚拟 Sparse super.img，原始 rawprogram0.xml 直接解析该 IDataSource；CLI 支持已解包目录与 ZIP::OFP::脚本，Qcom 生产协议、预检和同步 Sparse 发送没有改动。
 - 模拟传输确认叠加后的精确字节分别写入 10/11/12 扇区；DontCare 跳过 11，仅发送 10/12；首区间 NAK 后失效并停止。Qcom 457 项、CLI 104 项、Firmware 76 项及另外三套共 1227 项通过；Release 0 警告/0 错误。
 - 真实 PEHM00 目录的 1327 个窗口和 ZIP 内 OFP 的原始脚本/首窗口只读通过，不是设备写入证据。Oplus Digest/VIP 对映射后包序要求仍须硬件验证。最新事实和恢复入口见 `2026-10-07-ofp-sparse-super-design.md` 与对应 implementation。
+
+### FHST-01：等待签名表时选择 Oplus 模式（2026-10-07）
+
+- 修复用户日志中的已运行 Firehose 拒绝 Sahara HELLO，NOP 随后宣布等待签名表却因没有 ACK 提前退出的问题。严格识别完整 log-only 等待帧后，CLI 先选择品牌与 DigestPt/Legacy，再请求 Digest、Sign 并沿既有认证线路继续；已经指定的品牌/模式保留。
+- 内部等待状态与 ACK、认证成功分开；半帧、普通 NAK、RAW、无响应不降级为成功，通用 VIP 必须显式配置，Oplus 资源与其他 Digest/VIP 保持互斥。普通命令线路和显式 resume 重发规则未放宽。
+- 新增 49 项回归含 CLI 默认适配器完整交互、两种认证模式、材料拒绝、取消/超时、资源释放和失败后重连；Qcom 506/506、CLI 106/106 通过，Release 构建 0 警告/0 错误，资源与差异检查通过。
+- 尚未连接真实设备。详细范围与继续入口见 `2026-10-07-firehose-signed-table-selection-design.md` 和对应 implementation。

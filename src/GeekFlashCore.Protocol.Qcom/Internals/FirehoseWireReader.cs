@@ -20,19 +20,27 @@ internal sealed class FirehoseWireReader : IDisposable
     private bool _disposed;
 
     internal bool StartupDataReceived { get; private set; }
+    internal bool StartupAwaitingSignedTable { get; private set; }
 
     public FirehoseWireReader(ITransport transport) =>
         _transport = transport ?? throw new ArgumentNullException(nameof(transport));
 
     public FirehoseResponse ReadResponse(int timeoutMilliseconds, CancellationToken cancellationToken = default,
-        Action<FirehoseResponseLog>? publishLog = null)
+        Action<FirehoseResponseLog>? publishLog = null) =>
+        ReadResponseCore(timeoutMilliseconds, cancellationToken, publishLog, false).Response;
+
+    internal FirehoseProbeResult ReadProbeResponse(int timeoutMilliseconds, Action<FirehoseResponseLog> publishLog) =>
+        ReadResponseCore(timeoutMilliseconds, default, publishLog, true);
+
+    private FirehoseProbeResult ReadResponseCore(int timeoutMilliseconds, CancellationToken cancellationToken,
+        Action<FirehoseResponseLog>? publishLog, bool allowSignedTableWait)
     {
         ThrowIfDisposed();
         if (_queuedResponse is { } queued)
         {
             _queuedResponse = null;
             foreach (FirehoseResponseLog log in queued.Logs) publishLog?.Invoke(log);
-            return queued;
+            return new FirehoseProbeResult(queued, false);
         }
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
         var logs = new List<FirehoseResponseLog>(4);
@@ -56,12 +64,18 @@ internal sealed class FirehoseWireReader : IDisposable
                     out var payloadElements);
             for (int index = firstLog; index < logs.Count; index++) publishLog?.Invoke(logs[index]);
             if (complete)
-                return new FirehoseResponse(
+                return new FirehoseProbeResult(new FirehoseResponse(
                     logs,
                     attributes ?? new Dictionary<string, string>(),
                     status,
                     rawMode,
-                    payloadElements);
+                    payloadElements), false);
+            if (allowSignedTableWait && logs.Count > firstLog && FirehoseSignedTableWait.IsAnnouncement(logs[^1]))
+            {
+                FirehoseSignedTableWait.ValidateLogPacket(packet);
+                return new FirehoseProbeResult(new FirehoseResponse(logs, new Dictionary<string, string>(),
+                    FirehoseResponseStatus.Nak, false), true);
+            }
         }
     }
 
@@ -70,6 +84,7 @@ internal sealed class FirehoseWireReader : IDisposable
     {
         ThrowIfDisposed();
         StartupDataReceived = false;
+        StartupAwaitingSignedTable = false;
         long deadline = Stopwatch.GetTimestamp() + MillisecondsToTimestamp(timeoutMilliseconds);
         var logs = new List<FirehoseResponseLog>(16);
         int responseBytes = 0;
@@ -92,11 +107,21 @@ internal sealed class FirehoseWireReader : IDisposable
             AddPacketBudget(ref responseBytes, packet.Length);
 
             int firstLog = logs.Count;
-            bool complete = FirehoseResponseParser.TryParsePacket(packet, logs, out _,
+            bool complete = FirehoseResponseParser.TryParsePacket(packet, logs, out var status,
                 out rawMode, out var attributes, out var elements);
             for (int index = firstLog; index < logs.Count; index++) publishLog?.Invoke(logs[index]);
             if (probeRejectionTimeoutMilliseconds is not null && complete && rawMode)
                 throw new FirehoseProtocolException(Strings.Qcom_FirehoseRawModeUnexpected);
+            if (logs.Count > firstLog && FirehoseSignedTableWait.IsAnnouncement(logs[^1]))
+            {
+                if (complete && (status != FirehoseResponseStatus.Ack || rawMode))
+                    throw new FirehoseProtocolException(Strings.Qcom_SignedTableAnnouncementInvalid);
+                if (!complete)
+                {
+                    FirehoseSignedTableWait.ValidateLogPacket(packet);
+                    StartupAwaitingSignedTable = true;
+                }
+            }
             if (logs.Exists(static log =>
                     log.Message.Contains("End of supported functions", StringComparison.Ordinal) ||
                     log.Message.Contains("VIP is enabled", StringComparison.OrdinalIgnoreCase)))

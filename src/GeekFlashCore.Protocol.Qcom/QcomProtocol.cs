@@ -56,6 +56,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     private OnePlusAuthenticationContext? _onePlusAuthentication;
     private QcomVendorKind? _selectedVendor;
     private bool _firehoseAfterSaharaProbe;
+    private bool _awaitingSignedTable;
 
     public QcomProtocol(ITransport transport, QcomProtocolOptions? options = null,
         ISaharaImageProvider? imageProvider = null, IOplusDigestProvider? digestProvider = null,
@@ -128,7 +129,8 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             StartFirehose();
             if (NeedsVendorSelection)
                 ApplyVendorSelection(await _resourceResolver.ResolveAsync(token => _vendorSelectionProvider!.ResolveAsync(
-                    new VendorSelectionRequest(TargetInfo!), token), ct).ConfigureAwait(false));
+                    CreateVendorSelectionRequest(), token), ct).ConfigureAwait(false));
+            ValidateSignedTableSelection();
             await PrepareOplusAsync(ct).ConfigureAwait(false);
             await PrepareVipAsync(ct).ConfigureAwait(false);
             FirehoseConfiguration configuration = _options.Firehose;
@@ -212,7 +214,8 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
             StartFirehose();
             if (NeedsVendorSelection)
                 ApplyVendorSelection(_resourceResolver.Resolve(token => _vendorSelectionProvider!.ResolveAsync(
-                    new VendorSelectionRequest(TargetInfo!), token)));
+                    CreateVendorSelectionRequest(), token)));
+            ValidateSignedTableSelection();
             PrepareOplus();
             PrepareVip();
             FirehoseConfiguration configuration = _options.Firehose;
@@ -532,7 +535,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
                 if (_startup.Status == FirehoseResponseStatus.Nak)
                 {
                     // A complete XML rejection of our binary wake-up identifies Firehose,
-                    // but only a fresh NOP ACK confirms that the session can accept commands.
+                    // then NOP confirms command receive or an explicit signed-table wait.
                     FirehoseResponse rejected = _startup;
                     Log.Warning(Strings.Qcom_LogFirehoseProbeRejected);
                     _firehose.Dispose();
@@ -554,6 +557,11 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
                     throw;
             }
         }
+        if (!_oplusAuthenticated && _sahara is null && _firehose.AwaitingSignedTable)
+        {
+            _awaitingSignedTable = true;
+            Log.Information(Strings.Qcom_LogSignedTableAwaitingSelection);
+        }
         var vendor = VendorStrategyResolver.Resolve(_options.VendorOverride, _startup?.Logs.Select(x => x.Message),
             _programmer?.Vendor ?? QcomVendorKind.Generic, VendorStrategyResolver.DetectSaharaVendor(_targetInfo?.Sahara));
         _targetInfo = (_targetInfo ?? new QcomTargetInfo()) with
@@ -571,15 +579,51 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         };
     }
 
-    private bool NeedsVendorSelection => _vendorSelectionProvider is not null && _selectedVendor is null &&
+    private bool RequiresVendorSelection => _selectedVendor is null &&
         _options.VendorOverride == QcomVendorKind.Auto && _targetInfo!.Vendor == QcomVendorKind.Generic;
+
+    private bool RequiresOplusModeSelection => _awaitingSignedTable && !_oplusAuthenticated &&
+        _oplusConfiguration.Mode == OplusDigestMode.None && !_options.FirehoseVip.Enabled;
+
+    private bool CanSelectOplusMode => _options.AllowOplusModeSelection && _digestProvider is not null &&
+        !_options.FirehoseDigest.Enabled && !_options.FirehoseVip.Enabled;
+
+    private bool NeedsVendorSelection => _vendorSelectionProvider is not null &&
+        (RequiresOplusModeSelection
+            ? CanSelectOplusMode && (RequiresVendorSelection || _targetInfo!.Vendor is QcomVendorKind.Oplus or QcomVendorKind.OnePlus)
+            : RequiresVendorSelection);
+
+    private VendorSelectionRequest CreateVendorSelectionRequest() => new(TargetInfo!)
+    {
+        RequiresVendorSelection = RequiresVendorSelection,
+        RequiresOplusModeSelection = RequiresOplusModeSelection
+    };
 
     private void ApplyVendorSelection(VendorSelectionResponse response)
     {
         if (!Enum.IsDefined(response.Vendor) || response.Vendor == QcomVendorKind.Auto)
             throw new QcomResourceException(Strings.Qcom_InvalidResource);
+        if (!RequiresVendorSelection && response.Vendor != _targetInfo!.Vendor)
+            throw new QcomResourceException(Strings.Qcom_InvalidResource);
+        if (RequiresOplusModeSelection)
+        {
+            if (!CanSelectOplusMode || response.Vendor is not (QcomVendorKind.Oplus or QcomVendorKind.OnePlus) ||
+                response.OplusMode is not (OplusDigestMode.OplusDigestPt or OplusDigestMode.OplusDigestLegacy))
+                throw new QcomResourceException(Strings.Qcom_SignedTableModeRequired);
+            OplusDigestConfiguration configuration = _oplusConfiguration with { Mode = response.OplusMode.Value };
+            configuration.Validate();
+            _oplusConfiguration = configuration;
+        }
+        else if (response.OplusMode is not null)
+            throw new QcomResourceException(Strings.Qcom_InvalidResource);
         _targetInfo = _targetInfo! with { Vendor = response.Vendor };
         _selectedVendor = response.Vendor;
+    }
+
+    private void ValidateSignedTableSelection()
+    {
+        if (RequiresOplusModeSelection)
+            throw new QcomResourceException(Strings.Qcom_SignedTableModeRequired);
     }
 
     private FirehoseConfiguration LimitConfiguration(FirehoseConfiguration configuration)
@@ -1006,6 +1050,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
         _startup = null; _programmer = null; _targetInfo = null;
         _selectedVendor = null;
         _firehoseAfterSaharaProbe = false;
+        _awaitingSignedTable = false;
         _vipPolicy = null; _onePlusAuthentication = null;
         _oplusDigest = null; _oplusIndex = null;
         _oplusAuthenticated = false;

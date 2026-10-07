@@ -65,6 +65,7 @@ public sealed partial class QcomProtocol
         {
             if (resource.SelectedMode is { } selected && selected != _oplusConfiguration.Mode)
                 throw new QcomResourceException(Strings.Qcom_InvalidResource);
+            ConfigureOplusWire();
             return;
         }
         OplusDigestMode mode;
@@ -83,6 +84,11 @@ public sealed partial class QcomProtocol
         _oplusConfiguration = _oplusConfiguration with { Mode = mode };
         if (resource.SelectedMode is null)
             Log.ForContext("UserPresentation", true).Information(Strings.Qcom_LogOplusModeDetected, mode);
+        ConfigureOplusWire();
+    }
+
+    private void ConfigureOplusWire()
+    {
         if (_oplusConfiguration.Mode == OplusDigestMode.OplusDigestLegacy)
         {
             _firehose!.ConfigureLegacyWire(_oplusConfiguration);
@@ -173,6 +179,7 @@ public sealed partial class QcomProtocol
             _firehose!.InitializeOplusSha256(ct);
             Log.Information(Strings.Qcom_LogOplusVerified);
             _oplusAuthenticated = true;
+            _awaitingSignedTable = false;
             return true;
         }
         finally { CryptographicOperations.ZeroMemory(sign); }

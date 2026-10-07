@@ -22,8 +22,20 @@ internal sealed class ConsoleVendorSelectionProvider(ConsoleUi ui) : IVendorSele
     public async ValueTask<VendorSelectionResponse> ResolveAsync(VendorSelectionRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!ui.CanPrompt) throw new QcomResourceException(Strings.Cli_VendorSelectionRequired);
+        if (!ui.CanPrompt) throw new QcomResourceException(request.RequiresOplusModeSelection
+            ? Strings.Cli_OplusModeSelectionRequired : Strings.Cli_VendorSelectionRequired);
         ui.PrintTargetInfo(request.TargetInfo);
+        if (request.RequiresOplusModeSelection) ui.WriteLine(Strings.Cli_SignedTableWaiting);
+        QcomVendorKind vendor = request.RequiresVendorSelection
+            ? await SelectVendorAsync(request.RequiresOplusModeSelection, cancellationToken).ConfigureAwait(false)
+            : request.TargetInfo.Vendor;
+        OplusDigestMode? mode = request.RequiresOplusModeSelection
+            ? await SelectOplusModeAsync(cancellationToken).ConfigureAwait(false) : null;
+        return new VendorSelectionResponse(vendor) { OplusMode = mode };
+    }
+
+    private async ValueTask<QcomVendorKind> SelectVendorAsync(bool requiresOplusMode, CancellationToken cancellationToken)
+    {
         QcomVendorKind[] choices = Enum.GetValues<QcomVendorKind>().Where(x => x != QcomVendorKind.Auto).ToArray();
         ui.WriteLine(Strings.Cli_VendorUnknown);
         for (int i = 0; i < choices.Length; i++) ui.WriteLine($"  {i + 1}. {choices[i]}");
@@ -31,11 +43,31 @@ internal sealed class ConsoleVendorSelectionProvider(ConsoleUi ui) : IVendorSele
         {
             string value = (await ui.AskAsync(Strings.Cli_VendorPrompt, cancellationToken).ConfigureAwait(false)).Trim();
             if (value.Length == 0) throw new OperationCanceledException(Strings.Cli_OperationCancelled);
+            QcomVendorKind vendor;
             if (int.TryParse(value, out int number) && number > 0 && number <= choices.Length)
-                return new VendorSelectionResponse(choices[number - 1]);
-            if (Enum.TryParse(value, true, out QcomVendorKind vendor) && choices.Contains(vendor))
-                return new VendorSelectionResponse(vendor);
-            ui.WriteLine(Strings.Cli_VendorInvalid);
+                vendor = choices[number - 1];
+            else if (!Enum.TryParse(value, true, out vendor) || !choices.Contains(vendor))
+            { ui.WriteLine(Strings.Cli_VendorInvalid); continue; }
+            if (requiresOplusMode && vendor is not (QcomVendorKind.Oplus or QcomVendorKind.OnePlus))
+            { ui.WriteLine(Strings.Cli_SignedTableVendorInvalid); continue; }
+            return vendor;
+        }
+    }
+
+    private async ValueTask<OplusDigestMode> SelectOplusModeAsync(CancellationToken cancellationToken)
+    {
+        ui.WriteLine(Strings.Cli_OplusModeChoices);
+        while (true)
+        {
+            string value = (await ui.AskAsync(Strings.Cli_OplusModePrompt, cancellationToken).ConfigureAwait(false)).Trim();
+            if (value.Length == 0) throw new OperationCanceledException(Strings.Cli_OperationCancelled);
+            if (value.Equals("1", StringComparison.Ordinal) || value.Equals("Pt", StringComparison.OrdinalIgnoreCase) ||
+                value.Equals("DigestPt", StringComparison.OrdinalIgnoreCase) || value.Equals("OplusDigestPt", StringComparison.OrdinalIgnoreCase))
+                return OplusDigestMode.OplusDigestPt;
+            if (value.Equals("2", StringComparison.Ordinal) || value.Equals("Legacy", StringComparison.OrdinalIgnoreCase) ||
+                value.Equals("OplusDigestLegacy", StringComparison.OrdinalIgnoreCase))
+                return OplusDigestMode.OplusDigestLegacy;
+            ui.WriteLine(Strings.Cli_OplusModeInvalid);
         }
     }
 }

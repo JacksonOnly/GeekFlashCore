@@ -30,6 +30,7 @@ internal sealed class FirehoseCmdReceiver : IDisposable
     }
 
     internal bool StartupDataReceived => _reader.StartupDataReceived;
+    internal bool StartupAwaitingSignedTable => _reader.StartupAwaitingSignedTable;
 
     public FirehoseResponse ReceiveStartupLog(int? timeoutMilliseconds = null, int? probeRejectionTimeoutMilliseconds = null)
     {
@@ -74,6 +75,8 @@ internal sealed class FirehoseCmdReceiver : IDisposable
     }
 
     public FirehoseResponse? PollResponse() => _reader.PollResponse();
+
+    internal FirehoseProbeResult ReceiveProbe() => _reader.ReadProbeResponse(_readTimeoutMilliseconds, _publishLog);
 
     internal FirehoseResponse? ReceiveOptional(int timeout, CancellationToken cancellationToken)
     {

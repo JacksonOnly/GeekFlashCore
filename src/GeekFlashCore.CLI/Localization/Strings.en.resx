@@ -432,4 +432,5 @@ Keys go only to files.</value></data>
   <data name="Cli_FirmwareExtracted" xml:space="preserve"><value>Extracted {0}, {1}.</value></data>
   <data name="Cli_FirmwareScriptSyntax" xml:space="preserve"><value>Package script syntax is &lt;package&gt;::&lt;entry.xml&gt;.</value></data>
   <data name="Cli_FirmwareSuperCleanupFailed" xml:space="preserve"><value>Failed to close the session after partial Super writing; exception type: {0}.</value></data>
+  <data name="Cli_FirmwareDeferredLength" xml:space="preserve"><value>On demand</value></data>
 </root>

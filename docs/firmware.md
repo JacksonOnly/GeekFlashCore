@@ -13,6 +13,8 @@ geekflash firmware extract "D:\ROM\firmware.ofp" "boot.img" "D:\Output\boot.img"
 
 `extract` 只导出指定条目到显式指定的新文件，已有目标文件不会被覆盖。目录保留大小写与完整相对路径；同名条目可按 `Entries[index]` 读取，按名称获取则拒绝歧义。
 
+`list` 不解析虚拟分片 Super 的 payload，其大小显示“按需解析”。SDK 使用 `FirmwareEntry.KnownLength` 查看已知长度而不触发 I/O；需要精确编码长度时调用 `GetLength(ct)` 或 `Length`，首次会建立并校验映射，成功结果在包内复用。打开虚拟条目也会完成该预检，分片缺失、NV 歧义和目录范围错误仍在打开包时报告。
+
 对已经连接的 Qcom 会话，交互式 CLI 可以运行：
 
 ```text
@@ -98,6 +100,8 @@ Oplus 散包的独立逻辑分区使用 `FirmwareSuperImagePlan`：读取 `super
 公共契约不暴露第三方类型。默认元数据上限 32 MiB、目录 65536 项、操作/extent 或 OZIP 描述 262144 项、复制缓冲 64 KiB。payload XZ 字典/Zstandard 窗口默认不超过 64 MiB，可通过 `FirmwareOpenOptions` 有界调整。尾部补零仅允许 payload 最后不足一块的已解码数据；解码超长或提前截断均失败。
 
 Raw、OFP/OPS 及间隔 ECB 流直接定位。压缩流通过重开与顺序解码提供 `Seek`，向后定位会花费重新解压的时间；ZIP 包内多次打开也需要重读目录。没有按整镜像或整 operation 分配的缓存，没有临时解包目录。第三方解码器仍有固定窗口与缓冲成本。
+
+ZIP 条目流有固定 128 KiB 池化回读窗口，近距离回读复用已解码字节，窗口外才重放。ZIP 内压缩 OFP 的目录位于 OFP 尾部，第一次 `list ZIP::OFP` 仍需一遍顺序解压；不能与直接读取 ZIP 中的小 JSON 比较。真实 PEHM00 的 CLI `list ZIP::OFP` 约 29.56 秒，已有解包目录 `list` 约 0.30 秒，均未创建镜像文件。范围与验证见 [目录性能实施记录](plans/2026-10-07-ofp-catalog-performance-implementation.md)。
 
 ## 生命周期与验证证据
 

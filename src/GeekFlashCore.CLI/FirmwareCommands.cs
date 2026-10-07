@@ -36,7 +36,12 @@ internal static class FirmwareCommands
         ui.WriteLine(Strings.FormatCli_FirmwareCatalog(package.Format, package.Entries.Count));
         if (args[0].Equals("list", StringComparison.OrdinalIgnoreCase))
         {
-            foreach (var e in package.Entries) { ct.ThrowIfCancellationRequested(); ui.WriteLine($"{e.Index,5}  {ConsoleUi.FormatBytes(e.Length),12}  {e.Name}"); }
+            foreach (var e in package.Entries)
+            {
+                ct.ThrowIfCancellationRequested();
+                string size = e.KnownLength is { } length ? ConsoleUi.FormatBytes(length) : Strings.Cli_FirmwareDeferredLength;
+                ui.WriteLine($"{e.Index,5}  {size,12}  {e.Name}");
+            }
             return;
         }
         var entry = package.GetEntry(args[2]);

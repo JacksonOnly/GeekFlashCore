@@ -83,12 +83,21 @@ internal static partial class OfpSuperMapper
             if (matches.Length != 1) throw new InvalidDataException(Strings.InvalidMetadata);
             FirmwareEntry entry = matches[0]; sources.Add(ct => entry.OpenStream(ct));
         }
-        try
+        SparseImageComposition? image = null;
+        var options = new SparseImageCompositionOptions
+        { MaximumChunks = c.Options.MaximumSegments, MaximumMetadataBytes = c.Options.MaximumMetadataBytes };
+        // Both resolution and opening run under the package gate. Never scan payload just to list names.
+        c.Deferred(name, ct => GetImage(ct).EncodedLength, ct => GetImage(ct).OpenStream(ct));
+        SparseImageComposition GetImage(CancellationToken ct)
         {
-            var image = SparseImageComposer.Compose(sources, new SparseImageCompositionOptions
-            { MaximumChunks = c.Options.MaximumSegments, MaximumMetadataBytes = c.Options.MaximumMetadataBytes }, c.Cancellation);
-            c.Add(name, image.EncodedLength, ct => image.OpenStream(ct));
+            c.Package.Check(ct);
+            if (image is not null) return image;
+            try
+            {
+                var parsed = SparseImageComposer.Compose(sources, options, ct, c.Cancellation);
+                c.Package.Check(ct); return image = parsed;
+            }
+            catch (SparseException e) { throw new InvalidDataException(Strings.InvalidMetadata, e); }
         }
-        catch (SparseException e) { throw new InvalidDataException(Strings.InvalidMetadata, e); }
     }
 }

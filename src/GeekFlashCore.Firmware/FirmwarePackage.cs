@@ -45,6 +45,17 @@ public sealed class FirmwarePackage : IDisposable
             catch { try { stream?.Dispose(); } finally { linked?.Dispose(); } throw; }
         }
     }
+    internal long Measure(Func<CancellationToken, long> resolve, CancellationToken ct)
+    {
+        lock (_gate)
+        {
+            Check(ct);
+            using var linked = _cancellation.CanBeCanceled && ct.CanBeCanceled && _cancellation != ct
+                ? CancellationTokenSource.CreateLinkedTokenSource(_cancellation, ct) : null;
+            var effective = linked?.Token ?? (_cancellation.CanBeCanceled ? _cancellation : ct);
+            long length = resolve(effective); Check(ct); return length;
+        }
+    }
     /// <summary>Gets an exact, case-sensitive normalized path; duplicate paths are rejected.</summary>
     public FirmwareEntry GetEntry(string name)
     {

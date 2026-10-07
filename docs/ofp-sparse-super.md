@@ -6,6 +6,8 @@ PGT110 等含 `super_def`、LP metadata 和独立逻辑分区镜像的散包使�
 
 输出是虚拟 Sparse 1.0 编码。框架只保存 chunk 区间、来源偏移和 Fill 值，按需生成头并直接读取原分片 payload，没有合并文件、Raw 镜像或按分区尺寸增长的缓存。Qcom 沿用现有 Sparse 计划，只发送实际数据区。
 
+目录打开时只确认分片名称、NV 和范围，完整 Sparse 映射延迟到虚拟条目的 `GetLength(ct)` / `Length` 或 `OpenStream(ct)`，成功后复用。`firmware list` 使用 `KnownLength`，虚拟 `super.img` 的未知长度显示“按需解析”；列目录成功不代表镜像 chunk/CRC 已通过预检。
+
 ## 已解包目录
 
 `FirmwareUnpacker.Open(directory)` 返回目录 catalog，自动为同目录连续的 `super.N.hash.img` 添加虚拟 `super.img`。有物理 `super.img` 时优先使用物理文件；缺片或重复索引会失败，子目录的组分别映射。目录枚举跳过 reparse point。
@@ -59,6 +61,8 @@ qcom.ExecuteRawProgram(script,
 ```
 
 ZIP Deflate 内的 OFP 定位需要从头重放解压，打开目录、预检与跨分片定位有时间成本。Stored/Deflate 使用 .NET 解码器，BZip2 使用内部适配器；CFB 按固定 64 KiB 窗口解密，避免小段读取不断回退外层解压器。没有通过落盘或大型缓存规避这些成本。
+
+ZIP 条目另有固定 128 KiB 回读窗口，避免自动识别、footer 与近尾 metadata 的小范围回读再次解压。本机 PEHM00 的实际 CLI `firmware list ZIP::OFP` 约 29.56 秒，已有解包目录约 0.30 秒；第一次访问压缩 OFP 尾部仍需完整顺序解压一次。该窗口随流释放时清零归还池，不保留整个 OFP，也不跨独立命令缓存 catalog。
 
 ## 通用 Sparse API 与边界
 

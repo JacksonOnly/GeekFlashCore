@@ -100,6 +100,8 @@ public interface IMtkDaChannel
     void EndXmlCommand();
     /// <summary>Sends a plain XML acknowledgment.</summary>
     void AcknowledgeXml();
+    /// <summary>Sends an XML acknowledgment carrying a decimal value (OK@value).</summary>
+    void AcknowledgeXml(long value);
     /// <summary>Receives a bounded virtual file without opening device paths on the host.</summary>
     long ReceiveXmlFile(Stream destination, long? expectedLength, long maximumLength);
     /// <summary>Sends exactly the virtual file length; the borrowed source remains open.</summary>

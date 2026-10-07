@@ -643,6 +643,13 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 throw new MtkCapabilityException("XML channel");
             xml.Ack();
         }
+        public void AcknowledgeXml(long value)
+        {
+            Check();
+            if (owner._da is not XmlSession xml)
+                throw new MtkCapabilityException("XML channel");
+            xml.Ack(value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
         public long ReceiveXmlFile(Stream destination, long? expectedLength, long maximumLength)
         {
             Check();

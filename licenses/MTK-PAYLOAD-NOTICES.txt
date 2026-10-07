@@ -98,3 +98,16 @@ SHA-256 implementation attribution from upstream common/crypto/sha256.c:
 Crypto/Sha256.c -- SHA-256 Hash
 2010-06-11 : Igor Pavlov : Public domain
 This code is based on public domain code from Wei Dai's Crypto++ library.
+
+
+EXP/PatchDA code port (2026-10-07): Penumbra core/src/exploit/{linecode,carbonara,heapbait}.rs,
+core/src/da/{xflash,xml}/patch.rs, core/src/utils/{patching,hash}.rs and the PlProtocol
+sys_region_access sequence were ported to C# in Exploits/Penumbra. The underlying exploit
+techniques are not subject to the license; the specific implementations are:
+SPDX-License-Identifier: AGPL-3.0-or-later, Copyright (c) 2025-2026 Shomy (heapbait:
+Copyright (c) 2026 Shomy, R0rt1z2). Linecode additionally credits the Chimera Tool team for
+the original exploit discovery, R0rt1z2/kamakiri (mt8516-cupcake) for implementation details
+studied, and chaosmaster (k4y0z) and xyzz (MIT License) for the original work.
+
+SoC MMIO metadata (uart0 and newer-SoC watchdog groups) follows
+https://github.com/shomykohai/acon - Copyright (c) Shomy, AGPL-3.0-or-later.

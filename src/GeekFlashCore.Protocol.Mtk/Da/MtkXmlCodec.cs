@@ -22,6 +22,8 @@ internal static class MtkXmlCodec
         ["SECURITY-GET-DEV-FW-INFO"] = ["target_file"],
         ["SECURITY-SET-FLASH-POLICY"] = ["source_file"],
         ["SECURITY-SET-ALLINONE-SIGNATURE"] = ["source_file"],
+        ["EXP-PATCH-MEM"] = ["address", "length"],
+        ["EXP-CALL-FUNC"] = ["address"],
         ["READ-EFUSE"] = ["target_file"],
         ["WRITE-EFUSE"] = ["source_file"],
         ["READ-PARTITION"] = ["partition","target_file"],
@@ -53,7 +55,9 @@ internal static class MtkXmlCodec
         };
         if(variant is not null)return CreateValidated(command,parameters,variant);
         if (!Arguments.TryGetValue(command, out var allowed) || parameters.Count != allowed.Length || parameters.Any(p =>
-            !allowed.Contains(p.Key, StringComparer.Ordinal) || p.Value is null || p.Value.Length > 4096))
+            !allowed.Contains(p.Key, StringComparer.Ordinal) || p.Value is null ||
+            // The all-in-one signature source_file carries the heap-shaping filename (8192 bound).
+            p.Value.Length > (command == "SECURITY-SET-ALLINONE-SIGNATURE" ? 8192 : 4096)))
             throw new MtkCapabilityException("XML command/parameters");
         return CreateValidated(command,parameters,allowed);
     }

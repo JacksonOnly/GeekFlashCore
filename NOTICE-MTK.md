@@ -12,6 +12,7 @@ GeekFlashCore's license remains the GNU Affero General Public License v3 in `LIC
 | bkerler/mtkclient | `e9fcf97` | B. Kerler, 2018–2024, GPLv3 | BROM echo/status/checksum, D8/DC DA metadata, EMI, Legacy/XFlash, seccfg layouts and public software AES format; pre-DA and post-authentication host checkpoints |
 | Shomy/penumbra | `ce13391` | Shomy, 2025–2026, AGPL-3.0-or-later | XFlash framing and command order, XML command/file lifetimes, extension ACK/context, memory/register/SEJ/RPMB host ABI; strategy metadata, returned DA and stage placement only |
 | Shomy/mtk-payloads | `e34d980` (historical) | Per-file notices: Shomy, 2025–2026; AGPL/GPL | Earlier work referenced existing DA extension context and command ABI only; the later binary resource copy is recorded separately below |
+| shomykohai/acon | main snapshot 2026-10-07 | Shomy, AGPL-3.0-or-later | SoC MMIO table (uart0/toprgu/hacc/tzcc/ssr bases and hwcode mapping) adopted for the chip catalog, including newer SoCs absent from mtkclient |
 | GeekFlashTool.MtkClient | `67ced05` | Existing project notices remain with that project | Cross-check of FC big-endian fields, old DA layout and XML command behavior; application/provider/account code is not copied |
 
 Relevant mtkclient paths: `Library/mtk_preloader.py`, `config/brom_config.py`, `config/mtk_config.py` (standard chip names, DA aliases and watchdog registers only), `Library/DA/mtk_da_handler.py::configure_da`, `Library/DA/daconfig.py`, `Library/DA/legacy/dalegacy_lib.py`, `Library/DA/legacy/dalegacy_flash_param.py`, `Library/DA/xflash/xflash_lib.py`, `Library/DA/xml/xml_lib.py`, `Library/Hardware/seccfg.py`, `Library/Hardware/hwcrypto_sej.py`.
@@ -21,6 +22,37 @@ Relevant penumbra paths: `core/src/da/dafile.rs`, `core/src/da/xflash/{cmds,xfla
 Some inspected reference working trees already contained local changes. Revisions identify their bases, not an assertion that every inspected file matched its commit. Reference working trees were read only and were not modified.
 
 The 2026-10-05 standard completion also references penumbra `core/src/core/bootctrl.rs` (Shomy, 2026, AGPL-3.0-or-later) for Android boot-control fields and CRC, and mtkclient `Library/DA/{legacy/dalegacy_flash_param,xflash/xflash_lib,xml/xml_cmd,xml/xml_lib}.py` for standard read-only queries, PMT/XML partition metadata, register commands and NAND/NOR/SDMMC geometry. DA `m_start_offset` metadata is preserved as a length/signature boundary, not added to `m_start_addr`. No exploitation algorithms or device-side payloads were added. The current local penumbra copy has no Git metadata; its prior inspected revision above is historical provenance, not a newly verified file revision.
+
+## EXP and PatchDA port (2026-10-07)
+
+Following explicit user authorization on 2026-10-07, the four Penumbra exploit strategies and
+both DA patchers were ported to bounded C# implementations under
+`src/GeekFlashCore.Protocol.Mtk/Exploits/Penumbra/`. The port preserves the original authors'
+attribution and license obligations:
+
+- `utils/patching.rs` (Shomy, 2026, AGPL-3.0-or-later) → `PenumbraPatching`.
+- `exploit/mod.rs` DaEntryExt hash-slot/arch detection and `get_v6_payload` (Shomy,
+  2025–2026, AGPL-3.0-or-later) → `PenumbraDaMetadata`, `PenumbraPayloadFormat`.
+- `exploit/linecode.rs` (Shomy, 2025–2026, AGPL-3.0-or-later; original exploit credits:
+  Chimera Tool team; implementation details studied from R0rt1z2/kamakiri mt8516-cupcake,
+  original work chaosmaster (k4y0z) and xyzz under MIT; inspired by bkerler's generic patcher
+  in mtkclient) → `PenumbraLinecodeTable`, `PenumbraLinecodeTrigger`.
+- `exploit/carbonara.rs` (Shomy, 2025–2026, AGPL-3.0-or-later; protection patterns taken from
+  mtkclient) → Carbonara strategy and `PenumbraDaChannelSupport`.
+- `exploit/heapbait.rs` (Shomy and R0rt1z2, 2026, AGPL-3.0-or-later; original exploit credits
+  go to the Chimera Tool team) → `PenumbraHeapBaitRunner`.
+- `da/xflash/patch.rs`, `da/xml/patch.rs` (Shomy, 2025–2026, AGPL-3.0-or-later; analysis
+  strings originate from mtkclient, B. Kerler, GPLv3) → `PenumbraXFlashDaPatcher`,
+  `PenumbraXmlDaPatcher`.
+
+Deviations from the reference (documented for transparency): the reference `exploit!` macro
+silently continues after a failed strategy, while this port keeps the framework's terminal
+failure semantics once device I/O has started; the reference's permissive unbounded allocations
+(50 MiB sled, whole-DA diff buffers) are streamed or bounded; failure after device I/O
+invalidates the session instead of continuing. These ports are static code only: no hardware
+run has validated any strategy, and a Completed result never proves that a device accepted
+any patch.
+
 
 Changes from references include bounded counts/lengths/XML, explicit endianness and final status checks, serialized generations, borrowed stream ownership, late authentication cleanup, streaming Raw/Sparse, strict extension prerequisites and verified seccfg planning/readback. Dummy signatures, timeout-as-success, silent checksum failures, arbitrary XML and automatic retries after unknown writes are excluded.
 

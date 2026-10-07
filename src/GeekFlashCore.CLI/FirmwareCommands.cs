@@ -15,7 +15,8 @@ internal static class FirmwareCommands
     internal static void Execute(string[] args, ConsoleUi ui, CancellationToken ct)
     {
         Validate(args);
-        using var package = FirmwareUnpacker.Open(ConsolePath.Normalize(args[1])!, cancellationToken: ct);
+        using var reference = FirmwarePackageReference.Open(args[1], ct);
+        var package = reference.Package;
         ui.WriteLine(Strings.FormatCli_FirmwareCatalog(package.Format, package.Entries.Count));
         if (args[0].Equals("list", StringComparison.OrdinalIgnoreCase))
         {

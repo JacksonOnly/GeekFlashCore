@@ -76,19 +76,22 @@ using var dz = FirmwareUnpacker.Open(kdz.GetEntry("firmware.dz"));
 
 原始 OZIP 返回 `decrypted.zip` 条目，可以再对该条目调用 `Open`。含加密条目的 ZIP 直接提供解密后的文件。ZIP 中的 payload 不会被隐式展开。
 
+OFP 分片 Super 会按 NVList 映射为虚拟 `super.img`，保持 Sparse 格式。`Open` 也接受已解包目录；CLI 本地 rawprogram 缺少 `super.img` 时会使用同目录分片，并支持 `ZIP::OFP::entry.xml` 嵌套路径。算法、NV 选择、实际命令和生命周期见 [分片 Super 直读说明](ofp-sparse-super.md)。
+
 ## 格式与限制
 
 | 格式 | 已实现行为 | 明确边界 |
 | --- | --- | --- |
 | ZIP | Stored、Deflate、BZip2；独立重开与定位 | 不支持密码 ZIP、分卷或其他压缩方法 |
 | OZIP | 原始间隔 ECB ZIP、ZIP 内带分块头的加密文件 | 只使用参考项目的固定候选密钥；未知密钥报错 |
-| OFP Qcom | 512/4096 尾页、元数据 CFB128、加密前缀及明文尾、虚拟 XML | 厂商变体需真实固件验证 |
+| OFP Qcom | 512/4096 尾页、元数据 CFB128、加密前缀及明文尾、虚拟 XML/分片 Sparse Super | 不同 NV 分片序列须显式选择；其他厂商变体待验证 |
 | OFP MTK | 尾部 shuffle 目录、各条目 CFB128 前缀 | 不涉及 MTK 设备认证或执行 |
 | OPS | 三种 MBox、反馈解密、程序/补丁虚拟文件 | 根据参考格式保持 4 字节物理补齐 |
 | PAC | UTF-16 目录、目录偏移与 64 位范围 | 不实施设备刷写线路 |
 | KDZ/DZ | KDZ 子容器、DZ zlib chunk | DZ 输出独立 chunk，不自动合并分区 |
 | UPDATE.APP | 98 字节记录、HeaderSize、4 字节对齐 | 参考布局从偏移 92 开始 |
 | Android payload v2 | REPLACE、REPLACE_BZ、REPLACE_XZ、参考扩展 ZSTD、ZERO/DISCARD；全部目标 extents | 拒绝增量/依赖旧镜像操作、覆盖重叠和缺失区间；DISCARD 导出为零 |
+| 已解包目录 | 只读 IDataSource 条目、连续 super.N.hash.img 的虚拟 Sparse super.img | 不跟随 reparse point；不猜多个同索引变体 |
 
 公共契约不暴露第三方类型。默认元数据上限 32 MiB、目录 65536 项、操作/extent 或 OZIP 描述 262144 项、复制缓冲 64 KiB。payload XZ 字典/Zstandard 窗口默认不超过 64 MiB，可通过 `FirmwareOpenOptions` 有界调整。尾部补零仅允许 payload 最后不足一块的已解码数据；解码超长或提前截断均失败。
 
@@ -100,4 +103,4 @@ Raw、OFP/OPS 及间隔 ECB 流直接定位。压缩流通过重开与顺序解�
 
 `OpenStreamAsync` 是同步离线数据源的契约适配，不等待异步资源。解析、读取、解码跳过和复制检查取消，包打开时的 token 和各条目打开时的 token 都有效。Qcom 的预检、XML 验证、同步 Raw/Sparse 写入、ACK/NAK 和会话失效行为沿用原实现。
 
-本轮覆盖合成格式夹具、参考 OPS 变换向量及模拟 Qcom 传输；另只读验证真实 4.5 GB PAC 的 40 个条目，以及超过 4 GB 的 `super.img` 在起点、2 GiB 以上和尾部的读取。没有执行真实设备刷写，其他厂商格式仍待真实包验证。解包成功也不代表 payload 签名、镜像 hash 或设备认证通过；本模块未执行这些信任判断。具体测试命令和结果见 [实施记录](plans/2026-10-07-firmware-streaming-implementation.md)。
+已覆盖合成格式夹具、参考 OPS 变换向量及模拟 Qcom 传输；另只读验证真实 4.5 GB PAC 的 40 个条目，以及超过 4 GB 的 `super.img` 在起点、2 GiB 以上和尾部的读取，见 [固件迁移实施记录](plans/2026-10-07-firmware-streaming-implementation.md)。2026-10-07 追加真实 PEHM00 OFP：三个分片映射 508 chunk、1327 个数据窗口比对一致，ZIP 内 OFP 原始脚本与虚拟 Sparse 无需提取即可访问，见 [分片 Super 实施记录](plans/2026-10-07-ofp-sparse-super-implementation.md)。没有执行真实设备刷写，其他厂商变体仍待真实包验证。解包成功也不代表 payload 签名、镜像 hash 或设备认证通过；本模块未执行这些信任判断。

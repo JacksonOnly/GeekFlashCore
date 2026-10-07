@@ -5,6 +5,8 @@ A communication protocol and flashing development framework targeting various ch
 
 `GeekFlashCore.Firmware` exposes ZIP/OZIP, Qualcomm/MediaTek OFP, OPS, PAC, KDZ/DZ, UPDATE.APP and full Android payload v2 entries as seekable, reopenable `IDataSource` instances. The CLI provides `firmware list/extract` and accepts `package::entry.xml` in `rawprogram` and `patch`, so package images can feed the existing Qcom pipeline without extraction files. See [firmware API, CLI examples and format limits](docs/firmware.md).
 
+Split OFP Super images map to a virtual sparse `super.img` through the reusable Sparse composer, including ordered overlap handling and preserved DONT_CARE gaps. Unpacked directories and `ZIP::OFP::script.xml` references work with the same Qcom script pipeline. See [split Super streaming examples and budgets](docs/ofp-sparse-super.md).
+
 ## CLI
 
 `GeekFlashCore.CLI` is the .NET 10 command-line host for the implemented protocols. Protocol creation, USB identification, protocol-specific commands, and device information are registered through the CLI protocol registry, so adding MTK/Fastboot/other hosts does not require changing the generic command loop. With no transport option it discovers registered USB devices and waits for a matching hot-plug event on Windows; `--port COMx` and `--usb VID:PID` select a transport explicitly. The protocol is inferred by default and can be forced with `--protocol QualcommEdl`.

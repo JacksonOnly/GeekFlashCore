@@ -18,26 +18,25 @@ internal static class QcomScriptCommands
 
     internal static bool TryPackageScript(string value, out string package, out string entry)
     {
-        int delimiter = value.IndexOf("::", StringComparison.Ordinal);
+        int delimiter = value.LastIndexOf("::", StringComparison.Ordinal);
         package = entry = "";
         if (delimiter < 0) return false;
-        if (delimiter == 0 || delimiter + 2 == value.Length || value.IndexOf("::", delimiter + 2, StringComparison.Ordinal) >= 0)
+        if (delimiter == 0 || delimiter + 2 == value.Length)
             throw new ArgumentException(Strings.Cli_FirmwareScriptSyntax);
-        package = Path.GetFullPath(ConsolePath.Normalize(value[..delimiter])!);
-        entry = value[(delimiter + 2)..].Replace('\\', '/');
-        if (entry.StartsWith('/') || entry.Contains(':') || entry.Any(char.IsControl) ||
-            entry.Split('/').Any(s => s is "" or "." or "..")) throw new ArgumentException(Strings.Cli_ScriptImageOutsideDirectory);
+        package = FirmwarePackageReference.Normalize(value[..delimiter]);
+        entry = FirmwarePackageReference.Relative(value[(delimiter + 2)..], wildcard: true);
         return true;
     }
 
     internal static IReadOnlyList<string> ExpandFiles(string[] patterns) => ExpandFilesCore(patterns, default);
 
-    private static IReadOnlyList<string> ExpandFilesCore(string[] patterns, CancellationToken ct)
+    private static IReadOnlyList<string> ExpandFilesCore(string[] patterns, CancellationToken ct,
+        Dictionary<string, FirmwarePackageReference>? sharedPackages = null)
     {
         var files = new List<string>();
         var seen = new HashSet<string>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
-        var packageSeen = new HashSet<string>(StringComparer.Ordinal);
-        var packages = new Dictionary<string, FirmwarePackage>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        var packageSeen = new HashSet<string>(FirmwarePackageReference.Comparer);
+        var packages = sharedPackages ?? new Dictionary<string, FirmwarePackageReference>(FirmwarePackageReference.Comparer);
         try
         {
             foreach (string pattern in patterns)
@@ -45,15 +44,16 @@ internal static class QcomScriptCommands
                 ct.ThrowIfCancellationRequested();
                 if (TryPackageScript(pattern, out string packagePath, out string entryPattern))
                 {
-                    if (!packages.TryGetValue(packagePath, out var package))
-                        packages.Add(packagePath, package = FirmwareUnpacker.Open(packagePath, cancellationToken: ct));
+                    if (!packages.TryGetValue(packagePath, out var reference))
+                        packages.Add(packagePath, reference = FirmwarePackageReference.Open(packagePath, ct));
+                    var package = reference.Package;
                     var entryMatches = package.Entries.Where(e => IsXml(e.Name) && FileSystemName.MatchesSimpleExpression(entryPattern, e.Name, ignoreCase: false))
                         .OrderBy(e => e.Name, StringComparer.Ordinal).ToArray();
                     if (entryMatches.Length == 0) throw new FileNotFoundException(Strings.Cli_ScriptFileMissing, pattern);
                     foreach (var entry in entryMatches)
                     {
                         package.GetEntry(entry.Name); // Reject ambiguous paths before any device command.
-                        string key = (OperatingSystem.IsWindows() ? packagePath.ToUpperInvariant() : packagePath) + "::" + entry.Name;
+                        string key = packagePath + "::" + entry.Name;
                         if (packageSeen.Add(key)) files.Add(packagePath + "::" + entry.Name);
                         if (files.Count > 1024) throw new ArgumentException(Strings.Cli_ScriptTooManyFiles);
                     }
@@ -76,17 +76,17 @@ internal static class QcomScriptCommands
             }
             return files;
         }
-        finally { foreach (var package in packages.Values) package.Dispose(); }
+        finally { if (sharedPackages is null) foreach (var package in packages.Values) package.Dispose(); }
     }
 
     internal static void Execute(IQcomProtocol protocol, string[] patterns, bool patchOnly, ConsoleUi ui,
         IProgress<ProgressRecord> progress, CancellationToken ct, TimeProvider? timeProvider = null)
     {
         // Expand all patterns before sending; preserve explicit pattern order and remove duplicates.
-        var files = ExpandFilesCore(patterns, ct);
-        var packages = new Dictionary<string, FirmwarePackage>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        var packages = new Dictionary<string, FirmwarePackageReference>(FirmwarePackageReference.Comparer);
         try
         {
+            var files = ExpandFilesCore(patterns, ct, packages);
             var scripts = new List<(string Name, IDataSource Source, Func<string, IDataSource> Resolver)>();
             // Open all package catalogs and resolve script names before the batch sends anything.
             foreach (string path in files)
@@ -94,14 +94,15 @@ internal static class QcomScriptCommands
                 ct.ThrowIfCancellationRequested();
                 if (TryPackageScript(path, out string packagePath, out string entryName))
                 {
-                    if (!packages.TryGetValue(packagePath, out var package))
-                        packages.Add(packagePath, package = FirmwareUnpacker.Open(packagePath, cancellationToken: ct));
+                    if (!packages.TryGetValue(packagePath, out var reference))
+                        packages.Add(packagePath, reference = FirmwarePackageReference.Open(packagePath, ct));
+                    var package = reference.Package;
                     scripts.Add((entryName, package.GetEntry(entryName), name => package.ResolveEntry(entryName, name)));
                 }
                 else
                 {
                     string directory = Path.GetDirectoryName(path)!;
-                    scripts.Add((Path.GetFileName(path), new FileDataSource(path), name => ResolveImage(directory, name)));
+                    scripts.Add((Path.GetFileName(path), new FileDataSource(path), name => ResolveLocalImage(directory, name, packages, ct)));
                 }
             }
             var clock = timeProvider ?? TimeProvider.System;
@@ -172,5 +173,16 @@ internal static class QcomScriptCommands
             throw new ArgumentException(Strings.Cli_ScriptImageOutsideDirectory);
         if (!File.Exists(full)) throw new FileNotFoundException(Strings.Cli_ScriptImageMissing, full);
         return new FileDataSource(full);
+    }
+    private static IDataSource ResolveLocalImage(string directory, string filename,
+        Dictionary<string, FirmwarePackageReference> packages, CancellationToken ct)
+    {
+        try { return ResolveImage(directory, filename); }
+        catch (FileNotFoundException) when (Path.GetFileName(filename.Replace('\\', '/')) == "super.img")
+        {
+            string name = FirmwarePackageReference.Relative(filename), path = Path.GetFullPath(directory);
+            if (!packages.TryGetValue(path, out var reference)) packages.Add(path, reference = FirmwarePackageReference.Open(path, ct));
+            return reference.Package.GetEntry(name);
+        }
     }
 }

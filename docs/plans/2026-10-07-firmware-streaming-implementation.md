@@ -44,3 +44,9 @@
 - 有真实 PAC 目录/大偏移读取证据；OFP/OZIP/OPS/KDZ/DZ/UPDATE.APP/payload 的兼容证据仍为合成夹具及参考算法，参考测试程序列出的这些真实包本机不存在。下一步优先用脱敏真实 OFP 验证虚拟脚本、密钥变体、sparse 镜像，再验证 Qcom 硬件线路。
 - 压缩条目的后向定位会重解压；第三方 decoder 有受限窗口开销，ZIP 多次重开有目录重读成本。大型真实 payload 的吞吐与峰值内存仍需测量。
 - 不实现增量 payload、DZ 自动分区合并、Packer、签名/镜像 hash 信任判断；这些是显式边界，解包成功不等于刷写认证通过。Packer 后续可在 Firmware 项目增加独立契约与实现，不改变本轮只读条目契约。
+
+## 追加：FWSP 分片 Super（2026-10-07）
+
+- 用户追加 PEHM00 真实目录与 ZIP。已补齐 Sparse 多输入叠加、OFP NVList 虚拟 super.img、已解包目录及 CLI 嵌套容器。原始 rawprogram0.xml 不改，虚拟输出保持 Sparse；不展开 Raw、不合并落盘。CFB 固定窗口与 ZIP 原生 Deflate 修复了巨型嵌套源的小读回退和重放开销。
+- 真实目录 1327 个窗口独立比对通过，ZIP/OFP 的原始脚本和首 Raw 窗口只读通过；上述历史 OFP 缺少真实包证据的风险已由这一指定样本部分补充，其他厂商变体与设备线路仍待验证。
+- 最新六套合计 1227 项通过，Release 构建 0 警告/0 错误。恢复工作改为读取 `2026-10-07-ofp-sparse-super-design.md`、`2026-10-07-ofp-sparse-super-implementation.md` 和 `docs/ofp-sparse-super.md`，历史数字按本记录保留。

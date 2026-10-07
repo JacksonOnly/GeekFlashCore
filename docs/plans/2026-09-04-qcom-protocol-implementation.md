@@ -675,3 +675,9 @@
 - 新增独立 `GeekFlashCore.Firmware`，OFP/OPS 的 rawprogram/patch 作为 IDataSource 直接传入现有 Qcom 门面，镜像从同一固件目录解析。CLI 接受 `package::entry.xml`；Qcom 同步协议、Raw/Sparse、ACK/NAK、取消和会话代数未变。
 - 合成 OFP + 模拟传输验证明文写入字节及 program/patch 顺序；NAK 后失效且不执行 patch，缺图在预检阶段停止并保持未发送命令。Qcom 457、CLI 102、Firmware 58 项通过；解决方案 Release 构建 0 警告/0 错误。
 - 真实固件证据仅覆盖 PAC 目录与大偏移读取，不代表 OFP 或 Qcom 硬件验证；下一步从真实 OFP 的虚拟 XML 与镜像流开始复核。详细范围、所有权、格式限制和风险见 `2026-10-07-firmware-streaming-design.md` 与对应 implementation。
+
+### FWSP-03：OFP 分片 Sparse Super（2026-10-07）
+
+- Sparse/Firmware 将按序分割的 Super 映射为虚拟 Sparse super.img，原始 rawprogram0.xml 直接解析该 IDataSource；CLI 支持已解包目录与 ZIP::OFP::脚本，Qcom 生产协议、预检和同步 Sparse 发送没有改动。
+- 模拟传输确认叠加后的精确字节分别写入 10/11/12 扇区；DontCare 跳过 11，仅发送 10/12；首区间 NAK 后失效并停止。Qcom 457 项、CLI 104 项、Firmware 76 项及另外三套共 1227 项通过；Release 0 警告/0 错误。
+- 真实 PEHM00 目录的 1327 个窗口和 ZIP 内 OFP 的原始脚本/首窗口只读通过，不是设备写入证据。Oplus Digest/VIP 对映射后包序要求仍须硬件验证。最新事实和恢复入口见 `2026-10-07-ofp-sparse-super-design.md` 与对应 implementation。

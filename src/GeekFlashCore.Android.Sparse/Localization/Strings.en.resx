@@ -60,4 +60,7 @@
   <data name="CompositionGeometryMismatch" xml:space="preserve"><value>Sparse fragments must have the same block size and total block count.</value></data>
   <data name="CompositionSourceInvalid" xml:space="preserve"><value>Sparse composition sources must be readable, seekable, stable, reopenable and have unchanged lengths.</value></data>
   <data name="CompositionSeekInvalid" xml:space="preserve"><value>The position is outside the virtual sparse encoding.</value></data>
+  <data name="CompositionPlacementInvalid" xml:space="preserve"><value>Sparse layout windows must be ordered, disjoint, block-aligned and within source and output bounds.</value></data>
+  <data name="SequentialChecksumInvalid" xml:space="preserve"><value>Streaming Sparse checksum mismatch.</value></data>
+  <data name="SequentialRegionIncomplete" xml:space="preserve"><value>The Sparse writer did not fully consume the current data region.</value></data>
 </root>

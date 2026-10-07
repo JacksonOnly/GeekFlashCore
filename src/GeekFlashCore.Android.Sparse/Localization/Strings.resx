@@ -60,4 +60,7 @@
   <data name="CompositionGeometryMismatch" xml:space="preserve"><value>Sparse 分片必须具有相同的块大小和总块数。</value></data>
   <data name="CompositionSourceInvalid" xml:space="preserve"><value>Sparse 映射源必须可读、可定位、稳定可重开且长度一致。</value></data>
   <data name="CompositionSeekInvalid" xml:space="preserve"><value>定位位置超出虚拟 Sparse 编码范围。</value></data>
+  <data name="CompositionPlacementInvalid" xml:space="preserve"><value>Sparse 布局窗口必须按输出顺序、不重叠、按块对齐且位于来源与输出范围内。</value></data>
+  <data name="SequentialChecksumInvalid" xml:space="preserve"><value>流式 Sparse 校验和不匹配。</value></data>
+  <data name="SequentialRegionIncomplete" xml:space="preserve"><value>Sparse 写入回调未完整读取当前数据区域。</value></data>
 </root>

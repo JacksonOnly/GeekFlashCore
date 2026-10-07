@@ -59,7 +59,7 @@ internal sealed class SparseCompositionStream(SparseImageComposition image, Comp
         Stream? source = null;
         try
         {
-            source = sources[index].Open(ct); SparseImageComposer.ValidateSource(source);
+            source = sources[index].Open(ct); SparseImageComposer.ValidateSource(source, 0);
             if (source.Length != sources[index].Length) throw new SparseException(Strings.CompositionSourceInvalid);
             source.Position = 0; Check(); _open.Add(index, (source, ++_access)); return source;
         }

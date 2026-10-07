@@ -6,7 +6,7 @@ using GeekFlashCore.BlockDevice.Abstractions;
 namespace GeekFlashCore.Android.Sparse;
 
 /// <summary>Builds a seekable sparse encoding over ordered fragments of the same logical image.</summary>
-public static class SparseImageComposer
+public static partial class SparseImageComposer
 {
     /// <summary>Validates sources and maps later RAW/FILL data over earlier data without expanding RAW.</summary>
     /// <remarks>Each factory transfers ownership of its opened stream to this API, at any position. Factories remain borrowed.
@@ -51,9 +51,9 @@ public static class SparseImageComposer
         return Build(snapshots, ranges, blockSize, totalBlocks, options, cancellationToken);
     }
 
-    internal static void ValidateSource(Stream? source)
+    internal static void ValidateSource(Stream? source, int minimumLength = 28)
     {
-        if (source is null || !source.CanRead || !source.CanSeek || source.Length < 28)
+        if (source is null || !source.CanRead || !source.CanSeek || source.Length < minimumLength)
             throw new SparseException(Strings.CompositionSourceInvalid);
     }
 

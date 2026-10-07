@@ -55,4 +55,9 @@
   <data name="ReaderFaulted" xml:space="preserve"><value>Sparse 读取器处于故障状态。</value></data>
   <data name="ReaderExpansionCompleted" xml:space="preserve"><value>Sparse 读取器已完成展开。</value></data>
   <data name="StreamOperationNotSupported" xml:space="preserve"><value>此 Sparse 流不支持该操作。</value></data>
+  <data name="CompositionInvalidOptions" xml:space="preserve"><value>Sparse 映射配置超出支持范围。</value></data>
+  <data name="CompositionLimitExceeded" xml:space="preserve"><value>Sparse 映射的来源、chunk 或元数据超过配置限额。</value></data>
+  <data name="CompositionGeometryMismatch" xml:space="preserve"><value>Sparse 分片必须具有相同的块大小和总块数。</value></data>
+  <data name="CompositionSourceInvalid" xml:space="preserve"><value>Sparse 映射源必须可读、可定位、稳定可重开且长度一致。</value></data>
+  <data name="CompositionSeekInvalid" xml:space="preserve"><value>定位位置超出虚拟 Sparse 编码范围。</value></data>
 </root>

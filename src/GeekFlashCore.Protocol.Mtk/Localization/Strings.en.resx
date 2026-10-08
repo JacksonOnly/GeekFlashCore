@@ -99,4 +99,8 @@
 <data name="PartitionDiscoveryCompleted" xml:space="preserve"><value>MTK: partition discovery completed with {PartitionCount} entries.</value></data>
 <data name="PartitionBootMetadata" xml:space="preserve"><value>MTK {StorageKind} boot region {RegionId}: constructing the Preloader entry from reported capacity {Length}, without reading GPT.</value></data>
 <data name="PartitionGptProbe" xml:space="preserve"><value>MTK {StorageKind} region {RegionId}: probing GPT, User region={IsUserRegion}.</value></data>
+<data name="GptHeaderGeometry" xml:space="preserve"><value>MTK region {RegionId} {GptCopy} GPT: block {BlockSize}, current {CurrentLba}, alternate {AlternateLba}, declared usable range {FirstUsableLba}..{LastUsableLba}, entries {EntriesLba}, count {EntryCount}, size {EntrySize}, device last block {DeviceLastLba}.</value></data>
+<data name="GptCrcChecked" xml:space="preserve"><value>MTK region {RegionId} {GptCopy} GPT: {ValidationStep} passed={ValidationPassed}.</value></data>
+<data name="GptCopyRejected" xml:space="preserve"><value>MTK region {RegionId} {GptCopy} GPT: copy rejected at {ValidationStep}.</value></data>
+<data name="GptUfsBoundarySelected" xml:space="preserve"><value>MTK UFS region {RegionId}: 4K GPT declares first usable LBA {DeclaredFirstUsableLba}, but its first partition starts at LBA {FirstPartitionLba}. Original CRCs passed; validating strictly from physical metadata end LBA {MetadataEndLba} and ending PGPT at the first partition. Host compatibility parsing only; device unchanged.</value></data>
 </root>

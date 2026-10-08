@@ -1,5 +1,7 @@
 # GeekFlashCore MTK 实施进度
 
+2026-10-09 UFS-GPT-01：用户000226/a33ef517证实User主备CRC全有效，但4K表FirstUsable34/首分区8不一致；对已观察UFS User128×128布局进行严格物理元数据下界兼容，PGPT截止首分区32KiB，不关闭CRC/重叠校验或改设备。24目标和真实主备离线回放通过，最新证据/基线/实机风险见 [UFS GPT记录](2026-10-09-mtk-ufs-gpt-first-usable-implementation.md)。
+
 2026-10-09 BOOT-GPT-01：用户区域疑问核对确认XFlash参数映射正确（UFS User3/eMMC User8），但枚举不应在Boot1/2探测GPT；现在直接根据容量生成Preloader辅助条目，只继续非Boot GPT发现，显式Boot操作及GP/CRC边界保留。44新目标/71分区回归/768可运行MTK通过，实机完整分区表待确认，见 [Boot/User记录](2026-10-08-mtk-boot-region-discovery-implementation.md)。
 
 2026-10-08 DA-ZLP-01：用户233705首区8192读完后成功零字节IN误EOF，DA1/DA2现在在原预算/取消边界内消费最多4个连续零包，不重发命令或ACK；20目标/724可运行项通过，保留15旧基线失败。实机分区完成待验证，用户追加Boot/User枚举区域另行修复，见 [零包记录](2026-10-08-mtk-da-zero-length-in-implementation.md)。

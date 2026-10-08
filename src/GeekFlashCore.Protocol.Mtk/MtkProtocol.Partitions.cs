@@ -6,6 +6,20 @@ namespace GeekFlashCore.Protocol.Mtk;
 
 public sealed partial class MtkProtocol
 {
+    private const int LegacyUfsGptBlockSize = 4096;
+    private const uint LegacyUfsGptEntryCount = 128;
+    private const uint LegacyUfsGptEntrySize = 128;
+    private const ulong LegacyUfsGptFirstUsableLba = 34;
+    private enum GptValidationStep
+    {
+        HeaderGeometry, HeaderCrc, EntryRange, EntryCrc, EntryParsing, PartitionOverlapOrIdentity
+    }
+
+    private MtkResourceException GptRejected(MtkStorageRegion region, bool backup, GptValidationStep step, string resource)
+    {
+        _logger.Debug(Strings.GptCopyRejected, region.WireId, backup ? "Backup" : "Primary", step);
+        return new MtkResourceException(resource);
+    }
     private byte[] ReadMetadata(MtkStorageRegion region, long offset, int length)
     {
         _ = Range(new(region.WireId, offset, length));
@@ -60,26 +74,44 @@ public sealed partial class MtkProtocol
         ulong entriesLba = BinaryPrimitives.ReadUInt64LittleEndian(h[72..]);
         uint count = BinaryPrimitives.ReadUInt32LittleEndian(h[80..]);
         uint entrySize = BinaryPrimitives.ReadUInt32LittleEndian(h[84..]);
+        _logger.Debug(Strings.GptHeaderGeometry, region.WireId, backup ? "Backup" : "Primary", block,
+            current, alternate, firstUsable, lastUsable, entriesLba, count, entrySize, last);
         if (BinaryPrimitives.ReadUInt32LittleEndian(h[8..]) != 0x10000 ||
             headerSize < 92 || headerSize > block || BinaryPrimitives.ReadUInt32LittleEndian(h[20..]) != 0 ||
             current != (backup ? last : 1) || alternate != (backup ? 1UL : last) ||
             firstUsable < 2 || firstUsable > lastUsable || lastUsable >= last ||
             count is 0 or > 4096 || entrySize is < 128 or > 4096 || entrySize % 8 != 0 || entriesLba > last)
-            throw new MtkResourceException("GPT geometry");
+            throw GptRejected(region, backup, GptValidationStep.HeaderGeometry, "GPT geometry");
         uint expectedHeaderCrc = BinaryPrimitives.ReadUInt32LittleEndian(h[16..]);
         h.Slice(16, 4).Clear();
-        if (Crc32Helper.Compute(h[..(int)headerSize]) != expectedHeaderCrc)
-            throw new MtkResourceException("GPT header CRC");
+        bool headerCrcValid = Crc32Helper.Compute(h[..(int)headerSize]) == expectedHeaderCrc;
+        BinaryPrimitives.WriteUInt32LittleEndian(h[16..], expectedHeaderCrc);
+        _logger.Debug(Strings.GptCrcChecked, region.WireId, backup ? "Backup" : "Primary", GptValidationStep.HeaderCrc, headerCrcValid);
+        if (!headerCrcValid)
+            throw GptRejected(region, backup, GptValidationStep.HeaderCrc, "GPT header CRC");
         long bytes = checked((long)count * entrySize);
         long padded = checked((bytes + block - 1) / block * block);
         ulong sectors = (ulong)(padded / block);
         if (padded > 1048576 - 2L * block || sectors > last - entriesLba ||
             (backup ? entriesLba <= lastUsable || entriesLba + sectors > current :
                 entriesLba < 2 || entriesLba + sectors > firstUsable))
-            throw new MtkResourceException("GPT entry range");
+            throw GptRejected(region, backup, GptValidationStep.EntryRange, "GPT entry range");
         byte[] entries = ReadMetadata(region, checked((long)entriesLba * block), checked((int)padded));
-        if (Crc32Helper.Compute(entries.AsSpan(0, (int)bytes)) != BinaryPrimitives.ReadUInt32LittleEndian(h[88..]))
-            throw new MtkResourceException("GPT entry CRC");
+        bool entryCrcValid = Crc32Helper.Compute(entries.AsSpan(0, (int)bytes)) == BinaryPrimitives.ReadUInt32LittleEndian(h[88..]);
+        _logger.Debug(Strings.GptCrcChecked, region.WireId, backup ? "Backup" : "Primary", GptValidationStep.EntryCrc, entryCrcValid);
+        if (!entryCrcValid)
+            throw GptRejected(region, backup, GptValidationStep.EntryCrc, "GPT entry CRC");
+
+        // Observed MTK UFS 4K GPT declares the 512-byte layout's FirstUsableLba (34),
+        // while valid entries start at LBA 8. Limit compatibility to that exact layout;
+        // original CRCs have already passed. Entries must still avoid the physical GPT
+        // array (ending at LBA 6), the tail, overlaps, invalid names and identities.
+        ulong primaryMetadataEnd = checked(2UL + sectors);
+        bool legacyUfsBoundary = region.Kind == MtkStorageKind.Ufs && region.WireId == _storage!.UserRegionId &&
+            block == LegacyUfsGptBlockSize &&
+            count == LegacyUfsGptEntryCount && entrySize == LegacyUfsGptEntrySize &&
+            firstUsable == LegacyUfsGptFirstUsableLba &&
+            (backup ? entriesLba == lastUsable + 1 : entriesLba == 2);
 
         // The original physical header and array have been validated independently.
         // Normalize only the parser's compact metadata layout; never modify device bytes.
@@ -89,18 +121,41 @@ public sealed partial class MtkProtocol
         BinaryPrimitives.WriteUInt64LittleEndian(compact[24..], 1);
         BinaryPrimitives.WriteUInt64LittleEndian(compact[32..], last);
         BinaryPrimitives.WriteUInt64LittleEndian(compact[72..], 2);
+        if (legacyUfsBoundary)
+            BinaryPrimitives.WriteUInt64LittleEndian(compact[40..], primaryMetadataEnd);
+        compact.Slice(16, 4).Clear();
         BinaryPrimitives.WriteUInt32LittleEndian(compact[16..], Crc32Helper.Compute(compact[..(int)headerSize]));
         entries.CopyTo(image, 2 * block);
-        var table = new GptParser().Parse(image, new GptParseOptions
+        IGpt table;
+        try
         {
-            SectorSize = block,
-            CrcPolicy = GptCrcPolicy.Strict,
-            AllowUnpatchedPartitionGeometry = false,
-            AllowEmptyPartitionTypeId = false,
-            SkipEmptyPartitionTypeId = true
-        });
+            table = new GptParser().Parse(image, new GptParseOptions
+            {
+                SectorSize = block,
+                CrcPolicy = GptCrcPolicy.Strict,
+                AllowUnpatchedPartitionGeometry = false,
+                AllowEmptyPartitionTypeId = false,
+                SkipEmptyPartitionTypeId = true
+            });
+        }
+        catch (GptException)
+        {
+            // No raw parser message: it may contain untrusted names or identifiers.
+            _logger.Debug(Strings.GptCopyRejected, region.WireId, backup ? "Backup" : "Primary", GptValidationStep.EntryParsing);
+            throw;
+        }
         if (table.Overlaps.Count != 0 || table.Entries.GroupBy(e => e.Id).Any(g => g.Key == Guid.Empty || g.Count() > 1))
-            throw new MtkResourceException("GPT partition overlap/identity");
+            throw GptRejected(region, backup, GptValidationStep.PartitionOverlapOrIdentity, "GPT partition overlap/identity");
+        if (legacyUfsBoundary && table.Entries.Count != 0)
+        {
+            ulong firstPartition = table.Entries.Min(e => e.FirstLba);
+            if (firstPartition < firstUsable)
+            {
+                _logger.ForContext("MtkSummary", true).Warning(Strings.GptUfsBoundarySelected,
+                    region.WireId, firstUsable, firstPartition, primaryMetadataEnd);
+                firstUsable = firstPartition;
+            }
+        }
         // Expose only reserved areas outside the validated usable-LBA interval.
         // These boundaries also remain available when the backup supplied the table.
         var primaryRange = new MtkFlashRange(region.WireId, 0, checked((long)firstUsable * block));

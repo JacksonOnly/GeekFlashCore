@@ -99,4 +99,8 @@
 <data name="PartitionDiscoveryCompleted" xml:space="preserve"><value>MTK：分区表获取完成，共 {PartitionCount} 个条目。</value></data>
 <data name="PartitionBootMetadata" xml:space="preserve"><value>MTK {StorageKind} 启动区域 {RegionId}：根据已报告容量 {Length} 构造 Preloader 条目，不读取 GPT。</value></data>
 <data name="PartitionGptProbe" xml:space="preserve"><value>MTK {StorageKind} 区域 {RegionId}：探测 GPT，User 区域={IsUserRegion}。</value></data>
+<data name="GptHeaderGeometry" xml:space="preserve"><value>MTK 区域 {RegionId} {GptCopy} GPT：块 {BlockSize}，当前位置 {CurrentLba}，备用位置 {AlternateLba}，声明可用范围 {FirstUsableLba}～{LastUsableLba}，条目位置 {EntriesLba}，数量 {EntryCount}，大小 {EntrySize}，设备末块 {DeviceLastLba}。</value></data>
+<data name="GptCrcChecked" xml:space="preserve"><value>MTK 区域 {RegionId} {GptCopy} GPT：{ValidationStep} 校验通过={ValidationPassed}。</value></data>
+<data name="GptCopyRejected" xml:space="preserve"><value>MTK 区域 {RegionId} {GptCopy} GPT：副本校验拒绝，阶段 {ValidationStep}。</value></data>
+<data name="GptUfsBoundarySelected" xml:space="preserve"><value>MTK UFS 区域 {RegionId}：4K GPT 声明起始 LBA {DeclaredFirstUsableLba}，实际首分区 LBA {FirstPartitionLba}；原始 CRC 已通过，按物理元数据末端 LBA {MetadataEndLba} 严格验证并以首分区界定 PGPT。仅宿主兼容解析，不改写设备。</value></data>
 </root>

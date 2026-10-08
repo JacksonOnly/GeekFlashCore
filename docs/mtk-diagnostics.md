@@ -56,3 +56,5 @@ XFlash设备包上限可为2MiB，不能按旧1MiB宿主小帧限制拒绝能力
 ## GPT 与 Boot 区域
 
 分区发现不再读取eMMC BOOT1/2或UFS LU0/LU1的头尾GPT；Preloader/backup直接采用已报告容量。UFS User为wire3（LU2），eMMC User为wire8，不能使用通常的零基LUN号替换DA wire编号。XFlash参数编码没有偏移错误，旧Boot读取来自枚举循环。UI显示发现开始的介质/User ID及完成条目数，Debug明确Boot只生成元数据和实际GPT读取的region。显式Boot raw/别名操作仍访问1/2，eMMC GP独立GPT能力保留；User CRC/主备/坏表边界不降级。实机完整列表待确认，见 [区域发现记录](plans/2026-10-08-mtk-boot-region-discovery-implementation.md)。
+
+已观察UFS 4K GPT可声明FirstUsable34，却有已通过原始CRC的分区从8开始。只对UFS User/128×128/明确物理数组布局，以元数据末端6严格验证；PGPT截止真实首分区（抓包32KiB），避免覆盖分区。其他布局不降级，CRC/重叠/越界/身份/名字校验继续。Warning摘要说明仅宿主兼容，不改写设备；Debug记录主备几何、CRC布尔和失败阶段，不记录校验数值/GUID/载荷。CLI工具输出时可能压制摘要，文件日志仍完整。见 [UFS边界记录](plans/2026-10-09-mtk-ufs-gpt-first-usable-implementation.md)。

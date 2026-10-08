@@ -122,6 +122,8 @@ git status --short --ignored
 
 开始 SPRD 工作前，读取 `docs/plans/2026-10-07-sprd-protocol-design.md`、`docs/plans/2026-10-07-sprd-protocol-implementation.md` 和 `docs/sprd.md`，再检查工作区与最近提交。参考源为 `D:\Code\CSharp\SPRDClientCore-Xia` 和 `D:\Code\CPlusPlus\SPD_Flash_Tool_Source_Code`；当前没有实机证据。Loader 地址、容量单位、64 位布局、禁转义及奇数补零必须显式确认，不自动重发写命令或试探容量。测试位于 ignored `.tests/GeekFlashCore.Protocol.Sprd.Tests`。用户追加 YC-nw/SPRDClientCore 与 TomKing062/spreadtrum_flash 后的严格 GPT 容量、显式 Raw v1/v2 和 UID 最新范围与恢复来源为 `docs/plans/2026-10-08-sprd-upstream-completion-design.md` 与对应 implementation；SPRD-09 允许 GPT 从一次固定前缀读取中自动识别唯一完全校验有效的 512/4096 布局，保留手动覆盖，原生单位/前缀窗口和 Raw flush/USB 包大小仍须确认，无设备试读回退、NV 变换或整盘推断。
 
+SPRD-10 的最新默认入口为 Auto，基于一次首帧的唯一校验和明确响应判断 BootROM/FDL1/FDL2，再获取实际所需 Loader。仅首个 CHECK_BAUD 完全无响应允许一次不同 CONNECT 查询；部分帧/坏校验/取消不回退，不重发写命令。已加载 FDL2 自动入口按参考握手确认 DISABLE_TRANSCODE ACK；手动入口保持原线路。恢复另读 `docs/plans/2026-10-08-sprd-entry-detection-design.md` 与对应 implementation；旧文档的显式入口默认约束被本设计替代，无实机证据。
+
 开始 Qualcomm 相关工作前，依次阅读：
 
 1. 本文件。

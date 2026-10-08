@@ -49,7 +49,8 @@ internal static class CommandLine
                       "v2" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdRawDataMode.Version2,
                       _ => throw new ArgumentException(Strings.Cli_SprdProfileInvalid) } },
                     "--sprd-entry" => builder with { SprdEntry = value.ToLowerInvariant() switch
-                    { "brom" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdBootStage.BootRom,
+                    { "auto" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdBootStage.Auto,
+                      "brom" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdBootStage.BootRom,
                       "fdl1" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdBootStage.Fdl1,
                       "fdl2" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdBootStage.Fdl2,
                       _ => throw new ArgumentException(Strings.Cli_SprdProfileInvalid) } },

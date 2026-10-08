@@ -5,8 +5,8 @@ namespace GeekFlashCore.Protocol.Sprd.Abstractions;
 /// <summary>Immutable connection profile. The protocol snapshots partition lists at construction.</summary>
 public sealed record SprdProtocolOptions
 {
-    /// <summary>Initial device stage; automatic stage guessing is not performed.</summary>
-    public SprdBootStage EntryStage { get; init; } = SprdBootStage.BootRom;
+    /// <summary>Initial device stage profile; Auto detects validated handshake evidence before selecting loaders.</summary>
+    public SprdBootStage EntryStage { get; init; } = SprdBootStage.Auto;
     /// <summary>Maximum synchronous response time for one command.</summary>
     public int CommandTimeoutMilliseconds { get; init; } = 10_000;
     /// <summary>Total connection budget including asynchronous resource acquisition.</summary>

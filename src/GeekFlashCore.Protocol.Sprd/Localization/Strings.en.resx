@@ -20,4 +20,7 @@
 <data name="RawUsbPacketRequired" xml:space="preserve"><value>SPRD raw USB download requires an explicitly confirmed bulk OUT packet size.</value></data>
 <data name="RawProfileMismatch" xml:space="preserve"><value>The SPRD raw download profile does not match the FDL2 version or flush size.</value></data>
 <data name="GptSectorDetected" xml:space="preserve"><value>SPRD GPT logical sector size: {0} bytes.</value></data>
+<data name="EntryDetectionFailed" xml:space="preserve"><value>The SPRD entry stage could not be uniquely identified; disconnect and reconnect with an explicit BootRom/Fdl1/Fdl2 entry.</value></data>
+<data name="EntryProbeConnect" xml:space="preserve"><value>SPRD CHECK_BAUD received no response; sending one CONNECT entry query.</value></data>
+<data name="EntryDetected" xml:space="preserve"><value>SPRD initial entry stage: {0}.</value></data>
 </root>

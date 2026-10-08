@@ -4,7 +4,7 @@ using Serilog;
 
 namespace GeekFlashCore.Protocol.Sprd.Internals;
 
-internal readonly record struct SprdResponse(ushort Type, ReadOnlyMemory<byte> Data);
+internal readonly record struct SprdResponse(ushort Type, ReadOnlyMemory<byte> Data, bool UseCrc);
 
 /// <summary>One bounded synchronous request/response stream. Returned memory expires on the next command.</summary>
 internal sealed class SprdWire : IDisposable
@@ -17,9 +17,11 @@ internal sealed class SprdWire : IDisposable
     private int _position, _available, _budget;
     private long _started;
     private CancellationToken _token;
+    private bool _awaitingResponse, _receivedBytes;
     internal bool UseCrc { get; set; }
     internal bool Escaped { get; set; } = true;
     internal bool HasWritten { get; private set; }
+    internal bool CanProbeConnect => _awaitingResponse && !_receivedBytes;
     internal CancellationToken Token => _token;
     internal SprdWire(ITransport transport, SprdProtocolOptions options)
     {
@@ -31,7 +33,8 @@ internal sealed class SprdWire : IDisposable
     }
     internal void Begin(CancellationToken token, int budget)
     { _token = token; _budget = budget; _started = Stopwatch.GetTimestamp(); HasWritten = false; }
-    internal void Reset() { _position = _available = 0; Escaped = true; UseCrc = true; }
+    internal void Reset()
+    { _position = _available = 0; _awaitingResponse = _receivedBytes = false; Escaped = true; UseCrc = true; }
     internal int Remaining
     {
         get
@@ -43,8 +46,9 @@ internal sealed class SprdWire : IDisposable
         }
     }
     internal void Check() => _ = Remaining;
-    internal SprdResponse Command(ushort command, ReadOnlySpan<byte> payload = default)
+    internal SprdResponse Command(ushort command, ReadOnlySpan<byte> payload = default, bool detectChecksum = false)
     {
+        _awaitingResponse = _receivedBytes = false;
         Check(); long commandStart = Stopwatch.GetTimestamp();
         int written;
         if (command == SprdCommand.CheckBaud) { _encoded[0] = 0x7e; written = 1; }
@@ -69,7 +73,10 @@ internal sealed class SprdWire : IDisposable
         Log.ForContext<SprdWire>().Debug(Strings.Command, command, payload.Length);
         HasWritten = true; // Even a partial Write failure invalidates this stream.
         _transport.Write(_encoded.AsSpan(0, written));
-        return ReceiveResponse(command, commandStart);
+        _awaitingResponse = true;
+        var response = ReceiveResponse(command, commandStart, detectChecksum);
+        _awaitingResponse = false;
+        return response;
     }
     internal void Raw(ReadOnlySpan<byte> payload)
     {
@@ -85,11 +92,11 @@ internal sealed class SprdWire : IDisposable
         var response = ReceiveResponse(SprdCommand.Midst, commandStart);
         if (response.Type != SprdCommand.Ack) throw new SprdProtocolException(SprdCommand.Midst, response.Type);
     }
-    private SprdResponse ReceiveResponse(ushort command, long commandStart)
+    private SprdResponse ReceiveResponse(ushort command, long commandStart, bool detectChecksum = false)
     {
         for (int logFrames = 0; ; logFrames++)
         {
-            var response = Receive(command, commandStart);
+            var response = Receive(command, commandStart, detectChecksum);
             if (response.Type != SprdCommand.Log) return response;
             if (logFrames >= _options.MaximumLogFrames) throw new SprdProtocolException(command);
         }
@@ -110,9 +117,10 @@ internal sealed class SprdWire : IDisposable
             if (_available <= 0 || _available > _input.Length) throw new TimeoutException(Strings.Timeout);
             Check();
         }
+        _receivedBytes = true;
         return _input[_position++];
     }
-    private SprdResponse Receive(ushort command, long commandStart)
+    private SprdResponse Receive(ushort command, long commandStart, bool detectChecksum)
     {
         int skipped = 0;
         while (Next(commandStart) != 0x7e) if (++skipped > 64) throw new SprdProtocolException(command);
@@ -152,9 +160,18 @@ internal sealed class SprdWire : IDisposable
             }
         }
         if (count < 6 || count != expectedLength || escaping) throw new SprdProtocolException(command);
-        if (Checksum(_body.AsSpan(0, count - 2), UseCrc) != BinaryPrimitives.ReadUInt16BigEndian(_body.AsSpan(count - 2)))
-            throw new SprdProtocolException(command);
-        return new(BinaryPrimitives.ReadUInt16BigEndian(_body), _body.AsMemory(4, count - 6));
+        var checkedBytes = _body.AsSpan(0, count - 2);
+        ushort checksum = BinaryPrimitives.ReadUInt16BigEndian(_body.AsSpan(count - 2));
+        bool useCrc = UseCrc;
+        if (detectChecksum)
+        {
+            bool crcMatches = Checksum(checkedBytes, true) == checksum;
+            bool fdlMatches = Checksum(checkedBytes, false) == checksum;
+            if (crcMatches == fdlMatches) throw new InvalidOperationException(Strings.EntryDetectionFailed);
+            useCrc = crcMatches;
+        }
+        else if (Checksum(checkedBytes, useCrc) != checksum) throw new SprdProtocolException(command);
+        return new(BinaryPrimitives.ReadUInt16BigEndian(_body), _body.AsMemory(4, count - 6), useCrc);
     }
     private static ushort Checksum(ReadOnlySpan<byte> bytes, bool crc)
     {

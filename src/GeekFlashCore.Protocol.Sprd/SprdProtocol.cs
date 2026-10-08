@@ -94,21 +94,45 @@ public sealed partial class SprdProtocol : ISprdProtocol, IDisposable
         _wire.Begin(ct, _options.ConnectTimeoutMilliseconds);
         try
         {
-            using var resources = _options.EntryStage == SprdBootStage.Fdl2 ? new SprdConnectionResources() :
+            SprdBootStage entry = _options.EntryStage; string? version = null;
+            if (entry == SprdBootStage.Auto)
+            {
+                OpenConnection(); (entry, version) = DetectEntry();
+            }
+            using var resources = entry == SprdBootStage.Fdl2 ? new SprdConnectionResources() :
                 _provider is null ? throw new ArgumentException(Strings.LoaderRequired) :
-                await SprdResourceRequest.Get(_provider, _options.EntryStage,
+                await SprdResourceRequest.Get(_provider, entry,
                     Math.Min(_wire.Remaining, _options.ResourceRequestTimeoutMilliseconds), ct).ConfigureAwait(false);
             if (resources is null) throw new ArgumentException(Strings.LoaderRequired);
-            _wire.Check(); ConnectCore(resources, progress); _wire.Check();
+            _wire.Check();
+            if (_options.EntryStage == SprdBootStage.Auto)
+            {
+                resources.Validate(_options with { EntryStage = entry });
+                CompleteConnection(resources, entry, version, progress);
+            }
+            else ConnectCore(resources, progress);
+            _wire.Check();
         }
         catch { if (_wire.HasWritten || _state == SprdSessionState.Connecting) Fault(); throw; }
     }
     private void ConnectCore(SprdConnectionResources resources, IProgress<ProgressRecord>? progress)
     {
         if (_state != SprdSessionState.Disconnected) throw new InvalidOperationException(Strings.Unavailable);
-        resources.Validate(_options); _wire.Reset(); _wire.UseCrc = _options.EntryStage == SprdBootStage.BootRom;
+        resources.Validate(_options); OpenConnection();
+        SprdBootStage entry = _options.EntryStage; string? version = null;
+        if (entry == SprdBootStage.Auto)
+        {
+            (entry, version) = DetectEntry(); resources.Validate(_options with { EntryStage = entry });
+        }
+        else if (entry != SprdBootStage.Fdl2) version = Handshake();
+        else _wire.Expect(SprdCommand.Connect);
+        CompleteConnection(resources, entry, version, progress);
+    }
+    private void OpenConnection()
+    {
         if (_options.RawDataMode != SprdRawDataMode.Disabled && _transport is IUsbTransport && _options.RawDataUsbPacketSize is null)
             throw new ArgumentException(Strings.RawUsbPacketRequired);
+        _wire.Reset(); _wire.UseCrc = _options.EntryStage == SprdBootStage.BootRom;
         _wire.Escaped = !_options.EntryTranscodeDisabled;
         State(SprdSessionState.Connecting);
         try
@@ -122,16 +146,18 @@ public sealed partial class SprdProtocol : ISprdProtocol, IDisposable
             throw;
         }
         Interlocked.Increment(ref _generation);
-        string? version = null; SprdLoaderInfo? info = null;
-        if (_options.EntryStage != SprdBootStage.Fdl2) version = Handshake();
-        else _wire.Expect(SprdCommand.Connect);
-        if (_options.EntryStage == SprdBootStage.BootRom)
+    }
+    private void CompleteConnection(SprdConnectionResources resources, SprdBootStage entry, string? version,
+        IProgress<ProgressRecord>? progress)
+    {
+        SprdLoaderInfo? info = null;
+        if (entry == SprdBootStage.BootRom)
         {
             State(SprdSessionState.BootRom); Upload(resources.Fdl1!, _options.BootRomBlockSize, "FDL1", progress);
             _wire.Expect(SprdCommand.Execute); _wire.UseCrc = false;
             version = Handshake();
         }
-        if (_options.EntryStage != SprdBootStage.Fdl2)
+        if (entry != SprdBootStage.Fdl2)
         {
             State(SprdSessionState.Fdl1);
             if (_options.KeepCharge) _wire.Expect(SprdCommand.KeepCharge);
@@ -158,12 +184,43 @@ public sealed partial class SprdProtocol : ISprdProtocol, IDisposable
             _wire.Expect(SprdCommand.EnableRawData);
         }
         _partitions = _options.KnownPartitions.Count == 0 ? null : _options.KnownPartitions;
-        _target = new(SprdBootStage.Fdl2, version, info); State(SprdSessionState.StorageReady);
+        _target = new(SprdBootStage.Fdl2, version, info) { EntryStage = entry }; State(SprdSessionState.StorageReady);
     }
+    private (SprdBootStage Stage, string? Version) DetectEntry()
+    {
+        SprdResponse response; bool connectProbe = false;
+        try { response = _wire.Command(SprdCommand.CheckBaud, detectChecksum: true); }
+        catch (TimeoutException) when (_wire.CanProbeConnect)
+        {
+            // One different, non-destructive query is allowed only if no response byte arrived.
+            _wire.Check(); _wire.UseCrc = false;
+            Log.ForContext<SprdProtocol>().Warning(Strings.EntryProbeConnect);
+            connectProbe = true;
+            response = _wire.Command(SprdCommand.Connect, detectChecksum: true);
+        }
+        _wire.UseCrc = response.UseCrc;
+        SprdBootStage entry; string? version = null;
+        if (!connectProbe && response.Type == SprdCommand.Version)
+        {
+            entry = response.UseCrc ? SprdBootStage.BootRom : SprdBootStage.Fdl1;
+            version = VersionText(response); _wire.Expect(SprdCommand.Connect);
+        }
+        else if (response.Type == SprdCommand.UnsupportedCommand && !response.UseCrc && response.Data.IsEmpty)
+        {
+            // Confirm the existing FDL2 handshake and switch framing only after its ACK.
+            entry = SprdBootStage.Fdl2;
+            _wire.Expect(SprdCommand.DisableTranscode); _wire.Escaped = false;
+        }
+        else throw new InvalidOperationException(Strings.EntryDetectionFailed);
+        Log.ForContext<SprdProtocol>().Information(Strings.EntryDetected, entry);
+        return (entry, version);
+    }
+    private static string VersionText(SprdResponse response) =>
+        Encoding.ASCII.GetString(response.Data.Span[..Math.Min(256, response.Data.Length)]).TrimEnd('\0');
     private string Handshake()
     {
         var response = _wire.Expect(SprdCommand.CheckBaud, expected: SprdCommand.Version);
-        string version = Encoding.ASCII.GetString(response.Data.Span[..Math.Min(256, response.Data.Length)]).TrimEnd('\0');
+        string version = VersionText(response);
         _wire.Expect(SprdCommand.Connect);
         return version;
     }

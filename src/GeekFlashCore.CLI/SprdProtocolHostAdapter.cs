@@ -12,11 +12,12 @@ internal static class SprdProtocolHostAdapter
         ProtocolType.Sprd,
         new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "sprd", "spreadtrum", "unisoc" },
         "Sprd", Strings.Cli_SprdWaiting, null, Create, [],
-        static (protocol, ui) => ui.WriteLine(Strings.FormatCli_SprdInfo(((ISprdProtocol)protocol).SessionState)), new CommandSet());
+        static (protocol, ui) => ui.WriteLine(Strings.FormatCli_SprdInfo(((ISprdProtocol)protocol).SessionState,
+            ((ISprdProtocol)protocol).TargetInfo?.EntryStage)), new CommandSet());
 
     internal static SprdProtocolOptions Options(CliOptions options) => new()
     {
-        EntryStage = options.SprdEntry ?? SprdBootStage.BootRom,
+        EntryStage = options.SprdEntry ?? SprdBootStage.Auto,
         PartitionTableSizeUnitBytes = options.SprdPartitionUnit,
         PartitionLengthEncoding = options.SprdLengthEncoding ?? SprdPartitionLengthEncoding.UInt32,
         PadOddPayloads = options.SprdPadOdd,
@@ -61,9 +62,9 @@ internal static class SprdProtocolHostAdapter
             throw new ArgumentException(Strings.Cli_SprdOptionConflict);
         if (options.NonInteractive && options.Command is not ("help" or "devices" or "firmware" or "browse-image"))
         {
-            var stage = options.SprdEntry ?? SprdBootStage.BootRom;
+            var stage = options.SprdEntry ?? SprdBootStage.Auto;
             if (stage == SprdBootStage.BootRom && (string.IsNullOrWhiteSpace(options.Loader) || options.SprdFdl1Address is null) ||
-                stage != SprdBootStage.Fdl2 && (string.IsNullOrWhiteSpace(options.SprdFdl2) || options.SprdFdl2Address is null))
+                stage is SprdBootStage.BootRom or SprdBootStage.Fdl1 && (string.IsNullOrWhiteSpace(options.SprdFdl2) || options.SprdFdl2Address is null))
                 throw new ArgumentException(Strings.Cli_SprdLoadersRequired);
         }
     }

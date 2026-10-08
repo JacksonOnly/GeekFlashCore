@@ -2,7 +2,7 @@
 
 `GeekFlashCore.Protocol.Sprd.Abstractions` 提供 .NET 8 公共契约，`GeekFlashCore.Protocol.Sprd` 实现同步 `ITransport` 上的 BSL。核心可复用于 CLI、桌面和服务；不依赖参考项目的串口发现、WMI 或平台 DLL。`IProtocol` 异步门面与同步 API 共用串行 gate；只有 Loader Provider 等宿主资源边界等待异步结果。
 
-当前实现 BootROM→FDL1→FDL2、显式已加载 FDL 接入、原生/GPT 分区枚举、流式 Raw/Sparse 写入（framed 或显式 Raw v1/v2）、按范围读取、Chip UID、整分区擦除、正常重启和关机。线路由本地参考源、[YC-nw/SPRDClientCore](https://github.com/YC-nw/SPRDClientCore) 和 [TomKing062/spreadtrum_flash](https://github.com/TomKing062/spreadtrum_flash) 的固定版本及模拟传输交叉验证，尚无 SPRD 实机证据。
+当前实现 BootROM→FDL1→FDL2、自动/显式已加载 FDL 接入、原生/GPT 分区枚举、流式 Raw/Sparse 写入（framed 或显式 Raw v1/v2）、按范围读取、Chip UID、整分区擦除、正常重启和关机。线路由本地参考源、[YC-nw/SPRDClientCore](https://github.com/YC-nw/SPRDClientCore) 和 [TomKing062/spreadtrum_flash](https://github.com/TomKing062/spreadtrum_flash) 的固定版本及模拟传输交叉验证，尚无 SPRD 实机证据。
 
 ## CLI
 
@@ -16,21 +16,25 @@ geekflash --protocol sprd --port COM7 --sprd-entry fdl2 --sprd-partition-unit UN
 geekflash --protocol sprd --port COM7 --sprd-entry fdl2 --sprd-partition-unit UNIT_BYTES write boot boot.img
 geekflash --protocol sprd --port COM7 --sprd-entry fdl2 --sprd-partition-unit UNIT_BYTES erase cache
 geekflash --protocol sprd --port COM7 --sprd-entry fdl2 reboot system
-geekflash --protocol sprd --port COM7 --sprd-entry fdl2 --sprd-partition-source gpt partitions all
+geekflash --protocol sprd --port COM7 --sprd-partition-source gpt partitions all
 geekflash --protocol sprd --port COM7 --sprd-entry fdl2 sprd-chip-uid
 ```
 
-`FDL1_ADDRESS` / `FDL2_ADDRESS` 和 `UNIT_BYTES` 必须换成设备已确认的数值，支持 `0x` 地址。不要照搬其他平台的 Loader 或地址。后续示例假定设备仍在 FDL2；未加载时继续使用完整 Loader 参数。交互模式缺失文件/地址会询问；非交互模式缺失必要参数在创建传输前失败。Provider 等待默认 30 秒；连接总预算默认 120 秒。`--resource-timeout` 与 `--connect-timeout` 可显式调整且必须为正数。
+`FDL1_ADDRESS` / `FDL2_ADDRESS` 和 `UNIT_BYTES` 必须换成设备已确认的数值，支持 `0x` 地址。不要照搬其他平台的 Loader 或地址。省略入口或 `--sprd-entry auto` 默认自动识别；显式 `brom/fdl1/fdl2` 保持原线路。识别为 BootROM 才需要两个 Loader，FDL1 只需要 FDL2，FDL2 不上传，也不调用 Loader Provider。交互模式识别后会询问缺失文件/地址；非交互自动入口在识别后拒绝缺失的必要资源，显式入口仍在打开传输前预检。Provider 等待默认 30 秒；连接总预算默认 120 秒，包含自动识别和资源等待。`--resource-timeout` 与 `--connect-timeout` 可显式调整且必须为正数。
+
+自动识别先发送单字节 CHECK_BAUD：完整 VERSION 帧必须唯一匹配 CRC16/XMODEM（BootROM）或 FDL checksum（FDL1），随后 CONNECT ACK 确认。FDL checksum 的空 UNSUPPORTED_COMMAND(0xfe) 响应指向已加载 FDL2，随后 DISABLE_TRANSCODE ACK 确认并切换无转义。若首个查询完全无响应且单命令超时，剩余预算内允许一次 FDL checksum CONNECT 查询，仅接受上述 FDL2 特征；未知 ACK/VERSION 不继续猜测或重发。部分帧、坏/歧义校验、日志后超时、取消或总预算耗尽均停止。首包等待受单命令超时限制（核心默认 10 秒，CLI --read-timeout）；特殊 Loader 无明确响应时用手动入口。版本文字和 VID/PID 不决定阶段。
 
 原生 `READ_PARTITION` 的每条记录为名称 + size 数值，没有单位标签；`--sprd-partition-unit BYTES` 是每个 size 单位对应的字节数。`UNIT_BYTES` 是示例占位符，不能原样输入。计算为 `capacityBytes = size * unitBytes`，例如 size=65536、unitBytes=1024 得到 64 MiB，size=64、unitBytes=1048576 也得到 64 MiB。原生模式须按设备确认单位；选择 `--sprd-partition-source gpt` 不需要此参数，直接从验证后的 GPT 几何计算容量。核心还支持宿主提供已验证的 `KnownPartitions`，不再请求表。不发送反复读失败请求来试探容量，也不合成缺失的 `splloader` 容量。
 
 默认长度布局为 `--sprd-length 32`。只有确认 FDL 支持后才选 `64`（72 字节名称 + LE64 长度，共 80 字节）或 `64-reserved`（另加八字节零保留区，共 88 字节）。64 位布局的 READ_MIDST 使用 LE32 count + LE64 offset。不能表示的范围在写入/READ_START 前拒绝，不静默截断或换线路。
 
-`--sprd-disable-transcode` 显式发送 DISABLE_TRANSCODE，ACK 后才切换编解码。若 FDL2 EXEC 明确报告不支持，则连接失败。`--sprd-entry-transcode-disabled` 只适用于入口已在 FDL2 且当前已经禁转义的设备，不会再次猜测或协商。两项默认关闭，实际时机需设备验证。
+`--sprd-disable-transcode` 显式发送 DISABLE_TRANSCODE，ACK 后才切换编解码。若 FDL2 EXEC 明确报告不支持，则连接失败。自动识别已加载 FDL2 的握手本身协商关闭转义；从 BootROM/FDL1 上传到 FDL2 不隐式关闭，仍由选项决定。`--sprd-entry-transcode-disabled` 只适用于显式 `--sprd-entry fdl2` 且当前已经禁转义的设备，不会再次猜测或协商。选项默认关闭，实际时机需设备验证。
 
 `--sprd-pad-odd` 选择 C++ 工具的偶数字节 profile。为保证声明和实际写入范围一致，该模式拒绝奇数长度 Loader/Raw，而不是补写分区末尾之外的字节；分片大小必须为偶数。默认 profile 保留 C# 参考的原始长度。
 
 ## 宿主 API
+
+`SprdProtocolOptions.EntryStage` 默认 `SprdBootStage.Auto`，既有 BootRom/Fdl1/Fdl2 枚举数值保持。同步 `Connect(resources)` 借用提供的资源，自动识别前验证已提供的 Loader，之后验证实际需要的 Loader；异步 `ConnectAsync` 在识别后将具体阶段交给 Provider。识别后资源失效、超时或取消会关闭传输，必须断开再连接。`TargetInfo.EntryStage` 保存初始阶段，`TargetInfo.Stage` 在成功连接后仍为 Fdl2；断开/失败清空元数据。
 
 ### 容量来源
 

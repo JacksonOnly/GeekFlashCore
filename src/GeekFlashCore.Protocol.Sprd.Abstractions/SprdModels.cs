@@ -1,6 +1,6 @@
 namespace GeekFlashCore.Protocol.Sprd.Abstractions;
 
-/// <summary>The explicitly selected entry point or observed loader stage.</summary>
+/// <summary>The selected entry profile or observed loader stage.</summary>
 public enum SprdBootStage
 {
     /// <summary>Boot ROM; both FDL images are required.</summary>
@@ -8,7 +8,9 @@ public enum SprdBootStage
     /// <summary>Already running FDL1; only FDL2 is required.</summary>
     Fdl1,
     /// <summary>Already running FDL2; no image is uploaded.</summary>
-    Fdl2
+    Fdl2,
+    /// <summary>Detect the initial stage from validated handshake responses before selecting loaders.</summary>
+    Auto
 }
 
 /// <summary>Lifecycle of one serialized connection.</summary>
@@ -71,6 +73,8 @@ public sealed record SprdLoaderInfo(uint Version, bool SupportsDisableTranscode,
 /// <summary>Connection metadata. Version text is bounded and is never automatically logged.</summary>
 public sealed record SprdTargetInfo(SprdBootStage Stage, string? Version, SprdLoaderInfo? Loader)
 {
+    /// <summary>Initial stage used by the successful connection, before any loader upload.</summary>
+    public SprdBootStage? EntryStage { get; init; }
     /// <summary>Logical sector size confirmed by a successful GPT query; null until queried or for host/native lists.</summary>
     public int? GptSectorSize { get; init; }
 }

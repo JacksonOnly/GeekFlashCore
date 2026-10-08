@@ -15,13 +15,21 @@ public sealed class SprdConnectionResources(SprdLoader? fdl1 = null, SprdLoader?
     /// <summary>Second loader; required unless FDL2 is already running.</summary>
     public SprdLoader? Fdl2 { get; } = fdl2;
 
-    /// <summary>Checks required resources and RAM ranges before opening the transport.</summary>
+    /// <summary>Checks required resources and RAM ranges. Auto validates supplied loaders; required loaders are checked after detection.</summary>
     public void Validate(SprdProtocolOptions options)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         ArgumentNullException.ThrowIfNull(options);
-        if (options.EntryStage == SprdBootStage.BootRom) ValidateLoader(Fdl1, options);
-        if (options.EntryStage != SprdBootStage.Fdl2) ValidateLoader(Fdl2, options);
+        if (options.EntryStage == SprdBootStage.Auto)
+        {
+            if (Fdl1 is not null) ValidateLoader(Fdl1, options);
+            if (Fdl2 is not null) ValidateLoader(Fdl2, options);
+        }
+        else
+        {
+            if (options.EntryStage == SprdBootStage.BootRom) ValidateLoader(Fdl1, options);
+            if (options.EntryStage != SprdBootStage.Fdl2) ValidateLoader(Fdl2, options);
+        }
     }
 
     private static void ValidateLoader(SprdLoader? loader, SprdProtocolOptions options)
@@ -45,6 +53,6 @@ public sealed class SprdConnectionResources(SprdLoader? fdl1 = null, SprdLoader?
 /// <summary>Asynchronous host resource boundary; return promptly and honor cancellation.</summary>
 public interface ISprdLoaderProvider
 {
-    /// <summary>Returns an owned container; a late result after cancellation or timeout is also disposed.</summary>
+    /// <summary>Returns an owned container for a concrete entry stage, after automatic detection if enabled; late results are disposed.</summary>
     ValueTask<SprdConnectionResources> GetLoadersAsync(SprdBootStage entryStage, CancellationToken cancellationToken);
 }

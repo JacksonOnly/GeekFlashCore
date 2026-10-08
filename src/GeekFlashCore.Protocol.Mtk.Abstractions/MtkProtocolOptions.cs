@@ -4,11 +4,11 @@ namespace GeekFlashCore.Protocol.Mtk.Abstractions;
 public sealed record MtkProtocolOptions
 {
     /// <summary>Default finite budget for the entire MediaTek connection, including providers and DA upload.</summary>
-    public const int DefaultConnectTimeoutMilliseconds = 60000;
+    public const int DefaultConnectTimeoutMilliseconds = 1000 * 60 * 3;
     public int ReadTimeoutMilliseconds { get; init; } = 3000;
     public int ConnectTimeoutMilliseconds { get; init; } = DefaultConnectTimeoutMilliseconds;
     public int OperationTimeoutMilliseconds { get; init; } = 120000;
-    public int ResourceTimeoutMilliseconds { get; init; } = 30000;
+    public int ResourceTimeoutMilliseconds { get; init; } = 1000 * 60 * 1;
     public int BufferSize { get; init; } = 65536;
     public int MaximumFrameSize { get; init; } = 1048576;
     public int MaximumXmlSize { get; init; } = 65536;

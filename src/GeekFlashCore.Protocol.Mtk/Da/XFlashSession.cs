@@ -92,14 +92,18 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         var region = image.Entry.Regions[image.Entry.EntryRegionIndex + 1];
         long length = region.Length - region.SignatureLength;
         using Stream source = new MtkDataWindow(image.Source, region.FileOffset, length).OpenStream();
+        MtkDiagnostics.Summary(wire.Logger, Strings.Da2BootRequested, region.Address, length);
         Command(MtkXFlashCommand.BootTo);
+        wire.Logger.Debug(Strings.Da2BootCommandAccepted);
         byte[] range = new byte[16];
         BinaryPrimitives.WriteUInt64LittleEndian(range, region.Address);
         BinaryPrimitives.WriteUInt64LittleEndian(range.AsSpan(8), (ulong)length);
         wire.SendFrame(range);
         SendStreamFrame(source, length);
+        wire.Logger.Debug(Strings.Da2PayloadSent, length);
         wire.ReadStatus();
         wire.ReadStatus(0, (uint)MtkXFlashCommand.SyncSignal);
+        MtkDiagnostics.Summary(wire.Logger, Strings.Da2BootConfirmed);
         wire.Stage = MtkBootStage.Da2;
         checkpoint(MtkExploitStage.Da2Ready);
     }

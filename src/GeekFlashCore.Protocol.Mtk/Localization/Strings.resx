@@ -85,4 +85,10 @@
 <data name="HandshakeWakeDuplicate" xml:space="preserve"><value>MTK Preloader：消费一次重复的唤醒应答；未重发命令。</value></data>
 <data name="HandshakeResponse" xml:space="preserve"><value>MTK 握手步骤 {HandshakeStep}：应答 0x{HandshakeResponse:X2}，预期 0x{HandshakeExpected:X2}。</value></data>
 <data name="HandshakeIdentified" xml:space="preserve"><value>MTK 握手及完整 FD 身份校验通过，已握手候选 {AlreadyHandshaken}；阶段仍需 FE 确认。</value></data>
+<data name="Da1ReplacementChecked" xml:space="preserve"><value>MTK {Dialect}：已检查上传前 DA1 替换，非签名字节实际修改={Da1Modified}；不等同于认证成功。</value></data>
+<data name="CarbonaraSkippedPatchedDa1" xml:space="preserve"><value>MTK：BROM 路径的 DA1 已修改并上传验证，跳过 Carbonara，继续标准 DA2 BootTo。</value></data>
+<data name="Da2BootRequested" xml:space="preserve"><value>MTK XFlash：请求标准 DA2 BootTo，地址 0x{Address:X8}，{ByteCount} 字节；等待命令确认。</value></data>
+<data name="Da2BootCommandAccepted" xml:space="preserve"><value>MTK XFlash：标准 DA2 BootTo 命令已确认，开始发送参数和载荷。</value></data>
+<data name="Da2PayloadSent" xml:space="preserve"><value>MTK XFlash：DA2 的 {ByteCount} 字节已发送，等待参数组和执行状态；尚未确认启动。</value></data>
+<data name="Da2BootConfirmed" xml:space="preserve"><value>MTK XFlash：标准 DA2 参数组及执行状态均已确认。</value></data>
 </root>

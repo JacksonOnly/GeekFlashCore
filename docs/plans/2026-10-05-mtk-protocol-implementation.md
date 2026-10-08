@@ -1,5 +1,7 @@
 # GeekFlashCore MTK 实施进度
 
+2026-10-08 DA2-CB-01：用户授权既有回调衔接修复。跨阶段记录实际 DA1 修改，BROM 已上传修改 DA1 后跳过 Carbonara，标准 DA2 一次 BootTo；26目标/656可运行MTK/168CLI通过，用户231901日志确认DA2双状态通过。新0x40016不支持响应另行审查，见 [DA2回调实施](2026-10-08-mtk-da2-callback-implementation.md)。不新增漏洞算法/策略/载荷。
+
 2026-10-08 用户新增 Preloader 首握手失败与 EMI 抓包：最新设计/实际窗口逐字节证据见 [Preloader/EMI实施记录](2026-10-08-mtk-preloader-emi-implementation.md)。XFlash 使用完整BLOADER窗口，Legacy保留MTK_BIN正文；旧文档中的统一EMI裁剪不再适用于XFlash。
 
 2026-10-08 MTK-TXLOG-01～04：用户确认后的 BROM 默认 64KiB 流式上传/no-ZLP、显式兼容 chunk/ZLP、XFlash 流式 EMI/三帧写入与协商读包上限、MTK 默认 UI 摘要及详细命令/帧/预算/失效诊断，见 [上传与诊断设计](2026-10-08-mtk-transfer-diagnostics-design.md)、[实施证据](2026-10-08-mtk-transfer-diagnostics-implementation.md) 和 [使用说明](../mtk-diagnostics.md)。CLI 168/168、可运行 MTK 597/597；原始 MTK 612 项保留 15 项基线失败。取代旧记录中的默认 BROM 64-byte/ZLP 描述；exp、其他协议和公共 USB 未改，无真机证据。

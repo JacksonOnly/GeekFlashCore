@@ -162,6 +162,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         if (_state != MtkSessionState.Disconnected)
             throw new InvalidOperationException(Strings.SessionUnavailable);
         _hasIdentifiedTarget = false;
+        _da1ModifiedBeforeUpload = false;
         State(MtkSessionState.Opening);
         try
         {
@@ -456,6 +457,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         _storage = null;
         _partitions = null;
         _image = null;
+        _da1ModifiedBeforeUpload = false;
         Interlocked.Increment(ref _generation);
         _state = MtkSessionState.Faulted;
         try
@@ -541,6 +543,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         _initialTarget = null;
         _partitions = null;
         _image = null;
+        _da1ModifiedBeforeUpload = false;
         Interlocked.Increment(ref _generation);
         try
         {
@@ -573,6 +576,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             _target = null;
             _initialTarget = null;
             _image = null;
+            _da1ModifiedBeforeUpload = false;
             _partitions = null;
             Interlocked.Increment(ref _generation);
             _state = MtkSessionState.Disconnected;
@@ -767,6 +771,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         _target = null;
         _initialTarget = null;
         _image = null;
+        _da1ModifiedBeforeUpload = false;
         _partitions = null;
         Interlocked.Increment(ref _generation);
         try

@@ -85,4 +85,10 @@
 <data name="HandshakeWakeDuplicate" xml:space="preserve"><value>MTK Preloader: consumed one duplicate wakeup response; no command was resent.</value></data>
 <data name="HandshakeResponse" xml:space="preserve"><value>MTK handshake step {HandshakeStep}: response 0x{HandshakeResponse:X2}, expected 0x{HandshakeExpected:X2}.</value></data>
 <data name="HandshakeIdentified" xml:space="preserve"><value>MTK handshake and complete FD identity validation succeeded, already-handshaken candidate {AlreadyHandshaken}; FE must still confirm the stage.</value></data>
+<data name="Da1ReplacementChecked" xml:space="preserve"><value>MTK {Dialect}: checked pre-upload DA1 replacement, non-signature bytes modified={Da1Modified}; this is not authentication evidence.</value></data>
+<data name="CarbonaraSkippedPatchedDa1" xml:space="preserve"><value>MTK: modified DA1 was uploaded and verified on the BROM path; skipping Carbonara and continuing standard DA2 BootTo.</value></data>
+<data name="Da2BootRequested" xml:space="preserve"><value>MTK XFlash: requesting standard DA2 BootTo at 0x{Address:X8}, {ByteCount} bytes; waiting for command acknowledgment.</value></data>
+<data name="Da2BootCommandAccepted" xml:space="preserve"><value>MTK XFlash: standard DA2 BootTo command acknowledged; sending parameters and payload.</value></data>
+<data name="Da2PayloadSent" xml:space="preserve"><value>MTK XFlash: sent {ByteCount} DA2 bytes; waiting for parameter-group and execution status, boot not yet confirmed.</value></data>
+<data name="Da2BootConfirmed" xml:space="preserve"><value>MTK XFlash: standard DA2 parameter-group and execution status both confirmed.</value></data>
 </root>

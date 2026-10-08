@@ -40,7 +40,8 @@ internal static class CommandLine
                     "--sprd-raw-flush" => builder with { SprdRawFlush = checked((int)CommandSyntax.Number(value)) },
                     "--sprd-raw-usb-packet" => builder with { SprdRawUsbPacket = checked((int)CommandSyntax.Number(value)) },
                     "--sprd-partition-source" => builder with { SprdPartitionSource = value.ToLowerInvariant() switch
-                    { "native" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdPartitionTableSource.Native,
+                    { "auto" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdPartitionTableSource.Auto,
+                      "native" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdPartitionTableSource.Native,
                       "gpt" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdPartitionTableSource.UserPartitionGpt,
                       _ => throw new ArgumentException(Strings.Cli_SprdProfileInvalid) } },
                     "--sprd-raw-mode" => builder with { SprdRawMode = value.ToLowerInvariant() switch

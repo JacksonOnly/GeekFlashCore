@@ -11,10 +11,10 @@
 ```text
 geekflash help sprd
 geekflash --protocol sprd --port COM7 --loader FDL1.bin --sprd-fdl1-address FDL1_ADDRESS --sprd-fdl2 FDL2.bin --sprd-fdl2-address FDL2_ADDRESS connect
-geekflash --protocol sprd --port COM7 --sprd-entry fdl2 --sprd-partition-unit UNIT_BYTES partitions all
-geekflash --protocol sprd --port COM7 --sprd-entry fdl2 --sprd-partition-unit UNIT_BYTES read boot boot.img
-geekflash --protocol sprd --port COM7 --sprd-entry fdl2 --sprd-partition-unit UNIT_BYTES write boot boot.img
-geekflash --protocol sprd --port COM7 --sprd-entry fdl2 --sprd-partition-unit UNIT_BYTES erase cache
+geekflash --protocol sprd --port COM7 partitions all
+geekflash --protocol sprd --port COM7 --sprd-entry fdl2 --sprd-partition-source native --sprd-partition-unit UNIT_BYTES read boot boot.img
+geekflash --protocol sprd --port COM7 --sprd-entry fdl2 --sprd-partition-source native --sprd-partition-unit UNIT_BYTES write boot boot.img
+geekflash --protocol sprd --port COM7 --sprd-entry fdl2 --sprd-partition-source native --sprd-partition-unit UNIT_BYTES erase cache
 geekflash --protocol sprd --port COM7 --sprd-entry fdl2 reboot system
 geekflash --protocol sprd --port COM7 --sprd-partition-source gpt partitions all
 geekflash --protocol sprd --port COM7 --sprd-entry fdl2 sprd-chip-uid
@@ -24,7 +24,9 @@ geekflash --protocol sprd --port COM7 --sprd-entry fdl2 sprd-chip-uid
 
 自动识别先发送单字节 CHECK_BAUD：完整 VERSION 帧必须唯一匹配 CRC16/XMODEM（BootROM）或 FDL checksum（FDL1），随后 CONNECT ACK 确认。FDL checksum 的空 UNSUPPORTED_COMMAND(0xfe) 响应指向已加载 FDL2，随后 DISABLE_TRANSCODE ACK 确认并切换无转义。若首个查询完全无响应且单命令超时，剩余预算内允许一次 FDL checksum CONNECT 查询，仅接受上述 FDL2 特征；未知 ACK/VERSION 不继续猜测或重发。部分帧、坏/歧义校验、日志后超时、取消或总预算耗尽均停止。首包等待受单命令超时限制（核心默认 10 秒，CLI --read-timeout）；特殊 Loader 无明确响应时用手动入口。版本文字和 VID/PID 不决定阶段。
 
-原生 `READ_PARTITION` 的每条记录为名称 + size 数值，没有单位标签；`--sprd-partition-unit BYTES` 是每个 size 单位对应的字节数。`UNIT_BYTES` 是示例占位符，不能原样输入。计算为 `capacityBytes = size * unitBytes`，例如 size=65536、unitBytes=1024 得到 64 MiB，size=64、unitBytes=1048576 也得到 64 MiB。原生模式须按设备确认单位；选择 `--sprd-partition-source gpt` 不需要此参数，直接从验证后的 GPT 几何计算容量。核心还支持宿主提供已验证的 `KnownPartitions`，不再请求表。不发送反复读失败请求来试探容量，也不合成缺失的 `splloader` 容量。
+容量来源省略或 `--sprd-partition-source auto` 默认自动选择：优先严格验证一次 GPT 前缀，确认不可用且读会话已结束后才请求原生清单。可显式选择 `gpt` 或 `native`；选择 native 会跳过 GPT 查询。自动选择的是容量来源，不把原生清单声明为 MBR、NAND 或 PMT。
+
+原生 `READ_PARTITION` 的每条记录为名称 + size 数值，没有单位标签；`--sprd-partition-unit BYTES` 是每个 size 单位对应的字节数。`UNIT_BYTES` 是示例占位符，不能原样输入。计算为 `capacityBytes = size * unitBytes`，例如 size=65536、unitBytes=1024 得到 64 MiB，size=64、unitBytes=1048576 也得到 64 MiB。原生模式须按设备确认单位；有效 GPT 无需此参数，直接从验证后的几何计算容量。自动识别到完整原生清单但未配置单位时，报告配置错误、不返回容量，保留会话与已确认来源以供 info/UID；重复调用不重新探测。单位配置不可变，须按已确认单位重新建立配置或重新运行 CLI。显式 native 缺单位仍在查询前拒绝。核心还支持宿主提供已验证的 `KnownPartitions`，不再请求表。不发送反复读失败请求来试探容量，也不合成缺失的 `splloader` 容量。
 
 默认长度布局为 `--sprd-length 32`。只有确认 FDL 支持后才选 `64`（72 字节名称 + LE64 长度，共 80 字节）或 `64-reserved`（另加八字节零保留区，共 88 字节）。64 位布局的 READ_MIDST 使用 LE32 count + LE64 offset。不能表示的范围在写入/READ_START 前拒绝，不静默截断或换线路。
 
@@ -38,13 +40,15 @@ geekflash --protocol sprd --port COM7 --sprd-entry fdl2 sprd-chip-uid
 
 ### 容量来源
 
-默认 `PartitionTableSource = Native`，仍需显式 `PartitionTableSizeUnitBytes`。宿主提供的 `KnownPartitions` 优先于两种查询来源，核心快照清单，不能把未知容量填为整盘尺寸。
+默认 `PartitionTableSource = Auto`，也可显式指定 `Native` / `UserPartitionGpt`，既有枚举数值保持。宿主提供的 `KnownPartitions` 优先于查询来源，核心快照清单，不能把未知容量填为整盘尺寸。`TargetInfo.PartitionTableSource` 在确认查询结果后为 Native 或 UserPartitionGpt，查询前或使用宿主清单时为 null；CLI info 以 `-` 表示未查询。识别成功后缓存清单，断开/失效清除来源及内部原生快照。
 
-选用 `UserPartitionGpt` 默认 `GptSectorSize = null`，CLI 省略 `--sprd-sector-size` 或使用 `--sprd-sector-size auto`。只读取一次 `user_partition` 前缀，在内存中校验 512/4096 两种布局；每个候选必须通过完整主头/条目 CRC、几何与名称校验，恰好一个有效才接受，两个均有效或均无效都拒绝。识别成功后 `TargetInfo.GptSectorSize` 返回实际值，并记录数值日志。不通过分别向设备读不同扇区地址来尝试。
+Auto 仅在两种情形查询原生表：完整固定前缀经 READ_END ACK 结束且没有标准 GPT 标志；或初始 READ_START 收到有效空 OPERATION_FAILED(0x84)/UNSUPPORTED_COMMAND(0xfe)，随后 READ_END ACK 成功。清理失败、其他拒绝、携带数据的拒绝、坏帧、读取中失败、超时或取消都使会话失效。前缀任一 512/4096 标准位置有 EFI PART，或 MBR 55aa + 0xee 保护分区时，必须通过完整 GPT 校验，损坏/窗口不足/歧义不会降级。没有 GPT 标志只能选择已验证原生清单，不证明某种物理格式。
+
+`Auto` / `UserPartitionGpt` 默认 `GptSectorSize = null`，CLI 省略 `--sprd-sector-size` 或使用 `--sprd-sector-size auto`。只读取一次 `user_partition` 前缀，在内存中校验 512/4096 两种布局；每个候选必须通过完整主头/条目 CRC、几何与名称校验，恰好一个有效才接受，两个均有效或带 GPT 标志但均无效都拒绝。识别成功后 `TargetInfo.GptSectorSize` 返回实际值，并记录数值日志。不通过分别向设备读不同扇区地址来尝试。
 
 手动 `GptSectorSize = 512` 或 `4096`（CLI `--sprd-sector-size 512|4096`）严格覆盖自动识别，校验失败不换另一个值。`GptReadBytes` / `--sprd-gpt-bytes` 默认 32768、最大 4 MiB，必须容纳完整主头和声明的条目数组；自动模式要求窗口为 4096 的整倍数且至少 12288，手动模式为其 sector 的整倍数且至少三个 sector。GPT 容量按精确 LBA 数换算为字节，无需原生单位，也不把结果取整到 MiB。主头必须在 LBA1、CRC 与条目 CRC 正确、可用区间不覆盖主/备份元数据，条目不得越界/重叠/重名。查询结果仅保留命名容量并缓存；不返回整盘块设备，也不推断 NAND/eMMC/UFS 类型。
 
-窗口之外的条目、未知 `user_partition`、NAK 或无效 GPT 立即失效，不自动切到原生表，不增加窗口试读。`splloader` 等不在 GPT 中的特殊分区不自动加入。超过 4 GiB 的容量仍可精确枚举，读写前须显式选择适配设备的 64 位 selector，默认 32 位配置仍拒绝超范围操作。
+显式 `UserPartitionGpt` 的窗口之外条目、未知 `user_partition`、NAK 或无效 GPT 立即失效，不切到原生表。自动模式也不扩大窗口试读，仅允许上述明确的只读查询选择。`splloader` 等不在 GPT 中的特殊分区不自动加入。超过 4 GiB 的容量仍可精确枚举，读写前须显式选择适配设备的 64 位 selector，默认 32 位配置仍拒绝超范围操作。
 
 ### Raw 下载 profile
 

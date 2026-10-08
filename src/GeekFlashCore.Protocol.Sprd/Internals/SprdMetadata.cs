@@ -2,6 +2,8 @@ using System.Text;
 
 namespace GeekFlashCore.Protocol.Sprd.Internals;
 
+internal readonly record struct SprdNativePartition(string Name, uint SizeUnits);
+
 internal static class SprdMetadata
 {
     private static readonly Encoding Unicode = new UnicodeEncoding(false, false, true);
@@ -68,11 +70,11 @@ internal static class SprdMetadata
         else BinaryPrimitives.WriteUInt64LittleEndian(data.AsSpan(72), checked((ulong)length));
         return data;
     }
-    internal static IReadOnlyList<SprdPartition> Partitions(ReadOnlySpan<byte> data, SprdProtocolOptions options)
+    internal static IReadOnlyList<SprdNativePartition> PartitionRecords(ReadOnlySpan<byte> data, SprdProtocolOptions options)
     {
         if (data.Length == 0 || data.Length % 76 != 0 || data.Length / 76 > options.MaximumPartitions)
             throw new SprdProtocolException(SprdCommand.ReadPartition);
-        var result = new List<SprdPartition>(data.Length / 76); var names = new HashSet<string>(StringComparer.Ordinal);
+        var result = new List<SprdNativePartition>(data.Length / 76); var names = new HashSet<string>(StringComparer.Ordinal);
         try
         {
             for (int offset = 0; offset < data.Length; offset += 76)
@@ -83,13 +85,22 @@ internal static class SprdMetadata
                 string name = field[..end];
                 SprdProtocolOptions.ValidatePartitionName(name);
                 uint units = BinaryPrimitives.ReadUInt32LittleEndian(data[(offset + 72)..]);
-                long length = checked(units * options.PartitionTableSizeUnitBytes!.Value);
-                if (length <= 0 || !names.Add(name)) throw new SprdProtocolException(SprdCommand.ReadPartition);
-                result.Add(new(name, length));
+                if (units == 0 || !names.Add(name)) throw new SprdProtocolException(SprdCommand.ReadPartition);
+                result.Add(new(name, units));
             }
         }
         catch (Exception exception) when (exception is ArgumentException or OverflowException)
         { throw new SprdProtocolException(SprdCommand.ReadPartition); }
+        return result.AsReadOnly();
+    }
+    internal static IReadOnlyList<SprdPartition> ScalePartitions(IReadOnlyList<SprdNativePartition> records, long unitBytes)
+    {
+        var result = new List<SprdPartition>(records.Count);
+        try
+        {
+            foreach (var record in records) result.Add(new(record.Name, checked(record.SizeUnits * unitBytes)));
+        }
+        catch (OverflowException) { throw new SprdProtocolException(SprdCommand.ReadPartition); }
         return result.AsReadOnly();
     }
 }

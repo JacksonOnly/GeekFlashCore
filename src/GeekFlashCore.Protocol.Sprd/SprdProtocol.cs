@@ -21,6 +21,7 @@ public sealed partial class SprdProtocol : ISprdProtocol, IDisposable
     private bool _needsClose;
     private SprdTargetInfo? _target;
     private IReadOnlyList<SprdPartition>? _partitions;
+    private IReadOnlyList<SprdNativePartition>? _nativeRecords;
 
     /// <summary>Creates a session over SerialPort, LibUsb or a host transport with bounded synchronous writes.</summary>
     /// <remarks>Normal disposal owns the transport unless leaveTransportOpen is true. Wire failure always closes it.</remarks>
@@ -62,6 +63,7 @@ public sealed partial class SprdProtocol : ISprdProtocol, IDisposable
     {
         using var gate = Enter(token); _wire.Begin(token, budget ?? _options.OperationTimeoutMilliseconds);
         try { var result = action(); _wire.Check(); return result; }
+        catch (SprdNativeUnitsRequiredException) when (_state == SprdSessionState.StorageReady) { throw; }
         catch { if ((_wire.HasWritten || _state == SprdSessionState.Connecting) && _state != SprdSessionState.Disconnected) Fault(); throw; }
     }
     private void State(SprdSessionState state)
@@ -70,7 +72,7 @@ public sealed partial class SprdProtocol : ISprdProtocol, IDisposable
     { if (!IsConnected) throw new InvalidOperationException(Strings.Unavailable); }
     private void Fault()
     {
-        Interlocked.Increment(ref _generation); _target = null; _partitions = null; _state = SprdSessionState.Faulted;
+        Interlocked.Increment(ref _generation); _target = null; _partitions = null; _nativeRecords = null; _state = SprdSessionState.Faulted;
         try { _transport.Close(); _needsClose = false; }
         catch { _needsClose = true; /* Keep the original failure; disconnect must retry close. */ }
         _openedHere = false; _wire.Reset();
@@ -281,7 +283,7 @@ public sealed partial class SprdProtocol : ISprdProtocol, IDisposable
     { using var gate = Enter(cancellationToken); DisconnectCore(); }
     private void DisconnectCore()
     {
-        Interlocked.Increment(ref _generation); _target = null; _partitions = null;
+        Interlocked.Increment(ref _generation); _target = null; _partitions = null; _nativeRecords = null;
         try
         {
             if (_needsClose || !_leaveTransportOpen && _openedHere) _transport.Close();

@@ -13,7 +13,7 @@ internal static class SprdProtocolHostAdapter
         new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "sprd", "spreadtrum", "unisoc" },
         "Sprd", Strings.Cli_SprdWaiting, null, Create, [],
         static (protocol, ui) => ui.WriteLine(Strings.FormatCli_SprdInfo(((ISprdProtocol)protocol).SessionState,
-            ((ISprdProtocol)protocol).TargetInfo?.EntryStage)), new CommandSet());
+            ((ISprdProtocol)protocol).TargetInfo?.EntryStage, ((ISprdProtocol)protocol).TargetInfo?.PartitionTableSource?.ToString() ?? "-")), new CommandSet());
 
     internal static SprdProtocolOptions Options(CliOptions options) => new()
     {
@@ -23,7 +23,7 @@ internal static class SprdProtocolHostAdapter
         PadOddPayloads = options.SprdPadOdd,
         DisableTranscode = options.SprdDisableTranscode,
         EntryTranscodeDisabled = options.SprdEntryTranscodeDisabled,
-        PartitionTableSource = options.SprdPartitionSource ?? SprdPartitionTableSource.Native,
+        PartitionTableSource = options.SprdPartitionSource ?? SprdPartitionTableSource.Auto,
         GptSectorSize = options.SprdSectorSize == 0 ? null : options.SprdSectorSize,
         GptReadBytes = options.SprdGptBytes ?? 32 * 1024,
         RawDataMode = options.SprdRawMode ?? SprdRawDataMode.Disabled,
@@ -49,7 +49,7 @@ internal static class SprdProtocolHostAdapter
             options.Command == "partitions" && first is not (null or "all" or "0"))
             throw new NotSupportedException(Strings.Cli_SprdCommandUnsupported);
         if (options.Command is "partitions" or "read" or "write" or "erase" && options.SprdPartitionUnit is null &&
-            options.SprdPartitionSource != SprdPartitionTableSource.UserPartitionGpt)
+            options.SprdPartitionSource == SprdPartitionTableSource.Native)
             throw new ArgumentException(Strings.Cli_SprdUnitRequired);
         if (options.Digest is not null || options.VipSigned is not null || options.VipChained is not null ||
             options.OplusDigest is not null || options.OplusSign is not null || options.OplusResume || options.HasExplicitOplusMode ||

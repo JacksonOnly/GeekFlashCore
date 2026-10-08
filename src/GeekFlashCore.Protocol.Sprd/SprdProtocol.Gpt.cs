@@ -8,7 +8,7 @@ namespace GeekFlashCore.Protocol.Sprd;
 
 public sealed partial class SprdProtocol
 {
-    private IReadOnlyList<SprdPartition> GetGptPartitionsCore()
+    private IReadOnlyList<SprdPartition> GetGptPartitionsCore(bool detectSource = false)
     {
         int length = _options.GptReadBytes;
         byte[] buffer = ArrayPool<byte>.Shared.Rent(length);
@@ -16,9 +16,23 @@ public sealed partial class SprdProtocol
         {
             // A confirmed prefix window is not a guessed disk capacity or a whole-disk view.
             using var output = new MemoryStream(buffer, 0, length, writable: true, publiclyVisible: false);
-            ReadCore(new("user_partition", length), 0, length, output, null);
+            if (detectSource)
+            {
+                var start = _wire.Command(SprdCommand.ReadStart,
+                    SprdMetadata.Selector("user_partition", length, _options.PartitionLengthEncoding));
+                if (start.Type != SprdCommand.Ack)
+                {
+                    if (start.Type is not (SprdCommand.OperationFailed or SprdCommand.UnsupportedCommand) || !start.Data.IsEmpty)
+                        throw new SprdProtocolException(SprdCommand.ReadStart, start.Type);
+                    _wire.Expect(SprdCommand.ReadEnd);
+                    Log.ForContext<SprdProtocol>().Warning(Strings.GptQueryUnavailable);
+                    return GetNativePartitionsCore();
+                }
+            }
+            ReadCore(new("user_partition", length), 0, length, output, null, readStarted: detectSource);
             _wire.Check();
             var bytes = buffer.AsSpan(0, length);
+            if (detectSource && !HasGptEvidence(bytes)) return GetNativePartitionsCore();
             IReadOnlyList<SprdPartition>? result = null; int selectedSector = 0;
             if (_options.GptSectorSize is int explicitSector)
             { result = ParseGptPartitions(bytes, explicitSector); selectedSector = explicitSector; }
@@ -36,11 +50,19 @@ public sealed partial class SprdProtocol
                 }
                 if (result is null) throw new SprdProtocolException(SprdCommand.ReadStart);
             }
-            _wire.Check(); _target = _target! with { GptSectorSize = selectedSector };
+            _wire.Check(); SetPartitionSource(SprdPartitionTableSource.UserPartitionGpt, selectedSector);
             Log.ForContext<SprdProtocol>().Information(Strings.GptSectorDetected, selectedSector);
             return result;
         }
         finally { ArrayPool<byte>.Shared.Return(buffer, clearArray: true); }
+    }
+    private static bool HasGptEvidence(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.Length >= 520 && bytes.Slice(512, 8).SequenceEqual("EFI PART"u8) ||
+            bytes.Length >= 4104 && bytes.Slice(4096, 8).SequenceEqual("EFI PART"u8)) return true;
+        if (bytes.Length < 512 || bytes[510] != 0x55 || bytes[511] != 0xaa) return false;
+        for (int index = 0; index < 4; index++) if (bytes[446 + index * 16 + 4] == 0xee) return true;
+        return false;
     }
     private IReadOnlyList<SprdPartition> ParseGptPartitions(ReadOnlySpan<byte> bytes, int sector)
     {

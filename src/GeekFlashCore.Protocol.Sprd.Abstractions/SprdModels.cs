@@ -43,13 +43,15 @@ public enum SprdPartitionLengthEncoding
     UInt64WithReserved
 }
 
-/// <summary>Explicit source for named-partition capacities when no host list is supplied.</summary>
+/// <summary>Source profile for named-partition capacities when no host list is supplied.</summary>
 public enum SprdPartitionTableSource
 {
     /// <summary>READ_PARTITION records scaled by a confirmed unit.</summary>
     Native,
     /// <summary>Strict primary GPT read from a bounded user_partition window.</summary>
-    UserPartitionGpt
+    UserPartitionGpt,
+    /// <summary>Prefer validated GPT; use a validated native list only after a completed read or allowed query rejection.</summary>
+    Auto
 }
 
 /// <summary>Confirmed FDL2 download profile. Loader uploads always use framed MIDST.</summary>
@@ -75,6 +77,8 @@ public sealed record SprdTargetInfo(SprdBootStage Stage, string? Version, SprdLo
 {
     /// <summary>Initial stage used by the successful connection, before any loader upload.</summary>
     public SprdBootStage? EntryStage { get; init; }
+    /// <summary>Confirmed device capacity source; null before querying or when a host partition list is used.</summary>
+    public SprdPartitionTableSource? PartitionTableSource { get; init; }
     /// <summary>Logical sector size confirmed by a successful GPT query; null until queried or for host/native lists.</summary>
     public int? GptSectorSize { get; init; }
 }

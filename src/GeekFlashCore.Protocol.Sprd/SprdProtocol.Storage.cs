@@ -17,9 +17,36 @@ public sealed partial class SprdProtocol
         if (_partitions is not null) return _partitions;
         if (_options.PartitionTableSource == SprdPartitionTableSource.UserPartitionGpt)
             return _partitions = GetGptPartitionsCore();
-        if (_options.PartitionTableSizeUnitBytes is null) throw new InvalidOperationException(Strings.PartitionUnitsRequired);
-        var response = _wire.Expect(SprdCommand.ReadPartition, expected: SprdCommand.PartitionTable);
-        return _partitions = SprdMetadata.Partitions(response.Data.Span, _options);
+        if (_options.PartitionTableSource == SprdPartitionTableSource.Native || _nativeRecords is not null)
+            return _partitions = GetNativePartitionsCore();
+        return _partitions = GetGptPartitionsCore(detectSource: true);
+    }
+    private IReadOnlyList<SprdPartition> GetNativePartitionsCore()
+    {
+        if (_options.PartitionTableSource == SprdPartitionTableSource.Native && _options.PartitionTableSizeUnitBytes is null)
+            throw new InvalidOperationException(Strings.PartitionUnitsRequired);
+        if (_nativeRecords is null)
+        {
+            var response = _wire.Expect(SprdCommand.ReadPartition, expected: SprdCommand.PartitionTable);
+            _nativeRecords = SprdMetadata.PartitionRecords(response.Data.Span, _options);
+        }
+        _wire.Check();
+        if (_options.PartitionTableSizeUnitBytes is not long unit)
+        {
+            SetPartitionSource(SprdPartitionTableSource.Native);
+            _wire.Check();
+            // Completed read/cleanup and validated records; this is a host configuration error.
+            throw new SprdNativeUnitsRequiredException();
+        }
+        var result = SprdMetadata.ScalePartitions(_nativeRecords, unit);
+        _wire.Check(); SetPartitionSource(SprdPartitionTableSource.Native);
+        return result;
+    }
+    private void SetPartitionSource(SprdPartitionTableSource source, int? sector = null)
+    {
+        if (_target!.PartitionTableSource == source && _target.GptSectorSize == sector) return;
+        _target = _target with { PartitionTableSource = source, GptSectorSize = sector };
+        Log.ForContext<SprdProtocol>().Information(Strings.PartitionSourceDetected, source);
     }
     /// <inheritdoc />
     public byte[] ReadChipUid(CancellationToken cancellationToken = default) => Run(() =>
@@ -55,12 +82,14 @@ public sealed partial class SprdProtocol
         if (!output.CanWrite) throw new ArgumentException(Strings.InvalidSource, nameof(output));
         Run(() => { var partition = Find(name); Range(partition, offset, length); ReadCore(partition, offset, length, output, progress); return 0; }, cancellationToken);
     }
-    private void ReadCore(SprdPartition partition, long offset, long length, Stream output, IProgress<ProgressRecord>? progress)
+    private void ReadCore(SprdPartition partition, long offset, long length, Stream output, IProgress<ProgressRecord>? progress,
+        bool readStarted = false)
     {
         if (length == 0) return;
         Log.ForContext<SprdProtocol>().Information(Strings.Transfer, "read", partition.Name, offset, length);
         // READ_START declares the containing range, including an explicit nonzero read offset.
-        _wire.Expect(SprdCommand.ReadStart, SprdMetadata.Selector(partition.Name, checked(offset + length), _options.PartitionLengthEncoding));
+        if (!readStarted)
+            _wire.Expect(SprdCommand.ReadStart, SprdMetadata.Selector(partition.Name, checked(offset + length), _options.PartitionLengthEncoding));
         Span<byte> request = stackalloc byte[12];
         bool wide = _options.PartitionLengthEncoding != SprdPartitionLengthEncoding.UInt32;
         long done = 0;

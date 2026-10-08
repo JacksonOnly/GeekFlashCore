@@ -39,8 +39,8 @@ public sealed record SprdProtocolOptions
     public SprdPartitionLengthEncoding PartitionLengthEncoding { get; init; }
     /// <summary>Explicit native READ_PARTITION size-unit multiplier in bytes. Null requires a supplied list or GPT profile.</summary>
     public long? PartitionTableSizeUnitBytes { get; init; }
-    /// <summary>Capacity source when KnownPartitions is empty. No fallback is performed.</summary>
-    public SprdPartitionTableSource PartitionTableSource { get; init; }
+    /// <summary>Capacity source when KnownPartitions is empty. Auto prefers GPT with bounded native-query selection.</summary>
+    public SprdPartitionTableSource PartitionTableSource { get; init; } = SprdPartitionTableSource.Auto;
     /// <summary>GPT sector override, 512 or 4096. Null detects a unique fully validated candidate in the read prefix.</summary>
     public int? GptSectorSize { get; init; }
     /// <summary>Confirmed user_partition prefix window, sector aligned and at most 4 MiB.</summary>
@@ -70,7 +70,7 @@ public sealed record SprdProtocolOptions
             KnownPartitions is null || KnownPartitions.Count > MaximumPartitions)
             throw new ArgumentException(Strings.InvalidOptions);
         if (GptSectorSize is not (null or 512 or 4096) || GptReadBytes is < 1024 or > 4 * 1024 * 1024 ||
-            PartitionTableSource == SprdPartitionTableSource.UserPartitionGpt &&
+            PartitionTableSource is SprdPartitionTableSource.UserPartitionGpt or SprdPartitionTableSource.Auto &&
                 (GptReadBytes % (GptSectorSize ?? 4096) != 0 || GptReadBytes < 3 * (GptSectorSize ?? 4096)) ||
             RawDataFlushSizeBytes is <= 0 or > 4 * 1024 * 1024 ||
             RawDataMode != SprdRawDataMode.Disabled && RawDataFlushSizeBytes is null ||

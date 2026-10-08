@@ -124,6 +124,8 @@ git status --short --ignored
 
 SPRD-10 的最新默认入口为 Auto，基于一次首帧的唯一校验和明确响应判断 BootROM/FDL1/FDL2，再获取实际所需 Loader。仅首个 CHECK_BAUD 完全无响应允许一次不同 CONNECT 查询；部分帧/坏校验/取消不回退，不重发写命令。已加载 FDL2 自动入口按参考握手确认 DISABLE_TRANSCODE ACK；手动入口保持原线路。恢复另读 `docs/plans/2026-10-08-sprd-entry-detection-design.md` 与对应 implementation；旧文档的显式入口默认约束被本设计替代，无实机证据。
 
+SPRD-11 最新容量来源默认 Auto，优先校验固定 GPT 前缀，只有完整非 GPT 前缀或允许的 READ_START 空拒绝且 READ_END ACK 后才查询原生清单；损坏/保护性 MBR/歧义 GPT 不降级。原生单位不猜，缺单位的完整有效清单仅报告配置错误并保留会话与来源缓存，不启动写入。Source 是容量获取方式，不是 MBR/NAND/PMT 证明。恢复另读 `docs/plans/2026-10-08-sprd-partition-source-design.md` 与对应 implementation；手动 Native/GPT 旧线路保持，无实机。
+
 开始 Qualcomm 相关工作前，依次阅读：
 
 1. 本文件。

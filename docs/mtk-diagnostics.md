@@ -29,6 +29,8 @@ SDK 对应 `MtkProtocolOptions.BromUploadChunkSize`（0 使用 BufferSize，其�
 
 ## 超时和断连
 
+Preloader候选（0E8D:2000/6000）现在先发一次A0唤醒，再进行四步握手；固定1024字节首包缓存处理重复/分片READY和同包应答。BROM不增加唤醒，其首个1字节/FD半字2字节线路不变。`MaximumHandshakePrefix` 默认64、范围0～1024，整个握手及FD共享一次ReadTimeout，不无限排空或在原句柄重放。UI新增候选VID/PID/data/CDC接口，Debug补充唤醒应答/首包长度；候选PID不是阶段证明。
+
 ### XFlash EMI 窗口
 
 `--mtk-preloader` 的 XFlash 路径保留完整 `MTK_BLOADER_INFO` 窗口（含头部），不能只发 Legacy 的 `MTK_BIN+12` 数据。Ares v51 的正确窗口为448字节，而不是336；长度帧与FLOW载荷必须一致，最后等待一次组状态。SDK 的 `MtkEmiImage.Source` 保留Legacy语义，Parser 另提供借用 `BloaderInfoSource` 给XFlash；只提供Source的宿主材料保持原样。Debug记录格式/版本/长度，不记录原始EMI。抓包/离线对照证据及实机风险见 [Preloader/EMI记录](plans/2026-10-08-mtk-preloader-emi-implementation.md)。

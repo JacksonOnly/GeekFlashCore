@@ -16,7 +16,7 @@
 <data name="OptionalCommandUnsupported" xml:space="preserve"><value>Device does not support optional command {0}; continuing standard initialization.</value></data>
 <data name="ExploitCheckpointReached" xml:space="preserve"><value>Reached host extension checkpoint {0}.</value></data>
 <data name="ExploitCheckpointSkipped" xml:space="preserve"><value>Host extension checkpoint {0} skipped callback: {1}.</value></data>
-<data name="HandshakeStep" xml:space="preserve"><value>BROM handshake step {0}/{1}.</value></data>
+<data name="HandshakeStep" xml:space="preserve"><value>BROM/Preloader handshake step {0}/{1}.</value></data>
 <data name="ExploitStrategyStarting" xml:space="preserve"><value>Host extension checkpoint {0} is invoking strategy {1}/{2}.</value></data>
 <data name="RscProgress" xml:space="preserve"><value>Writing RSC information</value></data>
 <data name="ScatterProgress" xml:space="preserve"><value>Flashing scatter images</value></data>
@@ -77,4 +77,12 @@
 <data name="SecurityExchangeSkipped" xml:space="preserve"><value>BROM {CommandName}: device returned accepted skip status 0x{Status:X4}; no host material sent. This is not a new authentication success.</value></data>
 <data name="WireStorageRange" xml:space="preserve"><value>MTK {BootStage}: storage request {TransferKind}, kind {StorageKind}, region {Region}, offset {FlashOffset}, length {FlashLength}.</value></data>
 <data name="EmiWindowSelected" xml:space="preserve"><value>MTK XFlash EMI: format {EmiFormat}, version {EmiVersion}, length {ByteCount}; contents omitted.</value></data>
+<data name="UsbCandidate" xml:space="preserve"><value>MTK USB candidate {VendorId:X4}:{ProductId:X4}, data interface {InterfaceNumber}, CDC control interface {ControlInterfaceNumber}; stage awaits handshake confirmation.</value></data>
+<data name="PreloaderWake" xml:space="preserve"><value>MTK Preloader candidate: sending one A0 wakeup before the handshake.</value></data>
+<data name="CdcSetup" xml:space="preserve"><value>MTK CDC: control interface {ControlInterfaceNumber}, baud rate {BaudRate}, control lines {ControlLineState}.</value></data>
+<data name="StartupPacketRead" xml:space="preserve"><value>MTK startup IN: buffer {RequestedLength} bytes, received {ReceivedLength} bytes, elapsed {ElapsedMilliseconds} ms, budget {TimeoutMilliseconds} ms.</value></data>
+<data name="HandshakePrefix" xml:space="preserve"><value>MTK skipped {HandshakePrefixCount} startup prefix bytes before the first handshake response.</value></data>
+<data name="HandshakeWakeDuplicate" xml:space="preserve"><value>MTK Preloader: consumed one duplicate wakeup response; no command was resent.</value></data>
+<data name="HandshakeResponse" xml:space="preserve"><value>MTK handshake step {HandshakeStep}: response 0x{HandshakeResponse:X2}, expected 0x{HandshakeExpected:X2}.</value></data>
+<data name="HandshakeIdentified" xml:space="preserve"><value>MTK handshake and complete FD identity validation succeeded, already-handshaken candidate {AlreadyHandshaken}; FE must still confirm the stage.</value></data>
 </root>

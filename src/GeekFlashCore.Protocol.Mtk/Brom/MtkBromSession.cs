@@ -17,25 +17,7 @@ internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions op
     public MtkTargetInfo Probe(bool initializeWatchdog = false, Action? identified = null)
     {
         _watchdogDisabled = false;
-        ReadOnlySpan<byte> handshake = [0xa0, 0x0a, 0x50, 0x05];
-        for (int i = 0; i < handshake.Length; i++)
-        {
-            wire.Logger.Debug(Strings.HandshakeStep, i + 1, handshake.Length);
-            wire.WriteByte(handshake[i]);
-            byte response = wire.ReadByte();
-            if (i == 0 && response == 0xa0)
-                break; // Candidate only, FD/FC must still prove identity.
-            int prefixes = 0;
-            while (i == 0 && response != 0x5f && prefixes++ < options.MaximumHandshakePrefix)
-                response = wire.ReadByte();
-            if (response != (byte)~handshake[i])
-                throw wire.Failure();
-        }
-        var hardware = GetHardwareCode();
-        if (hardware.Code == 0)
-            throw wire.Failure();
-        // Recovery must stop before the first chip-specific write, even if later Probe queries fail.
-        identified?.Invoke();
+        var hardware = HandshakeAndIdentify(identified);
         var chip = MtkChipCatalog.Find(hardware.Code);
         var watchdog = (initializeWatchdog || options.InitializeWatchdogOnProbe)
             ? DisableWatchdog(new(hardware.Code, 0, 0, 0, 0, 0, MtkBootStage.Unknown, new(0)))

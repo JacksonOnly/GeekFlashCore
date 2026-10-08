@@ -16,7 +16,7 @@
 <data name="OptionalCommandUnsupported" xml:space="preserve"><value>设备不支持可选命令 {0}，继续标准初始化。</value></data>
 <data name="ExploitCheckpointReached" xml:space="preserve"><value>已到达宿主扩展检查点 {0}。</value></data>
 <data name="ExploitCheckpointSkipped" xml:space="preserve"><value>宿主扩展检查点 {0} 未执行回调：{1}。</value></data>
-<data name="HandshakeStep" xml:space="preserve"><value>BROM 握手步骤 {0}/{1}。</value></data>
+<data name="HandshakeStep" xml:space="preserve"><value>BROM/Preloader 握手步骤 {0}/{1}。</value></data>
 <data name="ExploitStrategyStarting" xml:space="preserve"><value>宿主扩展阶段 {0} 正在调用策略 {1}/{2}。</value></data>
 <data name="RscProgress" xml:space="preserve"><value>写入 RSC 信息</value></data>
 <data name="ScatterProgress" xml:space="preserve"><value>刷写 Scatter 镜像</value></data>
@@ -77,4 +77,12 @@
 <data name="SecurityExchangeSkipped" xml:space="preserve"><value>BROM {CommandName}：设备返回允许跳过的状态 0x{Status:X4}，未发送宿主材料；不等同于本次认证成功。</value></data>
 <data name="WireStorageRange" xml:space="preserve"><value>MTK {BootStage}：存储请求 {TransferKind}，类型 {StorageKind}，区域 {Region}，偏移 {FlashOffset}，长度 {FlashLength}。</value></data>
 <data name="EmiWindowSelected" xml:space="preserve"><value>MTK XFlash EMI：格式 {EmiFormat}，版本 {EmiVersion}，长度 {ByteCount}；内容省略。</value></data>
+<data name="UsbCandidate" xml:space="preserve"><value>MTK USB 候选 {VendorId:X4}:{ProductId:X4}，数据接口 {InterfaceNumber}，CDC 控制接口 {ControlInterfaceNumber}；阶段待握手确认。</value></data>
+<data name="PreloaderWake" xml:space="preserve"><value>MTK Preloader 候选：发送一次 A0 唤醒，再执行握手。</value></data>
+<data name="CdcSetup" xml:space="preserve"><value>MTK CDC：控制接口 {ControlInterfaceNumber}，波特率 {BaudRate}，控制线 {ControlLineState}。</value></data>
+<data name="StartupPacketRead" xml:space="preserve"><value>MTK 启动 IN：缓冲 {RequestedLength} 字节，收到 {ReceivedLength} 字节，耗时 {ElapsedMilliseconds} ms，预算 {TimeoutMilliseconds} ms。</value></data>
+<data name="HandshakePrefix" xml:space="preserve"><value>MTK 首个握手应答前已跳过 {HandshakePrefixCount} 字节启动前缀。</value></data>
+<data name="HandshakeWakeDuplicate" xml:space="preserve"><value>MTK Preloader：消费一次重复的唤醒应答；未重发命令。</value></data>
+<data name="HandshakeResponse" xml:space="preserve"><value>MTK 握手步骤 {HandshakeStep}：应答 0x{HandshakeResponse:X2}，预期 0x{HandshakeExpected:X2}。</value></data>
+<data name="HandshakeIdentified" xml:space="preserve"><value>MTK 握手及完整 FD 身份校验通过，已握手候选 {AlreadyHandshaken}；阶段仍需 FE 确认。</value></data>
 </root>

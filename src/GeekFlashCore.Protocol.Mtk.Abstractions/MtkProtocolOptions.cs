@@ -20,8 +20,9 @@ public sealed record MtkProtocolOptions
     public int MaximumXmlSize { get; init; } = 65536;
     public int MaximumMessages { get; init; } = 128;
     public int MaximumProgressEvents { get; init; } = 4096;
-    /// <summary>Maximum discarded startup bytes before the first handshake response; admits one READY prefix.</summary>
-    public int MaximumHandshakePrefix { get; init; } = 5;
+    /// <summary>Maximum discarded startup bytes before the first handshake response.
+    /// The default admits repeated Preloader READY messages within the same finite handshake budget.</summary>
+    public int MaximumHandshakePrefix { get; init; } = 64;
     public MtkDaKind? DaKind
     {
         get; init;
@@ -61,7 +62,7 @@ public sealed record MtkProtocolOptions
             throw new ArgumentOutOfRangeException(nameof(BromUploadChunkSize));
         if (BufferSize is < 512 or > 1048576 || MaximumFrameSize < BufferSize || MaximumFrameSize > 1048576 ||
             MaximumXmlSize is < 1024 or > 65536 || MaximumXmlSize > MaximumFrameSize || MaximumMessages is < 1 or > 1024 ||
-            MaximumProgressEvents is < 1 or > 65536 || MaximumHandshakePrefix is < 0 or > 16 ||
+            MaximumProgressEvents is < 1 or > 65536 || MaximumHandshakePrefix is < 0 or > 1024 ||
             DaKind is { } kind && !Enum.IsDefined(kind))
             throw new ArgumentOutOfRangeException(nameof(BufferSize));
     }

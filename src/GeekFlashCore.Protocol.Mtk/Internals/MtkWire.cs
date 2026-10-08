@@ -7,6 +7,8 @@ namespace GeekFlashCore.Protocol.Mtk.Internals;
 internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions options, ILogger? logger = null)
 {
     public ILogger Logger { get; } = (logger ?? Log.Logger).ForContext<MtkWire>();
+    public bool IsPreloaderCandidate => transport.Identity.VendorId == 0x0e8d &&
+        transport.Identity.ProductId is 0x2000 or 0x6000;
     public string CommandName { get; private set; } = "Handshake";
     public void TraceCommand(uint command, string name)
     {
@@ -95,6 +97,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
     {
         Check();
         HasWritten = true;
+        Logger.Debug(Strings.CdcSetup, controlInterface, 115200, 3);
         ReadOnlySpan<byte> coding = [0, 0xc2, 1, 0, 0, 0, 8];
         transport.ControlOut(0x21, 0x20, 0, checked((ushort)controlInterface), coding);
         Check();
@@ -116,11 +119,12 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         Check();
         Logger.Debug(Strings.WireZlp, Stage, Command);
     }
-    public void Read(Span<byte> data)
+    public void Read(Span<byte> data, int? maximumTimeoutMilliseconds = null)
     {
         // Fragments share one logical read budget; slow trickles cannot extend it indefinitely.
         long started = Environment.TickCount64;
-        long deadline = Math.Min(_deadline, checked(started + options.ReadTimeoutMilliseconds));
+        int readTimeout = Math.Min(options.ReadTimeoutMilliseconds, maximumTimeoutMilliseconds ?? int.MaxValue);
+        long deadline = Math.Min(_deadline, checked(started + readTimeout));
         int budget = (int)Math.Clamp(deadline - started, 0, int.MaxValue);
         int done = 0, fragments = 0;
         try
@@ -149,6 +153,34 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         {
             Logger.Debug(Strings.WireInterrupted, "Read", Stage, Command, data.Length, done, fragments,
                 Environment.TickCount64 - started, budget, ex.GetType().Name);
+            throw;
+        }
+    }
+    public int ReadStartupPacket(Span<byte> data, int maximumTimeout)
+    {
+        // One native packet, not an exact fill: READY and its response may share an IN transfer.
+        Check();
+        int timeout = Math.Min(maximumTimeout, Math.Min(options.ReadTimeoutMilliseconds, RemainingTimeoutMilliseconds));
+        if (timeout <= 0)
+            throw new TimeoutException(Strings.Timeout);
+        long started = Environment.TickCount64;
+        int read = 0;
+        _hasRead = true;
+        try
+        {
+            read = transport.Read(data, timeout);
+            Check();
+            if (Environment.TickCount64 - started >= timeout)
+                throw new TimeoutException(Strings.Timeout);
+            if (read <= 0 || read > data.Length)
+                throw new EndOfStreamException(Strings.FormatInvalidData("USB startup read"));
+            Logger.Debug(Strings.StartupPacketRead, data.Length, read, Environment.TickCount64 - started, timeout);
+            return read;
+        }
+        catch (Exception ex)
+        {
+            Logger.Debug(Strings.WireInterrupted, "Read", Stage, Command, data.Length, read, 1,
+                Environment.TickCount64 - started, timeout, ex.GetType().Name);
             throw;
         }
     }

@@ -172,6 +172,8 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             }
         }
         catch { _state = MtkSessionState.Disconnected; throw; }
+        MtkDiagnostics.Summary(_logger, Strings.UsbCandidate, _transport.Identity.VendorId,
+            _transport.Identity.ProductId, _transport.InterfaceNumber, _transport.ControlInterfaceNumber);
         _wire.Stage = MtkBootStage.Unknown;
         _wire.TraceCommand(0, "Handshake");
         _da1Authentication = _da2Authentication = MtkDaAuthenticationState.NotQueried;

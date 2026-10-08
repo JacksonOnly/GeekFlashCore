@@ -159,6 +159,18 @@
   `ref`（mtkclient 原样：0x25 + 13 字节 + 0x02FF）/`ref21`/`nodesc`/`zeros`，逐步打印
   每一笔控制传输与状态字；同时保留 `mtk_linecode_ab.py` 作为 `ptr_da` 单变量脚本。
 
+### EXP-PORT-01G（2026-10-08）：MT6893 取线编码改为直接 0xA1/0x21
+
+- 用户 12:32:42 的 Bus Hound 证据确认：`0xA1/0x25`（wLength=8）先被 BROM STALL，
+  随后 `0xA1/0x21`（wLength=7）返回 `00 C2 01 00 00 00 08`；后续 12 字节
+  `SET_LINE_CODING` 与 `0x02FF` 线路仍以 `0x1A1D` 失败。
+- 对照 mtkclient `Kamakiri2.exploit()`：入口在第一次 `da_read_write` 前直接读取
+  `0xA1/0x21`，只有独立的 `kamakiri2()` 变体才尝试 `0xA1/0x25`。因此将策略的取码
+  改为只发 `0xA1/0x21`，读取 7 字节并追加终止零；不再发送会改变 MT6893 BROM 状态的
+  `0xA1/0x25` 探测。12 字节 SET payload、`0x02FF` descriptor 和状态字小端解析保持不变。
+- 本次修改仍待真机重新拔插验证；成功标准是抓包开头不出现 `0xA1/0x25`，且首个实际
+  `sys_region_access` 不再返回 `0x1A1D`。
+
 ## 验证汇总（EXP-PORT-01B 时点）
 
 | 验证命令 | 结果 |
@@ -173,13 +185,11 @@
 ## 未决风险
 
 - LineCode 已获真机裁决：Penumbra 变体在 MT6893 上被 BROM 以 0x1A1D（缓存问题）拒绝，
-  penumbra 原版同样失败；本实现已切换为 mtkclient kamakiri2 变体（EXP-PORT-01D），并在
-  EXP-PORT-01E 修复线编码前缀与状态字字节序、在 EXP-PORT-01F 对齐取码顺序（0xA1/0x25
-  优先、无主机侧间隔）。**用户确认 mtkclient 在本机 BROM 能成功**，因此该漏洞对本机适用，
-  剩余失败必然是移植偏差，不是漏洞不适用。修复后的序列仍未在真机复验：预期 prime 可能被
-  拒绝（参考同样吞掉），但控制序列后的区域读必须成功；若仍为 0x1A1D，用
-  `.tests/tmp/mtk_linecode_sweep.py` 一次插拔跑 `ref`/`ref21`/`nodesc`/`zeros` 定位是
-  13/12 字节长度、`0x02FF` 请求还是取码请求号的差异。Carbonara XFlash boot_to 后不读中间
+  penumbra 原版同样失败；本实现已切换为 mtkclient Kamakiri2 变体，并在 EXP-PORT-01E
+  修复线编码前缀与状态字字节序、EXP-PORT-01F 对齐控制序列、EXP-PORT-01G 移除会改变
+  BROM 状态的 `0xA1/0x25` 探测，改为入口直接读取 `0xA1/0x21`。**用户确认 mtkclient
+  在本机 BROM 能成功**，因此该漏洞对本机适用；`01G` 后的真实设备复验仍待完成，成功标准
+  是首个实际 `sys_region_access` 不再返回 `0x1A1D`。Carbonara XFlash boot_to 后不读中间
   状态（参考如此），与本项目标准 DA2 上传线路不同。
 - HeapBait 的雪橇在参考中为约 50MiB 连续分配；本实现按 3MiB 有界窗口流式发送，设备端行为是否
   等价未验证。失败后的容忍性读可能造成 XML 流失步。

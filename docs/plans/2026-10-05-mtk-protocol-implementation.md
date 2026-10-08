@@ -1,5 +1,31 @@
 # GeekFlashCore MTK 实施进度
 
+## 2026-10-09 MTK-MERGE-01：并入本地 main
+
+- 用户授权“并入main”并要求继续。目标工作区 `D:\Code\CSharp\GeekFlashCore` 合并前为 `86e7c1e`，分支 `main`，初始工作区干净；来源 `codex/mtk-nonexploit-audit-20261008` 为 `f45da90`。目标是来源的祖先，使用 `git merge --ff-only` 无冲突快进，不推送远端、不重写历史、不删除 worktree。
+- 合入12项已有提交：`acb9daf` 标准命令/边界审查、`afbb3d7` BROM接入恢复、`23cb56f` 上传/诊断、`f7a1069` EMI完整窗口、`831c79c` Preloader首包、`c05b8bd` 已修改DA1后的回调衔接、`5e3be28` 旧DA可选SLA查询、`e7cc62f` XFlash包长/宿主窗口、`6186ea8` 有界USB零包、`04c2739` Boot区域不探测GPT、`f944e3d` 已观察UFS GPT边界兼容、`f45da90` CLI警告可见性。共86个生产代码/文档文件；本次合并不改变已有实现，不新增策略、载荷或设备操作。
+- 来源工作区的未跟踪 `src/GeekFlashCore.CLI/persist.img` 保持原样，不读取、提交或删除。主工作区验证期间另出现 `.gitignore` 未提交修改（新增 `docs/plans/**`），随后观察到同时存在已暂存/未暂存改动，保留其工作区与暂存状态，不加入本次文档提交；本记录更新已跟踪文件，不强制加入被忽略的新计划。
+- 主工作区既有 ignored 测试较旧，未覆盖。复制来源测试源码/项目/分析夹具到新的 `.tests/GeekFlashCore.Protocol.Mtk.MergeVerification-20261009` 与 `.tests/GeekFlashCore.CLI.MergeVerification-20261009`，项目文件名保持原名，引用合并后的主工作区生产代码。真实GPT离线夹具仅复制到 ignored `.tests/tmp/gpt-capture`，已有同名文件先比对摘要，不覆盖不同内容；测试、材料、日志和构建产物均不提交。
+
+### 主工作区验证
+
+| 检查 | 结果 |
+| --- | --- |
+| `dotnet build GeekFlashCore.slnx -c Release --no-restore -v quiet` | 通过，0警告/0错误 |
+| 独立验证项目 MTK Release 全量及 `--no-build --no-restore` 复跑 | 两次均807项，791通过/16失败；15项固定旧基线，另1项下述既有调度敏感夹具 |
+| 同一MTK项目 `--filter 'FullyQualifiedName!~PenumbraLinecodeTriggerTests&DisplayName!~oppo_2_MTK_AllInOne_DA.bin'` | 792/792通过，包含调度敏感项；不修改/排除该项，不改生产超时行为 |
+| 独立验证项目 CLI Release 全量 | 170/170通过 |
+| TRX与来源 `ufs-gpt-first-usable-final.trx` 失败名称对比 | 固定15项相同，仅多既有 `BromAdmissionTests.FragmentsShareOneReadBudgetAndStopWithoutFurtherCommands` |
+| ignored / 差异检查 | 独立测试项目及抓包夹具确认ignored；`git diff --check`通过，无测试、材料、日志或产物暂存 |
+
+完整命令的工程分别为上述目录中的 `GeekFlashCore.Protocol.Mtk.Tests.csproj` / `GeekFlashCore.CLI.Tests.csproj`；TRX位于主工作区 ignored `.tests/tmp/mtk-audit-merge-results`，文件名 `mtk-main-merge-full.trx`、`mtk-main-merge-full-repeat.trx`、`mtk-main-merge-runnable.trx`、`cli-main-merge.trx`。首次独立测试需要恢复依赖，此后使用 `--no-build --no-restore`。
+
+固定15项为14个旧 `PenumbraLinecodeTriggerTests` 与缺少外部 `oppo_2_MTK_AllInOne_DA.bin` 的Loader用例。额外时间敏感项使用50ms预算/30ms Thread.Sleep，并假定收到至少三次native调用；此次全量失败在夹具索引断言（不是超时后继续设备命令），可运行复跑通过，先前UFS实施也已记录同类调度波动。没有改测试或忽略失败来宣称全量通过；既有 ignored Carbonara测试字段CS0649警告保持，正式解决方案构建零警告。
+
+本次仅本地构建/模拟与离线回放，无新增硬件证据。UFS兼容后真实设备完整 `partitions all`、32KiB PGPT边界和后续读写仍按UFS实施记录待确认；未知布局仍拒绝，不关闭CRC、不自动重放已识别会话操作。后续从本记录及下方各能力记录恢复；本记录提交仅包含文档，主工作区 `.gitignore` 和来源用户镜像不属于提交范围。
+
+## 各能力实施记录
+
 2026-10-09 MTK-UI-WARN-01：CLI工具模式原来压制MTK警告，现仅放行已批准Warning/Error摘要，Info/Debug/设备正文/异常详情和其他协议策略不变；CLI170通过，Release/独立Debug零警告。用户运行进程不终止、已有未跟踪镜像保留，见 [UI警告记录](2026-10-09-mtk-warning-visibility-implementation.md)。
 
 2026-10-09 UFS-GPT-01：用户000226/a33ef517证实User主备CRC全有效，但4K表FirstUsable34/首分区8不一致；对已观察UFS User128×128布局进行严格物理元数据下界兼容，PGPT截止首分区32KiB，不关闭CRC/重叠校验或改设备。24目标和真实主备离线回放通过，最新证据/基线/实机风险见 [UFS GPT记录](2026-10-09-mtk-ufs-gpt-first-usable-implementation.md)。

@@ -95,4 +95,8 @@
 <data name="PacketLengthResponse" xml:space="preserve"><value>MTK {BootStage}: packet-length response is {ResponseLength} bytes; expected 8.</value></data>
 <data name="PacketLengthsOffered" xml:space="preserve"><value>MTK {BootStage}: device write-packet ceiling {DeviceWritePacketLength}, read-packet ceiling {DeviceReadPacketLength}, valid range={PacketLengthsValid}; host windows are bounded independently.</value></data>
 <data name="DaZeroLengthIn" xml:space="preserve"><value>MTK {BootStage}: command 0x{Command:X8} received a USB zero-length IN packet, consecutive count {ZeroLengthPacketCount}, remaining read budget {RemainingTimeoutMilliseconds} ms; continuing the same receive without retransmitting commands.</value></data>
+<data name="PartitionDiscoveryStarted" xml:space="preserve"><value>MTK: discovering partitions on {StorageKind}, User region {UserRegionId}.</value></data>
+<data name="PartitionDiscoveryCompleted" xml:space="preserve"><value>MTK: partition discovery completed with {PartitionCount} entries.</value></data>
+<data name="PartitionBootMetadata" xml:space="preserve"><value>MTK {StorageKind} boot region {RegionId}: constructing the Preloader entry from reported capacity {Length}, without reading GPT.</value></data>
+<data name="PartitionGptProbe" xml:space="preserve"><value>MTK {StorageKind} region {RegionId}: probing GPT, User region={IsUserRegion}.</value></data>
 </root>

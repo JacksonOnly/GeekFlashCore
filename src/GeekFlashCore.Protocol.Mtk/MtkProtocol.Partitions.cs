@@ -22,6 +22,7 @@ public sealed partial class MtkProtocol
         int block = region.BlockSize;
         if (block < 512 || region.Kind == MtkStorageKind.Nand || region.Length < 3L * block)
             return null;
+        _logger.Debug(Strings.PartitionGptProbe, region.Kind, region.WireId, region.WireId == _storage!.UserRegionId);
         byte[] prefix = ReadMetadata(region, 0, 2 * block);
         bool primaryPresent = prefix.AsSpan(block, 8).SequenceEqual("EFI PART"u8);
         if (primaryPresent)

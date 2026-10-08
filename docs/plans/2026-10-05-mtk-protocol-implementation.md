@@ -1,5 +1,7 @@
 # GeekFlashCore MTK 实施进度
 
+2026-10-09 BOOT-GPT-01：用户区域疑问核对确认XFlash参数映射正确（UFS User3/eMMC User8），但枚举不应在Boot1/2探测GPT；现在直接根据容量生成Preloader辅助条目，只继续非Boot GPT发现，显式Boot操作及GP/CRC边界保留。44新目标/71分区回归/768可运行MTK通过，实机完整分区表待确认，见 [Boot/User记录](2026-10-08-mtk-boot-region-discovery-implementation.md)。
+
 2026-10-08 DA-ZLP-01：用户233705首区8192读完后成功零字节IN误EOF，DA1/DA2现在在原预算/取消边界内消费最多4个连续零包，不重发命令或ACK；20目标/724可运行项通过，保留15旧基线失败。实机分区完成待验证，用户追加Boot/User枚举区域另行修复，见 [零包记录](2026-10-08-mtk-da-zero-length-in-implementation.md)。
 
 2026-10-08 PKT-CAP-01：独立XFlash2MiB能力/数据帧限，池化窗口接收/每整帧一次ACK，原小帧及其他DA限制不变；23目标/704可运行MTK/168CLI通过，用户233705确认UFS StorageReady。随后partitions首区8192读后的零字节IN另行审查，见 [包长记录](2026-10-08-mtk-xflash-packet-capacity-implementation.md)。

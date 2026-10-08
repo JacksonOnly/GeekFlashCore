@@ -52,3 +52,7 @@ DA2 摘要区分请求标准 BootTo（尚待命令确认）与参数组/执行�
 旧DA在SlaEnabledStatus子命令初始ACK完整返回0xC0010004时，输出Warning并记录认证证据Unsupported，继续包长/存储查询；不是认证成功或SLA禁用证明。父命令、结果帧/尾ACK、已启用后挑战/签名错误、未知状态、取消/超时不会降级。用户232837日志已确认此路径，见 [SLA兼容记录](plans/2026-10-08-mtk-xflash-sla-compatibility-implementation.md)。
 
 XFlash设备包上限可为2MiB，不能按旧1MiB宿主小帧限制拒绝能力查询。宿主写块仍默认64KiB；大存储FLOW用小池化窗口接收，完整帧才ACK。SDK `MaximumXFlashDataFrameSize` 默认2MiB，可限制512～2MiB；小帧/消息/认证/scoped ReceiveData仍由 `MaximumFrameSize` 控制，默认1MiB。每个payload窗口共享读预算。Debug在拒绝前记录响应长度和设备包长，status0本地校验失败不等于设备返回NAK。用户233705已联机到UFS，见 [包长实施](plans/2026-10-08-mtk-xflash-packet-capacity-implementation.md)。
+
+## GPT 与 Boot 区域
+
+分区发现不再读取eMMC BOOT1/2或UFS LU0/LU1的头尾GPT；Preloader/backup直接采用已报告容量。UFS User为wire3（LU2），eMMC User为wire8，不能使用通常的零基LUN号替换DA wire编号。XFlash参数编码没有偏移错误，旧Boot读取来自枚举循环。UI显示发现开始的介质/User ID及完成条目数，Debug明确Boot只生成元数据和实际GPT读取的region。显式Boot raw/别名操作仍访问1/2，eMMC GP独立GPT能力保留；User CRC/主备/坏表边界不降级。实机完整列表待确认，见 [区域发现记录](plans/2026-10-08-mtk-boot-region-discovery-implementation.md)。

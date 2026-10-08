@@ -138,11 +138,18 @@ public sealed partial class MtkProtocol
         if (_partitions is not null)
             return _partitions;
         List<(string, MtkFlashRange)> result = [];
+        MtkDiagnostics.Summary(_logger, Strings.PartitionDiscoveryStarted, _storage!.Kind, _storage.UserRegionId);
         foreach (var region in _storage!.Regions)
         {
             if (region.Kind is MtkStorageKind.Emmc or MtkStorageKind.Ufs && region.WireId is 1 or 2)
+            {
                 result.Add((region.WireId == 1 ? MtkPartitionNames.Preloader : MtkPartitionNames.PreloaderBackup,
                     new MtkFlashRange(region.WireId, 0, region.Length)));
+                // Boot regions contain the Preloader, not the user GPT. Their already reported
+                // geometry is sufficient for auxiliary entries; do not probe their head/tail.
+                _logger.Debug(Strings.PartitionBootMetadata, region.Kind, region.WireId, region.Length);
+                continue;
+            }
             var entries = ReadGpt(region);
             if (entries is null)
             {
@@ -165,6 +172,7 @@ public sealed partial class MtkProtocol
             if (region.WireId == _storage.UserRegionId)
                 result.Add((MtkPartitionNames.BackupGpt, entries.Backup));
         }
+        MtkDiagnostics.Summary(_logger, Strings.PartitionDiscoveryCompleted, result.Count);
         return _partitions = result;
     }
     public IReadOnlyList<BlockDeviceDescriptor> GetBlockDevices() => Execute<IReadOnlyList<BlockDeviceDescriptor>>(() =>

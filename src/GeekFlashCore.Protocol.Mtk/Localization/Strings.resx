@@ -95,4 +95,8 @@
 <data name="PacketLengthResponse" xml:space="preserve"><value>MTK {BootStage}：包长查询结果长度 {ResponseLength}，预期 8 字节。</value></data>
 <data name="PacketLengthsOffered" xml:space="preserve"><value>MTK {BootStage}：设备写包上限 {DeviceWritePacketLength}，读包上限 {DeviceReadPacketLength}，能力范围有效={PacketLengthsValid}；宿主窗口独立限制。</value></data>
 <data name="DaZeroLengthIn" xml:space="preserve"><value>MTK {BootStage}：命令 0x{Command:X8} 收到 USB 零长度 IN，连续 {ZeroLengthPacketCount} 个，剩余读预算 {RemainingTimeoutMilliseconds} ms；继续同一次接收，未重发命令。</value></data>
+<data name="PartitionDiscoveryStarted" xml:space="preserve"><value>MTK：开始获取分区表，存储 {StorageKind}，User 区域 {UserRegionId}。</value></data>
+<data name="PartitionDiscoveryCompleted" xml:space="preserve"><value>MTK：分区表获取完成，共 {PartitionCount} 个条目。</value></data>
+<data name="PartitionBootMetadata" xml:space="preserve"><value>MTK {StorageKind} 启动区域 {RegionId}：根据已报告容量 {Length} 构造 Preloader 条目，不读取 GPT。</value></data>
+<data name="PartitionGptProbe" xml:space="preserve"><value>MTK {StorageKind} 区域 {RegionId}：探测 GPT，User 区域={IsUserRegion}。</value></data>
 </root>

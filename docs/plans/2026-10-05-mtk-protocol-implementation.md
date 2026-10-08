@@ -1,5 +1,7 @@
 # GeekFlashCore MTK 实施进度
 
+2026-10-08 DA-ZLP-01：用户233705首区8192读完后成功零字节IN误EOF，DA1/DA2现在在原预算/取消边界内消费最多4个连续零包，不重发命令或ACK；20目标/724可运行项通过，保留15旧基线失败。实机分区完成待验证，用户追加Boot/User枚举区域另行修复，见 [零包记录](2026-10-08-mtk-da-zero-length-in-implementation.md)。
+
 2026-10-08 PKT-CAP-01：独立XFlash2MiB能力/数据帧限，池化窗口接收/每整帧一次ACK，原小帧及其他DA限制不变；23目标/704可运行MTK/168CLI通过，用户233705确认UFS StorageReady。随后partitions首区8192读后的零字节IN另行审查，见 [包长记录](2026-10-08-mtk-xflash-packet-capacity-implementation.md)。
 
 2026-10-08 SLA-COMPAT-01：XFlash旧DA可选SLA查询仅接受子命令ACK的完整UnsupportedCtrlCode，传播Unsupported证据、不中断后续包长；25目标/681可运行MTK/168CLI通过，用户232837日志证实。随后2MiB包长被旧上限拒绝另行修复，见 [SLA兼容实施](2026-10-08-mtk-xflash-sla-compatibility-implementation.md)。

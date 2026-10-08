@@ -94,4 +94,5 @@
 <data name="SlaStatusUnsupported" xml:space="preserve"><value>MTK XFlash: DA rejected SLA status query 0x{Command:X8} as unsupported (0x{Status:X8}); continuing legacy-DA packet-length and storage queries. Authentication evidence is Unsupported, not authentication success or proof that SLA is disabled.</value></data>
 <data name="PacketLengthResponse" xml:space="preserve"><value>MTK {BootStage}: packet-length response is {ResponseLength} bytes; expected 8.</value></data>
 <data name="PacketLengthsOffered" xml:space="preserve"><value>MTK {BootStage}: device write-packet ceiling {DeviceWritePacketLength}, read-packet ceiling {DeviceReadPacketLength}, valid range={PacketLengthsValid}; host windows are bounded independently.</value></data>
+<data name="DaZeroLengthIn" xml:space="preserve"><value>MTK {BootStage}: command 0x{Command:X8} received a USB zero-length IN packet, consecutive count {ZeroLengthPacketCount}, remaining read budget {RemainingTimeoutMilliseconds} ms; continuing the same receive without retransmitting commands.</value></data>
 </root>

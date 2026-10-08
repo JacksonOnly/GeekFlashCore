@@ -39,6 +39,8 @@ Preloader候选（0E8D:2000/6000）现在先发一次A0唤醒，再进行四步�
 
 定位时核对：最后 `SessionState` / `BootStage` / `CommandName`、`Command`、`Status` / `ExceptionType`、读的 `ReceivedLength` / `ReadFragmentCount` / `ElapsedMilliseconds` / `TimeoutMilliseconds`、协商包长。Write 中断的预算是剩余操作预算，不是 native driver 的超时设置。同步 native call 的立即中断仍受 backend 限制。
 
+DA1/DA2成功零字节USB IN可为ZLP，不直接解释成EOF；仍open的连接在同一次读预算中消费最多4个连续零包，不重发命令或ACK。Debug记录计数及剩余预算；实际native超时/断连异常、关闭句柄、超限零包仍终止操作并失效。协议FLOW长度0不是USB ZLP，仍非法；BROM/Preloader接入零读边界未变。见 [零包实施](plans/2026-10-08-mtk-da-zero-length-in-implementation.md)。
+
 实现、参考指纹、测试基线与无实机风险见 [实施记录](plans/2026-10-08-mtk-transfer-diagnostics-implementation.md)。
 
 ## DA1 修改与 DA2 路由

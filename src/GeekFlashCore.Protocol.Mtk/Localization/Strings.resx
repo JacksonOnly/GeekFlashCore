@@ -94,4 +94,5 @@
 <data name="SlaStatusUnsupported" xml:space="preserve"><value>MTK XFlash：DA 不支持 SLA 状态查询 0x{Command:X8}（0x{Status:X8}），按旧版 DA 线路继续查询包长和存储；认证证据为 Unsupported，不代表认证成功或 SLA 已关闭。</value></data>
 <data name="PacketLengthResponse" xml:space="preserve"><value>MTK {BootStage}：包长查询结果长度 {ResponseLength}，预期 8 字节。</value></data>
 <data name="PacketLengthsOffered" xml:space="preserve"><value>MTK {BootStage}：设备写包上限 {DeviceWritePacketLength}，读包上限 {DeviceReadPacketLength}，能力范围有效={PacketLengthsValid}；宿主窗口独立限制。</value></data>
+<data name="DaZeroLengthIn" xml:space="preserve"><value>MTK {BootStage}：命令 0x{Command:X8} 收到 USB 零长度 IN，连续 {ZeroLengthPacketCount} 个，剩余读预算 {RemainingTimeoutMilliseconds} ms；继续同一次接收，未重发命令。</value></data>
 </root>

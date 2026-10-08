@@ -6,6 +6,7 @@ namespace GeekFlashCore.Protocol.Mtk.Internals;
 
 internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions options, ILogger? logger = null)
 {
+    private const int MaximumConsecutiveDaZeroLengthPackets = 4;
     public ILogger Logger { get; } = (logger ?? Log.Logger).ForContext<MtkWire>();
     public bool IsPreloaderCandidate => transport.Identity.VendorId == 0x0e8d &&
         transport.Identity.ProductId is 0x2000 or 0x6000;
@@ -126,7 +127,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         int readTimeout = Math.Min(options.ReadTimeoutMilliseconds, maximumTimeoutMilliseconds ?? int.MaxValue);
         long deadline = Math.Min(_deadline, checked(started + readTimeout));
         int budget = (int)Math.Clamp(deadline - started, 0, int.MaxValue);
-        int done = 0, fragments = 0;
+        int done = 0, fragments = 0, zeroLengthPackets = 0;
         try
         {
             while (done < data.Length)
@@ -142,8 +143,19 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
                 Check();
                 if (Environment.TickCount64 >= deadline)
                     throw new TimeoutException(Strings.Timeout);
+                if (read == 0 && (Stage is MtkBootStage.Da1 or MtkBootStage.Da2) && transport.IsOpen &&
+                    zeroLengthPackets < MaximumConsecutiveDaZeroLengthPackets)
+                {
+                    // Successful native USB ZLP is not EOF. Continue the same read, never a
+                    // command retry, under the original deadline and a finite consecutive cap.
+                    zeroLengthPackets++;
+                    Logger.Debug(Strings.DaZeroLengthIn, Stage, Command, zeroLengthPackets,
+                        Math.Max(0, deadline - Environment.TickCount64));
+                    continue;
+                }
                 if (read <= 0 || read > data.Length - done)
                     throw new EndOfStreamException(Strings.FormatInvalidData("USB read"));
+                zeroLengthPackets = 0;
                 done += read;
             }
             if (Logger.IsEnabled(LogEventLevel.Debug))

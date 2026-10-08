@@ -91,4 +91,5 @@
 <data name="Da2BootCommandAccepted" xml:space="preserve"><value>MTK XFlash：标准 DA2 BootTo 命令已确认，开始发送参数和载荷。</value></data>
 <data name="Da2PayloadSent" xml:space="preserve"><value>MTK XFlash：DA2 的 {ByteCount} 字节已发送，等待参数组和执行状态；尚未确认启动。</value></data>
 <data name="Da2BootConfirmed" xml:space="preserve"><value>MTK XFlash：标准 DA2 参数组及执行状态均已确认。</value></data>
+<data name="SlaStatusUnsupported" xml:space="preserve"><value>MTK XFlash：DA 不支持 SLA 状态查询 0x{Command:X8}（0x{Status:X8}），按旧版 DA 线路继续查询包长和存储；认证证据为 Unsupported，不代表认证成功或 SLA 已关闭。</value></data>
 </root>

@@ -1,5 +1,7 @@
 # GeekFlashCore MTK 实施进度
 
+2026-10-08 SLA-COMPAT-01：XFlash旧DA可选SLA查询仅接受子命令ACK的完整UnsupportedCtrlCode，传播Unsupported证据、不中断后续包长；25目标/681可运行MTK/168CLI通过，用户232837日志证实。随后2MiB包长被旧上限拒绝另行修复，见 [SLA兼容实施](2026-10-08-mtk-xflash-sla-compatibility-implementation.md)。
+
 2026-10-08 DA2-CB-01：用户授权既有回调衔接修复。跨阶段记录实际 DA1 修改，BROM 已上传修改 DA1 后跳过 Carbonara，标准 DA2 一次 BootTo；26目标/656可运行MTK/168CLI通过，用户231901日志确认DA2双状态通过。新0x40016不支持响应另行审查，见 [DA2回调实施](2026-10-08-mtk-da2-callback-implementation.md)。不新增漏洞算法/策略/载荷。
 
 2026-10-08 用户新增 Preloader 首握手失败与 EMI 抓包：最新设计/实际窗口逐字节证据见 [Preloader/EMI实施记录](2026-10-08-mtk-preloader-emi-implementation.md)。XFlash 使用完整BLOADER窗口，Legacy保留MTK_BIN正文；旧文档中的统一EMI裁剪不再适用于XFlash。

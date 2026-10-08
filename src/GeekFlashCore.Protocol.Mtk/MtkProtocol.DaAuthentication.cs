@@ -15,7 +15,7 @@ public sealed partial class MtkProtocol
         if (challenge is null)
         {
             var evidence = _da is XmlSession xml ? xml.AuthenticationState :
-                _da is LegacySession ? MtkDaAuthenticationState.Unsupported : MtkDaAuthenticationState.NotRequired;
+                _da is XFlashSession xflash ? xflash.AuthenticationState : MtkDaAuthenticationState.Unsupported;
             if (kind == MtkAuthenticationKind.Da1Sla) _da1Authentication = evidence;
             else _da2Authentication = evidence;
             MtkDiagnostics.Summary(_logger, Strings.AuthenticationEvidence, kind, evidence);

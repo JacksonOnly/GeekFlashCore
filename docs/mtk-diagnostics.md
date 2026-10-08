@@ -46,3 +46,5 @@ Preloader候选（0E8D:2000/6000）现在先发一次A0唤醒，再进行四步�
 在 BeforeDa1 回调返回的 replacement 确实修改同一执行布局的 DA1 非签名字节，且标准 DA1 上传/初始化成功后，BROM 路径跳过多余 Carbonara。仅 Completed 或 BROM 模式不足以跳过；Preloader 和宿主直接提供的预修改文件不猜测。SDK 新上下文属性 `Da1ModifiedBeforeUpload` 不代表认证成功，过期不可访问。
 
 DA2 摘要区分请求标准 BootTo（尚待命令确认）与参数组/执行状态均确认。Debug 另记录命令接受与载荷已发送待确认。双状态通过后若 `SlaEnabledStatus` 查询失败，则是 DA2 后续认证查询，不是上传失败。用户231901日志已确认正常DA2启动，详情见 [回调记录](plans/2026-10-08-mtk-da2-callback-implementation.md)。
+
+旧DA在SlaEnabledStatus子命令初始ACK完整返回0xC0010004时，输出Warning并记录认证证据Unsupported，继续包长/存储查询；不是认证成功或SLA禁用证明。父命令、结果帧/尾ACK、已启用后挑战/签名错误、未知状态、取消/超时不会降级。用户232837日志已确认此路径，见 [SLA兼容记录](plans/2026-10-08-mtk-xflash-sla-compatibility-implementation.md)。

@@ -108,13 +108,35 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         checkpoint(MtkExploitStage.Da2Ready);
     }
     public void CompleteAuthentication() => QueryPacketLength();
+    public MtkDaAuthenticationState AuthenticationState { get; private set; }
     public byte[]? GetAuthenticationChallenge()
     {
-        byte[] state = Control(MtkXFlashCommand.SlaEnabledStatus);
-        if (state.Length != 4)
-            throw wire.Failure();
-        if (BinaryPrimitives.ReadUInt32LittleEndian(state) == 0)
+        AuthenticationState = MtkDaAuthenticationState.NotQueried;
+        Command(MtkXFlashCommand.DeviceCtrl);
+        wire.TraceCommand((uint)MtkXFlashCommand.SlaEnabledStatus, nameof(MtkXFlashCommand.SlaEnabledStatus));
+        wire.SendUInt32Frame((uint)MtkXFlashCommand.SlaEnabledStatus);
+        uint status = wire.ReadStatus((uint)MtkXFlashStatus.Success, (uint)MtkXFlashStatus.UnsupportedCtrlCode);
+        if (status == (uint)MtkXFlashStatus.UnsupportedCtrlCode)
+        {
+            // A complete subcommand rejection has no result or trailing ACK. Do not consume
+            // the next command's response. Parent, data, final status and I/O errors stay fatal.
+            AuthenticationState = MtkDaAuthenticationState.Unsupported;
+            wire.Logger.ForContext("MtkSummary", true).Warning(Strings.SlaStatusUnsupported,
+                (uint)MtkXFlashCommand.SlaEnabledStatus, status);
             return null;
+        }
+        Span<byte> state = stackalloc byte[4];
+        if (wire.ReadFrame(state) != state.Length)
+            throw wire.Failure();
+        wire.ReadStatus();
+        uint enabled = BinaryPrimitives.ReadUInt32LittleEndian(state);
+        if (enabled > 1)
+            throw wire.Failure();
+        if (enabled == 0)
+        {
+            AuthenticationState = MtkDaAuthenticationState.NotRequired;
+            return null;
+        }
         byte[] challenge = Control(MtkXFlashCommand.GetDevFwInfo, maximum: options.MaximumFrameSize);
         if (challenge.Length < 20)
         {

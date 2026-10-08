@@ -120,7 +120,7 @@ git status --short --ignored
 
 ## 当前进度来源
 
-开始 SPRD 工作前，读取 `docs/plans/2026-10-07-sprd-protocol-design.md`、`docs/plans/2026-10-07-sprd-protocol-implementation.md` 和 `docs/sprd.md`，再检查工作区与最近提交。参考源为 `D:\Code\CSharp\SPRDClientCore-Xia` 和 `D:\Code\CPlusPlus\SPD_Flash_Tool_Source_Code`；当前没有实机证据。Loader 地址、容量单位、64 位布局、禁转义及奇数补零必须显式确认，不自动重发写命令或试探容量。测试位于 ignored `.tests/GeekFlashCore.Protocol.Sprd.Tests`。
+开始 SPRD 工作前，读取 `docs/plans/2026-10-07-sprd-protocol-design.md`、`docs/plans/2026-10-07-sprd-protocol-implementation.md` 和 `docs/sprd.md`，再检查工作区与最近提交。参考源为 `D:\Code\CSharp\SPRDClientCore-Xia` 和 `D:\Code\CPlusPlus\SPD_Flash_Tool_Source_Code`；当前没有实机证据。Loader 地址、容量单位、64 位布局、禁转义及奇数补零必须显式确认，不自动重发写命令或试探容量。测试位于 ignored `.tests/GeekFlashCore.Protocol.Sprd.Tests`。用户追加 YC-nw/SPRDClientCore 与 TomKing062/spreadtrum_flash 后的严格 GPT 容量、显式 Raw v1/v2 和 UID 最新范围与恢复来源为 `docs/plans/2026-10-08-sprd-upstream-completion-design.md` 与对应 implementation；GPT 扇区/前缀、Raw flush/USB 包大小须确认，无自动回退、NV 变换或整盘推断。
 
 开始 Qualcomm 相关工作前，依次阅读：
 

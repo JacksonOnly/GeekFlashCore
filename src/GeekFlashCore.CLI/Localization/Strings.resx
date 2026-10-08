@@ -445,11 +445,13 @@ Cache 命令阻止：{8}</value></data>
 <data name="Cli_SprdLoaderMissing" xml:space="preserve"><value>未找到适配设备的 SPRD Loader 文件。</value></data>
 <data name="Cli_SprdUnitRequired" xml:space="preserve"><value>SPRD 存储命令需要显式 --sprd-partition-unit BYTES，容量单位必须按设备确认。</value></data>
 <data name="Cli_SprdCommandUnsupported" xml:space="preserve"><value>SPRD 支持默认区域的命名分区及正常重启/关机；当前命令或寻址方式未实现。</value></data>
-<data name="Cli_SprdProfileInvalid" xml:space="preserve"><value>SPRD 配置无效；入口为 brom/fdl1/fdl2，长度布局为 32/64/64-reserved。</value></data>
+<data name="Cli_SprdProfileInvalid" xml:space="preserve"><value>SPRD 配置无效；入口为 brom/fdl1/fdl2，长度布局为 32/64/64-reserved，分区来源为 native/gpt，Raw 模式为 off/v1/v2。</value></data>
 <data name="Cli_SprdWaiting" xml:space="preserve"><value>请显式指定 SPRD 下载端口 --port COMx 或 USB --usb VID:PID。</value></data>
 <data name="Cli_SprdInfo" xml:space="preserve"><value>SPRD 会话：{0}。</value></data>
 <data name="Cli_SprdLoadersRequired" xml:space="preserve"><value>SPRD BootROM 需要 --loader、--sprd-fdl1-address、--sprd-fdl2 和 --sprd-fdl2-address；FDL1 入口仅需要 FDL2。</value></data>
 <data name="Cli_SprdLoaderPrompt" xml:space="preserve"><value>请选择适配设备的 {0} 文件</value></data>
 <data name="Cli_SprdAddressPrompt" xml:space="preserve"><value>请输入设备已确认的 {0} 加载地址（可用 0x 前缀）</value></data>
-<data name="Cli_HelpSprd" xml:space="preserve"><value>SPRD：--protocol sprd --port COMx（或 --usb VID:PID），BootROM 使用 --loader FDL1.bin --sprd-fdl1-address ADDRESS --sprd-fdl2 FDL2.bin --sprd-fdl2-address ADDRESS。已加载入口：--sprd-entry brom|fdl1|fdl2。容量单位需显式 --sprd-partition-unit BYTES；64 位布局需 --sprd-length 32|64|64-reserved。兼容选项：--sprd-pad-odd、--sprd-disable-transcode、--sprd-entry-transcode-disabled。资源等待默认 30 秒且必须有限。命令：connect、info、partitions all、read boot boot.img、write boot boot.img、erase boot、reboot system|poweroff。NV 写入/擦除、整盘 sector、DIAG、重分区及 browser/LP 尚未提供。</value></data>
+<data name="Cli_HelpSprd" xml:space="preserve"><value>SPRD：--protocol sprd --port COMx（或 --usb VID:PID），BootROM 使用 --loader FDL1.bin --sprd-fdl1-address ADDRESS --sprd-fdl2 FDL2.bin --sprd-fdl2-address ADDRESS。已加载入口：--sprd-entry brom|fdl1|fdl2。原生容量：--sprd-partition-source native --sprd-partition-unit BYTES；GPT 容量：--sprd-partition-source gpt --sprd-sector-size 512|4096，窗口 --sprd-gpt-bytes BYTES 默认 32768、最大 4 MiB。64 位布局：--sprd-length 32|64|64-reserved。Raw 下载默认关闭；确认后使用 --sprd-raw-mode v1|v2 --sprd-raw-flush BYTES（最大 4 MiB），USB 另需 --sprd-raw-usb-packet BYTES。兼容选项：--sprd-pad-odd、--sprd-disable-transcode、--sprd-entry-transcode-disabled。资源等待默认 30 秒且必须有限。命令：connect、info、sprd-chip-uid、partitions all、read boot boot.img、write boot boot.img、erase boot、reboot system|poweroff。NV 写入/擦除、整盘 sector、DIAG、重分区及 browser/LP 尚未提供。</value></data>
+<data name="Cli_SprdRawPacketRequired" xml:space="preserve"><value>SPRD Raw USB 下载需要 --sprd-raw-usb-packet BYTES，包大小必须按设备确认。</value></data>
+<data name="Cli_SprdChipUid" xml:space="preserve"><value>SPRD Chip UID：{0}</value></data>
 </root>

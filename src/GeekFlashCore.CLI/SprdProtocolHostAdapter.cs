@@ -22,6 +22,12 @@ internal static class SprdProtocolHostAdapter
         PadOddPayloads = options.SprdPadOdd,
         DisableTranscode = options.SprdDisableTranscode,
         EntryTranscodeDisabled = options.SprdEntryTranscodeDisabled,
+        PartitionTableSource = options.SprdPartitionSource ?? SprdPartitionTableSource.Native,
+        GptSectorSize = options.SprdSectorSize,
+        GptReadBytes = options.SprdGptBytes ?? 32 * 1024,
+        RawDataMode = options.SprdRawMode ?? SprdRawDataMode.Disabled,
+        RawDataFlushSizeBytes = options.SprdRawFlush,
+        RawDataUsbPacketSize = options.SprdRawUsbPacket,
         CommandTimeoutMilliseconds = options.ReadTimeout,
         ConnectTimeoutMilliseconds = options.HasExplicitConnectTimeout ? options.ConnectTimeout : 120_000,
         ResourceRequestTimeoutMilliseconds = options.ResourceTimeout ?? 30_000
@@ -30,6 +36,10 @@ internal static class SprdProtocolHostAdapter
     internal static void ValidateOptions(CliOptions options)
     {
         Options(options).Validate();
+        if (options.Usb is not null && options.SprdRawMode is SprdRawDataMode.Version1 or SprdRawDataMode.Version2 && options.SprdRawUsbPacket is null)
+            throw new ArgumentException(Strings.Cli_SprdRawPacketRequired);
+        if (options.Command == "sprd-chip-uid" && options.Arguments.Length != 0)
+            throw new CommandUsageException("sprd-chip-uid");
         if (options.Command is not ("help" or "devices" or "firmware" or "browse-image") && options.Port is null && options.Usb is null)
             throw new ArgumentException(Strings.Cli_SprdWaiting);
         string? first = options.Arguments.FirstOrDefault();
@@ -37,7 +47,8 @@ internal static class SprdProtocolHostAdapter
             options.Command is "read" or "write" or "erase" && (first?.Equals("sector", StringComparison.OrdinalIgnoreCase) == true || first?.Contains('/') == true) ||
             options.Command == "partitions" && first is not (null or "all" or "0"))
             throw new NotSupportedException(Strings.Cli_SprdCommandUnsupported);
-        if (options.Command is "partitions" or "read" or "write" or "erase" && options.SprdPartitionUnit is null)
+        if (options.Command is "partitions" or "read" or "write" or "erase" && options.SprdPartitionUnit is null &&
+            options.SprdPartitionSource != SprdPartitionTableSource.UserPartitionGpt)
             throw new ArgumentException(Strings.Cli_SprdUnitRequired);
         if (options.Digest is not null || options.VipSigned is not null || options.VipChained is not null ||
             options.OplusDigest is not null || options.OplusSign is not null || options.OplusResume || options.HasExplicitOplusMode ||
@@ -83,7 +94,7 @@ internal static class SprdProtocolHostAdapter
     }
     private sealed class CommandSet : IProtocolCommandSet
     {
-        public bool Handles(string command) => false;
+        public bool Handles(string command) => command.Equals("sprd-chip-uid", StringComparison.OrdinalIgnoreCase);
         public CliOptions Normalize(CliOptions options) => options;
         public void Validate(CliOptions options) => ValidateOptions(options);
         public bool RequiresConnection(string command) => true;
@@ -93,7 +104,11 @@ internal static class SprdProtocolHostAdapter
             if (!protocol.IsConnected && command is not ("connect" or "help" or "devices")) throw new InvalidOperationException(Strings.Cli_ReconnectRequired);
         }
         public void PrintHelp(IProtocol protocol, ConsoleUi ui) => ui.WriteLine(Strings.Cli_HelpSprd);
-        public Task<int> ExecuteAsync(IProtocol protocol, CliOptions options, ConsoleUi ui, IProgress<ProgressRecord> progress, CancellationToken ct) =>
-            throw new NotSupportedException(Strings.Cli_SprdProfileInvalid);
+        public Task<int> ExecuteAsync(IProtocol protocol, CliOptions options, ConsoleUi ui, IProgress<ProgressRecord> progress, CancellationToken ct)
+        {
+            if (!Handles(options.Command) || options.Arguments.Length != 0) throw new CommandUsageException("sprd-chip-uid");
+            ui.WriteLine(Strings.FormatCli_SprdChipUid(Convert.ToHexString(((ISprdProtocol)protocol).ReadChipUid(ct))));
+            return Task.FromResult(0);
+        }
     }
 }

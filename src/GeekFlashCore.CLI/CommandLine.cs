@@ -23,7 +23,8 @@ internal static class CommandLine
             if (arg == "--mtk-iot") { builder = builder with { MtkIoT = true }; continue; }
             string? value = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..] : null;
             string name = arg.Contains('=') ? arg[..arg.IndexOf('=')] : arg;
-            if (name is "--sprd-fdl2" or "--sprd-fdl1-address" or "--sprd-fdl2-address" or "--sprd-entry" or "--sprd-partition-unit" or "--sprd-length")
+            if (name is "--sprd-fdl2" or "--sprd-fdl1-address" or "--sprd-fdl2-address" or "--sprd-entry" or "--sprd-partition-unit" or "--sprd-length" or
+                "--sprd-partition-source" or "--sprd-sector-size" or "--sprd-gpt-bytes" or "--sprd-raw-mode" or "--sprd-raw-flush" or "--sprd-raw-usb-packet")
             {
                 value ??= i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] :
                     throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
@@ -34,6 +35,19 @@ internal static class CommandLine
                     "--sprd-fdl1-address" => builder with { SprdFdl1Address = checked((uint)CommandSyntax.Number(value)) },
                     "--sprd-fdl2-address" => builder with { SprdFdl2Address = checked((uint)CommandSyntax.Number(value)) },
                     "--sprd-partition-unit" => builder with { SprdPartitionUnit = checked((long)CommandSyntax.Number(value)) },
+                    "--sprd-sector-size" => builder with { SprdSectorSize = checked((int)CommandSyntax.Number(value)) },
+                    "--sprd-gpt-bytes" => builder with { SprdGptBytes = checked((int)CommandSyntax.Number(value)) },
+                    "--sprd-raw-flush" => builder with { SprdRawFlush = checked((int)CommandSyntax.Number(value)) },
+                    "--sprd-raw-usb-packet" => builder with { SprdRawUsbPacket = checked((int)CommandSyntax.Number(value)) },
+                    "--sprd-partition-source" => builder with { SprdPartitionSource = value.ToLowerInvariant() switch
+                    { "native" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdPartitionTableSource.Native,
+                      "gpt" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdPartitionTableSource.UserPartitionGpt,
+                      _ => throw new ArgumentException(Strings.Cli_SprdProfileInvalid) } },
+                    "--sprd-raw-mode" => builder with { SprdRawMode = value.ToLowerInvariant() switch
+                    { "off" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdRawDataMode.Disabled,
+                      "v1" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdRawDataMode.Version1,
+                      "v2" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdRawDataMode.Version2,
+                      _ => throw new ArgumentException(Strings.Cli_SprdProfileInvalid) } },
                     "--sprd-entry" => builder with { SprdEntry = value.ToLowerInvariant() switch
                     { "brom" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdBootStage.BootRom,
                       "fdl1" => GeekFlashCore.Protocol.Sprd.Abstractions.SprdBootStage.Fdl1,
@@ -118,6 +132,7 @@ internal static class CommandLine
         string? requested = arguments.FirstOrDefault()?.ToLowerInvariant();
         if (requested == "lp") { LpCommands.PrintHelp(ui); return; }
         if (requested is "sprd" or "unisoc" or "spreadtrum") { ui.WriteLine(Strings.Cli_HelpSprd); return; }
+        if (requested == "sprd-chip-uid") { PrintUsage("sprd-chip-uid", ui); return; }
         if (requested is not (null or "all" or "qcom"))
         {
             if (CommandSyntax.Usages.TryGetValue(requested, out string? common)) PrintUsage(common, ui);

@@ -24,7 +24,8 @@ internal static class CommandCompletion
         else
         {
             names.AddRange(registration.CommandHandlers.Select(x => x.Name));
-            if (protocol is GeekFlashCore.Protocol.Sprd.Abstractions.ISprdProtocol) names.RemoveAll(x => x is "browse" or "ls" or "lp");
+            if (protocol is GeekFlashCore.Protocol.Sprd.Abstractions.ISprdProtocol)
+            { names.RemoveAll(x => x is "browse" or "ls" or "lp"); names.Add("sprd-chip-uid"); }
         }
         string[] parts = prefix.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (prefix.IndexOf(' ') < 0) return Match(names, prefix);

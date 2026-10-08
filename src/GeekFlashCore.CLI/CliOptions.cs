@@ -17,8 +17,15 @@ internal sealed record CliOptions
     public bool SprdPadOdd { get; init; }
     public bool SprdDisableTranscode { get; init; }
     public bool SprdEntryTranscodeDisabled { get; init; }
+    public GeekFlashCore.Protocol.Sprd.Abstractions.SprdPartitionTableSource? SprdPartitionSource { get; init; }
+    public int? SprdSectorSize { get; init; }
+    public int? SprdGptBytes { get; init; }
+    public GeekFlashCore.Protocol.Sprd.Abstractions.SprdRawDataMode? SprdRawMode { get; init; }
+    public int? SprdRawFlush { get; init; }
+    public int? SprdRawUsbPacket { get; init; }
     internal bool HasSprdOptions => SprdFdl2 is not null || SprdFdl1Address is not null || SprdFdl2Address is not null ||
-        SprdEntry is not null || SprdPartitionUnit is not null || SprdLengthEncoding is not null || SprdPadOdd || SprdDisableTranscode || SprdEntryTranscodeDisabled;
+        SprdEntry is not null || SprdPartitionUnit is not null || SprdLengthEncoding is not null || SprdPadOdd || SprdDisableTranscode || SprdEntryTranscodeDisabled ||
+        SprdPartitionSource is not null || SprdSectorSize is not null || SprdGptBytes is not null || SprdRawMode is not null || SprdRawFlush is not null || SprdRawUsbPacket is not null;
     public string? MtkPreloader { get; init; }
     public string? MtkDaMode { get; init; }
     public string? MtkAuthenticationFile { get; init; }
@@ -93,7 +100,8 @@ internal sealed record CliOptions
         bool sprd = Protocol is not null && ProtocolRegistry.TryResolve(Protocol, out var sprdRegistration) &&
             sprdRegistration.Type == GeekFlashCore.Protocol.Abstractions.ProtocolType.Sprd;
         if (sprd) { SprdProtocolHostAdapter.ValidateOptions(this); return; }
-        if (HasSprdOptions) throw new ArgumentException(Localization.Strings.Cli_SprdOptionConflict);
+        if (HasSprdOptions || Command.Equals("sprd-chip-uid", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException(Localization.Strings.Cli_SprdOptionConflict);
         bool mtk = Protocol is not null && ProtocolRegistry.TryResolve(Protocol, out var registration) && registration.Type == GeekFlashCore.Protocol.Abstractions.ProtocolType.Mtk ||
             Protocol is null && Usb is { } identity && TransportResolver.TryParseUsb(identity, out int vid, out int pid) && GeekFlashCore.Protocol.Mtk.MtkDeviceIdentify.IsSupported((ushort)vid, (ushort)pid) ||
             Protocol is null && Command.StartsWith("mtk-", StringComparison.OrdinalIgnoreCase);

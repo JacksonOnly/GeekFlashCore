@@ -8,6 +8,7 @@ using GeekFlashCore.Protocol.Mtk.Loaders;
 using GeekFlashCore.Transport.Abstractions;
 using GeekFlashCore.Transport.LibUsb;
 using GeekFlashCore.CLI.Localization;
+using LibUsbDotNet.LibUsb;
 
 namespace GeekFlashCore.CLI;
 
@@ -81,19 +82,35 @@ internal static class MtkProtocolHostAdapter
         RecoverInitialReadStall = true
     };
     internal static async Task<IProtocol> CreatePreparedAsync(ProtocolHostContext context, ITransport transport,
-        CancellationToken ct)
+        CancellationToken ct, Action? admitted = null)
     {
         CliOptions options = context.Options;
         IProtocol protocol = Create(context, transport, target => ResolveResources(options, target));
         try
         {
-            var target = ((IMtkProtocol)protocol).Probe(ct);
+            var target = ProbeForAdmission((MtkProtocol)protocol, ct);
+            admitted?.Invoke();
             PresentTarget(target, context.Ui);
             options = await SelectLoaderAsync(options, context.Ui, ct).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
             return protocol;
         }
-        catch { await protocol.DisposeAsync().ConfigureAwait(false); throw; }
+        catch
+        {
+            try { await protocol.DisposeAsync().ConfigureAwait(false); }
+            catch (Exception cleanup) { Serilog.Log.Debug(cleanup, Strings.Cli_MtkOperationStopped); }
+            throw;
+        }
+    }
+    internal static MtkTargetInfo ProbeForAdmission(MtkProtocol protocol, CancellationToken ct)
+    {
+        try { return protocol.Probe(ct); }
+        catch (Exception exception) when (!protocol.HasIdentifiedTarget &&
+            exception is UsbException or IOException or TimeoutException or MtkProtocolException)
+        {
+            ct.ThrowIfCancellationRequested();
+            throw new MtkInitialProbeException(exception);
+        }
     }
     private static IProtocol Create(ProtocolHostContext context, ITransport transport) =>
         Create(context, transport, target =>

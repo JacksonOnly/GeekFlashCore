@@ -14,7 +14,8 @@ public sealed record MtkProtocolOptions
     public int MaximumXmlSize { get; init; } = 65536;
     public int MaximumMessages { get; init; } = 128;
     public int MaximumProgressEvents { get; init; } = 4096;
-    public int MaximumHandshakePrefix { get; init; } = 4;
+    /// <summary>Maximum discarded startup bytes before the first handshake response; admits one READY prefix.</summary>
+    public int MaximumHandshakePrefix { get; init; } = 5;
     public MtkDaKind? DaKind
     {
         get; init;

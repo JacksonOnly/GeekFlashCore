@@ -16,6 +16,8 @@ internal sealed record TransportResolution(ITransport Transport, ProtocolRegistr
 
 internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, CancellationToken, Task<CliOptions>>? prepareOptions = null)
 {
+    private int _reportedMtkWaiting;
+    private int _reportedMtkRetry;
     private readonly WindowsMtkDriver? _mtkDriver = OperatingSystem.IsWindows()
         ? new(new WindowsMtkDriverBackend()) : null;
 
@@ -82,7 +84,7 @@ internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, C
             Console.WriteLine(selected?.WaitingMessage ?? Strings.Cli_WaitingForDevice);
             var monitor = UsbDeviceMonitorFactory.Create();
             using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            wait.CancelAfter(options.DeviceWaitTimeout);
+            wait.CancelAfter(DeviceWaitTimeout(selected, options));
             UsbDeviceInfo? device;
             try
             {
@@ -112,40 +114,94 @@ internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, C
         NativeUsbRuntime.EnsureAvailable();
         var elapsed = System.Diagnostics.Stopwatch.StartNew();
         bool reportedDisconnect = false;
+        int timeout = DeviceWaitTimeout(registration, options);
+        string retryMessage = registration.Type == ProtocolType.Mtk
+            ? Strings.Cli_MtkUsbDiscoveryRetry : Strings.Cli_UsbOpenDisconnectedRetry;
+        if (registration.Type == ProtocolType.Mtk && Interlocked.Exchange(ref _reportedMtkWaiting, 1) == 0)
+            Console.WriteLine(registration.WaitingMessage);
+        void ReportRetry(Exception? exception = null)
+        {
+            if (exception is not null) Log.Debug(exception, retryMessage);
+            if (reportedDisconnect) return;
+            if (registration.Type == ProtocolType.Mtk && Interlocked.Exchange(ref _reportedMtkRetry, 1) != 0) return;
+            Console.WriteLine(retryMessage);
+            reportedDisconnect = true;
+        }
         while (true)
         {
             ct.ThrowIfCancellationRequested();
-            if (elapsed.ElapsedMilliseconds >= options.DeviceWaitTimeout)
-                throw new TimeoutException(Strings.FormatCli_DeviceWaitTimedOut(options.DeviceWaitTimeout));
-            // Driver preparation can require UAC and device restart; it has a separate finite budget.
-            elapsed.Stop();
+            if (timeout != Timeout.Infinite && elapsed.ElapsedMilliseconds >= timeout)
+                throw DeviceWaitExpired(registration, options);
+            // MTK explicit admission includes preparation; preserve other protocols' old discovery budget.
+            if (registration.Type != ProtocolType.Mtk) elapsed.Stop();
             await PrepareNativeUsbAsync(registration, options, ct).ConfigureAwait(false);
-            elapsed.Start();
+            if (registration.Type != ProtocolType.Mtk) elapsed.Start();
             ct.ThrowIfCancellationRequested();
-            var identities = LibUsbTransportFactory.Enumerate(serialNumber: options.UsbSerial).Where(id =>
+            if (timeout != Timeout.Infinite && elapsed.ElapsedMilliseconds >= timeout)
+                throw DeviceWaitExpired(registration, options);
+            IReadOnlyList<UsbTransportIdentity> enumerated;
+            try { enumerated = LibUsbTransportFactory.Enumerate(serialNumber: options.UsbSerial); }
+            catch (Exception exception) when (registration.Type == ProtocolType.Mtk && IsMtkUsbDiscoveryFailure(exception))
+            {
+                ct.ThrowIfCancellationRequested();
+                ReportRetry(exception);
+                await Task.Delay(100, ct).ConfigureAwait(false);
+                continue;
+            }
+            var identities = enumerated.Where(id =>
                 registration.DeviceIdentifier?.Identify(new UsbDeviceInfo { VendorId = id.VendorId, ProductId = id.ProductId }).IsSuccess == true);
             var identity = SelectUsbIdentity(identities, options);
             if (identity is not null)
             {
-                var transport = TryOpenNativeTransport(() => registration.UsbFactory!(identity, options), ct);
+                var transport = registration.Type == ProtocolType.Mtk
+                    ? TryOpenMtkTransport(() => registration.UsbFactory!(identity, options), ct)
+                    : TryOpenNativeTransport(() => registration.UsbFactory!(identity, options), ct);
                 if (transport is not null)
                 {
-                    if (elapsed.ElapsedMilliseconds >= options.DeviceWaitTimeout)
+                    if (timeout != Timeout.Infinite && elapsed.ElapsedMilliseconds >= timeout)
                     {
                         transport.Dispose();
-                        throw new TimeoutException(Strings.FormatCli_DeviceWaitTimedOut(options.DeviceWaitTimeout));
+                        throw DeviceWaitExpired(registration, options);
                     }
                     return new(transport, registration, options);
                 }
-                if (!reportedDisconnect)
-                {
-                    Log.ForContext("UserPresentation", true).Warning(Strings.Cli_UsbOpenDisconnectedRetry);
-                    Console.WriteLine(Strings.Cli_UsbOpenDisconnectedRetry);
-                    reportedDisconnect = true;
-                }
+                ReportRetry();
             }
             await Task.Delay(100, ct).ConfigureAwait(false);
         }
+    }
+    internal static int DeviceWaitTimeout(ProtocolRegistration? registration, CliOptions options) =>
+        !options.HasExplicitDeviceWaitTimeout && (registration is null || registration.Type == ProtocolType.Mtk)
+            ? Timeout.Infinite : options.DeviceWaitTimeout;
+
+    private static TimeoutException DeviceWaitExpired(ProtocolRegistration registration, CliOptions options) =>
+        registration.Type == ProtocolType.Mtk ? new MtkDeviceWaitTimeoutException(options.DeviceWaitTimeout)
+            : new TimeoutException(Strings.FormatCli_DeviceWaitTimedOut(options.DeviceWaitTimeout));
+
+    private static bool IsMtkUsbDiscoveryFailure(Exception exception) =>
+        exception is UsbException or IOException or InvalidOperationException;
+
+    internal static ITransport? TryOpenMtkTransport(Func<ITransport> create, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        ITransport? transport = null;
+        try
+        {
+            transport = create();
+            ct.ThrowIfCancellationRequested();
+            transport.Open();
+            ct.ThrowIfCancellationRequested();
+            return transport;
+        }
+        catch (Exception exception) when (IsMtkUsbDiscoveryFailure(exception))
+        {
+            try { transport?.Dispose(); }
+            catch (Exception cleanup) { Log.Debug(cleanup, Strings.Cli_MtkUsbDiscoveryRetry); }
+            ct.ThrowIfCancellationRequested();
+            Log.Debug(exception, Strings.Cli_MtkUsbDiscoveryRetry);
+            return null;
+        }
+        catch { transport?.Dispose(); throw; }
     }
     internal static UsbTransportIdentity? SelectUsbIdentity(IEnumerable<UsbTransportIdentity> identities, CliOptions options)
     {

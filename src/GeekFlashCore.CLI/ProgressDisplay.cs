@@ -15,6 +15,13 @@ internal sealed class ProgressDisplay(TimeProvider clock)
     private long _rendered;
     private bool _completed;
 
+    internal void Reset()
+    {
+        _last = null;
+        _started = _rendered = 0;
+        _completed = false;
+    }
+
     public ProgressFrame? TryRender(ProgressRecord record, bool redirected, int terminalWidth)
     {
         if (_completed && record == _last && record.Phase != ProgressPhase.Started) return null;

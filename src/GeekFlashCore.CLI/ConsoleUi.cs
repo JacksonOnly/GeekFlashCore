@@ -243,6 +243,15 @@ internal sealed class ConsoleUi
         _progressRows = 0;
     }
 
+    internal void StopMtkProgress()
+    {
+        lock (_gate)
+        {
+            ClearProgressUnsafe();
+            _progress.Reset();
+        }
+    }
+
     internal static string FormatBytes(decimal bytes)
         => $"{bytes.ToString("0", System.Globalization.CultureInfo.InvariantCulture)} Bytes ({ProgressDisplay.Size(bytes)})";
 
@@ -252,6 +261,7 @@ internal sealed class ConsoleUi
         string message = exception switch
         {
             MtkLoaderSelectionTimeoutException => Strings.Cli_MtkDaSelectionTimedOut,
+            MtkDeviceWaitTimeoutException => exception.Message,
             TimeoutException => Strings.Cli_ResponseTimedOut,
             FirehoseNakException => Strings.Cli_DeviceRejected,
             UsbException { ErrorCode: Error.NoDevice } => Strings.Cli_UsbDisconnected,

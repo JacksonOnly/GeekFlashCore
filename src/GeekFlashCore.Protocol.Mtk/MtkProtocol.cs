@@ -34,6 +34,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     private long _generation;
     private volatile MtkSessionState _state;
     private bool _openedHere;
+    private volatile bool _hasIdentifiedTarget;
     /// <summary>Preserves the original single-strategy constructor signature for compiled hosts.
     /// New source calls may use the constructor with optional ordered-strategy parameters.</summary>
     public MtkProtocol(IUsbTransport transport, MtkProtocolOptions? options, IMtkDaProvider? daProvider,
@@ -90,6 +91,10 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     public ITransport Transport => _transport;
     public bool IsConnected => _state == MtkSessionState.StorageReady;
     public MtkTargetInfo? TargetInfo => _target;
+    /// <summary>Whether this probe received a complete, nonzero FD hardware identity before any
+    /// chip-specific initialization. Retained on failure to prevent unsafe automatic retries;
+    /// this is not a liveness, connection or authentication indication.</summary>
+    public bool HasIdentifiedTarget => _hasIdentifiedTarget;
     public MtkDaImage? DownloadAgent => _image;
     public MtkSessionState SessionState => _state;
     public long Generation => Interlocked.Read(ref _generation);
@@ -135,7 +140,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 _wire.Check();
             return result;
         }
-        catch { if (_wire.HasWritten && _state != MtkSessionState.Faulted) Fault(); throw; }
+        catch { if (_wire.HasIoAttempted && _state != MtkSessionState.Faulted) Fault(); throw; }
     }
     private void Ready()
     {
@@ -153,6 +158,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         }
         if (_state != MtkSessionState.Disconnected)
             throw new InvalidOperationException(Strings.SessionUnavailable);
+        _hasIdentifiedTarget = false;
         State(MtkSessionState.Opening);
         try
         {
@@ -169,7 +175,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         State(MtkSessionState.Handshaking);
         if (_transport.ControlInterfaceNumber is { } controlInterface)
             _wire.ConfigureCdc(controlInterface);
-        _target = _brom.Probe(initializeWatchdog);
+        _target = _brom.Probe(initializeWatchdog, () => _hasIdentifiedTarget = true);
         _initialTarget = _target;
         State(MtkSessionState.Probed);
         Log.ForContext<MtkProtocol>().Information(Strings.ProbeSnapshot,
@@ -284,7 +290,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 Phase = ProgressPhase.Completed
             });
         }
-        catch { if (_wire.HasWritten && _state != MtkSessionState.Faulted) Fault(); throw; }
+        catch { if (_wire.HasIoAttempted && _state != MtkSessionState.Faulted) Fault(); throw; }
         finally { transferred?.Authentication?.Dispose(); transferred?.Certificate?.Dispose(); }
     }
     private async ValueTask AuthenticateAsync(MtkAuthenticationKind kind, byte[]? challenge, MtkConnectionResources resources, CancellationToken ct)
@@ -480,6 +486,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     }
     private void DisconnectCore()
     {
+        _hasIdentifiedTarget = false;
         _da = null;
         _storage = null;
         _target = null;

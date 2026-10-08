@@ -140,7 +140,7 @@ lun=      {1}
   <data name="Cli_HelpOptionsTimeouts" xml:space="preserve"><value>  --non-interactive  禁止资源提示；用于脚本
   --connect-timeout MS  初始探测预算（默认 1500；非整个连接时限）
   --resource-timeout MS  每次资源请求预算（交互默认不限时；非交互默认 15000；-1 不限时）
-  --device-wait-timeout MS  自动发现等待预算（默认 30000）
+  --device-wait-timeout MS  发现/初始握手预算（MTK/自动识别默认持续等待；其他协议 30000）
   --read-timeout MS / --write-timeout MS  单次 I/O 预算（默认 10000；read 也用于 Loader 启动等待）</value></data>
   <data name="Cli_HelpOptionsLegacy" xml:space="preserve"><value>  --oplus-mode OplusDigestLegacy --oplus-digest FILE
   --oplus-sign FILE  二进制 Sign；Pt 和 Legacy 均必须，缺失/验证失败时手动选择
@@ -454,4 +454,7 @@ Cache 命令阻止：{8}</value></data>
 <data name="Cli_HelpSprd" xml:space="preserve"><value>SPRD：--protocol sprd --port COMx（或 --usb VID:PID），入口默认自动识别，可选 --sprd-entry auto|brom|fdl1|fdl2。识别为 BootROM 时需要 --loader FDL1.bin --sprd-fdl1-address ADDRESS --sprd-fdl2 FDL2.bin --sprd-fdl2-address ADDRESS；FDL1 仅需要 FDL2，FDL2 不上传 Loader。自动 FDL2 入口会协商关闭转义，未知阶段要求手动入口。容量来源默认 auto，优先校验 GPT，不可用且读会话已确认结束后查询原生清单；可选 --sprd-partition-source auto|native|gpt。损坏或歧义 GPT 不降级；原生清单仍需 --sprd-partition-unit BYTES（每个 size 单位对应的字节数），不猜单位或物理格式。GPT 扇区默认自动校验识别，可选 --sprd-sector-size auto|512|4096；窗口 --sprd-gpt-bytes BYTES 默认 32768、最大 4 MiB。64 位布局：--sprd-length 32|64|64-reserved。Raw 下载默认关闭；确认后使用 --sprd-raw-mode v1|v2 --sprd-raw-flush BYTES（最大 4 MiB），USB 另需 --sprd-raw-usb-packet BYTES。兼容选项：--sprd-pad-odd、--sprd-disable-transcode、--sprd-entry-transcode-disabled。资源等待默认 30 秒且必须有限。命令：connect、info、sprd-chip-uid、partitions all、read boot boot.img、write boot boot.img、erase boot、reboot system|poweroff。NV 写入/擦除、整盘 sector、DIAG、重分区及 browser/LP 尚未提供。</value></data>
 <data name="Cli_SprdRawPacketRequired" xml:space="preserve"><value>SPRD Raw USB 下载需要 --sprd-raw-usb-packet BYTES，包大小必须按设备确认。</value></data>
 <data name="Cli_SprdChipUid" xml:space="preserve"><value>SPRD Chip UID：{0}</value></data>
+  <data name="Cli_MtkInitialProbeRetry" xml:space="preserve"><value>MTK 初始接入未完成，已释放旧连接，继续等待设备；按 Ctrl+C 停止。</value></data>
+  <data name="Cli_MtkUsbDiscoveryRetry" xml:space="preserve"><value>MTK USB 枚举或打开未完成，继续等待设备；按 Ctrl+C 停止，诊断原因见文件日志。</value></data>
+  <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>MTK 当前操作已停止，会话已失效。请重新连接设备；不会自动重试认证、DA 或读写命令。</value></data>
 </root>

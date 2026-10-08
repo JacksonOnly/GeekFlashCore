@@ -107,7 +107,7 @@ internal static class CommandLine
                     "--read-timeout" => builder with { ReadTimeout = int.Parse(value) }, "--write-timeout" => builder with { WriteTimeout = int.Parse(value) },
                     "--connect-timeout" => builder with { ConnectTimeout = int.Parse(value), HasExplicitConnectTimeout = true },
                     "--resource-timeout" => builder with { ResourceTimeout = int.Parse(value) },
-                    "--device-wait-timeout" => builder with { DeviceWaitTimeout = int.Parse(value) },
+                    "--device-wait-timeout" => builder with { DeviceWaitTimeout = int.Parse(value), HasExplicitDeviceWaitTimeout = true },
                     _ => throw new ArgumentException(Strings.FormatCli_UnknownOption(name))
                 };
                 continue;

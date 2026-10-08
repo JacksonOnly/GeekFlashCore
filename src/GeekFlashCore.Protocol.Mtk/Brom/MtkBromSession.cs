@@ -10,7 +10,7 @@ namespace GeekFlashCore.Protocol.Mtk.Brom;
 internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions options)
 {
     private bool _watchdogDisabled;
-    public MtkTargetInfo Probe(bool initializeWatchdog = false)
+    public MtkTargetInfo Probe(bool initializeWatchdog = false, Action? identified = null)
     {
         _watchdogDisabled = false;
         ReadOnlySpan<byte> handshake = [0xa0, 0x0a, 0x50, 0x05];
@@ -30,6 +30,8 @@ internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions op
         var hardware = GetHardwareCode();
         if (hardware.Code == 0)
             throw wire.Failure();
+        // Recovery must stop before the first chip-specific write, even if later Probe queries fail.
+        identified?.Invoke();
         var chip = MtkChipCatalog.Find(hardware.Code);
         var watchdog = (initializeWatchdog || options.InitializeWatchdogOnProbe)
             ? DisableWatchdog(new(hardware.Code, 0, 0, 0, 0, 0, MtkBootStage.Unknown, new(0)))

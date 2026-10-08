@@ -65,8 +65,8 @@ internal sealed class CliApplication
             await protocol.ConnectAsync(progress, ct).ConfigureAwait(false);
             return await ExecuteCommandAsync(protocol, connection.Registration, options, progress, ct).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) { _ui.ShowCancelled(); return 130; }
-        catch (Exception exception) { _ui.LogException(exception); return 1; }
+        catch (OperationCanceledException) { _ui.ShowCancelled(); EndMtkOperation(protocol); return 130; }
+        catch (Exception exception) { _ui.LogException(exception); EndMtkOperation(protocol); return 1; }
     }
 
     private async Task<int> InteractiveAsync(CliOptions options, CancellationToken ct)
@@ -82,8 +82,8 @@ internal sealed class CliApplication
             ShowQcomCommands(protocol);
             return await ReadCommandsAsync(protocol, connection.Registration, ct).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) { _ui.ShowCancelled(); return 130; }
-        catch (Exception exception) { _ui.LogException(exception); return 1; }
+        catch (OperationCanceledException) { _ui.ShowCancelled(); EndMtkOperation(protocol); return 130; }
+        catch (Exception exception) { _ui.LogException(exception); EndMtkOperation(protocol); return 1; }
     }
 
     private async Task<int> ReadCommandsAsync(IProtocol protocol, ProtocolRegistration registration, CancellationToken ct)
@@ -109,10 +109,19 @@ internal sealed class CliApplication
                 }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-            catch (OperationCanceledException) { _ui.ShowCancelled(); }
-            catch (Exception exception) { _ui.LogException(exception); }
+            catch (OperationCanceledException) { _ui.ShowCancelled(); if (EndMtkOperation(protocol)) return 130; }
+            catch (Exception exception) { _ui.LogException(exception); if (EndMtkOperation(protocol)) return 1; }
         }
         return 0;
+    }
+
+    private bool EndMtkOperation(IProtocol protocol)
+    {
+        if (protocol is not GeekFlashCore.Protocol.Mtk.Abstractions.IMtkProtocol mtk) return false;
+        _ui.StopMtkProgress();
+        if (mtk.SessionState != GeekFlashCore.Protocol.Mtk.Abstractions.MtkSessionState.Faulted) return false;
+        _ui.WriteLine(Strings.Cli_MtkOperationStopped);
+        return true;
     }
 
     private async Task<int> ExecuteCommandAsync(IProtocol protocol, ProtocolRegistration registration, CliOptions options, IProgress<ProgressRecord> progress, CancellationToken ct)
@@ -178,25 +187,82 @@ internal sealed class CliApplication
 
     private async Task<(IProtocol Protocol, ITransport Transport, ProtocolRegistration Registration)> CreateConnectionAsync(CliOptions options, ProtocolRegistration? requested, CancellationToken ct)
     {
-        TransportResolution resolution = await _transportResolver.ResolveAsync(options, ct, requested).ConfigureAwait(false);
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        using var discovery = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        bool boundedMtkDiscovery = options.HasExplicitDeviceWaitTimeout &&
+            (requested is null || requested.Type == ProtocolType.Mtk);
+        if (boundedMtkDiscovery) discovery.CancelAfter(options.DeviceWaitTimeout);
+        TransportResolution resolution;
+        try { resolution = await _transportResolver.ResolveAsync(options, discovery.Token, requested).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested && discovery.IsCancellationRequested)
+        { throw new MtkDeviceWaitTimeoutException(options.DeviceWaitTimeout); }
+        discovery.CancelAfter(Timeout.Infinite);
         ProtocolRegistration registration = requested ?? resolution.Registration;
+        if (registration.Type == ProtocolType.Mtk)
+        {
+            int? remaining = options.HasExplicitDeviceWaitTimeout
+                ? (int)Math.Max(0, options.DeviceWaitTimeout - elapsed.ElapsedMilliseconds) : null;
+            TransportResolution? candidate = resolution;
+            ITransport? acceptedTransport = null;
+            IProtocol accepted;
+            try
+            {
+                if (remaining == 0) throw new MtkDeviceWaitTimeoutException(options.DeviceWaitTimeout);
+                accepted = await MtkConnectionAdmission.WaitAsync(async (admitted, token) =>
+                {
+                    var current = candidate ?? await _transportResolver.ResolveAsync(options, token, registration).ConfigureAwait(false);
+                    candidate = null;
+                    var protocol = await CreateProtocolCoreAsync(registration, current.Transport,
+                        current.PreparedOptions ?? options, token, admitted).ConfigureAwait(false);
+                    acceptedTransport = current.Transport;
+                    return protocol;
+                }, remaining, () => _ui.WriteLine(Strings.Cli_MtkInitialProbeRetry), ct).ConfigureAwait(false);
+            }
+            catch (MtkDeviceWaitTimeoutException exception)
+            { throw new MtkDeviceWaitTimeoutException(options.DeviceWaitTimeout, exception); }
+            finally
+            {
+                try { candidate?.Transport.Dispose(); }
+                catch (Exception cleanup) { Serilog.Log.Debug(cleanup, Strings.Cli_MtkOperationStopped); }
+            }
+            return (accepted, acceptedTransport!, registration);
+        }
         IProtocol protocol = await CreateProtocolAsync(registration, resolution.Transport,
             resolution.PreparedOptions ?? options, ct).ConfigureAwait(false);
         return (protocol, resolution.Transport, registration);
     }
 
-    internal async Task<IProtocol> CreateProtocolAsync(ProtocolRegistration registration, ITransport transport,
-        CliOptions options, CancellationToken ct)
+    internal Task<IProtocol> CreateProtocolAsync(ProtocolRegistration registration, ITransport transport,
+        CliOptions options, CancellationToken ct) => CreateProtocolCoreAsync(registration, transport, options, ct, null);
+
+    private async Task<IProtocol> CreateProtocolCoreAsync(ProtocolRegistration registration, ITransport transport,
+        CliOptions options, CancellationToken ct, Action? admitted)
     {
+        IProtocol? protocol = null;
         try
         {
             ct.ThrowIfCancellationRequested();
             var context = new ProtocolHostContext(_ui, options);
             if (RequiresMtkLoader(registration, options) && _ui.CanPrompt)
-                return await MtkProtocolHostAdapter.CreatePreparedAsync(context, transport, ct).ConfigureAwait(false);
-            return registration.Factory(context, transport);
+                return await MtkProtocolHostAdapter.CreatePreparedAsync(context, transport, ct, admitted).ConfigureAwait(false);
+            protocol = registration.Factory(context, transport);
+            if (admitted is not null)
+            {
+                if (options.Command != "mtk-capabilities")
+                    MtkProtocolHostAdapter.ProbeForAdmission((GeekFlashCore.Protocol.Mtk.MtkProtocol)protocol, ct);
+                admitted();
+            }
+            return protocol;
         }
-        catch { transport.Dispose(); throw; }
+        catch
+        {
+            if (registration.Type != ProtocolType.Mtk) { transport.Dispose(); throw; }
+            try { if (protocol is not null) await protocol.DisposeAsync().ConfigureAwait(false); }
+            catch (Exception cleanup) { Serilog.Log.Debug(cleanup, Strings.Cli_MtkOperationStopped); }
+            try { transport.Dispose(); }
+            catch (Exception cleanup) { Serilog.Log.Debug(cleanup, Strings.Cli_MtkOperationStopped); }
+            throw;
+        }
     }
 
     private static bool RequiresMtkLoader(ProtocolRegistration registration, CliOptions options) =>

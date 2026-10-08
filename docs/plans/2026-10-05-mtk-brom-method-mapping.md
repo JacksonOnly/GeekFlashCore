@@ -1,5 +1,7 @@
 # MTK BROM / Preloader 方法对应
 
+2026-10-08 接入/超时审查恢复入口：[BROM 接入实施记录](2026-10-08-mtk-brom-admission-implementation.md)。命令值与标准方法线路保持；CLI 只允许完整 FD 前换新候选，FD 后不重放初始化/认证/DA。
+
 日期：2026-10-05。参考：本地 mtkclient 基线 `e9fcf97` 的 `mtkclient/Library/mtk_preloader.py`；参考工作树未修改。
 
 最初实现遗漏了 DA 连接以外的方法。根据用户反馈补齐标准方法、独立命令目录和受会话约束的公开入口，并修正 GET_HW_CODE 的字段解释。下面记录最终对应，不能将“命令有定义”当成“设备支持该命令”。

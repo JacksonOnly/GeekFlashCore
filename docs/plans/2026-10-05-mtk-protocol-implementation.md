@@ -1,5 +1,7 @@
 # GeekFlashCore MTK 实施进度
 
+2026-10-08 BROM-REC-01～04：MTK 接入前闪现恢复、默认持续等待/显式累计预算、READY 前缀、逻辑读超时、纯接收失效及失败进度清理，最新范围和证据见 [接入审查进度](2026-10-08-mtk-brom-admission-implementation.md)。旧“仅 Open 前 NoDevice 恢复”边界被完整 FD 之前恢复取代；FD 后不自动重放，exp 未修改。
+
 日期：2026-10-05。设计：`2026-10-05-mtk-protocol-design.md`。BROM 对应：`2026-10-05-mtk-brom-method-mapping.md`。宿主阶段框架：`2026-10-05-mtk-exploit-framework.md`。
 
 2026-10-08 PART-MAP-01：新增 PGPT/PrimaryGPT、SGPT/BackupGPT、Preloader、Preloader Backup 的分区快照和读写擦除映射，覆盖范围/native/Legacy/scoped 与 CLI read/挂载。GPT 范围由已验证表头保留区计算，启动区域采用设备报告容量；缺失和歧义不猜测。新增 MTK42/CLI12 项，当前 MTK601/CLI118 合计719通过，Release slnx 0警告/0错误，差异和 ignored 检查通过；无真机操作。范围、先失败证据、文件及恢复风险见 [设计](2026-10-08-mtk-partition-mapping-design.md) 和 [实施记录](2026-10-08-mtk-partition-mapping-implementation.md)。

@@ -68,6 +68,7 @@ internal sealed record CliOptions
     public int EffectiveResourceTimeout => ResourceTimeout ?? (NonInteractive
         ? QcomProtocolOptions.DefaultResourceRequestTimeoutMilliseconds : Timeout.Infinite);
     public int DeviceWaitTimeout { get; init; } = 30_000;
+    public bool HasExplicitDeviceWaitTimeout { get; init; }
     public int ReadTimeout { get; init; } = QcomProtocolOptions.DefaultReadTimeoutMilliseconds;
     public int WriteTimeout { get; init; } = QcomProtocolOptions.DefaultWriteTimeoutMilliseconds;
     public string Command { get; init; } = "interactive";

@@ -13,6 +13,8 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
     {
         get; private set;
     }
+    private bool _hasRead;
+    public bool HasIoAttempted => HasWritten || _hasRead;
     public MtkBootStage Stage
     {
         get; set;
@@ -29,6 +31,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         Token = token;
         _deadline = checked(Environment.TickCount64 + timeout);
         HasWritten = false;
+        _hasRead = false;
     }
     public void Check()
     {
@@ -49,6 +52,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         Check();
         HasWritten = true;
         transport.Write(data);
+        Check();
     }
     public void MarkHostTransfer()
     {
@@ -63,6 +67,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         transport.ControlOut(0x21, 0x20, 0, checked((ushort)controlInterface), coding);
         Check();
         transport.ControlOut(0x21, 0x22, 3, checked((ushort)controlInterface), []);
+        Check();
     }
     public void ConfigureIoTCdc()
     {
@@ -76,15 +81,25 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         Check();
         HasWritten = true;
         transport.WriteZeroLengthPacket();
+        Check();
     }
     public void Read(Span<byte> data)
     {
+        // Fragments share one logical read budget; slow trickles cannot extend it indefinitely.
+        long deadline = Math.Min(_deadline, checked(Environment.TickCount64 + options.ReadTimeoutMilliseconds));
         int done = 0;
         while (done < data.Length)
         {
             Check();
-            int timeout = checked((int)Math.Min(options.ReadTimeoutMilliseconds, Math.Max(1, _deadline - Environment.TickCount64)));
+            long remaining = deadline - Environment.TickCount64;
+            if (remaining <= 0)
+                throw new TimeoutException(Strings.Timeout);
+            int timeout = checked((int)remaining);
+            _hasRead = true;
             int read = transport.Read(data[done..], timeout);
+            Check();
+            if (Environment.TickCount64 >= deadline)
+                throw new TimeoutException(Strings.Timeout);
             if (read <= 0 || read > data.Length - done)
                 throw new EndOfStreamException(Strings.FormatInvalidData("USB read"));
             done += read;

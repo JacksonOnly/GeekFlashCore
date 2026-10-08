@@ -41,6 +41,26 @@ public enum SprdPartitionLengthEncoding
     UInt64WithReserved
 }
 
+/// <summary>Explicit source for named-partition capacities when no host list is supplied.</summary>
+public enum SprdPartitionTableSource
+{
+    /// <summary>READ_PARTITION records scaled by a confirmed unit.</summary>
+    Native,
+    /// <summary>Strict primary GPT read from a bounded user_partition window.</summary>
+    UserPartitionGpt
+}
+
+/// <summary>Confirmed FDL2 download profile. Loader uploads always use framed MIDST.</summary>
+public enum SprdRawDataMode
+{
+    /// <summary>Ordinary framed MIDST with one ACK per frame.</summary>
+    Disabled,
+    /// <summary>One offset/length command followed by raw bytes and an ACK per flush window.</summary>
+    Version1,
+    /// <summary>One raw-start command followed by raw flush windows and an ACK per window.</summary>
+    Version2
+}
+
 /// <summary>A verified named-partition capacity in bytes, without an inferred disk offset.</summary>
 public sealed record SprdPartition(string Name, long Length);
 

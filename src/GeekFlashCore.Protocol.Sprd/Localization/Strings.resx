@@ -17,4 +17,6 @@
 <data name="WidthUnsupported" xml:space="preserve"><value>当前 SPRD 32 位配置不能表示此范围，请显式选择已验证的 64 位布局。</value></data>
 <data name="RebootUnsupported" xml:space="preserve"><value>SPRD 仅实现正常重启和关机。</value></data>
 <data name="SparseSeekRequired" xml:space="preserve"><value>SPRD Sparse 写入要求可定位的稳定数据源。</value></data>
+<data name="RawUsbPacketRequired" xml:space="preserve"><value>SPRD Raw USB 下载需要显式提供已确认的 bulk OUT 包大小。</value></data>
+<data name="RawProfileMismatch" xml:space="preserve"><value>SPRD Raw 下载配置与 FDL2 报告的版本或 flush 大小不一致。</value></data>
 </root>

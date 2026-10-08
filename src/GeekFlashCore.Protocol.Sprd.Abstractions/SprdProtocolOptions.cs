@@ -37,8 +37,20 @@ public sealed record SprdProtocolOptions
     public bool EntryTranscodeDisabled { get; init; }
     /// <summary>Selector/offset profile; 64-bit modes are never selected implicitly.</summary>
     public SprdPartitionLengthEncoding PartitionLengthEncoding { get; init; }
-    /// <summary>Explicit native READ_PARTITION size-unit multiplier in bytes. Null requires a supplied list.</summary>
+    /// <summary>Explicit native READ_PARTITION size-unit multiplier in bytes. Null requires a supplied list or GPT profile.</summary>
     public long? PartitionTableSizeUnitBytes { get; init; }
+    /// <summary>Capacity source when KnownPartitions is empty. No fallback is performed.</summary>
+    public SprdPartitionTableSource PartitionTableSource { get; init; }
+    /// <summary>Confirmed GPT logical sector size, 512 or 4096; required for UserPartitionGpt.</summary>
+    public int? GptSectorSize { get; init; }
+    /// <summary>Confirmed user_partition prefix window, sector aligned and at most 4 MiB.</summary>
+    public int GptReadBytes { get; init; } = 32 * 1024;
+    /// <summary>Explicit raw download mode; never inferred from loader capabilities.</summary>
+    public SprdRawDataMode RawDataMode { get; init; }
+    /// <summary>Confirmed raw flush window in bytes, required when raw mode is enabled, at most 4 MiB.</summary>
+    public int? RawDataFlushSizeBytes { get; init; }
+    /// <summary>Confirmed USB bulk OUT packet size (8 through 1024, power of two), required for raw USB.</summary>
+    public int? RawDataUsbPacketSize { get; init; }
     /// <summary>Optional host-verified capacities, for example from an independently validated PAC manifest.</summary>
     public IReadOnlyList<SprdPartition> KnownPartitions { get; init; } = [];
 
@@ -46,6 +58,7 @@ public sealed record SprdProtocolOptions
     public void Validate()
     {
         if (!Enum.IsDefined(EntryStage) || !Enum.IsDefined(PartitionLengthEncoding) ||
+            !Enum.IsDefined(PartitionTableSource) || !Enum.IsDefined(RawDataMode) ||
             CommandTimeoutMilliseconds <= 0 || ConnectTimeoutMilliseconds <= 0 || OperationTimeoutMilliseconds <= 0 ||
             ResourceRequestTimeoutMilliseconds <= 0 || BootRomBlockSize is < 1 or > 65534 ||
             TransferBlockSize is < 1 or > 65534 || MaximumLoaderBytes is < 1 or > 256 * 1024 * 1024 ||
@@ -55,6 +68,14 @@ public sealed record SprdProtocolOptions
             EntryTranscodeDisabled && EntryStage != SprdBootStage.Fdl2 ||
             PadOddPayloads && (BootRomBlockSize % 2 != 0 || TransferBlockSize % 2 != 0) ||
             KnownPartitions is null || KnownPartitions.Count > MaximumPartitions)
+            throw new ArgumentException(Strings.InvalidOptions);
+        if (GptSectorSize is not (null or 512 or 4096) || GptReadBytes is < 1024 or > 4 * 1024 * 1024 ||
+            PartitionTableSource == SprdPartitionTableSource.UserPartitionGpt &&
+                (GptSectorSize is null || GptReadBytes % GptSectorSize.Value != 0 || GptReadBytes < 3 * GptSectorSize.Value) ||
+            RawDataFlushSizeBytes is <= 0 or > 4 * 1024 * 1024 ||
+            RawDataMode != SprdRawDataMode.Disabled && RawDataFlushSizeBytes is null ||
+            RawDataMode == SprdRawDataMode.Disabled && (RawDataFlushSizeBytes is not null || RawDataUsbPacketSize is not null) ||
+            RawDataUsbPacketSize is int packet && (packet is < 8 or > 1024 || (packet & (packet - 1)) != 0))
             throw new ArgumentException(Strings.InvalidOptions);
         var names = new HashSet<string>(StringComparer.Ordinal);
         foreach (var partition in KnownPartitions)

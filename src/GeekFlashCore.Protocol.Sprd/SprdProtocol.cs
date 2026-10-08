@@ -107,6 +107,8 @@ public sealed partial class SprdProtocol : ISprdProtocol, IDisposable
     {
         if (_state != SprdSessionState.Disconnected) throw new InvalidOperationException(Strings.Unavailable);
         resources.Validate(_options); _wire.Reset(); _wire.UseCrc = _options.EntryStage == SprdBootStage.BootRom;
+        if (_options.RawDataMode != SprdRawDataMode.Disabled && _transport is IUsbTransport && _options.RawDataUsbPacketSize is null)
+            throw new ArgumentException(Strings.RawUsbPacketRequired);
         _wire.Escaped = !_options.EntryTranscodeDisabled;
         State(SprdSessionState.Connecting);
         try
@@ -146,6 +148,14 @@ public sealed partial class SprdProtocol : ISprdProtocol, IDisposable
             // Explicit profile selection also supports an already-loaded FDL2 with no EXEC metadata.
             if (info is { SupportsDisableTranscode: false }) throw new SprdProtocolException(SprdCommand.DisableTranscode);
             _wire.Expect(SprdCommand.DisableTranscode); _wire.Escaped = false;
+        }
+        if (_options.RawDataMode != SprdRawDataMode.Disabled)
+        {
+            // Never turn a capability advertisement into an implicit mode selection.
+            if (info is not null && (info.RawDataSupport != (byte)_options.RawDataMode ||
+                (ulong)info.FlushSizeKiB * 1024 != (ulong)_options.RawDataFlushSizeBytes!.Value))
+                throw new NotSupportedException(Strings.RawProfileMismatch);
+            _wire.Expect(SprdCommand.EnableRawData);
         }
         _partitions = _options.KnownPartitions.Count == 0 ? null : _options.KnownPartitions;
         _target = new(SprdBootStage.Fdl2, version, info); State(SprdSessionState.StorageReady);

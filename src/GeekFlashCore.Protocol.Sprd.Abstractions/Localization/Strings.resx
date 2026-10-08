@@ -7,4 +7,5 @@
 <data name="LoaderRequired" xml:space="preserve"><value>当前 SPRD 入口需要宿主提供 FDL 资源和加载地址。</value></data>
 <data name="InvalidLoader" xml:space="preserve"><value>SPRD Loader 长度或加载地址范围无效。</value></data>
 <data name="WireFailure" xml:space="preserve"><value>SPRD 命令 0x{0} 响应无效（0x{1}），需要重新连接。</value></data>
+<data name="ChipUidUnavailable" xml:space="preserve"><value>此 SPRD 协议实现未提供 Chip UID 查询。</value></data>
 </root>

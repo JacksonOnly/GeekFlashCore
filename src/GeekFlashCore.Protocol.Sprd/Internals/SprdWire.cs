@@ -69,6 +69,24 @@ internal sealed class SprdWire : IDisposable
         Log.ForContext<SprdWire>().Debug(Strings.Command, command, payload.Length);
         HasWritten = true; // Even a partial Write failure invalidates this stream.
         _transport.Write(_encoded.AsSpan(0, written));
+        return ReceiveResponse(command, commandStart);
+    }
+    internal void Raw(ReadOnlySpan<byte> payload)
+    {
+        Check(); long commandStart = Stopwatch.GetTimestamp();
+        if (payload.IsEmpty || payload.Length > _options.RawDataFlushSizeBytes)
+            throw new ArgumentOutOfRangeException(nameof(payload));
+        HasWritten = true;
+        _transport.Write(payload);
+        if (_transport is IUsbTransport usb && payload.Length % _options.RawDataUsbPacketSize!.Value == 0)
+        {
+            Check(); usb.WriteZeroLengthPacket();
+        }
+        var response = ReceiveResponse(SprdCommand.Midst, commandStart);
+        if (response.Type != SprdCommand.Ack) throw new SprdProtocolException(SprdCommand.Midst, response.Type);
+    }
+    private SprdResponse ReceiveResponse(ushort command, long commandStart)
+    {
         for (int logFrames = 0; ; logFrames++)
         {
             var response = Receive(command, commandStart);

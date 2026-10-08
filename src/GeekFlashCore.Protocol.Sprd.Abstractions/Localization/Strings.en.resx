@@ -7,4 +7,5 @@
 <data name="LoaderRequired" xml:space="preserve"><value>The selected SPRD entry requires host-supplied FDL resources and load addresses.</value></data>
 <data name="InvalidLoader" xml:space="preserve"><value>Invalid SPRD loader length or RAM address range.</value></data>
 <data name="WireFailure" xml:space="preserve"><value>Invalid SPRD response to command 0x{0} (0x{1}); reconnect required.</value></data>
+<data name="ChipUidUnavailable" xml:space="preserve"><value>This SPRD protocol implementation does not provide chip UID queries.</value></data>
 </root>

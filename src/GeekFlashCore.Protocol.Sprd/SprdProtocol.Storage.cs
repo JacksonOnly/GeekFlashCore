@@ -15,10 +15,20 @@ public sealed partial class SprdProtocol
     {
         Ready();
         if (_partitions is not null) return _partitions;
+        if (_options.PartitionTableSource == SprdPartitionTableSource.UserPartitionGpt)
+            return _partitions = GetGptPartitionsCore();
         if (_options.PartitionTableSizeUnitBytes is null) throw new InvalidOperationException(Strings.PartitionUnitsRequired);
         var response = _wire.Expect(SprdCommand.ReadPartition, expected: SprdCommand.PartitionTable);
         return _partitions = SprdMetadata.Partitions(response.Data.Span, _options);
     }
+    /// <inheritdoc />
+    public byte[] ReadChipUid(CancellationToken cancellationToken = default) => Run(() =>
+    {
+        Ready();
+        var response = _wire.Expect(SprdCommand.ReadChipUid, expected: SprdCommand.ChipUid);
+        if (response.Data.Length is < 1 or > 256) throw new SprdProtocolException(SprdCommand.ReadChipUid, response.Type);
+        return response.Data.ToArray();
+    }, cancellationToken);
     private SprdPartition Find(string name)
     {
         SprdProtocolOptions.ValidatePartitionName(name);
@@ -108,9 +118,37 @@ public sealed partial class SprdProtocol
     {
         Log.ForContext<SprdProtocol>().Information(Strings.Transfer, "write", partition.Name, 0, length);
         _wire.Expect(SprdCommand.Start, SprdMetadata.Selector(partition.Name, length, _options.PartitionLengthEncoding));
-        SendStream(stream, length, _options.TransferBlockSize, partition.Name, progress, prefix);
+        if (_options.RawDataMode == SprdRawDataMode.Disabled)
+            SendStream(stream, length, _options.TransferBlockSize, partition.Name, progress, prefix);
+        else SendRawStream(stream, length, partition.Name, progress, prefix);
         _wire.Expect(SprdCommand.End);
         Report(progress, length, length, partition.Name, completed: true);
+    }
+    private void SendRawStream(Stream stream, long length, string label, IProgress<ProgressRecord>? progress, ReadOnlySpan<byte> prefix)
+    {
+        int blockSize = _options.RawDataFlushSizeBytes!.Value;
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(blockSize);
+        try
+        {
+            if (_options.RawDataMode == SprdRawDataMode.Version2) _wire.Expect(SprdCommand.MidstRawStart2);
+            Span<byte> request = stackalloc byte[12]; long sent = 0;
+            while (sent < length)
+            {
+                _wire.Check(); int count = (int)Math.Min(blockSize, length - sent), copied = Math.Min(prefix.Length, count);
+                prefix[..copied].CopyTo(buffer); prefix = prefix[copied..];
+                ReadExactly(stream, buffer.AsSpan(copied, count - copied));
+                if (_options.RawDataMode == SprdRawDataMode.Version1)
+                {
+                    BinaryPrimitives.WriteUInt64LittleEndian(request, checked((ulong)sent));
+                    BinaryPrimitives.WriteUInt32LittleEndian(request[8..], (uint)count);
+                    _wire.Expect(SprdCommand.MidstRawStart, request);
+                }
+                _wire.Raw(buffer.AsSpan(0, count)); sent += count;
+                Report(progress, length, sent, label);
+            }
+            _wire.Check(); if (stream.ReadByte() != -1) throw new IOException(Strings.InvalidSource);
+        }
+        finally { ArrayPool<byte>.Shared.Return(buffer, clearArray: true); }
     }
     /// <inheritdoc />
     public void ErasePartition(string name, CancellationToken cancellationToken = default)

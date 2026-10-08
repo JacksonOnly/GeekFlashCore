@@ -9,6 +9,7 @@
     <ProjectReference Include="../GeekFlashCore.Protocol.Sprd.Abstractions/GeekFlashCore.Protocol.Sprd.Abstractions.csproj" />
     <ProjectReference Include="../GeekFlashCore.Android.Sparse/GeekFlashCore.Android.Sparse.csproj" />
     <ProjectReference Include="../GeekFlashCore.BlockDevice/GeekFlashCore.BlockDevice.csproj" />
+    <ProjectReference Include="../GeekFlashCore.Gpt/GeekFlashCore.Gpt.csproj" />
     <PackageReference Include="Serilog" Version="4.4.0" />
   </ItemGroup>
 </Project>

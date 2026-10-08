@@ -16,8 +16,11 @@ public interface ISprdProtocol : IProtocol
     void Connect(SprdConnectionResources resources, IProgress<ProgressRecord>? progress = null, CancellationToken cancellationToken = default);
     /// <summary>Disconnects and expires all views.</summary>
     void Disconnect(CancellationToken cancellationToken = default);
-    /// <summary>Gets immutable capacities from the supplied list or explicitly scaled native table.</summary>
+    /// <summary>Gets immutable capacities from a supplied list, explicitly scaled native table or strict GPT profile.</summary>
     IReadOnlyList<SprdPartition> GetSprdPartitions(CancellationToken cancellationToken = default);
+    /// <summary>Explicitly queries a 1 through 256 byte chip identifier; returns an owned copy, never logged or cached.</summary>
+    byte[] ReadChipUid(CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(Localization.Strings.ChipUidUnavailable);
     /// <summary>Reads a checked byte range, borrowing the output stream.</summary>
     void ReadPartition(string name, long offset, long length, Stream output, IProgress<ProgressRecord>? progress = null, CancellationToken cancellationToken = default);
     /// <summary>Writes Raw or expands Sparse sequentially from offset zero. Sparse holes are zero-filled.</summary>

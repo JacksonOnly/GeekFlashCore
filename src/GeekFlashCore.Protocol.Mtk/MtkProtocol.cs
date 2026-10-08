@@ -545,7 +545,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         }
         public void WriteNamedPartition(string name,Stream source,long length)
         {
-            Check();owner.NamedWritePolicy();PartitionName(name);ArgumentNullException.ThrowIfNull(source);
+            Check();owner.NamedWritePolicy();name=PartitionName(name);ArgumentNullException.ThrowIfNull(source);
             if(length<=0 || !source.CanRead || source.CanSeek && source.Length-source.Position!=length)throw new MtkResourceException("native partition source");
             if(owner._da is XFlashSession x)x.WriteNamed(name,source,length);
             else if(owner._da is XmlSession xml)xml.WriteNamed(name,source,length);

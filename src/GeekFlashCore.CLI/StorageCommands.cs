@@ -82,7 +82,7 @@ internal static class StorageCommands
                 {
                     var matches = (protocol is IQcomProtocol q && named.PhysicalPartitionNumber is { } selected
                         ? await q.GetPartitionsAsync(selected, progress, ct) : await protocol.GetPartitionsAsync(progress, ct))
-                        .Where(x => x.Name == named.Name && (named.PhysicalPartitionNumber is null || PartitionLun(x) == named.PhysicalPartitionNumber)).ToArray();
+                        .Where(x => PartitionNameMatches(protocol, x, named.Name) && (named.PhysicalPartitionNumber is null || PartitionLun(x) == named.PhysicalPartitionNumber)).ToArray();
                     if (matches.Length != 1) throw new ArgumentException(Strings.FormatCli_PartitionNotUnique(named.Name));
                     if (protocol is IQcomProtocol)
                     {
@@ -124,6 +124,15 @@ internal static class StorageCommands
 
     private static string FormatSize(long? size) =>
         size.HasValue ? ConsoleUi.FormatBytes(size.Value) : Strings.Cli_UnknownValue;
+
+    internal static bool PartitionNameMatches(IProtocol protocol, PartitionInfo partition, string name)
+    {
+        if (protocol.Type != ProtocolType.Mtk)
+            return partition.Name == name;
+        return string.Equals(partition.Name, name, StringComparison.OrdinalIgnoreCase) ||
+            (partition.Metadata?.TryGetValue("NativePartitionName", out string? nativeName) == true &&
+                string.Equals(nativeName, name, StringComparison.OrdinalIgnoreCase));
+    }
 
     internal static uint SectorSize(IProtocol protocol)
     {

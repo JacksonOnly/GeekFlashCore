@@ -40,7 +40,7 @@ internal static class BrowserCommands
         if (protocol is IQcomProtocol qcom) FirehoseCommands.Require(qcom, "read");
         IReadOnlyList<PartitionInfo> partitions = await protocol.GetPartitionsAsync(progress, ct).ConfigureAwait(false);
         uint? lun = args.Length > 1 ? CommandSyntax.Lun(args[1]) : null;
-        var matches = partitions.Where(x => x.Name == name && (lun is null || StorageCommands.PartitionLun(x) == lun)).ToArray();
+        var matches = partitions.Where(x => StorageCommands.PartitionNameMatches(protocol, x, name) && (lun is null || StorageCommands.PartitionLun(x) == lun)).ToArray();
         if (matches.Length != 1) throw new ArgumentException(Strings.FormatCli_PartitionNotUnique(name));
         var resolver = new PartitionDeviceResolver(provider, partitions, matches[0],
             protocol is IQcomProtocol device ? () => FirehoseCommands.Require(device, "program") : null);

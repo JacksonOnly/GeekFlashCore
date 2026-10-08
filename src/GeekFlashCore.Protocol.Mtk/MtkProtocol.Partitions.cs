@@ -16,7 +16,9 @@ public sealed partial class MtkProtocol
         catch { System.Security.Cryptography.CryptographicOperations.ZeroMemory(bytes); throw; }
     }
 
-    private IReadOnlyList<GptEntry>? ReadGpt(MtkStorageRegion region)
+    private sealed record GptPartitions(IReadOnlyList<GptEntry> Entries, MtkFlashRange Primary, MtkFlashRange Backup);
+
+    private GptPartitions? ReadGpt(MtkStorageRegion region)
     {
         int block = region.BlockSize;
         if (block < 512 || region.Kind == MtkStorageKind.Nand || region.Length < 3L * block)
@@ -45,7 +47,7 @@ public sealed partial class MtkProtocol
         catch (GptException) { throw new MtkResourceException("GPT copies"); }
     }
 
-    private IReadOnlyList<GptEntry> ReadGptCopy(MtkStorageRegion region, byte[] header, bool backup)
+    private GptPartitions ReadGptCopy(MtkStorageRegion region, byte[] header, bool backup)
     {
         var h = header.AsSpan();
         int block = region.BlockSize;
@@ -99,6 +101,13 @@ public sealed partial class MtkProtocol
         });
         if (table.Overlaps.Count != 0 || table.Entries.GroupBy(e => e.Id).Any(g => g.Key == Guid.Empty || g.Count() > 1))
             throw new MtkResourceException("GPT partition overlap/identity");
-        return table.Entries;
+        // Expose only reserved areas outside the validated usable-LBA interval.
+        // These boundaries also remain available when the backup supplied the table.
+        var primaryRange = new MtkFlashRange(region.WireId, 0, checked((long)firstUsable * block));
+        long backupOffset = checked((long)(lastUsable + 1) * block);
+        var backupRange = new MtkFlashRange(region.WireId, backupOffset, checked(region.Length - backupOffset));
+        _ = Range(primaryRange);
+        _ = Range(backupRange);
+        return new(table.Entries, primaryRange, backupRange);
     }
 }

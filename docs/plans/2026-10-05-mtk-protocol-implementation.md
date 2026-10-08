@@ -2,6 +2,8 @@
 
 日期：2026-10-05。设计：`2026-10-05-mtk-protocol-design.md`。BROM 对应：`2026-10-05-mtk-brom-method-mapping.md`。宿主阶段框架：`2026-10-05-mtk-exploit-framework.md`。
 
+2026-10-08 PART-MAP-01：新增 PGPT/PrimaryGPT、SGPT/BackupGPT、Preloader、Preloader Backup 的分区快照和读写擦除映射，覆盖范围/native/Legacy/scoped 与 CLI read/挂载。GPT 范围由已验证表头保留区计算，启动区域采用设备报告容量；缺失和歧义不猜测。新增 MTK42/CLI12 项，当前 MTK601/CLI118 合计719通过，Release slnx 0警告/0错误，差异和 ignored 检查通过；无真机操作。范围、先失败证据、文件及恢复风险见 [设计](2026-10-08-mtk-partition-mapping-design.md) 和 [实施记录](2026-10-08-mtk-partition-mapping-implementation.md)。
+
 最新恢复记录：[Legacy 磁盘 PMT 与新版宿主检查点实施记录](2026-10-05-mtk-legacy-pmt-checkpoints-implementation.md)。本轮新增 eMMC DiskV1 分区发现，XML DA1 标准 SLA 与新版 XML/XFlash 回调顺序、认证证据、IoT 已上传区域保护；727 项全量测试通过，Release 0 警告/错误。下方历史基线与旧阶段位置不能替代该最新记录；具体漏洞实现仍为空。
 
 工作区：`C:\Users\a1375\.codex\worktrees\8d7a\GeekFlashCore`。分支：`codex/mtk-protocol`。初始 HEAD：`173d1bb`。

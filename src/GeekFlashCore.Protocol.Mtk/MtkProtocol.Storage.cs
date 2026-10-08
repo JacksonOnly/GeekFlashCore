@@ -23,7 +23,7 @@ public sealed partial class MtkProtocol
             case OffsetTarget bytes:
                 return new(id, bytes.StartOffset, bytes.Length);
             case PartitionTarget partition:
-                var found = LoadPartitionsCore().Where(p => p.Name.Equals(partition.Name, StringComparison.OrdinalIgnoreCase) &&
+                var found = LoadPartitionsCore().Where(p => MtkPartitionNames.Matches(p.Name, partition.Name) &&
                     (target.PhysicalPartitionNumber is null || p.Range.RegionId == id)).ToArray();
                 if (found.Length != 1)
                     throw new MtkResourceException("partition name/region");
@@ -121,7 +121,11 @@ public sealed partial class MtkProtocol
         }, ct));
     public Task<IReadOnlyList<PartitionInfo>> GetPartitionsAsync(IProgress<ProgressRecord>? progress = null, CancellationToken ct = default) =>
         Task.FromResult(Execute<IReadOnlyList<PartitionInfo>>(() => LoadPartitionsCore().Select(p => new PartitionInfo(p.Name, p.Range.Offset, p.Range.Offset, p.Range.Length,
-            new Dictionary<string, string> { { "PhysicalPartitionNumber", p.Range.RegionId.ToString(System.Globalization.CultureInfo.InvariantCulture) } })).ToArray(), ct));
+            new Dictionary<string, string>
+            {
+                { "PhysicalPartitionNumber", p.Range.RegionId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+                { "NativePartitionName", MtkPartitionNames.Wire(p.Name) }
+            })).ToArray(), ct));
     private List<(string Name, MtkFlashRange Range)> LoadPartitionsCore()
     {
         Ready();
@@ -130,23 +134,30 @@ public sealed partial class MtkProtocol
         List<(string, MtkFlashRange)> result = [];
         foreach (var region in _storage!.Regions)
         {
+            if (region.Kind is MtkStorageKind.Emmc or MtkStorageKind.Ufs && region.WireId is 1 or 2)
+                result.Add((region.WireId == 1 ? MtkPartitionNames.Preloader : MtkPartitionNames.PreloaderBackup,
+                    new MtkFlashRange(region.WireId, 0, region.Length)));
             var entries = ReadGpt(region);
             if (entries is null)
             {
                 if (region.WireId == _storage.UserRegionId && _da is Da.LegacySession &&
                     (_options.LegacyPmtLayout is not null || region.Kind == MtkStorageKind.Emmc && region.BlockSize == 512 && region.Length >= 0x100000))
                     result.AddRange(ReadLegacyPmt(_options.LegacyPmtLayout ?? MtkPmtLayout.DiskV1)
-                        .Select(p => (p.Name!, new MtkFlashRange(region.WireId, p.Offset!.Value, p.Length!.Value))));
+                        .Select(p => (MtkPartitionNames.Display(p.Name!), new MtkFlashRange(region.WireId, p.Offset!.Value, p.Length!.Value))));
                 else if (region.WireId == _storage.UserRegionId && region.Kind == MtkStorageKind.Nand && _da is Da.XmlSession)
-                    result.AddRange(ReadXmlPartitionTable().Select(p => (p.Name!, new MtkFlashRange(region.WireId, p.Offset!.Value, p.Length!.Value))));
+                    result.AddRange(ReadXmlPartitionTable().Select(p => (MtkPartitionNames.Display(p.Name!), new MtkFlashRange(region.WireId, p.Offset!.Value, p.Length!.Value))));
                 continue;
             }
-            foreach (var entry in entries)
+            if (region.WireId == _storage.UserRegionId)
+                result.Add((MtkPartitionNames.PrimaryGpt, entries.Primary));
+            foreach (var entry in entries.Entries)
             {
                 var range = new MtkFlashRange(region.WireId, checked((long)entry.FirstLba * region.BlockSize), checked((long)entry.SectorCount * region.BlockSize));
                 _ = Range(range);
-                result.Add((entry.Name, range));
+                result.Add((MtkPartitionNames.Display(entry.Name), range));
             }
+            if (region.WireId == _storage.UserRegionId)
+                result.Add((MtkPartitionNames.BackupGpt, entries.Backup));
         }
         return _partitions = result;
     }

@@ -48,3 +48,5 @@ Preloader候选（0E8D:2000/6000）现在先发一次A0唤醒，再进行四步�
 DA2 摘要区分请求标准 BootTo（尚待命令确认）与参数组/执行状态均确认。Debug 另记录命令接受与载荷已发送待确认。双状态通过后若 `SlaEnabledStatus` 查询失败，则是 DA2 后续认证查询，不是上传失败。用户231901日志已确认正常DA2启动，详情见 [回调记录](plans/2026-10-08-mtk-da2-callback-implementation.md)。
 
 旧DA在SlaEnabledStatus子命令初始ACK完整返回0xC0010004时，输出Warning并记录认证证据Unsupported，继续包长/存储查询；不是认证成功或SLA禁用证明。父命令、结果帧/尾ACK、已启用后挑战/签名错误、未知状态、取消/超时不会降级。用户232837日志已确认此路径，见 [SLA兼容记录](plans/2026-10-08-mtk-xflash-sla-compatibility-implementation.md)。
+
+XFlash设备包上限可为2MiB，不能按旧1MiB宿主小帧限制拒绝能力查询。宿主写块仍默认64KiB；大存储FLOW用小池化窗口接收，完整帧才ACK。SDK `MaximumXFlashDataFrameSize` 默认2MiB，可限制512～2MiB；小帧/消息/认证/scoped ReceiveData仍由 `MaximumFrameSize` 控制，默认1MiB。每个payload窗口共享读预算。Debug在拒绝前记录响应长度和设备包长，status0本地校验失败不等于设备返回NAK。用户233705已联机到UFS，见 [包长实施](plans/2026-10-08-mtk-xflash-packet-capacity-implementation.md)。

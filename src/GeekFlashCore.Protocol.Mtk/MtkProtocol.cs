@@ -668,7 +668,9 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             get
             {
                 Check();
-                return owner._wire.ReadPacketLength;
+                // Scoped ReceiveData remains a bounded materialized frame; storage reads
+                // have a separate, windowed XFlash data-frame ceiling.
+                return Math.Min(owner._wire.ReadPacketLength, owner._options.MaximumFrameSize);
             }
         }
         public void SendCommand(uint command)

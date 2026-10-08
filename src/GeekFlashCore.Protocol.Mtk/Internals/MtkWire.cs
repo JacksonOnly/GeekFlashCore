@@ -270,6 +270,33 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
     }
     public int ReadFrame(Span<byte> destination)
     {
+        int length = ReadFlowHeader(Math.Min(options.MaximumFrameSize, destination.Length));
+        Read(destination[..length]);
+        return length;
+    }
+    public int ReadStreamFrame(Stream output, int maximumLength, Span<byte> buffer)
+    {
+        if (buffer.IsEmpty || maximumLength <= 0 || maximumLength > options.MaximumXFlashDataFrameSize)
+            throw new ArgumentOutOfRangeException(nameof(maximumLength));
+        int length = ReadFlowHeader(maximumLength);
+        // All payload windows share a logical read deadline. A slow trickle cannot refresh it.
+        long deadline = checked(Environment.TickCount64 + options.ReadTimeoutMilliseconds);
+        for (int remaining = length; remaining > 0;)
+        {
+            Check();
+            long timeout = deadline - Environment.TickCount64;
+            if (timeout <= 0) throw new TimeoutException(Strings.Timeout);
+            int count = Math.Min(remaining, buffer.Length);
+            Read(buffer[..count], checked((int)Math.Min(int.MaxValue, timeout)));
+            output.Write(buffer[..count]);
+            remaining -= count;
+        }
+        Check();
+        if (Environment.TickCount64 >= deadline) throw new TimeoutException(Strings.Timeout);
+        return length;
+    }
+    private int ReadFlowHeader(int maximumFlowLength)
+    {
         Span<byte> header = stackalloc byte[MtkDaFrame.HeaderSize];
         byte[]? message = null;
         try
@@ -281,15 +308,16 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
                     length = BinaryPrimitives.ReadUInt32LittleEndian(header[8..]);
                 if (Logger.IsEnabled(LogEventLevel.Debug))
                     Logger.Debug(Strings.WireFrame, "Read", Stage, Command, type, length);
-                if (magic != MtkDaFrame.Magic || type is not ((uint)MtkDaFrameType.Flow or (uint)MtkDaFrameType.Message) || length == 0 || length > options.MaximumFrameSize)
+                if (magic != MtkDaFrame.Magic || type is not ((uint)MtkDaFrameType.Flow or (uint)MtkDaFrameType.Message) || length == 0)
                     throw Failure();
                 if (type == (uint)MtkDaFrameType.Flow)
                 {
-                    if (length > destination.Length)
+                    if (length > maximumFlowLength)
                         throw Failure();
-                    Read(destination[..(int)length]);
                     return (int)length;
                 }
+                if (length > options.MaximumFrameSize)
+                    throw Failure();
                 if (i == options.MaximumMessages)
                     throw Failure();
                 Logger.Debug(Strings.WireDeviceMessage, Stage, Command, length, i + 1);

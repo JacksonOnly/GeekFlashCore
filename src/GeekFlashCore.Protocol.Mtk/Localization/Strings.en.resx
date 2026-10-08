@@ -92,4 +92,6 @@
 <data name="Da2PayloadSent" xml:space="preserve"><value>MTK XFlash: sent {ByteCount} DA2 bytes; waiting for parameter-group and execution status, boot not yet confirmed.</value></data>
 <data name="Da2BootConfirmed" xml:space="preserve"><value>MTK XFlash: standard DA2 parameter-group and execution status both confirmed.</value></data>
 <data name="SlaStatusUnsupported" xml:space="preserve"><value>MTK XFlash: DA rejected SLA status query 0x{Command:X8} as unsupported (0x{Status:X8}); continuing legacy-DA packet-length and storage queries. Authentication evidence is Unsupported, not authentication success or proof that SLA is disabled.</value></data>
+<data name="PacketLengthResponse" xml:space="preserve"><value>MTK {BootStage}: packet-length response is {ResponseLength} bytes; expected 8.</value></data>
+<data name="PacketLengthsOffered" xml:space="preserve"><value>MTK {BootStage}: device write-packet ceiling {DeviceWritePacketLength}, read-packet ceiling {DeviceReadPacketLength}, valid range={PacketLengthsValid}; host windows are bounded independently.</value></data>
 </root>

@@ -159,13 +159,17 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
     private void QueryPacketLength()
     {
         byte[] packet = Control(MtkXFlashCommand.GetPacketLength);
+        wire.Logger.Debug(Strings.PacketLengthResponse, wire.Stage, packet.Length);
         if (packet.Length != 8)
             throw wire.Failure();
         uint write = BinaryPrimitives.ReadUInt32LittleEndian(packet), read = BinaryPrimitives.ReadUInt32LittleEndian(packet.AsSpan(4));
-        if (write is < 512 or > 1048576 || read is < 512 or > 1048576)
+        bool valid = write is >= 512 and <= MtkProtocolOptions.MaximumXFlashPacketLength &&
+            read is >= 512 and <= MtkProtocolOptions.MaximumXFlashPacketLength;
+        wire.Logger.Debug(Strings.PacketLengthsOffered, wire.Stage, write, read, valid);
+        if (!valid)
             throw wire.Failure();
         wire.WritePacketLength = (int)Math.Min(write, (uint)options.BufferSize);
-        wire.ReadPacketLength = (int)Math.Min(read, (uint)options.MaximumFrameSize);
+        wire.ReadPacketLength = (int)Math.Min(read, (uint)options.MaximumXFlashDataFrameSize);
         wire.Logger.Debug(Strings.PacketLengths, wire.WritePacketLength, wire.ReadPacketLength, write, read);
     }
     public MtkStorageInfo GetStorage()
@@ -195,15 +199,14 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
     }
     private void ReceiveStream(Stream output, long length)
     {
-        int packetLength = Math.Min(wire.ReadPacketLength, options.MaximumFrameSize);
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(packetLength);
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(options.BufferSize);
         try
         {
             long done = 0;
             while (done < length)
             {
-                int n = wire.ReadFrame(buffer.AsSpan(0, (int)Math.Min(packetLength, length - done)));
-                output.Write(buffer.AsSpan(0, n));
+                int maximum = (int)Math.Min(wire.ReadPacketLength, length - done);
+                int n = wire.ReadStreamFrame(output, maximum, buffer.AsSpan(0, options.BufferSize));
                 done += n;
                 wire.SendUInt32Frame(0);
                 wire.ReadStatus();

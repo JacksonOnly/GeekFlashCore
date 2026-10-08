@@ -19,4 +19,5 @@
 <data name="SparseSeekRequired" xml:space="preserve"><value>SPRD Sparse 写入要求可定位的稳定数据源。</value></data>
 <data name="RawUsbPacketRequired" xml:space="preserve"><value>SPRD Raw USB 下载需要显式提供已确认的 bulk OUT 包大小。</value></data>
 <data name="RawProfileMismatch" xml:space="preserve"><value>SPRD Raw 下载配置与 FDL2 报告的版本或 flush 大小不一致。</value></data>
+<data name="GptSectorDetected" xml:space="preserve"><value>SPRD GPT 逻辑扇区大小：{0} 字节。</value></data>
 </root>

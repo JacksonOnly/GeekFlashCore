@@ -25,7 +25,7 @@ When a loader, Digest, VIP table, or vendor authentication response is needed an
 
 ## SPRD / Unisoc
 
-`GeekFlashCore.Protocol.Sprd.Abstractions` and `GeekFlashCore.Protocol.Sprd` provide .NET 8 BSL contracts and a serialized synchronous core. BootROM/FDL1/FDL2, native or strict GPT capacities, named-partition reads, streamed Raw/Sparse writes, explicit Raw v1/v2 download, chip UID, erase, reset and power off are exposed through the public facade and CLI registry. Select `--protocol sprd` and an explicit `--port` or `--usb`, supply matching FDL images and confirmed load addresses, and configure native size units or a confirmed GPT sector profile. Raw download defaults off and requires confirmed flush/USB packet sizes. See [SPRD API, CLI profiles and current limits](docs/sprd.md). Hardware validation is pending.
+`GeekFlashCore.Protocol.Sprd.Abstractions` and `GeekFlashCore.Protocol.Sprd` provide .NET 8 BSL contracts and a serialized synchronous core. BootROM/FDL1/FDL2, native or strict GPT capacities, named-partition reads, streamed Raw/Sparse writes, explicit Raw v1/v2 download, chip UID, erase, reset and power off are exposed through the public facade and CLI registry. Select `--protocol sprd` and an explicit `--port` or `--usb`, supply matching FDL images and confirmed load addresses, and configure native size units or select GPT capacities. GPT detects a unique validated 512/4096 sector layout from one read prefix; manual sector overrides remain available. Raw download defaults off and requires confirmed flush/USB packet sizes. See [SPRD API, CLI profiles and current limits](docs/sprd.md). Hardware validation is pending.
 
 ## MediaTek
 

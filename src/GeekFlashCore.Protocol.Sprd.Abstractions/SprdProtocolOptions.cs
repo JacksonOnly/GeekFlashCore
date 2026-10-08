@@ -41,7 +41,7 @@ public sealed record SprdProtocolOptions
     public long? PartitionTableSizeUnitBytes { get; init; }
     /// <summary>Capacity source when KnownPartitions is empty. No fallback is performed.</summary>
     public SprdPartitionTableSource PartitionTableSource { get; init; }
-    /// <summary>Confirmed GPT logical sector size, 512 or 4096; required for UserPartitionGpt.</summary>
+    /// <summary>GPT sector override, 512 or 4096. Null detects a unique fully validated candidate in the read prefix.</summary>
     public int? GptSectorSize { get; init; }
     /// <summary>Confirmed user_partition prefix window, sector aligned and at most 4 MiB.</summary>
     public int GptReadBytes { get; init; } = 32 * 1024;
@@ -71,7 +71,7 @@ public sealed record SprdProtocolOptions
             throw new ArgumentException(Strings.InvalidOptions);
         if (GptSectorSize is not (null or 512 or 4096) || GptReadBytes is < 1024 or > 4 * 1024 * 1024 ||
             PartitionTableSource == SprdPartitionTableSource.UserPartitionGpt &&
-                (GptSectorSize is null || GptReadBytes % GptSectorSize.Value != 0 || GptReadBytes < 3 * GptSectorSize.Value) ||
+                (GptReadBytes % (GptSectorSize ?? 4096) != 0 || GptReadBytes < 3 * (GptSectorSize ?? 4096)) ||
             RawDataFlushSizeBytes is <= 0 or > 4 * 1024 * 1024 ||
             RawDataMode != SprdRawDataMode.Disabled && RawDataFlushSizeBytes is null ||
             RawDataMode == SprdRawDataMode.Disabled && (RawDataFlushSizeBytes is not null || RawDataUsbPacketSize is not null) ||

@@ -35,7 +35,7 @@ internal static class CommandLine
                     "--sprd-fdl1-address" => builder with { SprdFdl1Address = checked((uint)CommandSyntax.Number(value)) },
                     "--sprd-fdl2-address" => builder with { SprdFdl2Address = checked((uint)CommandSyntax.Number(value)) },
                     "--sprd-partition-unit" => builder with { SprdPartitionUnit = checked((long)CommandSyntax.Number(value)) },
-                    "--sprd-sector-size" => builder with { SprdSectorSize = checked((int)CommandSyntax.Number(value)) },
+                    "--sprd-sector-size" => builder with { SprdSectorSize = value.Equals("auto", StringComparison.OrdinalIgnoreCase) ? 0 : ParseSprdSectorSize(value) },
                     "--sprd-gpt-bytes" => builder with { SprdGptBytes = checked((int)CommandSyntax.Number(value)) },
                     "--sprd-raw-flush" => builder with { SprdRawFlush = checked((int)CommandSyntax.Number(value)) },
                     "--sprd-raw-usb-packet" => builder with { SprdRawUsbPacket = checked((int)CommandSyntax.Number(value)) },
@@ -119,6 +119,12 @@ internal static class CommandLine
         return builder;
     }
 
+    private static int ParseSprdSectorSize(string value)
+    {
+        int sector = checked((int)CommandSyntax.Number(value));
+        if (sector is not (512 or 4096)) throw new ArgumentException(Strings.Cli_SprdProfileInvalid);
+        return sector;
+    }
     private static QcomAuthenticationKind ParseAuthentication(string value) =>
         value.Equals("xiaomi", StringComparison.OrdinalIgnoreCase)
             ? QcomAuthenticationKind.XiaomiSignature

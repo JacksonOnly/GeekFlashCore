@@ -30,3 +30,11 @@
 ## 风险与恢复
 
 无实机证据；默认线路保持。恢复先读本设计/实施、原 SPRD 文档和工作区状态，再运行 ignored .tests。GPT 窗口、Raw flush/USB packet 必须按设备确认，不能自动试探或重发。Raw 直接 FDL2 无 EXEC 元数据，宿主须保证此前 FDL 支持对应线路；有数据传输后出错需断开重连。签名验证/最后窗口延迟应在有限 CommandTimeout 中按设备配置，不无限等待。下一步先用合法匹配 FDL 做只读 GPT/UID，再在可恢复的测试分区验证 Raw v1/v2、ZLP、取消/重连。DIAG、NV 专用格式、重分区、PAC 清单适配及整盘浏览仍为后续独立任务。
+
+## SPRD-09：2026-10-08 GPT sector 自动识别
+
+- 用户追问原生容量倍率及 sector 能否识别；按同日设计补充节，取消 GPT sector 必填。开始基线 121a929，工作区干净；保持原生容量单位显式和不进行设备容量试探。
+- 先写自动/手动覆盖、两份均有效 GPT、伪签名、坏 CRC、窗口与 CLI 测试，初次因 TargetInfo 尚无 sector 元数据而失败。实现把现有严格解析提取为本地候选解析，固定前缀仍只读一次，零/多候选均失败；完整有效的唯一候选才更新 TargetInfo 和数值日志，无协议命令回退。
+- `GptSectorSize = null` 默认自动，CLI 省略或 auto 均可；显式 512/4096 校验错误不改用另一值。CLI 用内部零哨兵保留 auto 选项存在性，数字 0 被拒绝，跨协议校验保持。元数据按既有生命周期清除。
+- 94/94 SPRD、18/18 CLI 测试通过（当前总计 112），包括歧义夹具先证明两个手动布局都有效，再证明自动模式拒绝；命令计数确认仅一个 READ_START、8 个 READ_MIDST、一个 READ_END，第二次枚举不重复查询。新候选不额外读取设备，不用签名位置推断存储种类。
+- 文档补充 UNIT_BYTES 公式和例子、GPT 自动识别及手动覆盖；帮助/资源键/AGENTS 恢复入口同步。Release 解决方案构建通过（0 warning / 0 error），三个项目中英文资源键一致，help sprd 返回 0，git diff --check 通过；.tests/temp/bin/obj 保持 ignored 且未被跟踪。无实机证据，后续仍先验证合法 FDL 下的只读 GPT/UID；提交为 `feat(sprd): detect GPT sector size from validated data`，确切提交号由包含本记录的提交恢复。

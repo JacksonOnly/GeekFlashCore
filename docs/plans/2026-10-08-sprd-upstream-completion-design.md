@@ -32,3 +32,15 @@ ReadChipUid 返回独立 byte[]，限制为 1～256 字节，无文本编码或�
 4. SPRD-08：全部可用 .tests、Release solution build、git diff --check、资源键和 ignored 审查；按独立能力英文提交生产代码与文档，不提交 .tests/temp。
 
 内存验证使用至少 64 MiB 虚拟 Raw 源和固定窗口，证明分配不随镜像大小增长；模拟不是 USB 吞吐证据。没有实机，FDL Raw 窗口确认、ZLP、GPT user_partition 支持和大容量布局仍待设备验证。
+
+## SPRD-09：GPT 扇区自动识别（2026-10-08）
+
+用户追问容量单位及 sector size 能否识别，最新范围允许省略 GPT sector。此前强制显式 sector 的约束由本节替代；原生表单位、前缀窗口、Raw/64 位配置保持。
+
+`GptSectorSize = null` 表示自动模式，CLI 可省略或使用 `--sprd-sector-size auto`，512/4096 仍是严格手动覆盖。只读取一次 user_partition 固定前缀，再在内存中检验两个候选；每个候选必须通过已有完整主头/条目 CRC、几何、范围、名称及计数校验。恰好一个有效才接受，零个或多个均失效，不发送额外命令、试读其他 offset、扩窗或回退原生表。候选读取窗口在参数验证时要求整 4096 字节且至少 3 * 4096，以覆盖两种布局；手动模式仍按其 sector 验证。解析检查取消和总预算。
+
+解析成功后 TargetInfo.GptSectorSize 保存实际确认值，断开/失败随既有目标元数据清除；仅记录数值的 Information 日志。接口/记录扩展保持构造兼容。资源和读取缓冲生命周期不变，最多两次有界本地解析。
+
+原生表 size 的单位不能由数值大小唯一推出，上游以最小分区选择倍率是启发式；不作为容量证据。本次不自动猜原生单位，GPT 模式无需该参数。
+
+测试先行覆盖默认/显式 auto、512/4096、错误手动覆盖、伪签名/CRC、两份均有效的歧义、一次读取命令序列、缓存/目标元数据清除、参数边界与 CLI 帮助。运行全部可用测试、Release、资源键和 diff 检查，提交 `feat(sprd): detect GPT sector size from validated data`。实机前缀能力仍待验证。

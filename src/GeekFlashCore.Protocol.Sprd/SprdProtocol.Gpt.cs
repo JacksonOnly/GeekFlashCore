@@ -2,6 +2,7 @@ using GeekFlashCore.Gpt;
 using GeekFlashCore.Gpt.Abstractions;
 using GeekFlashCore.Protocol.Sprd.Internals;
 using GeekFlashCore.Shared.Utilities;
+using Serilog;
 
 namespace GeekFlashCore.Protocol.Sprd;
 
@@ -9,7 +10,7 @@ public sealed partial class SprdProtocol
 {
     private IReadOnlyList<SprdPartition> GetGptPartitionsCore()
     {
-        int length = _options.GptReadBytes, sector = _options.GptSectorSize!.Value;
+        int length = _options.GptReadBytes;
         byte[] buffer = ArrayPool<byte>.Shared.Rent(length);
         try
         {
@@ -18,6 +19,34 @@ public sealed partial class SprdProtocol
             ReadCore(new("user_partition", length), 0, length, output, null);
             _wire.Check();
             var bytes = buffer.AsSpan(0, length);
+            IReadOnlyList<SprdPartition>? result = null; int selectedSector = 0;
+            if (_options.GptSectorSize is int explicitSector)
+            { result = ParseGptPartitions(bytes, explicitSector); selectedSector = explicitSector; }
+            else
+            {
+                // These are offline interpretations of the same bytes, not device retries.
+                ReadOnlySpan<int> candidates = [512, 4096];
+                foreach (int candidate in candidates)
+                {
+                    _wire.Check(); IReadOnlyList<SprdPartition> parsed;
+                    try { parsed = ParseGptPartitions(bytes, candidate); }
+                    catch (SprdProtocolException) { continue; }
+                    if (result is not null) throw new SprdProtocolException(SprdCommand.ReadStart);
+                    result = parsed; selectedSector = candidate;
+                }
+                if (result is null) throw new SprdProtocolException(SprdCommand.ReadStart);
+            }
+            _wire.Check(); _target = _target! with { GptSectorSize = selectedSector };
+            Log.ForContext<SprdProtocol>().Information(Strings.GptSectorDetected, selectedSector);
+            return result;
+        }
+        finally { ArrayPool<byte>.Shared.Return(buffer, clearArray: true); }
+    }
+    private IReadOnlyList<SprdPartition> ParseGptPartitions(ReadOnlySpan<byte> bytes, int sector)
+    {
+        try
+        {
+            int length = bytes.Length;
             var header = bytes.Slice(sector, sector);
             if (!header[..8].SequenceEqual("EFI PART"u8)) throw new SprdProtocolException(SprdCommand.ReadStart);
             uint headerSize = BinaryPrimitives.ReadUInt32LittleEndian(header[12..]);
@@ -64,6 +93,5 @@ public sealed partial class SprdProtocol
         }
         catch (Exception exception) when (exception is GptException or ArgumentException or OverflowException)
         { throw new SprdProtocolException(SprdCommand.ReadStart); }
-        finally { ArrayPool<byte>.Shared.Return(buffer, clearArray: true); }
     }
 }

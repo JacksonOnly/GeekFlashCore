@@ -23,7 +23,7 @@ internal static class SprdProtocolHostAdapter
         DisableTranscode = options.SprdDisableTranscode,
         EntryTranscodeDisabled = options.SprdEntryTranscodeDisabled,
         PartitionTableSource = options.SprdPartitionSource ?? SprdPartitionTableSource.Native,
-        GptSectorSize = options.SprdSectorSize,
+        GptSectorSize = options.SprdSectorSize == 0 ? null : options.SprdSectorSize,
         GptReadBytes = options.SprdGptBytes ?? 32 * 1024,
         RawDataMode = options.SprdRawMode ?? SprdRawDataMode.Disabled,
         RawDataFlushSizeBytes = options.SprdRawFlush,

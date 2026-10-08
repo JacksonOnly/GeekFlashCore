@@ -69,4 +69,8 @@ public sealed record SprdLoaderInfo(uint Version, bool SupportsDisableTranscode,
     byte RawDataSupport, uint FlushSizeKiB, uint StorageType);
 
 /// <summary>Connection metadata. Version text is bounded and is never automatically logged.</summary>
-public sealed record SprdTargetInfo(SprdBootStage Stage, string? Version, SprdLoaderInfo? Loader);
+public sealed record SprdTargetInfo(SprdBootStage Stage, string? Version, SprdLoaderInfo? Loader)
+{
+    /// <summary>Logical sector size confirmed by a successful GPT query; null until queried or for host/native lists.</summary>
+    public int? GptSectorSize { get; init; }
+}

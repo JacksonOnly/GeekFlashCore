@@ -8,5 +8,6 @@ public enum ProtocolType
     Mtk,
     MtkMeta,
     Fastboot,
-    Adb
+    Adb,
+    Sprd
 }

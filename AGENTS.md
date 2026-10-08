@@ -17,6 +17,8 @@
 - `src/GeekFlashCore.Protocol.Mtk.Abstractions`：MTK 稳定契约、BROM 命令/会话、资源与安全能力。
 - `src/GeekFlashCore.Protocol.Mtk`：同步 LibUsb BROM/Preloader、Legacy/XFlash/XML、DA/EMI 与流式存储。
 - `src/GeekFlashCore.Protocol.Mtk.Extensions`：可选已加载 DA 扩展、SEJ、RPMB、seccfg；核心不反向依赖。
+- `src/GeekFlashCore.Protocol.Sprd.Abstractions`：SPRD BSL 稳定契约、显式 FDL/profile、分区和资源所有权。
+- `src/GeekFlashCore.Protocol.Sprd`：同步 BootROM/FDL1/FDL2、有限预算帧、命名分区流式操作和会话代数视图。
 - `src/GeekFlashCore.Protocol.Abstractions`：跨协议公共抽象。
 - `src/GeekFlashCore.Android.Sparse`：Android Sparse 解析、计划和流式区域访问。
 - `src/GeekFlashCore.Transport.*`：SerialPort、LibUsb 和传输抽象。
@@ -117,6 +119,14 @@ git status --short --ignored
 7. 最终汇报包含修改文件、行为变化、验证结果、提交号、工作区状态和后续风险。
 
 ## 当前进度来源
+
+开始 SPRD 工作前，读取 `docs/plans/2026-10-07-sprd-protocol-design.md`、`docs/plans/2026-10-07-sprd-protocol-implementation.md` 和 `docs/sprd.md`，再检查工作区与最近提交。参考源为 `D:\Code\CSharp\SPRDClientCore-Xia` 和 `D:\Code\CPlusPlus\SPD_Flash_Tool_Source_Code`；当前没有实机证据。Loader 地址、容量单位、64 位布局、禁转义及奇数补零必须显式确认，不自动重发写命令或试探容量。测试位于 ignored `.tests/GeekFlashCore.Protocol.Sprd.Tests`。用户追加 YC-nw/SPRDClientCore 与 TomKing062/spreadtrum_flash 后的严格 GPT 容量、显式 Raw v1/v2 和 UID 最新范围与恢复来源为 `docs/plans/2026-10-08-sprd-upstream-completion-design.md` 与对应 implementation；SPRD-09 允许 GPT 从一次固定前缀读取中自动识别唯一完全校验有效的 512/4096 布局，保留手动覆盖，原生单位/前缀窗口和 Raw flush/USB 包大小仍须确认，无设备试读回退、NV 变换或整盘推断。
+
+SPRD-10 的最新默认入口为 Auto，基于一次首帧的唯一校验和明确响应判断 BootROM/FDL1/FDL2，再获取实际所需 Loader。仅首个 CHECK_BAUD 完全无响应允许一次不同 CONNECT 查询；部分帧/坏校验/取消不回退，不重发写命令。已加载 FDL2 自动入口按参考握手确认 DISABLE_TRANSCODE ACK；手动入口保持原线路。恢复另读 `docs/plans/2026-10-08-sprd-entry-detection-design.md` 与对应 implementation；旧文档的显式入口默认约束被本设计替代，无实机证据。
+
+SPRD-11 最新容量来源默认 Auto，优先校验固定 GPT 前缀，只有完整非 GPT 前缀或允许的 READ_START 空拒绝且 READ_END ACK 后才查询原生清单；损坏/保护性 MBR/歧义 GPT 不降级。原生单位不猜，缺单位的完整有效清单仅报告配置错误并保留会话与来源缓存，不启动写入。Source 是容量获取方式，不是 MBR/NAND/PMT 证明。恢复另读 `docs/plans/2026-10-08-sprd-partition-source-design.md` 与对应 implementation；手动 Native/GPT 旧线路保持，无实机。
+
+SPRD-12 并入本地 main 的范围、工作区保留、回归结果及合并前 MTK 失败对照见 `docs/plans/2026-10-08-sprd-merge-implementation.md`。
 
 开始 Qualcomm 相关工作前，依次阅读：
 

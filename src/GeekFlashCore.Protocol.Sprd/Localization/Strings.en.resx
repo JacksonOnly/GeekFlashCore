@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+<resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader>
+<data name="Timeout" xml:space="preserve"><value>SPRD operation or resource request timed out.</value></data>
+<data name="LoaderRequired" xml:space="preserve"><value>The selected SPRD entry requires host-supplied FDL resources and load addresses.</value></data>
+<data name="Unavailable" xml:space="preserve"><value>SPRD session unavailable; disconnect and reconnect.</value></data>
+<data name="Reentry" xml:space="preserve"><value>SPRD callbacks cannot reenter the protocol session.</value></data>
+<data name="Phase" xml:space="preserve"><value>SPRD stage: {0}.</value></data>
+<data name="Transfer" xml:space="preserve"><value>SPRD {0}: partition {1}, offset {2}, bytes {3}.</value></data>
+<data name="Command" xml:space="preserve"><value>SPRD command {0}, payload bytes {1}.</value></data>
+<data name="Faulted" xml:space="preserve"><value>SPRD session faulted; reconnect required.</value></data>
+<data name="UnsupportedTarget" xml:space="preserve"><value>SPRD supports named partitions in the default region only.</value></data>
+<data name="PartitionUnitsRequired" xml:space="preserve"><value>Supply verified partitions or the native table size unit; capacities cannot be guessed.</value></data>
+<data name="PartitionMissing" xml:space="preserve"><value>No unique SPRD partition found: {0}.</value></data>
+<data name="InvalidSource" xml:space="preserve"><value>SPRD source is unreadable, changed length or ended unexpectedly.</value></data>
+<data name="NvUnsupported" xml:space="preserve"><value>SPRD NV-specific write and erase formats are not implemented.</value></data>
+<data name="WidthUnsupported" xml:space="preserve"><value>The SPRD 32-bit profile cannot represent this range; explicitly select a verified 64-bit layout.</value></data>
+<data name="RebootUnsupported" xml:space="preserve"><value>SPRD implements normal reset and power off only.</value></data>
+<data name="SparseSeekRequired" xml:space="preserve"><value>SPRD Sparse writes require a stable seekable source.</value></data>
+<data name="RawUsbPacketRequired" xml:space="preserve"><value>SPRD raw USB download requires an explicitly confirmed bulk OUT packet size.</value></data>
+<data name="RawProfileMismatch" xml:space="preserve"><value>The SPRD raw download profile does not match the FDL2 version or flush size.</value></data>
+<data name="GptSectorDetected" xml:space="preserve"><value>SPRD GPT logical sector size: {0} bytes.</value></data>
+<data name="EntryDetectionFailed" xml:space="preserve"><value>The SPRD entry stage could not be uniquely identified; disconnect and reconnect with an explicit BootRom/Fdl1/Fdl2 entry.</value></data>
+<data name="EntryProbeConnect" xml:space="preserve"><value>SPRD CHECK_BAUD received no response; sending one CONNECT entry query.</value></data>
+<data name="EntryDetected" xml:space="preserve"><value>SPRD initial entry stage: {0}.</value></data>
+<data name="NativeUnitsDetected" xml:space="preserve"><value>A native partition list was identified, but its size unit is unknown; recreate the configuration with a confirmed unit.</value></data>
+<data name="PartitionSourceDetected" xml:space="preserve"><value>SPRD partition capacity source: {0}.</value></data>
+<data name="GptQueryUnavailable" xml:space="preserve"><value>The SPRD GPT prefix query is unavailable and READ_END was acknowledged; querying the native partition list.</value></data>
+</root>

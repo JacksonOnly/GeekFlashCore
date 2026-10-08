@@ -21,17 +21,22 @@ internal static class CommandCompletion
                 if (!reported.Contains("power", StringComparer.OrdinalIgnoreCase)) names.Remove("reboot");
             }
         }
-        else names.AddRange(registration.CommandHandlers.Select(x => x.Name));
+        else
+        {
+            names.AddRange(registration.CommandHandlers.Select(x => x.Name));
+            if (protocol is GeekFlashCore.Protocol.Sprd.Abstractions.ISprdProtocol)
+            { names.RemoveAll(x => x is "browse" or "ls" or "lp"); names.Add("sprd-chip-uid"); }
+        }
         string[] parts = prefix.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (prefix.IndexOf(' ') < 0) return Match(names, prefix);
         string root = parts.FirstOrDefault()?.ToLowerInvariant() ?? "";
         IEnumerable<string> choices = root switch
         {
             "qcom" => FirehoseCommands.Usages.Keys.Select(x => "qcom " + x).Where(x => names.Contains(x[5..])),
-            "help" => names.Concat(["all", "qcom"]).Select(x => "help " + x),
+            "help" => names.Concat(["all", "qcom", "sprd"]).Select(x => "help " + x),
             "lp" => LpCommands.Usages.Keys.Select(x => "lp " + x),
             "firmware" => new[] { "list", "extract" }.Select(x => "firmware " + x),
-            "reboot" => new[] { "system", "download", "poweroff" }.Select(x => "reboot " + x),
+            "reboot" => (protocol.Type == ProtocolType.Sprd ? new[] { "system", "poweroff" } : new[] { "system", "download", "poweroff" }).Select(x => "reboot " + x),
             "power" => new[] { "reset", "reset_to_edl", "off" }.Select(x => "power " + x),
             _ => []
         };

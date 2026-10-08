@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+<resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader>
+<data name="Timeout" xml:space="preserve"><value>SPRD 操作或资源请求超时。</value></data>
+<data name="LoaderRequired" xml:space="preserve"><value>当前 SPRD 入口需要宿主提供 FDL 资源和加载地址。</value></data>
+<data name="Unavailable" xml:space="preserve"><value>SPRD 会话不可用，需要断开后重新连接。</value></data>
+<data name="Reentry" xml:space="preserve"><value>SPRD 回调不能重入当前协议会话。</value></data>
+<data name="Phase" xml:space="preserve"><value>SPRD 阶段：{0}。</value></data>
+<data name="Transfer" xml:space="preserve"><value>SPRD {0}：分区 {1}，偏移 {2}，字节数 {3}。</value></data>
+<data name="Command" xml:space="preserve"><value>SPRD 命令 {0}，载荷字节数 {1}。</value></data>
+<data name="Faulted" xml:space="preserve"><value>SPRD 会话失效，需要重新连接。</value></data>
+<data name="UnsupportedTarget" xml:space="preserve"><value>SPRD 仅支持默认区域的命名分区。</value></data>
+<data name="PartitionUnitsRequired" xml:space="preserve"><value>必须提供已验证分区清单或原生分区表容量单位，不能猜测容量。</value></data>
+<data name="PartitionMissing" xml:space="preserve"><value>未找到唯一的 SPRD 分区：{0}。</value></data>
+<data name="InvalidSource" xml:space="preserve"><value>SPRD 数据源不可读、长度变化或意外结束。</value></data>
+<data name="NvUnsupported" xml:space="preserve"><value>当前尚未实现 SPRD NV 专用写入或擦除格式。</value></data>
+<data name="WidthUnsupported" xml:space="preserve"><value>当前 SPRD 32 位配置不能表示此范围，请显式选择已验证的 64 位布局。</value></data>
+<data name="RebootUnsupported" xml:space="preserve"><value>SPRD 仅实现正常重启和关机。</value></data>
+<data name="SparseSeekRequired" xml:space="preserve"><value>SPRD Sparse 写入要求可定位的稳定数据源。</value></data>
+<data name="RawUsbPacketRequired" xml:space="preserve"><value>SPRD Raw USB 下载需要显式提供已确认的 bulk OUT 包大小。</value></data>
+<data name="RawProfileMismatch" xml:space="preserve"><value>SPRD Raw 下载配置与 FDL2 报告的版本或 flush 大小不一致。</value></data>
+<data name="GptSectorDetected" xml:space="preserve"><value>SPRD GPT 逻辑扇区大小：{0} 字节。</value></data>
+<data name="EntryDetectionFailed" xml:space="preserve"><value>无法唯一识别 SPRD 入口阶段；请断开后用显式 BootRom/Fdl1/Fdl2 入口重新连接。</value></data>
+<data name="EntryProbeConnect" xml:space="preserve"><value>SPRD CHECK_BAUD 未收到响应，发送一次 CONNECT 入口查询。</value></data>
+<data name="EntryDetected" xml:space="preserve"><value>SPRD 初始入口阶段：{0}。</value></data>
+<data name="NativeUnitsDetected" xml:space="preserve"><value>已识别原生分区清单，但容量单位未知；请提供已确认的容量单位后重新建立配置。</value></data>
+<data name="PartitionSourceDetected" xml:space="preserve"><value>SPRD 分区容量来源：{0}。</value></data>
+<data name="GptQueryUnavailable" xml:space="preserve"><value>SPRD GPT 前缀查询不可用，READ_END 已确认；查询原生分区清单。</value></data>
+</root>

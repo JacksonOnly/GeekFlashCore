@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+<resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader>
+<data name="InvalidOptions" xml:space="preserve"><value>Invalid SPRD configuration, budget or frame size.</value></data>
+<data name="InvalidPartitions" xml:space="preserve"><value>The SPRD partition list contains duplicate names or invalid capacities.</value></data>
+<data name="InvalidPartitionName" xml:space="preserve"><value>SPRD partition names require 1 to 35 valid UTF-16 characters.</value></data>
+<data name="LoaderRequired" xml:space="preserve"><value>The selected SPRD entry requires host-supplied FDL resources and load addresses.</value></data>
+<data name="InvalidLoader" xml:space="preserve"><value>Invalid SPRD loader length or RAM address range.</value></data>
+<data name="WireFailure" xml:space="preserve"><value>Invalid SPRD response to command 0x{0} (0x{1}); reconnect required.</value></data>
+<data name="ChipUidUnavailable" xml:space="preserve"><value>This SPRD protocol implementation does not provide chip UID queries.</value></data>
+</root>

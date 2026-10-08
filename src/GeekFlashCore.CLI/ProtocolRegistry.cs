@@ -41,7 +41,7 @@ internal sealed record ProtocolRegistration(
 internal static class ProtocolRegistry
 {
     private static readonly IReadOnlyList<ProtocolRegistration> Registrations =
-    [QcomProtocolHostAdapter.Registration, MtkProtocolHostAdapter.Registration];
+    [QcomProtocolHostAdapter.Registration, MtkProtocolHostAdapter.Registration, SprdProtocolHostAdapter.Registration];
 
     public static IReadOnlyList<ProtocolRegistration> All => Registrations;
 

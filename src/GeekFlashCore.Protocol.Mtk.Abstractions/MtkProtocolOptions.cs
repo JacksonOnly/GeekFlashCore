@@ -10,6 +10,12 @@ public sealed record MtkProtocolOptions
     public int OperationTimeoutMilliseconds { get; init; } = 120000;
     public int ResourceTimeoutMilliseconds { get; init; } = 1000 * 60 * 1;
     public int BufferSize { get; init; } = 65536;
+    /// <summary>BROM upload host chunk size, not USB max packet size. Zero uses BufferSize.
+    /// Set 64 together with BromUploadZeroLengthPacket to recover the legacy host write shape.</summary>
+    public int BromUploadChunkSize { get; init; }
+    /// <summary>Explicit compatibility tail ZLP after a BROM DA/certificate/authentication upload.
+    /// Default continuous bulk writes follow Penumbra without an additional ZLP.</summary>
+    public bool BromUploadZeroLengthPacket { get; init; }
     public int MaximumFrameSize { get; init; } = 1048576;
     public int MaximumXmlSize { get; init; } = 65536;
     public int MaximumMessages { get; init; } = 128;
@@ -51,6 +57,8 @@ public sealed record MtkProtocolOptions
             NorEraseBlockSize != 0 && (NorEraseBlockSize & (NorEraseBlockSize - 1)) != 0 ||
             LegacyPmtLayout is { } pmt && !Enum.IsDefined(pmt))
             throw new ArgumentOutOfRangeException(nameof(NorEraseBlockSize));
+        if (BromUploadChunkSize != 0 && (BromUploadChunkSize is < 64 or > 1048576))
+            throw new ArgumentOutOfRangeException(nameof(BromUploadChunkSize));
         if (BufferSize is < 512 or > 1048576 || MaximumFrameSize < BufferSize || MaximumFrameSize > 1048576 ||
             MaximumXmlSize is < 1024 or > 65536 || MaximumXmlSize > MaximumFrameSize || MaximumMessages is < 1 or > 1024 ||
             MaximumProgressEvents is < 1 or > 65536 || MaximumHandshakePrefix is < 0 or > 16 ||

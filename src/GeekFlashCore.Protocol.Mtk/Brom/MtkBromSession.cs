@@ -3,12 +3,16 @@
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Mtk.Internals;
 using GeekFlashCore.Protocol.Mtk.Loaders;
-using Serilog;
 
 namespace GeekFlashCore.Protocol.Mtk.Brom;
 
 internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions options)
 {
+    // Status words are separate from the single-byte command/response catalogs.
+    private const ushort MaximumSuccessfulStatus = 0xff;
+    private const ushort AuthenticationNotRequired = 0x1d0c;
+    private const ushort DownloadAgentRequiresSla = 0x1d0d;
+    private const ushort SlaExchangeSkipped = 0x7017;
     private bool _watchdogDisabled;
     public MtkTargetInfo Probe(bool initializeWatchdog = false, Action? identified = null)
     {
@@ -16,7 +20,7 @@ internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions op
         ReadOnlySpan<byte> handshake = [0xa0, 0x0a, 0x50, 0x05];
         for (int i = 0; i < handshake.Length; i++)
         {
-            Log.ForContext<MtkBromSession>().Debug(Strings.HandshakeStep, i + 1, handshake.Length);
+            wire.Logger.Debug(Strings.HandshakeStep, i + 1, handshake.Length);
             wire.WriteByte(handshake[i]);
             byte response = wire.ReadByte();
             if (i == 0 && response == 0xa0)
@@ -69,6 +73,7 @@ internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions op
         if (command is not (MtkBromCommand.SendCertificate or MtkBromCommand.SendAuthentication) ||
             data.IsEmpty || paddedLength > options.MaximumFrameSize)
             throw new MtkResourceException("authentication");
+        MtkDiagnostics.Summary(wire.Logger, Strings.BromResourceStarted, command);
         byte[] buffer = ArrayPool<byte>.Shared.Rent(paddedLength);
         try
         {
@@ -78,15 +83,21 @@ internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions op
             Command(command);
             wire.Echo32((uint)paddedLength);
             ushort status = wire.Read16();
-            if (command == MtkBromCommand.SendAuthentication && status == 0x1d0c)
+            if (command == MtkBromCommand.SendAuthentication && status == AuthenticationNotRequired)
+            {
+                wire.TraceStatus(status, true);
+                wire.Check();
+                MtkDiagnostics.Summary(wire.Logger, Strings.SecurityExchangeSkipped, command, status);
                 return;
+            }
             CheckStatusValue(status);
             using var source = new MemoryStream(buffer, 0, paddedLength, false);
             ushort checksum = UploadBytes(source, paddedLength);
             ushort actual = wire.Read16();
             CheckStatus();
-            if (actual != checksum)
-                throw wire.Failure(actual);
+            Checksum(checksum, actual);
+            wire.Check();
+            MtkDiagnostics.Summary(wire.Logger, Strings.BromResourceCompleted, command);
         }
         finally { ArrayPool<byte>.Shared.Return(buffer, true); }
     }
@@ -94,8 +105,12 @@ internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions op
     {
         Command(MtkBromCommand.SerialLinkAuthentication);
         ushort status = wire.Read16();
-        if (status == 0x7017)
+        if (status == SlaExchangeSkipped)
+        {
+            wire.TraceStatus(status, true);
+            MtkDiagnostics.Summary(wire.Logger, Strings.SecurityExchangeSkipped, MtkBromCommand.SerialLinkAuthentication, status);
             return null;
+        }
         CheckStatusValue(status);
         uint size = wire.Read32();
         if (size is < 16 or > 4096)
@@ -124,7 +139,8 @@ internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions op
         CheckStatus();
         wire.Write(response);
         uint status = wire.Read32();
-        if (status > 0xff)
+        wire.TraceStatus(status, status <= MaximumSuccessfulStatus);
+        if (status > MaximumSuccessfulStatus)
             throw wire.Failure(status);
     }
     public MtkWatchdogState DisableWatchdog(MtkTargetInfo target)
@@ -146,7 +162,7 @@ internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions op
     }
     private ushort UploadBytes(Stream source, long length)
     {
-        const int uploadPacketSize = 64;
+        int uploadPacketSize = options.BromUploadChunkSize == 0 ? options.BufferSize : options.BromUploadChunkSize;
         byte[] buffer = ArrayPool<byte>.Shared.Rent(uploadPacketSize);
         ushort checksum = 0;
         bool low = true;
@@ -174,9 +190,16 @@ internal sealed partial class MtkBromSession(MtkWire wire, MtkProtocolOptions op
                 checksum ^= first;
                 wire.WriteByte(0);
             }
-            wire.ZeroLengthPacket();
+            if (options.BromUploadZeroLengthPacket)
+                wire.ZeroLengthPacket();
             return checksum;
         }
         finally { ArrayPool<byte>.Shared.Return(buffer, true); }
+    }
+    private void Checksum(ushort expected, ushort actual)
+    {
+        wire.Logger.Debug(Strings.ChecksumValidated, wire.Stage, wire.Command, expected == actual);
+        if (expected != actual)
+            throw wire.Failure(); // A checksum is not a status code and must not enter diagnostics as one.
     }
 }

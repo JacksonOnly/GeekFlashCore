@@ -9,16 +9,21 @@ namespace GeekFlashCore.Protocol.Mtk.Brom;
 
 internal sealed partial class MtkBromSession
 {
-    private void Command(MtkBromCommand command) => wire.EchoByte((byte)command);
+    private void Command(MtkBromCommand command)
+    {
+        wire.TraceCommand((byte)command, command.ToString());
+        wire.EchoByte((byte)command);
+    }
     private byte Version(MtkBromCommand command)
     {
-        wire.Command = (byte)command;
+        wire.TraceCommand((byte)command, command.ToString());
         wire.WriteByte((byte)command);
         return wire.ReadByte();
     }
-    private void CheckStatus(ushort maximum = 0xff) => CheckStatusValue(wire.Read16(), maximum);
-    private void CheckStatusValue(ushort status, ushort maximum = 0xff)
+    private void CheckStatus(ushort maximum = MaximumSuccessfulStatus) => CheckStatusValue(wire.Read16(), maximum);
+    private void CheckStatusValue(ushort status, ushort maximum = MaximumSuccessfulStatus)
     {
+        wire.TraceStatus(status, status <= maximum);
         if (status > maximum)
             throw wire.Failure(status);
     }
@@ -27,6 +32,7 @@ internal sealed partial class MtkBromSession
         Span<byte> bytes = stackalloc byte[2];
         wire.Read(bytes);
         ushort status = BinaryPrimitives.ReadUInt16LittleEndian(bytes);
+        wire.TraceStatus(status, status == 0);
         if (status != 0)
             throw wire.Failure(status);
     }
@@ -250,8 +256,11 @@ internal sealed partial class MtkBromSession
             return;
         try
         {
+            MtkDiagnostics.Summary(wire.Logger, Strings.AuthenticationStarted, MtkAuthenticationKind.BromSla);
             using var response = signer(MtkAuthenticationKind.BromSla, challenge);
             FinishSla(response.Memory.Span);
+            wire.Check();
+            MtkDiagnostics.Summary(wire.Logger, Strings.AuthenticationEvidence, MtkAuthenticationKind.BromSla, MtkDaAuthenticationState.Authenticated);
         }
         finally { CryptographicOperations.ZeroMemory(challenge); }
     }
@@ -265,13 +274,18 @@ internal sealed partial class MtkBromSession
     public bool BeginDownloadAgent(uint address, uint size, uint signatureLength)
     {
         DownloadRange(address, size, signatureLength);
+        MtkDiagnostics.Summary(wire.Logger, Strings.BromUploadStarted, size, address,
+            options.BromUploadChunkSize == 0 ? options.BufferSize : options.BromUploadChunkSize, options.BromUploadZeroLengthPacket);
         Command(MtkBromCommand.SendDownloadAgent);
         wire.Echo32(address);
         wire.Echo32(checked(size + (size & 1)));
         wire.Echo32(signatureLength);
         ushort status = wire.Read16();
-        if (status == 0x1d0d)
+        if (status == DownloadAgentRequiresSla)
+        {
+            wire.TraceStatus(status, true);
             return true;
+        }
         CheckStatusValue(status);
         return false;
     }
@@ -279,8 +293,9 @@ internal sealed partial class MtkBromSession
     {
         ushort checksum = UploadBytes(source, size), actual = wire.Read16();
         CheckStatus();
-        if (checksum != actual)
-            throw wire.Failure(actual);
+        Checksum(checksum, actual);
+        wire.Check();
+        MtkDiagnostics.Summary(wire.Logger, Strings.BromUploadCompleted, size);
     }
     public void SendDownloadAgent(uint address, uint size, uint signatureLength, IDataSource source,
         Func<MtkAuthenticationKind, ReadOnlyMemory<byte>, MtkSensitiveBuffer>? signer)
@@ -300,6 +315,7 @@ internal sealed partial class MtkBromSession
     {
         if (address == 0)
             throw new ArgumentOutOfRangeException(nameof(address));
+        MtkDiagnostics.Summary(wire.Logger, Strings.BromJump, address);
         Command(is64Bit ? MtkBromCommand.JumpDownloadAgent64 : MtkBromCommand.JumpDownloadAgent);
         wire.Echo32(address);
         if (is64Bit)

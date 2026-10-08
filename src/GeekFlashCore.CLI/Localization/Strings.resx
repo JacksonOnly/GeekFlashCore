@@ -268,6 +268,10 @@ group-remove 仅允许空分组；默认分组受保护。示例：lp rename . s
   <data name="Cli_HelpMtk" xml:space="preserve"><value>MTK 连接：
   --protocol mtk --loader DA.bin
   --mtk-preloader preloader.bin
+  --mtk-brom-chunk bytes  BROM 宿主上传块（64～1048576，默认 65536）
+  --mtk-brom-zlp          显式发送兼容尾部 ZLP（默认不发送）
+  恢复旧上传形态：--mtk-brom-chunk 64 --mtk-brom-zlp
+  MTK 默认显示阶段/传输摘要，--verbose 追加详细诊断；--log-file 指定完整诊断文件。
   --mtk-da-mode auto|legacy|xflash|xml
   --mtk-auth-file auth.bin
   --mtk-cert cert.bin
@@ -457,4 +461,5 @@ Cache 命令阻止：{8}</value></data>
   <data name="Cli_MtkInitialProbeRetry" xml:space="preserve"><value>MTK 初始接入未完成，已释放旧连接，继续等待设备；按 Ctrl+C 停止。</value></data>
   <data name="Cli_MtkUsbDiscoveryRetry" xml:space="preserve"><value>MTK USB 枚举或打开未完成，继续等待设备；按 Ctrl+C 停止，诊断原因见文件日志。</value></data>
   <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>MTK 当前操作已停止，会话已失效。请重新连接设备；不会自动重试认证、DA 或读写命令。</value></data>
+  <data name="Cli_MtkBromChunkInvalid" xml:space="preserve"><value>BROM 宿主上传块必须为 64～1048576 字节。</value></data>
 </root>

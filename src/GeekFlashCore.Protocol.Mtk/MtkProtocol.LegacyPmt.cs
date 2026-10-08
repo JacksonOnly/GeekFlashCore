@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using GeekFlashCore.Protocol.Abstractions;
-using Serilog;
 
 namespace GeekFlashCore.Protocol.Mtk;
 
@@ -29,7 +28,7 @@ public sealed partial class MtkProtocol
                     throw new MtkResourceException("disk PMT copies/version");
             }
             var partitions = ParseDiskPmt(bytes, region, mirror);
-            if (mirror) Log.ForContext<MtkProtocol>().Warning(Strings.PmtMirrorSelected, region.Name);
+            if (mirror) _logger.ForContext("MtkSummary", true).Warning(Strings.PmtMirrorSelected, region.Name);
             return partitions;
         }
         finally { CryptographicOperations.ZeroMemory(bytes); }

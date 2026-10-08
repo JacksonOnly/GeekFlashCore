@@ -13,12 +13,13 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
     private const uint ProgressComplete = 0x40040005;
     private const int EfuseParameterSize = 0xf8;
     private const int MaximumEfuseSize = 0x5000;
+    private const int InitialWritePacketLength = 0x8000;
 
     public MtkDaKind Kind => MtkDaKind.XFlash;
     public void Command(uint command)
     {
-        wire.Command = command;
-        wire.SendFrame(MtkWire.Le32(command));
+        wire.TraceCommand(command, Enum.IsDefined((MtkXFlashCommand)command) ? ((MtkXFlashCommand)command).ToString() : "Custom");
+        wire.SendUInt32Frame(command);
         wire.ReadStatus();
     }
     private void Command(MtkXFlashCommand command) => Command((uint)command);
@@ -49,15 +50,20 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
     public void Initialize(MtkDaImage image, MtkEmiImage? emi, MtkTargetInfo target,
         Func<MtkExploitStage, MtkDaImage> checkpoint)
     {
+        // Pre-negotiation XFlash FLOW payload limit; BROM and other DA dialects remain independent.
+        wire.WritePacketLength = Math.Min(options.BufferSize, InitialWritePacketLength);
         if (wire.ReadByte() != 0xc0)
             throw wire.Failure();
         wire.Stage = MtkBootStage.Da1;
-        wire.SendFrame(MtkWire.Le32((uint)MtkXFlashCommand.SyncSignal));
+        wire.TraceCommand((uint)MtkXFlashCommand.SyncSignal, nameof(MtkXFlashCommand.SyncSignal));
+        wire.SendUInt32Frame((uint)MtkXFlashCommand.SyncSignal);
         byte[] environment = new byte[20];
         BinaryPrimitives.WriteUInt32LittleEndian(environment, 2);
         BinaryPrimitives.WriteUInt32LittleEndian(environment.AsSpan(4), 1);
         BinaryPrimitives.WriteUInt32LittleEndian(environment.AsSpan(8), OperatingSystem.IsWindows() ? 0u : 1u);
+        wire.TraceCommand((uint)MtkXFlashCommand.SetupEnvironment, nameof(MtkXFlashCommand.SetupEnvironment));
         Parameters(MtkWire.Le32((uint)MtkXFlashCommand.SetupEnvironment), environment);
+        wire.TraceCommand((uint)MtkXFlashCommand.SetupHwInitParams, nameof(MtkXFlashCommand.SetupHwInitParams));
         Parameters(MtkWire.Le32((uint)MtkXFlashCommand.SetupHwInitParams), new byte[4]);
         wire.ReadStatus((uint)MtkXFlashCommand.SyncSignal);
         byte[] agent = Control(MtkXFlashCommand.GetConnectionAgent);
@@ -70,11 +76,14 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
             if (emi.Source.Length <= 0 || emi.Source.Length > options.MaximumFrameSize)
                 throw new MtkResourceException("EMI size");
             using Stream emiStream = emi.Source.OpenStream();
-            byte[] bytes = new byte[(int)emi.Source.Length];
-            emiStream.ReadExactly(bytes);
+            MtkDiagnostics.Summary(wire.Logger, Strings.EmiStarted, Kind, emi.Source.Length);
             Command(MtkXFlashCommand.InitExtRam);
-            Parameters(MtkWire.Le32((uint)bytes.Length), bytes);
+            wire.SendUInt32Frame((uint)emi.Source.Length);
+            SendStreamFrame(emiStream, emi.Source.Length);
+            wire.ReadStatus(); // The parameter group, not each frame, is acknowledged.
+            MtkDiagnostics.Summary(wire.Logger, Strings.EmiCompleted, Kind);
         }
+        else MtkDiagnostics.Summary(wire.Logger, Strings.EmiNotRequired, Kind);
         Control(MtkXFlashCommand.SetChecksumLevel, new byte[4]);
         QueryPacketLength();
         image = checkpoint(MtkExploitStage.Da1Ready);
@@ -129,6 +138,7 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
             throw wire.Failure();
         wire.WritePacketLength = (int)Math.Min(write, (uint)options.BufferSize);
         wire.ReadPacketLength = (int)Math.Min(read, (uint)options.MaximumFrameSize);
+        wire.Logger.Debug(Strings.PacketLengths, wire.WritePacketLength, wire.ReadPacketLength, write, read);
     }
     public MtkStorageInfo GetStorage()
     {
@@ -149,19 +159,25 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
     }
     public void Read(MtkStorageRegion region, long offset, long length, Stream output)
     {
+        wire.TraceStorage(MtkTransferKind.Read, region, offset, length);
         Command(MtkXFlashCommand.ReadData);
         Parameters(FlashParams(region, offset, length));
         wire.ReadStatus();
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(options.MaximumFrameSize);
+        ReceiveStream(output, length);
+    }
+    private void ReceiveStream(Stream output, long length)
+    {
+        int packetLength = Math.Min(wire.ReadPacketLength, options.MaximumFrameSize);
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(packetLength);
         try
         {
             long done = 0;
             while (done < length)
             {
-                int n = wire.ReadFrame(buffer.AsSpan(0, (int)Math.Min(options.MaximumFrameSize, length - done)));
+                int n = wire.ReadFrame(buffer.AsSpan(0, (int)Math.Min(packetLength, length - done)));
                 output.Write(buffer.AsSpan(0, n));
                 done += n;
-                wire.SendFrame(new byte[4]);
+                wire.SendUInt32Frame(0);
                 wire.ReadStatus();
             }
         }
@@ -170,8 +186,13 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
     public void Write(MtkStorageRegion region, long offset, long length, Stream input)
     {
         if (!region.CanWrite) throw new MtkCapabilityException("NAND logical writes");
+        wire.TraceStorage(MtkTransferKind.Write, region, offset, length);
         Command(MtkXFlashCommand.WriteData);
         Parameters(FlashParams(region, offset, length));
+        SendStream(input, length);
+    }
+    private void SendStream(Stream input, long length)
+    {
         byte[] buffer = ArrayPool<byte>.Shared.Rent(wire.WritePacketLength);
         try
         {
@@ -180,8 +201,8 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
                 wire.Check();
                 int n = (int)Math.Min(wire.WritePacketLength, length - done);
                 input.ReadExactly(buffer.AsSpan(0, n));
-                wire.SendFrame(new byte[4]);
-                wire.SendFrame(MtkWire.Le32(MtkWire.Sum(buffer.AsSpan(0, n))));
+                wire.SendUInt32Frame(0);
+                wire.SendUInt32Frame(MtkWire.Sum(buffer.AsSpan(0, n)));
                 wire.SendFrame(buffer.AsSpan(0, n));
                 wire.ReadStatus();
                 done += n;
@@ -196,6 +217,7 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
             throw new MtkCapabilityException("erase geometry/policy");
         if (offset % region.EraseBlockSize != 0 || length % region.EraseBlockSize != 0)
             throw new ArgumentOutOfRangeException(nameof(length));
+        wire.TraceStorage(MtkTransferKind.Erase, region, offset, length);
         DownloadInfo(MtkXFlashCommand.StartDlInfo);
         Command(MtkXFlashCommand.Format);
         Parameters(FlashParams(region, offset, length, erase: true));
@@ -217,7 +239,7 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         byte[] result = wire.ReadSmallFrame(Math.Min(options.MaximumFrameSize, MaximumEfuseSize));
         try
         {
-            wire.SendFrame(new byte[4]);
+            wire.SendUInt32Frame(0);
             wire.ReadStatus();
             return result;
         }
@@ -252,20 +274,8 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         ulong size = BinaryPrimitives.ReadUInt64LittleEndian(bytes);
         if (size == 0 || size > (ulong)maximum)
             throw new MtkResourceException("partition upload limit");
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(options.MaximumFrameSize);
-        try
-        {
-            for (long done = 0; done < (long)size;)
-            {
-                int n = wire.ReadFrame(buffer.AsSpan(0, (int)Math.Min(options.MaximumFrameSize, (long)size - done)));
-                destination.Write(buffer.AsSpan(0, n));
-                wire.SendFrame(new byte[4]);
-                wire.ReadStatus();
-                done += n;
-            }
-            return (long)size;
-        }
-        finally { ArrayPool<byte>.Shared.Return(buffer, true); }
+        ReceiveStream(destination, (long)size);
+        return (long)size;
     }
     public void WriteNamed(string name, Stream source, long length)
     {
@@ -274,24 +284,8 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         byte[] size = new byte[8];
         BinaryPrimitives.WriteUInt64LittleEndian(size, (ulong)length);
         Parameters(System.Text.Encoding.ASCII.GetBytes(name), size);
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(wire.WritePacketLength);
-        try
-        {
-            for (long done = 0; done < length;)
-            {
-                wire.Check();
-                int n = (int)Math.Min(wire.WritePacketLength, length - done);
-                source.ReadExactly(buffer.AsSpan(0, n));
-                wire.SendFrame(new byte[4]);
-                wire.SendFrame(MtkWire.Le32(MtkWire.Sum(buffer.AsSpan(0, n))));
-                wire.SendFrame(buffer.AsSpan(0, n));
-                wire.ReadStatus();
-                done += n;
-            }
-            wire.ReadStatus();
-            DownloadInfo(MtkXFlashCommand.EndDlInfo);
-        }
-        finally { ArrayPool<byte>.Shared.Return(buffer, true); }
+        SendStream(source, length);
+        DownloadInfo(MtkXFlashCommand.EndDlInfo);
     }
     public void EraseNamed(string name)
     {
@@ -315,7 +309,8 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
             uint value = BinaryPrimitives.ReadUInt32LittleEndian(percent);
             if (value > 100)
                 throw wire.Failure();
-            wire.SendFrame(new byte[4]);
+            wire.SendUInt32Frame(0);
+            wire.Logger.Debug(Strings.WireProgress, wire.Stage, wire.Command, value);
             wire.ProgressPercent?.Invoke((int)value);
         }
         throw wire.Failure();

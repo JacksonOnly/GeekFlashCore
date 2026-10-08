@@ -1,7 +1,6 @@
 using GeekFlashCore.Gpt;
 using GeekFlashCore.Gpt.Abstractions;
 using GeekFlashCore.Shared.Utilities;
-using Serilog;
 
 namespace GeekFlashCore.Protocol.Mtk;
 
@@ -41,7 +40,7 @@ public sealed partial class MtkProtocol
         try
         {
             var entries = ReadGptCopy(region, backup, true);
-            Log.ForContext<MtkProtocol>().Warning(Strings.GptBackupSelected, region.Name);
+            _logger.ForContext("MtkSummary", true).Warning(Strings.GptBackupSelected, region.Name);
             return entries;
         }
         catch (GptException) { throw new MtkResourceException("GPT copies"); }

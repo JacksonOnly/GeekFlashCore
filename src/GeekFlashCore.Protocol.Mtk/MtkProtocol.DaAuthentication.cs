@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using GeekFlashCore.Protocol.Mtk.Da;
+using GeekFlashCore.Protocol.Mtk.Internals;
 
 namespace GeekFlashCore.Protocol.Mtk;
 
@@ -17,6 +18,7 @@ public sealed partial class MtkProtocol
                 _da is LegacySession ? MtkDaAuthenticationState.Unsupported : MtkDaAuthenticationState.NotRequired;
             if (kind == MtkAuthenticationKind.Da1Sla) _da1Authentication = evidence;
             else _da2Authentication = evidence;
+            MtkDiagnostics.Summary(_logger, Strings.AuthenticationEvidence, kind, evidence);
         }
         return challenge;
     }
@@ -27,6 +29,7 @@ public sealed partial class MtkProtocol
         try
         {
             State(MtkSessionState.Authenticating);
+            MtkDiagnostics.Summary(_logger, Strings.AuthenticationStarted, kind);
             if (resources.SynchronousSigner is null) throw new MtkResourceException("synchronous DA SLA signer");
             _wire.Check();
             using (var response = resources.SynchronousSigner(kind, challenge))
@@ -36,6 +39,8 @@ public sealed partial class MtkProtocol
             }
             if (kind == MtkAuthenticationKind.Da1Sla) _da1Authentication = MtkDaAuthenticationState.Authenticated;
             else _da2Authentication = MtkDaAuthenticationState.Authenticated;
+            _wire.Check();
+            MtkDiagnostics.Summary(_logger, Strings.AuthenticationEvidence, kind, MtkDaAuthenticationState.Authenticated);
         }
         finally { CryptographicOperations.ZeroMemory(challenge); }
     }

@@ -21,8 +21,17 @@ internal static class CommandLine
             if (arg == "--oplus-resume") { builder = builder with { OplusResume = true }; continue; }
             if (arg == "--mtk-nand-write") { builder = builder with { MtkNandWrite = true }; continue; }
             if (arg == "--mtk-iot") { builder = builder with { MtkIoT = true }; continue; }
+            if (arg == "--mtk-brom-zlp") { builder = builder with { MtkBromZeroLengthPacket = true }; continue; }
             string? value = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..] : null;
             string name = arg.Contains('=') ? arg[..arg.IndexOf('=')] : arg;
+            if (name == "--mtk-brom-chunk")
+            {
+                value ??= i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] :
+                    throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
+                if (string.IsNullOrWhiteSpace(value)) throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
+                builder = builder with { MtkBromChunkSize = checked((int)CommandSyntax.Number(value)) };
+                continue;
+            }
             if (name is "--sprd-fdl2" or "--sprd-fdl1-address" or "--sprd-fdl2-address" or "--sprd-entry" or "--sprd-partition-unit" or "--sprd-length" or
                 "--sprd-partition-source" or "--sprd-sector-size" or "--sprd-gpt-bytes" or "--sprd-raw-mode" or "--sprd-raw-flush" or "--sprd-raw-usb-packet")
             {

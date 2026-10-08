@@ -12,13 +12,14 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
     public MtkDaKind Kind => MtkDaKind.Legacy;
     private void SendCommand(MtkLegacyCommand command)
     {
-        wire.Command = (byte)command;
+        wire.TraceCommand((byte)command, command.ToString());
         wire.WriteByte((byte)command);
     }
     private void Ack(MtkLegacyResponse expected = MtkLegacyResponse.Ack) => Ack((byte)expected);
     private void Ack(byte expected)
     {
         byte actual = wire.ReadByte();
+        wire.TraceStatus(actual, actual == expected);
         if (actual != expected)
             throw wire.Failure(actual);
     }
@@ -92,6 +93,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
             InitializeEmi(emi, target);
         else if (dramStatus != 0)
             throw wire.Failure(dramStatus);
+        if (dramStatus == 0) MtkDiagnostics.Summary(wire.Logger, Strings.EmiNotRequired, Kind);
         image = checkpoint(MtkExploitStage.Da1Ready);
         var region = image.Entry.Regions[image.Entry.EntryRegionIndex + 1];
         using Stream source = new MtkDataWindow(image.Source, region.FileOffset, region.Length).OpenStream();
@@ -174,6 +176,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
         if (emi is null || emi.Version is not (0 or 0x0b or 0x0c or 0x0d or 0x0f or 0x10 or 0x11 or 0x14 or 0x15) ||
             emi.Source.Length is <= 0 or > 1048576)
             throw new MtkResourceException("Legacy EMI");
+        MtkDiagnostics.Summary(wire.Logger, Strings.EmiStarted, Kind, emi.Source.Length);
         SendCommand(MtkLegacyCommand.InitExtRam);
         Write32(emi.Version == 0 ? uint.MaxValue : emi.Version);
         Ack();
@@ -202,6 +205,8 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
         Discard(10);
         if (emi.Version == 0x0d)
             Discard(20);
+        wire.Check();
+        MtkDiagnostics.Summary(wire.Logger, Strings.EmiCompleted, Kind);
     }
     public byte[]? GetAuthenticationChallenge() => null; // Authentication completed before Legacy DA1.
     public void Authenticate(ReadOnlySpan<byte> response) => throw new MtkCapabilityException("Legacy DA SLA");
@@ -272,6 +277,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
         if(region.Kind==MtkStorageKind.Nand) { ReadNand(offset,length,output,false);return; }
         if (region.Kind == MtkStorageKind.Sdmmc)
             throw new MtkCapabilityException("Legacy SDMMC read");
+        wire.TraceStorage(MtkTransferKind.Read, region, offset, length);
         if(!options.LegacyIoT)CheckUsbSpeed();
         if (region.Kind == MtkStorageKind.Emmc) Switch(region);
         Header(MtkLegacyCommand.ReadData, region, offset, length, false);
@@ -283,8 +289,10 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
                 int n = (int)Math.Min(options.LegacyIoT && region.Kind==MtkStorageKind.Nor?4096:options.BufferSize, length);
                 wire.Read(buffer.AsSpan(0, n));
                 ushort sum = wire.Read16();
-                if (sum != MtkWire.Sum(buffer.AsSpan(0, n)))
-                    throw wire.Failure(sum);
+                bool valid = sum == MtkWire.Sum(buffer.AsSpan(0, n));
+                wire.Logger.Debug(Strings.ChecksumValidated, wire.Stage, wire.Command, valid);
+                if (!valid)
+                    throw wire.Failure();
                 output.Write(buffer.AsSpan(0, n));
                 wire.WriteByte((byte)MtkLegacyResponse.Ack);
                 length -= n;
@@ -295,6 +303,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
     public void Write(MtkStorageRegion region, long offset, long length, Stream input)
     {
         if(!region.CanWrite)throw new MtkCapabilityException("NAND logical writes");
+        wire.TraceStorage(MtkTransferKind.Write, region, offset, length);
         Header(MtkLegacyCommand.WriteData, region, offset, length, true);
         byte[] buffer = ArrayPool<byte>.Shared.Rent(options.BufferSize);
         Span<byte> b = stackalloc byte[2];
@@ -320,9 +329,10 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
     {
         if (region.Kind != MtkStorageKind.Emmc)
             throw new MtkCapabilityException("Legacy storage erase");
+        wire.TraceStorage(MtkTransferKind.Erase, region, offset, length);
         CheckUsbSpeed();
         Switch(region);
-        wire.Command = (byte)MtkLegacyCommand.Format;
+        wire.TraceCommand((byte)MtkLegacyCommand.Format, nameof(MtkLegacyCommand.Format));
         wire.Write([(byte)MtkLegacyCommand.Format, 2, 0, 0, 0]);
         Span<byte> p = stackalloc byte[16];
         BinaryPrimitives.WriteUInt64BigEndian(p, (ulong)offset);
@@ -337,6 +347,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
             if (percent > 100)
                 throw wire.Failure();
             wire.WriteByte((byte)MtkLegacyResponse.Ack);
+            wire.Logger.Debug(Strings.WireProgress, wire.Stage, wire.Command, percent);
             wire.ProgressPercent?.Invoke(percent);
             if (percent == 100)
             {

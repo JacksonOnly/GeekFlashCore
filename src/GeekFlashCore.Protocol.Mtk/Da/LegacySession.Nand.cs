@@ -30,7 +30,8 @@ internal sealed partial class LegacySession
             throw new ArgumentOutOfRangeException(nameof(length));
         if (!options.LegacyIoT)
             CheckUsbSpeed();
-        wire.Command = (byte)MtkLegacyCommand.ReadNand;
+        wire.TraceStorage(MtkTransferKind.Read, GetStorage().Regions.Single(r => r.WireId == GetStorage().UserRegionId), offset, length);
+        wire.TraceCommand((byte)MtkLegacyCommand.ReadNand, nameof(MtkLegacyCommand.ReadNand));
         wire.Write([(byte)MtkLegacyCommand.ReadNand, 0x0c, 0, 1]);
         Write32((uint)offset);
         Write32((uint)length);
@@ -51,8 +52,10 @@ internal sealed partial class LegacySession
                 int n = (int)Math.Min(packet, rawLength - done);
                 wire.Read(buffer.AsSpan(0, n));
                 ushort sum = wire.Read16();
-                if (sum != MtkWire.Sum(buffer.AsSpan(0, n)))
-                    throw wire.Failure(sum);
+                bool valid = sum == MtkWire.Sum(buffer.AsSpan(0, n));
+                wire.Logger.Debug(Strings.ChecksumValidated, wire.Stage, wire.Command, valid);
+                if (!valid)
+                    throw wire.Failure();
                 if (includeSpare)
                     output.Write(buffer.AsSpan(0, n));
                 else

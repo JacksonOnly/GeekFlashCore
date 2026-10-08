@@ -43,6 +43,8 @@ internal static class MtkProtocolHostAdapter
         var kind = DaKind(o.MtkDaMode);
         _ = PmtLayout(o.MtkPmtLayout);
         if(!Enum.IsDefined(o.MtkExtensionAbi))throw new ArgumentException(Strings.Cli_MtkExtensionAbiInvalid);
+        if (o.MtkBromChunkSize is < 64 or > 1048576)
+            throw new ArgumentException(Strings.Cli_MtkBromChunkInvalid);
         if (o.MtkNorEraseBlockSize < 0 || o.MtkNorEraseBlockSize > 16 * 1024 * 1024 ||
             (o.MtkNorEraseBlockSize & (o.MtkNorEraseBlockSize - 1)) != 0 || o.MtkNandCapacity is <= 0 ||
             o.MtkIoT && kind is not (null or MtkDaKind.Legacy))
@@ -136,6 +138,8 @@ internal static class MtkProtocolHostAdapter
             EnableNandLogicalWrites = o.MtkNandWrite,
             NandLogicalCapacity = o.MtkNandCapacity,
             LegacyIoT = o.MtkIoT,
+            BromUploadChunkSize = o.MtkBromChunkSize ?? 0,
+            BromUploadZeroLengthPacket = o.MtkBromZeroLengthPacket,
             NorEraseBlockSize = o.MtkNorEraseBlockSize,
             LegacyPmtLayout = PmtLayout(o.MtkPmtLayout),
             ReadTimeoutMilliseconds = o.ReadTimeout,

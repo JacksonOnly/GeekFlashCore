@@ -2,6 +2,7 @@ using GeekFlashCore.Android.Sparse;
 using GeekFlashCore.BlockDevice;
 using GeekFlashCore.BlockDevice.Abstractions;
 using GeekFlashCore.Protocol.Abstractions;
+using GeekFlashCore.Protocol.Mtk.Internals;
 
 namespace GeekFlashCore.Protocol.Mtk;
 
@@ -41,11 +42,12 @@ public sealed partial class MtkProtocol
             var region = Range(range);
             if (!destination.OutputStream.CanWrite)
                 throw new ArgumentException(nameof(destination));
+            var trace = StartTransfer(MtkTransferKind.Read, range.RegionId, range.Offset, range.Length);
             var tracker = new TransferProgress(progress, range.Length, "read");
             tracker.Report(0, ProgressPhase.Started);
             using var output = new ProgressStream(destination.OutputStream, n => tracker.Report(n));
             _da!.Read(region, range.Offset, range.Length, output);
-            _wire.Check();
+            CompleteTransfer(trace);
             tracker.Report(range.Length, ProgressPhase.Completed);
             return destination;
         }, ct));
@@ -66,6 +68,7 @@ public sealed partial class MtkProtocol
             Stream content = prefix ?? input;
             long written;
             TransferProgress tracker;
+            MtkTransferLog trace;
             if (SparseImageParser.IsSparse(content))
             {
                 using var block = new StreamBlockDevice(content, source.Source.Length, DeviceOwnership.Borrow);
@@ -77,6 +80,7 @@ public sealed partial class MtkProtocol
                 // Validate every expanded region before the first storage write.
                 foreach (var part in data)
                     _ = Range(new(range.RegionId, checked(range.Offset + part.StartBlock * (long)sparse.Header.BlockSize), part.Length));
+                trace = StartTransfer(MtkTransferKind.Write, range.RegionId, range.Offset, sparse.ExpandedLength);
                 tracker = new(progress, sparse.ExpandedLength, "write");
                 tracker.Report(0, ProgressPhase.Started);
                 foreach (var part in data)
@@ -95,6 +99,7 @@ public sealed partial class MtkProtocol
                 long padded = checked((written + region.BlockSize - 1) / region.BlockSize * region.BlockSize);
                 if (padded > range.Length)
                     throw new ArgumentOutOfRangeException(nameof(source));
+                trace = StartTransfer(MtkTransferKind.Write, range.RegionId, range.Offset, padded);
                 tracker = new(progress, written, "write");
                 tracker.Report(0, ProgressPhase.Started);
                 using var tracked = new ProgressStream(content, n => tracker.Report(n));
@@ -102,7 +107,7 @@ public sealed partial class MtkProtocol
                 _da!.Write(region, range.Offset, padded, padding);
             }
             _partitions = null;
-            _wire.Check();
+            CompleteTransfer(trace);
             tracker.Report(written, ProgressPhase.Completed);
             return written;
         }, ct));
@@ -111,12 +116,13 @@ public sealed partial class MtkProtocol
         Task.FromResult(Execute(() =>
         {
             var range = Resolve(target); var region = Range(range);
+            var trace = StartTransfer(MtkTransferKind.Erase, range.RegionId, range.Offset, range.Length);
             var tracker = new TransferProgress(progress, range.Length, "erase");
             tracker.Report(0, ProgressPhase.Started);
             _wire.ProgressPercent = percent => tracker.Report(checked(range.Length / 100 * percent + range.Length % 100 * percent / 100));
             try { _da!.Erase(region, range.Offset, range.Length); }
             finally { _wire.ProgressPercent = null; }
-            _partitions = null; _wire.Check();
+            _partitions = null; CompleteTransfer(trace);
             tracker.Report(range.Length, ProgressPhase.Completed); return true;
         }, ct));
     public Task<IReadOnlyList<PartitionInfo>> GetPartitionsAsync(IProgress<ProgressRecord>? progress = null, CancellationToken ct = default) =>

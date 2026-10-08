@@ -25,6 +25,8 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly AsyncLocal<bool> _inside = new();
     private readonly MtkWire _wire;
+    private readonly ILogger _logger;
+    private static long _nextSessionId;
     private readonly MtkBromSession _brom;
     private IMtkDaSession? _da;
     private MtkStorageInfo? _storage;
@@ -63,7 +65,8 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         _signer = authenticationProvider;
         _resources = resources;
         _leaveTransportOpen = leaveTransportOpen;
-        _wire = new(transport, _options);
+        _logger = Log.ForContext<MtkProtocol>().ForContext("MtkSessionId", Interlocked.Increment(ref _nextSessionId));
+        _wire = new(transport, _options, _logger);
         _brom = new(_wire, _options);
     }
     /// <summary>Preserves the original single-strategy USB factory signature for compiled hosts.</summary>
@@ -104,7 +107,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     private void State(MtkSessionState state)
     {
         _state = state;
-        Log.ForContext<MtkProtocol>().Information(Strings.Phase, state);
+        MtkDiagnostics.Summary(_logger.ForContext("SessionState", state), Strings.SessionPhase, MtkDiagnostics.Phase(state));
     }
     private IDisposable Enter(CancellationToken token)
     {
@@ -140,7 +143,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 _wire.Check();
             return result;
         }
-        catch { if (_wire.HasIoAttempted && _state != MtkSessionState.Faulted) Fault(); throw; }
+        catch (Exception ex) { if (_wire.HasIoAttempted && _state != MtkSessionState.Faulted) Fault(ex); throw; }
     }
     private void Ready()
     {
@@ -170,7 +173,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         }
         catch { _state = MtkSessionState.Disconnected; throw; }
         _wire.Stage = MtkBootStage.Unknown;
-        _wire.Command = 0;
+        _wire.TraceCommand(0, "Handshake");
         _da1Authentication = _da2Authentication = MtkDaAuthenticationState.NotQueried;
         State(MtkSessionState.Handshaking);
         if (_transport.ControlInterfaceNumber is { } controlInterface)
@@ -178,7 +181,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         _target = _brom.Probe(initializeWatchdog, () => _hasIdentifiedTarget = true);
         _initialTarget = _target;
         State(MtkSessionState.Probed);
-        Log.ForContext<MtkProtocol>().Information(Strings.ProbeSnapshot,
+        _logger.Information(Strings.ProbeSnapshot,
             _target.HardwareCode.ToString("X4"), _target.ChipName ?? "?",
             _target.DaHardwareCode?.ToString("X4"), _target.HardwareSubCode.ToString("X4"),
             _target.InitialHardwareVersion.ToString("X4"), _target.HardwareVersion.ToString("X4"),
@@ -196,6 +199,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             _wire.Begin(cancellationToken, _options.ConnectTimeoutMilliseconds);
             MtkTargetInfo target = ProbeCore(true);
             resources = PrepareBootResources(resources, target);
+            LogSelectedDa(resources);
             target = _target!;
             SendBootResources(resources, target);
             if (target.Security.Sla)
@@ -231,6 +235,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         try
         {
             var target = ProbeCore(true);
+            MtkDiagnostics.Summary(_logger, Strings.ResourcesRequested);
             MtkConnectionResources resources;
             if (_resources is not null)
                 resources = transferred = _resources(target);
@@ -243,6 +248,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 resources = new(image, emi, Signer: _signer);
             }
             resources = PrepareBootResources(resources, target);
+            LogSelectedDa(resources);
             target = _target!;
             SendBootResources(resources, target);
             if (target.Security.Sla)
@@ -290,7 +296,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 Phase = ProgressPhase.Completed
             });
         }
-        catch { if (_wire.HasIoAttempted && _state != MtkSessionState.Faulted) Fault(); throw; }
+        catch (Exception ex) { if (_wire.HasIoAttempted && _state != MtkSessionState.Faulted) Fault(ex); throw; }
         finally { transferred?.Authentication?.Dispose(); transferred?.Certificate?.Dispose(); }
     }
     private async ValueTask AuthenticateAsync(MtkAuthenticationKind kind, byte[]? challenge, MtkConnectionResources resources, CancellationToken ct)
@@ -298,6 +304,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         if (challenge is null)
             return;
         State(MtkSessionState.Authenticating);
+        MtkDiagnostics.Summary(_logger, Strings.AuthenticationStarted, kind);
         var signer = resources.Signer ?? _signer;
         if (signer is null && resources.SynchronousSigner is { } synchronousSigner)
         {
@@ -310,6 +317,8 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                     _brom.FinishSla(synchronousResponse.Memory.Span);
                 else
                     _da!.Authenticate(synchronousResponse.Memory.Span);
+                _wire.Check();
+                MtkDiagnostics.Summary(_logger, Strings.AuthenticationEvidence, kind, MtkDaAuthenticationState.Authenticated);
             }
             finally { CryptographicOperations.ZeroMemory(challenge); }
             return;
@@ -339,6 +348,8 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             _brom.FinishSla(response.Memory.Span);
         else
             _da!.Authenticate(response.Memory.Span);
+        _wire.Check();
+        MtkDiagnostics.Summary(_logger, Strings.AuthenticationEvidence, kind, MtkDaAuthenticationState.Authenticated);
     }
     private int ResourceBudget() => Math.Min(_options.ResourceTimeoutMilliseconds, _wire.RemainingTimeoutMilliseconds);
     private void ValidateResources(MtkConnectionResources resources, MtkTargetInfo target, bool requireBootAuthentication = true)
@@ -386,6 +397,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     private void SendBootResources(MtkConnectionResources resources, MtkTargetInfo target)
     {
         _target = target with { WatchdogState = _brom.DisableWatchdog(target) };
+        MtkDiagnostics.Summary(_logger, Strings.WatchdogEvidence, _target.WatchdogState);
         if (resources.Certificate is { } certificate)
             _brom.SendResource(MtkBromCommand.SendCertificate, certificate.Memory.Span);
         if (resources.Authentication is { } auth)
@@ -408,6 +420,9 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         };
         if (_da is XmlSession xml) xml.InitializeDa1();
     }
+    private void LogSelectedDa(MtkConnectionResources resources) => MtkDiagnostics.Summary(_logger,
+        Strings.DaSelected, resources.DownloadAgent.Entry.Kind, resources.DownloadAgent.Entry.EntryRegionIndex,
+        resources.DownloadAgent.Entry.Regions.Count);
     private void ContinueDa(MtkConnectionResources resources, MtkTargetInfo target)
     {
         _da!.Initialize(resources.DownloadAgent, resources.Emi, target, stage =>
@@ -424,11 +439,16 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     private void CompleteConnection()
     {
         _storage = _da!.GetStorage();
+        _wire.Check();
+        MtkDiagnostics.Summary(_logger, Strings.StorageDetected, _storage.Kind, _storage.Regions.Count, _storage.UserRegionId);
+        foreach (var region in _storage.Regions)
+            MtkDiagnostics.Summary(_logger, Strings.StorageRegion, region.WireId, region.Length, region.BlockSize, region.EraseBlockSize, region.CanWrite);
         Interlocked.Increment(ref _generation);
         State(MtkSessionState.StorageReady);
     }
-    private void Fault()
+    private void Fault(Exception? exception = null)
     {
+        var previousState = _state;
         _da = null;
         _storage = null;
         _partitions = null;
@@ -440,7 +460,8 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             _transport.Close();
         }
         catch { /* Primary wire failure remains the reported cause. */ }
-        Log.ForContext<MtkProtocol>().Error(Strings.Faulted);
+        _logger.Error(Strings.SessionFailure, previousState, _wire.Stage, _wire.CommandName, _wire.Command,
+            exception is MtkProtocolException protocol ? protocol.Status : (uint?)null, exception?.GetType().Name ?? "SessionInvalidation");
     }
     public MtkStorageInfo GetStorageInfo() => Execute(() => { Ready(); return _storage!; });
     private MtkStorageRegion Range(MtkFlashRange range)
@@ -460,7 +481,9 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             var region = Range(range);
             if (!destination.CanWrite)
                 throw new ArgumentException(nameof(destination));
+            var trace = StartTransfer(MtkTransferKind.Read, range.RegionId, range.Offset, range.Length);
             _da!.Read(region, range.Offset, range.Length, destination);
+            CompleteTransfer(trace);
             return 0;
         }, cancellationToken);
     }
@@ -472,13 +495,34 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             var region = Range(range);
             if (!source.CanRead || source.CanSeek && source.Length - source.Position < range.Length)
                 throw new MtkResourceException("write stream");
+            var trace = StartTransfer(MtkTransferKind.Write, range.RegionId, range.Offset, range.Length);
             _da!.Write(region, range.Offset, range.Length, source);
             _partitions = null;
+            CompleteTransfer(trace);
             return 0;
         }, cancellationToken);
     }
     public void Erase(MtkFlashRange range, CancellationToken cancellationToken = default) =>
-        Execute(() => { var region = Range(range); _da!.Erase(region, range.Offset, range.Length); _partitions = null; return 0; }, cancellationToken);
+        Execute(() =>
+        {
+            var region = Range(range);
+            var trace = StartTransfer(MtkTransferKind.Erase, range.RegionId, range.Offset, range.Length);
+            _da!.Erase(region, range.Offset, range.Length);
+            _partitions = null;
+            CompleteTransfer(trace);
+            return 0;
+        }, cancellationToken);
+    private MtkTransferLog StartTransfer(MtkTransferKind kind, uint? region, long offset, long length, string? partition = null)
+    {
+        var trace = new MtkTransferLog(_logger, _da!.Kind, kind, region, offset, length, partition);
+        trace.Start();
+        return trace;
+    }
+    private void CompleteTransfer(MtkTransferLog trace, long? length = null)
+    {
+        _wire.Check();
+        trace.Complete(length);
+    }
     public void Disconnect()
     {
         using var gate = Enter(default);
@@ -486,6 +530,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     }
     private void DisconnectCore()
     {
+        bool connected = _state is not (MtkSessionState.Disconnected or MtkSessionState.Faulted);
         _hasIdentifiedTarget = false;
         _da = null;
         _storage = null;
@@ -499,7 +544,11 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             if (!_leaveTransportOpen || _openedHere)
                 _transport.Close();
         }
-        finally { _openedHere = false; _state = MtkSessionState.Disconnected; }
+        finally
+        {
+            _openedHere = false; _state = MtkSessionState.Disconnected;
+            if (connected) MtkDiagnostics.Summary(_logger, Strings.SessionPhase, Strings.PhaseDisconnected);
+        }
     }
     public Task DisconnectAsync(IProgress<ProgressRecord>? progress = null, CancellationToken ct = default)
     {

@@ -5,7 +5,6 @@ using System.Xml.Linq;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Mtk.Internals;
 using GeekFlashCore.Protocol.Mtk.Loaders;
-using Serilog;
 
 namespace GeekFlashCore.Protocol.Mtk.Da;
 
@@ -25,7 +24,9 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
     private XElement ReceiveXml() => MtkXmlCodec.Parse(wire.ReadSmallFrame(options.MaximumXmlSize), options.MaximumXmlSize);
     private void Require(string command, XElement root)
     {
-        if (MtkXmlCodec.Value(root, "command") != MtkXmlCommand.Prefix + command)
+        bool matches = MtkXmlCodec.Value(root, "command") == MtkXmlCommand.Prefix + command;
+        wire.Logger.Debug(Strings.XmlLifecycle, wire.Stage, wire.CommandName, command, matches);
+        if (!matches)
             throw wire.Failure();
         var result = root.Descendants("result").ToArray();
         if (result.Length > 1 || command == MtkXmlCommand.End && result.Length != 1 || result.Length == 1 && (result[0].HasElements || result[0].Value != "OK"))
@@ -35,6 +36,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
     private void ReadAck()
     {
         string ack = ReceiveText(64);
+        wire.TraceStatus(ack is "OK" or "OK@0x0" ? 0u : 1u, ack is "OK" or "OK@0x0");
         if (ack is not ("OK" or "OK@0x0"))
             throw wire.Failure();
     }
@@ -49,6 +51,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
     public void Begin(string name, IReadOnlyDictionary<string, string> parameters)
     {
         byte[] data = MtkXmlCodec.Create(name, parameters); // Validate before consuming START.
+        wire.TraceCommand(0, name); // Only the validated command name; no XML/parameter values.
         Lifetime(MtkXmlCommand.Start);
         wire.SendFrame(data);
         ReadAck();
@@ -63,9 +66,11 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
     private bool BeginOptional(string name, IReadOnlyDictionary<string, string> parameters)
     {
         byte[] data = MtkXmlCodec.Create(name, parameters);
+        wire.TraceCommand(0, name);
         Lifetime(MtkXmlCommand.Start);
         wire.SendFrame(data);
         string ack = ReceiveText(64);
+        wire.TraceStatus(ack is "OK" or "OK@0x0" ? 0u : 1u, ack is "OK" or "OK@0x0");
         if (ack is "OK" or "OK@0x0")
             return true;
         if (ack != "ERR!UNSUPPORTED")
@@ -86,7 +91,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
 
         Ack();
         wire.Check();
-        Log.ForContext<XmlSession>().ForContext("BootStage", wire.Stage).Warning(Strings.OptionalCommandUnsupported, name);
+        wire.Logger.ForContext("MtkSummary", true).ForContext("BootStage", wire.Stage).Warning(Strings.OptionalCommandUnsupported, name);
         return false;
     }
 
@@ -341,6 +346,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
 
     public void Read(MtkStorageRegion region, long offset, long length, Stream output)
     {
+        wire.TraceStorage(MtkTransferKind.Read, region, offset, length);
         Begin(MtkXmlCommand.ReadFlash, Args(("partition", region.Name), ("target_file", region.Name), ("length", $"0x{length:X}"), ("offset", $"0x{offset:X}")));
         Upload(output, length, length);
         Lifetime(MtkXmlCommand.End);
@@ -350,6 +356,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
     {
         if (!region.CanWrite)
             throw new MtkCapabilityException("read-only storage region");
+        wire.TraceStorage(MtkTransferKind.Write, region, offset, length);
         Begin(MtkXmlCommand.WriteFlash, Args(("partition", region.Name), ("source_file", $"MEM:\\0x0:0x{length:X}"), ("offset", $"0x{offset:X}")));
         FileSize(length);
         Progress();
@@ -363,6 +370,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
             throw new MtkCapabilityException("erase geometry/policy");
         if (offset % region.EraseBlockSize != 0 || length % region.EraseBlockSize != 0)
             throw new ArgumentOutOfRangeException(nameof(length));
+        wire.TraceStorage(MtkTransferKind.Erase, region, offset, length);
         Begin(MtkXmlCommand.EraseFlash, Args(("partition", region.Name), ("length", $"0x{length:X}"), ("offset", $"0x{offset:X}")));
         Progress();
         Lifetime(MtkXmlCommand.End);
@@ -450,6 +458,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         ulong size = MtkXmlCodec.Number(MtkXmlCodec.Value(request, "packet_length"));
         if (size is 0 or > 1048576 || size > (ulong)options.MaximumFrameSize)
             throw wire.Failure();
+        wire.Logger.Debug(Strings.XmlPacketLength, wire.Stage, wire.CommandName, size);
         return (int)size; // Must retain the negotiated XML packet boundary.
     }
 
@@ -481,6 +490,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
             if (!text.StartsWith("OK!PROGRESS@", StringComparison.Ordinal) || !uint.TryParse(text[12..], out uint percent) || percent > 100)
                 throw wire.Failure();
             Ack();
+            wire.Logger.Debug(Strings.WireProgress, wire.Stage, wire.Command, percent);
             wire.ProgressPercent?.Invoke((int)percent);
         }
 

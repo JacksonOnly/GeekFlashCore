@@ -68,7 +68,7 @@ internal sealed partial class LegacySession
         Ack();
         SendCommand(MtkLegacyCommand.GetFatInfo);
         ReadFatInfo();
-        wire.Command = (byte)MtkLegacyCommand.SetSpeed;
+        wire.TraceCommand((byte)MtkLegacyCommand.SetSpeed, nameof(MtkLegacyCommand.SetSpeed));
         wire.Write([(byte)MtkLegacyCommand.SetSpeed, 1, 1]);
         Ack();
         wire.WriteByte((byte)MtkLegacyResponse.Ack);

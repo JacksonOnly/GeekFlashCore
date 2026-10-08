@@ -9,7 +9,9 @@ internal sealed class ConsoleLogSink(ConsoleUi ui, bool verbose = false) : ILogE
 
     public void Emit(LogEvent logEvent)
     {
-        if (!verbose || _ui.SuppressDiagnosticLogs || logEvent.Exception is not null ||
+        bool summary = logEvent.Level >= LogEventLevel.Information &&
+            logEvent.Properties.TryGetValue("MtkSummary", out var marker) && marker is ScalarValue { Value: true };
+        if ((!verbose && !summary) || _ui.SuppressDiagnosticLogs || logEvent.Exception is not null ||
             logEvent.Properties.ContainsKey("DeviceDiagnostic") ||
             logEvent.Properties.ContainsKey("UserPresentation")) return;
         _ui.WriteLog(logEvent);

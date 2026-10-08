@@ -4,6 +4,7 @@ using GeekFlashCore.BlockDevice;
 using GeekFlashCore.BlockDevice.Abstractions;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Mtk.Da;
+using GeekFlashCore.Protocol.Mtk.Internals;
 
 namespace GeekFlashCore.Protocol.Mtk;
 
@@ -27,11 +28,15 @@ public sealed partial class MtkProtocol : IMtkNamedPartitionAccess
         name=PartitionName(name);ArgumentNullException.ThrowIfNull(destination);if(!destination.CanWrite || maximumLength<=0)throw new ArgumentException(nameof(destination));
         return Execute(()=>
         {
-            Ready();return _da switch
+            Ready();
+            var trace = StartTransfer(MtkTransferKind.NamedRead, null, 0, maximumLength, name);
+            long length = _da switch
             {
                 XFlashSession x=>x.ReadNamed(name,destination,maximumLength),XmlSession xml=>xml.ReadNamed(name,destination,maximumLength),
                 _=>ReadLegacyNamed(name,destination,maximumLength)
             };
+            CompleteTransfer(trace, length);
+            return length;
         },cancellationToken);
     }
     private long ReadLegacyNamed(string name,Stream destination,long maximum)
@@ -54,8 +59,9 @@ public sealed partial class MtkProtocol : IMtkNamedPartitionAccess
                 if(sparse.ExpandedLength<=0 || sparse.ExpandedLength>maximumExpandedLength)throw new MtkResourceException("partition sparse capacity");sparse.VerifyChecksum(cancellationToken:cancellationToken);input.Position=0;
             }
             else if(source.Length>maximumExpandedLength)throw new MtkResourceException("partition source capacity");
+            var trace = StartTransfer(MtkTransferKind.NamedWrite, null, 0, source.Length, name);
             if(_da is XFlashSession x)x.WriteNamed(name,input,source.Length);else ((XmlSession)_da).WriteNamed(name,input,source.Length);
-            _partitions=null;return 0;
+            _partitions=null;CompleteTransfer(trace);return 0;
         },cancellationToken);
     }
     /// <inheritdoc />
@@ -63,13 +69,15 @@ public sealed partial class MtkProtocol : IMtkNamedPartitionAccess
     {
         name=PartitionName(name);Execute(()=>
         {
-            Ready();NamedWritePolicy(erase:true);if(_da is XFlashSession x)x.EraseNamed(name);else if(_da is XmlSession xml)xml.EraseNamed(name);
+            Ready();NamedWritePolicy(erase:true);
+            var trace = StartTransfer(MtkTransferKind.NamedErase, null, 0, 0, name);
+            if(_da is XFlashSession x)x.EraseNamed(name);else if(_da is XmlSession xml)xml.EraseNamed(name);
             else
             {
                 var part=LoadPartitionsCore().SingleOrDefault(p=>MtkPartitionNames.Matches(p.Name,name));if(part.Name is null)throw new MtkResourceException("partition name");
                 var region=Range(part.Range);_da!.Erase(region,part.Range.Offset,part.Range.Length);
             }
-            _partitions=null;return 0;
+            _partitions=null;CompleteTransfer(trace);return 0;
         },cancellationToken);
     }
 }

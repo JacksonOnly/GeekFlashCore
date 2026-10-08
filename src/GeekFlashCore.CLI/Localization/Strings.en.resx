@@ -268,6 +268,10 @@ Device capabilities:
   <data name="Cli_HelpMtk" xml:space="preserve"><value>MTK connection:
   --protocol mtk --loader DA.bin
   --mtk-preloader preloader.bin
+  --mtk-brom-chunk bytes  BROM host upload chunk (64–1048576, default 65536)
+  --mtk-brom-zlp          Explicit compatibility tail ZLP (off by default)
+  Restore the old upload shape: --mtk-brom-chunk 64 --mtk-brom-zlp
+  MTK shows stage/transfer summaries by default; --verbose adds diagnostics; --log-file selects the detailed log file.
   --mtk-da-mode auto|legacy|xflash|xml
   --mtk-auth-file auth.bin
   --mtk-cert cert.bin
@@ -457,4 +461,5 @@ Keys go only to files.</value></data>
   <data name="Cli_MtkInitialProbeRetry" xml:space="preserve"><value>MTK initial admission did not complete. Released the old connection; waiting for a device again. Press Ctrl+C to stop.</value></data>
   <data name="Cli_MtkUsbDiscoveryRetry" xml:space="preserve"><value>MTK USB enumeration or opening did not complete. Waiting for a device; press Ctrl+C to stop. See the file log for diagnostics.</value></data>
   <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>The current MTK operation has stopped and the session is invalid. Reconnect the device; authentication, DA and read/write commands will not be retried automatically.</value></data>
+  <data name="Cli_MtkBromChunkInvalid" xml:space="preserve"><value>BROM host upload chunk must be 64–1048576 bytes.</value></data>
 </root>

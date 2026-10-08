@@ -1,5 +1,7 @@
 # GeekFlashCore MTK 实施进度
 
+2026-10-08 用户新增 Preloader 首握手失败与 EMI 抓包：最新设计/实际窗口逐字节证据见 [Preloader/EMI实施记录](2026-10-08-mtk-preloader-emi-implementation.md)。XFlash 使用完整BLOADER窗口，Legacy保留MTK_BIN正文；旧文档中的统一EMI裁剪不再适用于XFlash。
+
 2026-10-08 MTK-TXLOG-01～04：用户确认后的 BROM 默认 64KiB 流式上传/no-ZLP、显式兼容 chunk/ZLP、XFlash 流式 EMI/三帧写入与协商读包上限、MTK 默认 UI 摘要及详细命令/帧/预算/失效诊断，见 [上传与诊断设计](2026-10-08-mtk-transfer-diagnostics-design.md)、[实施证据](2026-10-08-mtk-transfer-diagnostics-implementation.md) 和 [使用说明](../mtk-diagnostics.md)。CLI 168/168、可运行 MTK 597/597；原始 MTK 612 项保留 15 项基线失败。取代旧记录中的默认 BROM 64-byte/ZLP 描述；exp、其他协议和公共 USB 未改，无真机证据。
 
 2026-10-08 BROM-REC-01～04：MTK 接入前闪现恢复、默认持续等待/显式累计预算、READY 前缀、逻辑读超时、纯接收失效及失败进度清理，最新范围和证据见 [接入审查进度](2026-10-08-mtk-brom-admission-implementation.md)。旧“仅 Open 前 NoDevice 恢复”边界被完整 FD 之前恢复取代；FD 后不自动重放，exp 未修改。

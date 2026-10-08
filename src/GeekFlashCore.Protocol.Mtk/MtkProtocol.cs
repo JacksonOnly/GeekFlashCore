@@ -382,10 +382,11 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 throw new MtkResourceException("authentication length");
         if (resources.Emi is { } emi)
         {
-            if (emi.Source.Length <= 0 || emi.Source.Length > _options.MaximumFrameSize)
+            var emiSource = entry.Kind == MtkDaKind.XFlash ? emi.BloaderInfoSource ?? emi.Source : emi.Source;
+            if (emiSource.Length <= 0 || emiSource.Length > _options.MaximumFrameSize)
                 throw new MtkResourceException("EMI length");
-            using var stream = emi.Source.OpenStream();
-            if (!stream.CanRead || stream.CanSeek && stream.Length != emi.Source.Length)
+            using var stream = emiSource.OpenStream();
+            if (!stream.CanRead || stream.CanSeek && stream.Length != emiSource.Length)
                 throw new MtkResourceException("EMI source");
         }
         if (_options.ChipProfile is { } profile && (profile.HardwareCode != target.HardwareCode ||

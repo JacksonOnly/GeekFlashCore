@@ -144,8 +144,14 @@ public sealed record MtkDaEntry(ushort HardwareCode, ushort HardwareSubCode, ush
 }
 /// <summary>An explicitly selected image; the host retains ownership of the data source.</summary>
 public sealed record MtkDaImage(IDataSource Source, MtkDaEntry Entry);
-/// <summary>EMI data already extracted and validated by the parser or host.</summary>
-public sealed record MtkEmiImage(IDataSource Source, uint Version);
+/// <summary>Borrowed EMI data extracted and validated by the parser or host.
+/// Source preserves the Legacy MTK_BIN body. Hosts supplying only Source retain their explicit wire data.</summary>
+public sealed record MtkEmiImage(IDataSource Source, uint Version)
+{
+    /// <summary>Optional complete MTK_BLOADER_INFO window required by XFlash, including its header.
+    /// Borrowed like Source; the protocol disposes only streams that it opens, not either data source.</summary>
+    public IDataSource? BloaderInfoSource { get; init; }
+}
 /// <summary>Capabilities are immutable snapshots and never advertise exploit support.</summary>
 public sealed record MtkCapabilities(MtkCapabilitySupport Flash, MtkCapabilitySupport Memory,
     MtkCapabilitySupport Crypto, MtkCapabilitySupport Rpmb, MtkCapabilitySupport SecurityConfiguration);

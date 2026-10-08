@@ -57,7 +57,10 @@ public static class MtkEmiParser
         if (version[0] is < (byte)'0' or > (byte)'9' || version[1] is < (byte)'0' or > (byte)'9')
             throw new MtkResourceException("EMI version");
         uint number = (uint)((version[0] - '0') * 10 + version[1] - '0');
-        long bin = Find(stream, origin, length, "MTK_BIN"u8);
+        // XFlash consumes the entire BLOADER window; Legacy consumes the MTK_BIN body.
+        // Never discard the header merely because this window also contains MTK_BIN.
+        var bloader = new MtkDataWindow(source, info, origin + length - info);
+        long bin = Find(stream, info + 20, origin + length - info - 20, "MTK_BIN"u8);
         if (bin >= 0)
         {
             long start = checked(bin + 12);
@@ -68,7 +71,7 @@ public static class MtkEmiParser
         }
         else if (info != origin)
             throw new MtkResourceException("EMI origin");
-        return new(new MtkDataWindow(source, origin, length), number);
+        return new(new MtkDataWindow(source, origin, length), number) { BloaderInfoSource = bloader };
     }
     private static long Find(Stream source, long offset, long length, ReadOnlySpan<byte> pattern)
     {

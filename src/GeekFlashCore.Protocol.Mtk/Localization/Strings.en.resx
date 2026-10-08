@@ -76,4 +76,5 @@
 <data name="NamedTransferCompleted" xml:space="preserve"><value>MTK {Operation} completed: {Dialect}, partition {PartitionName}, {ByteCount} bytes, {ElapsedMilliseconds} ms.</value></data>
 <data name="SecurityExchangeSkipped" xml:space="preserve"><value>BROM {CommandName}: device returned accepted skip status 0x{Status:X4}; no host material sent. This is not a new authentication success.</value></data>
 <data name="WireStorageRange" xml:space="preserve"><value>MTK {BootStage}: storage request {TransferKind}, kind {StorageKind}, region {Region}, offset {FlashOffset}, length {FlashLength}.</value></data>
+<data name="EmiWindowSelected" xml:space="preserve"><value>MTK XFlash EMI: format {EmiFormat}, version {EmiVersion}, length {ByteCount}; contents omitted.</value></data>
 </root>

@@ -76,4 +76,5 @@
 <data name="NamedTransferCompleted" xml:space="preserve"><value>MTK {Operation}完成：{Dialect}，分区 {PartitionName}，{ByteCount} 字节，耗时 {ElapsedMilliseconds} ms。</value></data>
 <data name="SecurityExchangeSkipped" xml:space="preserve"><value>BROM {CommandName}：设备返回允许跳过的状态 0x{Status:X4}，未发送宿主材料；不等同于本次认证成功。</value></data>
 <data name="WireStorageRange" xml:space="preserve"><value>MTK {BootStage}：存储请求 {TransferKind}，类型 {StorageKind}，区域 {Region}，偏移 {FlashOffset}，长度 {FlashLength}。</value></data>
+<data name="EmiWindowSelected" xml:space="preserve"><value>MTK XFlash EMI：格式 {EmiFormat}，版本 {EmiVersion}，长度 {ByteCount}；内容省略。</value></data>
 </root>

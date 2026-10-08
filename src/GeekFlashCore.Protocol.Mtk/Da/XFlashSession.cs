@@ -73,13 +73,15 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         {
             if (emi is null)
                 throw new MtkResourceException("EMI");
-            if (emi.Source.Length <= 0 || emi.Source.Length > options.MaximumFrameSize)
+            var emiSource = emi.BloaderInfoSource ?? emi.Source;
+            if (emiSource.Length <= 0 || emiSource.Length > options.MaximumFrameSize)
                 throw new MtkResourceException("EMI size");
-            using Stream emiStream = emi.Source.OpenStream();
-            MtkDiagnostics.Summary(wire.Logger, Strings.EmiStarted, Kind, emi.Source.Length);
+            using Stream emiStream = emiSource.OpenStream();
+            wire.Logger.Debug(Strings.EmiWindowSelected, emi.BloaderInfoSource is null ? "HostSource" : "BloaderInfo", emi.Version, emiSource.Length);
+            MtkDiagnostics.Summary(wire.Logger, Strings.EmiStarted, Kind, emiSource.Length);
             Command(MtkXFlashCommand.InitExtRam);
-            wire.SendUInt32Frame((uint)emi.Source.Length);
-            SendStreamFrame(emiStream, emi.Source.Length);
+            wire.SendUInt32Frame((uint)emiSource.Length);
+            SendStreamFrame(emiStream, emiSource.Length);
             wire.ReadStatus(); // The parameter group, not each frame, is acknowledged.
             MtkDiagnostics.Summary(wire.Logger, Strings.EmiCompleted, Kind);
         }

@@ -11,7 +11,11 @@ internal sealed class ConsoleLogSink(ConsoleUi ui, bool verbose = false) : ILogE
     {
         bool summary = logEvent.Level >= LogEventLevel.Information &&
             logEvent.Properties.TryGetValue("MtkSummary", out var marker) && marker is ScalarValue { Value: true };
-        if ((!verbose && !summary) || _ui.SuppressDiagnosticLogs || logEvent.Exception is not null ||
+        // Structured tool output suppresses chatter, not explicitly approved MTK warnings.
+        // Keep raw device data, exception details and duplicate presentation filtered below.
+        if ((!verbose && !summary) ||
+            _ui.SuppressDiagnosticLogs && !(summary && logEvent.Level >= LogEventLevel.Warning) ||
+            logEvent.Exception is not null ||
             logEvent.Properties.ContainsKey("DeviceDiagnostic") ||
             logEvent.Properties.ContainsKey("UserPresentation")) return;
         _ui.WriteLog(logEvent);

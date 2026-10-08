@@ -22,6 +22,7 @@ SDK 对应 `MtkProtocolOptions.BromUploadChunkSize`（0 使用 BufferSize，其�
 
 - 默认 UI：连接、DA、EMI、认证证据、存储几何和读写擦除开始/完成；可恢复回退 Warning。命名擦除不猜测容量。
 - `--verbose`：追加 Debug 的命令、USB 写长度、帧、ACK/status、读片数/预算/耗时和失败上下文。
+- 分区/读写/浏览的工具输出期间仍压制高频Info/Debug，但已批准MTK Warning/Error摘要继续显示；异常详情、设备正文、重复UserPresentation始终不显示。文件日志保持完整诊断，其他协议过滤不改。
 - 文件日志：CLI 默认已收集 Debug，可用 `--log-file` 指定位置，沿用原 16MiB 分卷。SDK 宿主应在创建 `MtkProtocol` **之前**配置 Serilog；用 `MtkSessionId` 关联同一会话。
 - 不输出原始载荷、签名、Challenge、Token、checksum 数值、私密标识、XML 全文/参数或设备 MESSAGE 正文。标准分区名经过 ASCII/64-byte 校验后可出现在操作摘要。
 
@@ -55,6 +56,6 @@ XFlash设备包上限可为2MiB，不能按旧1MiB宿主小帧限制拒绝能力
 
 ## GPT 与 Boot 区域
 
-分区发现不再读取eMMC BOOT1/2或UFS LU0/LU1的头尾GPT；Preloader/backup直接采用已报告容量。UFS User为wire3（LU2），eMMC User为wire8，不能使用通常的零基LUN号替换DA wire编号。XFlash参数编码没有偏移错误，旧Boot读取来自枚举循环。UI显示发现开始的介质/User ID及完成条目数，Debug明确Boot只生成元数据和实际GPT读取的region。显式Boot raw/别名操作仍访问1/2，eMMC GP独立GPT能力保留；User CRC/主备/坏表边界不降级。实机完整列表待确认，见 [区域发现记录](plans/2026-10-08-mtk-boot-region-discovery-implementation.md)。
+分区发现不再读取eMMC BOOT1/2或UFS LU0/LU1的头尾GPT；Preloader/backup直接采用已报告容量。UFS User为wire3（LU2），eMMC User为wire8，不能使用通常的零基LUN号替换DA wire编号。XFlash参数编码没有偏移错误，旧Boot读取来自枚举循环。Info摘要记录发现开始的介质/User ID及完成条目数（CLI工具模式只在文件中保留），Debug明确Boot只生成元数据和实际GPT读取的region。显式Boot raw/别名操作仍访问1/2，eMMC GP独立GPT能力保留；User CRC/主备/坏表边界不降级。实机完整列表待确认，见 [区域发现记录](plans/2026-10-08-mtk-boot-region-discovery-implementation.md)。
 
-已观察UFS 4K GPT可声明FirstUsable34，却有已通过原始CRC的分区从8开始。只对UFS User/128×128/明确物理数组布局，以元数据末端6严格验证；PGPT截止真实首分区（抓包32KiB），避免覆盖分区。其他布局不降级，CRC/重叠/越界/身份/名字校验继续。Warning摘要说明仅宿主兼容，不改写设备；Debug记录主备几何、CRC布尔和失败阶段，不记录校验数值/GUID/载荷。CLI工具输出时可能压制摘要，文件日志仍完整。见 [UFS边界记录](plans/2026-10-09-mtk-ufs-gpt-first-usable-implementation.md)。
+已观察UFS 4K GPT可声明FirstUsable34，却有已通过原始CRC的分区从8开始。只对UFS User/128×128/明确物理数组布局，以元数据末端6严格验证；PGPT截止真实首分区（抓包32KiB），避免覆盖分区。其他布局不降级，CRC/重叠/越界/身份/名字校验继续。Warning摘要说明仅宿主兼容，不改写设备，工具输出时仍显示该警告；Debug记录主备几何、CRC布尔和失败阶段，不记录校验数值/GUID/载荷。文件日志仍完整。见 [UFS边界记录](plans/2026-10-09-mtk-ufs-gpt-first-usable-implementation.md) 和 [UI警告记录](plans/2026-10-09-mtk-warning-visibility-implementation.md)。

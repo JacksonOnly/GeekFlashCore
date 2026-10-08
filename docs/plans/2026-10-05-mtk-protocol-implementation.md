@@ -1,5 +1,7 @@
 # GeekFlashCore MTK 实施进度
 
+2026-10-09 MTK-UI-WARN-01：CLI工具模式原来压制MTK警告，现仅放行已批准Warning/Error摘要，Info/Debug/设备正文/异常详情和其他协议策略不变；CLI170通过，Release/独立Debug零警告。用户运行进程不终止、已有未跟踪镜像保留，见 [UI警告记录](2026-10-09-mtk-warning-visibility-implementation.md)。
+
 2026-10-09 UFS-GPT-01：用户000226/a33ef517证实User主备CRC全有效，但4K表FirstUsable34/首分区8不一致；对已观察UFS User128×128布局进行严格物理元数据下界兼容，PGPT截止首分区32KiB，不关闭CRC/重叠校验或改设备。24目标和真实主备离线回放通过，最新证据/基线/实机风险见 [UFS GPT记录](2026-10-09-mtk-ufs-gpt-first-usable-implementation.md)。
 
 2026-10-09 BOOT-GPT-01：用户区域疑问核对确认XFlash参数映射正确（UFS User3/eMMC User8），但枚举不应在Boot1/2探测GPT；现在直接根据容量生成Preloader辅助条目，只继续非Boot GPT发现，显式Boot操作及GP/CRC边界保留。44新目标/71分区回归/768可运行MTK通过，实机完整分区表待确认，见 [Boot/User记录](2026-10-08-mtk-boot-region-discovery-implementation.md)。

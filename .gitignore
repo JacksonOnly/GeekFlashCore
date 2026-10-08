@@ -436,3 +436,6 @@ riderModule.iml
 # Temp
 temp/
 /.tests/
+
+# Local development plans
+/docs/plans/

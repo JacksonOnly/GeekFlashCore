@@ -9,55 +9,55 @@ internal static class MtkXmlCodec
 {
     private static readonly Dictionary<string, string[]> Arguments = new(StringComparer.Ordinal)
     {
-        ["SET-RUNTIME-PARAMETER"] = ["checksum_level", "battery_exist", "da_log_level", "log_channel", "system_os", "initialize_dram"],
-        ["HOST-SUPPORTED-COMMANDS"] = ["host_capability"],
-        ["NOTIFY-INIT-HW"] = [],
-        ["SET-HOST-INFO"] = ["info"],
-        ["BOOT-TO"] = ["at_address", "jmp_address", "source_file"],
-        ["GET-HW-INFO"] = ["target_file"],
-        ["READ-PARTITION-TABLE"] = ["target_file"],
-        ["GET-SYS-PROPERTY"] = ["key", "target_file"],
-        ["READ-REGISTER"] = ["bit_width", "base_address", "target_file"],
-        ["WRITE-REGISTER"] = ["bit_width", "base_address", "source_file"],
-        ["SECURITY-GET-DEV-FW-INFO"] = ["target_file"],
-        ["SECURITY-SET-FLASH-POLICY"] = ["source_file"],
-        ["SECURITY-SET-ALLINONE-SIGNATURE"] = ["source_file"],
+        [MtkXmlCommand.SetRuntimeParameter] = ["checksum_level", "battery_exist", "da_log_level", "log_channel", "system_os", "initialize_dram"],
+        [MtkXmlCommand.HostSupportedCommands] = ["host_capability"],
+        [MtkXmlCommand.NotifyInitHw] = [],
+        [MtkXmlCommand.SetHostInfo] = ["info"],
+        [MtkXmlCommand.BootTo] = ["at_address", "jmp_address", "source_file"],
+        [MtkXmlCommand.GetHwInfo] = ["target_file"],
+        [MtkXmlCommand.ReadPartitionTable] = ["target_file"],
+        [MtkXmlCommand.GetSysProperty] = ["key", "target_file"],
+        [MtkXmlCommand.ReadRegister] = ["bit_width", "base_address", "target_file"],
+        [MtkXmlCommand.WriteRegister] = ["bit_width", "base_address", "source_file"],
+        [MtkXmlCommand.SecurityGetDevFwInfo] = ["target_file"],
+        [MtkXmlCommand.SecuritySetFlashPolicy] = ["source_file"],
+        [MtkXmlCommand.SecuritySetAllinoneSignature] = ["source_file"],
         ["EXP-PATCH-MEM"] = ["address", "length"],
         ["EXP-CALL-FUNC"] = ["address"],
-        ["READ-EFUSE"] = ["target_file"],
-        ["WRITE-EFUSE"] = ["source_file"],
-        ["READ-PARTITION"] = ["partition","target_file"],
-        ["WRITE-PARTITION"] = ["partition","source_file"],
-        ["ERASE-PARTITION"] = ["partition"],
-        ["FLASH-UPDATE"] = ["source_file","path_separator","backup_folder"],
-        ["READ-FLASH"] = ["partition", "target_file", "length", "offset"],
-        ["WRITE-FLASH"] = ["partition", "source_file", "offset"],
-        ["ERASE-FLASH"] = ["partition", "length", "offset"],
-        ["REBOOT"] = ["action"],
-        ["SET-BOOT-MODE"] = ["mode", "connect_type", "mobile_log", "adb"],
-        ["EXT-ACK"] = [],
-        ["EXT-DA-CTX"] = ["sej_base", "tzcc_base", "ssr_base", "da2_base", "da2_size", "storage", "usb_log"],
-        ["EXT-READ-MEM"] = ["address", "length"],
-        ["EXT-WRITE-MEM"] = ["address", "length"],
-        ["EXT-KEY-DERIVE"] = ["key_type"],
-        ["EXT-SEJ"] = ["encrypt", "ac", "length"],
-        ["EXT-RPMB-INIT"] = ["partition", "key"],
-        ["EXT-RPMB-READ"] = ["partition", "start_sector", "sectors_count"],
-        ["EXT-RPMB-WRITE"] = ["partition", "start_sector", "sectors_count"]
+        [MtkXmlCommand.ReadEfuse] = ["target_file"],
+        [MtkXmlCommand.WriteEfuse] = ["source_file"],
+        [MtkXmlCommand.ReadPartition] = ["partition","target_file"],
+        [MtkXmlCommand.WritePartition] = ["partition","source_file"],
+        [MtkXmlCommand.ErasePartition] = ["partition"],
+        [MtkXmlCommand.FlashUpdate] = ["source_file","path_separator","backup_folder"],
+        [MtkXmlCommand.ReadFlash] = ["partition", "target_file", "length", "offset"],
+        [MtkXmlCommand.WriteFlash] = ["partition", "source_file", "offset"],
+        [MtkXmlCommand.EraseFlash] = ["partition", "length", "offset"],
+        [MtkXmlCommand.Reboot] = ["action"],
+        [MtkXmlCommand.SetBootMode] = ["mode", "connect_type", "mobile_log", "adb"],
+        [MtkXmlCommand.ExtAck] = [],
+        [MtkXmlCommand.ExtDaCtx] = ["sej_base", "tzcc_base", "ssr_base", "da2_base", "da2_size", "storage", "usb_log"],
+        [MtkXmlCommand.ExtReadMem] = ["address", "length"],
+        [MtkXmlCommand.ExtWriteMem] = ["address", "length"],
+        [MtkXmlCommand.ExtKeyDerive] = ["key_type"],
+        [MtkXmlCommand.ExtSej] = ["encrypt", "ac", "length"],
+        [MtkXmlCommand.ExtRpmbInit] = ["partition", "key"],
+        [MtkXmlCommand.ExtRpmbRead] = ["partition", "start_sector", "sectors_count"],
+        [MtkXmlCommand.ExtRpmbWrite] = ["partition", "start_sector", "sectors_count"]
     };
     public static byte[] Create(string command, IReadOnlyDictionary<string, string> parameters)
     {
         string[]? variant=command switch
         {
-            "EXT-KEY-DERIVE" when parameters.Count==4=>["key_type","key_length","label","salt"],
-            "EXT-SEJ" when parameters.Count==6=>["encrypt","ac","length","cbc","key_id","key_size"],
+            MtkXmlCommand.ExtKeyDerive when parameters.Count==4=>["key_type","key_length","label","salt"],
+            MtkXmlCommand.ExtSej when parameters.Count==6=>["encrypt","ac","length","cbc","key_id","key_size"],
             _=>null
         };
         if(variant is not null)return CreateValidated(command,parameters,variant);
         if (!Arguments.TryGetValue(command, out var allowed) || parameters.Count != allowed.Length || parameters.Any(p =>
             !allowed.Contains(p.Key, StringComparer.Ordinal) || p.Value is null ||
             // The all-in-one signature source_file carries the heap-shaping filename (8192 bound).
-            p.Value.Length > (command == "SECURITY-SET-ALLINONE-SIGNATURE" ? 8192 : 4096)))
+            p.Value.Length > (command == MtkXmlCommand.SecuritySetAllinoneSignature ? 8192 : 4096)))
             throw new MtkCapabilityException("XML command/parameters");
         return CreateValidated(command,parameters,allowed);
     }
@@ -68,8 +68,8 @@ internal static class MtkXmlCodec
         using (var writer = XmlWriter.Create(text, new XmlWriterSettings { OmitXmlDeclaration = true }))
         {
             writer.WriteStartElement("da");
-            writer.WriteElementString("version", command == "SET-RUNTIME-PARAMETER" ? "1.1" : "1.0");
-            writer.WriteElementString("command", "CMD:" + command);
+            writer.WriteElementString("version", command == MtkXmlCommand.SetRuntimeParameter ? "1.1" : "1.0");
+            writer.WriteElementString("command", MtkXmlCommand.Prefix + command);
             writer.WriteStartElement("arg");
             foreach (var p in parameters.Where(p => p.Key != "initialize_dram"))
                 writer.WriteElementString(p.Key, p.Value);

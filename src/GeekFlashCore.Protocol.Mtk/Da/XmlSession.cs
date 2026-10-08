@@ -11,47 +11,59 @@ namespace GeekFlashCore.Protocol.Mtk.Da;
 
 internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions options) : IMtkDaSession
 {
+    private const string HostCapabilities =
+        MtkXmlCommand.Prefix + MtkXmlCommand.DownloadFile + "^1@" +
+        MtkXmlCommand.Prefix + MtkXmlCommand.FileSysOperation + "^1@" +
+        MtkXmlCommand.Prefix + MtkXmlCommand.ProgressReport + "^1@" +
+        MtkXmlCommand.Prefix + MtkXmlCommand.UploadFile + "^1@";
+
     public MtkDaKind Kind => MtkDaKind.Xml;
+
     private static Dictionary<string, string> Args(params (string Key, string Value)[] pairs) => pairs.ToDictionary(p => p.Key, p => p.Value);
     public void Ack(string? value = null) => wire.SendFrame(Encoding.ASCII.GetBytes(value is null ? "OK\0" : "OK@" + value + "\0"));
     private string ReceiveText(int maximum = 65536) => new UTF8Encoding(false, true).GetString(wire.ReadSmallFrame(Math.Min(maximum, options.MaximumXmlSize))).TrimEnd('\0');
     private XElement ReceiveXml() => MtkXmlCodec.Parse(wire.ReadSmallFrame(options.MaximumXmlSize), options.MaximumXmlSize);
     private void Require(string command, XElement root)
     {
-        if (MtkXmlCodec.Value(root, "command") != "CMD:" + command)
+        if (MtkXmlCodec.Value(root, "command") != MtkXmlCommand.Prefix + command)
             throw wire.Failure();
         var result = root.Descendants("result").ToArray();
-        if (result.Length > 1 || command == "END" && result.Length != 1 || result.Length == 1 && result[0].Value != "OK")
+        if (result.Length > 1 || command == MtkXmlCommand.End && result.Length != 1 || result.Length == 1 && (result[0].HasElements || result[0].Value != "OK"))
             throw wire.Failure();
     }
+
     private void ReadAck()
     {
         string ack = ReceiveText(64);
         if (ack is not ("OK" or "OK@0x0"))
             throw wire.Failure();
     }
+
     public void Lifetime(string name)
     {
         var root = ReceiveXml();
         Require(name, root);
         Ack();
     }
+
     public void Begin(string name, IReadOnlyDictionary<string, string> parameters)
     {
         byte[] data = MtkXmlCodec.Create(name, parameters); // Validate before consuming START.
-        Lifetime("START");
+        Lifetime(MtkXmlCommand.Start);
         wire.SendFrame(data);
         ReadAck();
     }
+
     private void Simple(string name, Dictionary<string, string> parameters)
     {
         Begin(name, parameters);
-        Lifetime("END");
+        Lifetime(MtkXmlCommand.End);
     }
+
     private bool BeginOptional(string name, IReadOnlyDictionary<string, string> parameters)
     {
         byte[] data = MtkXmlCodec.Create(name, parameters);
-        Lifetime("START");
+        Lifetime(MtkXmlCommand.Start);
         wire.SendFrame(data);
         string ack = ReceiveText(64);
         if (ack is "OK" or "OK@0x0")
@@ -60,7 +72,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
             throw wire.Failure();
         // Unsupported is recoverable only after the complete command lifetime is confirmed.
         var end = ReceiveXml();
-        if (MtkXmlCodec.Value(end, "command") != "CMD:END")
+        if (MtkXmlCodec.Value(end, "command") != MtkXmlCommand.Prefix + MtkXmlCommand.End)
             throw wire.Failure();
         var results = end.Descendants("result").ToArray();
         if (results.Length != 1 || results[0].HasElements)
@@ -68,67 +80,71 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         if (results[0].Value != "OK")
         {
             var messages = end.Descendants("message").ToArray();
-            if (results[0].Value != "ERR" || messages.Length != 1 || messages[0].HasElements ||
-                messages[0].Value != "ERR!UNSUPPORTED")
+            if (results[0].Value != "ERR" || messages.Length != 1 || messages[0].HasElements || messages[0].Value != "ERR!UNSUPPORTED")
                 throw wire.Failure();
         }
+
         Ack();
         wire.Check();
         Log.ForContext<XmlSession>().ForContext("BootStage", wire.Stage).Warning(Strings.OptionalCommandUnsupported, name);
         return false;
     }
+
     private void AdvertiseHostCommands()
     {
-        if (BeginOptional("HOST-SUPPORTED-COMMANDS", Args(("host_capability",
-            "CMD:DOWNLOAD-FILE^1@CMD:FILE-SYS-OPERATION^1@CMD:PROGRESS-REPORT^1@CMD:UPLOAD-FILE^1@"))))
-            Lifetime("END");
+        if (BeginOptional(MtkXmlCommand.HostSupportedCommands, Args(("host_capability", HostCapabilities))))
+            Lifetime(MtkXmlCommand.End);
     }
+
     public void InitializeDa1()
     {
         wire.Stage = MtkBootStage.Da1;
-        Simple("SET-RUNTIME-PARAMETER", Args(("checksum_level", "NONE"), ("battery_exist", "AUTO-DETECT"), ("da_log_level", "INFO"),
-            ("log_channel", "UART"), ("system_os", OperatingSystem.IsWindows() ? "WINDOWS" : "LINUX"), ("initialize_dram", "YES")));
+        Simple(MtkXmlCommand.SetRuntimeParameter, Args(("checksum_level", "NONE"), ("battery_exist", "AUTO-DETECT"), ("da_log_level", "INFO"), ("log_channel", "UART"), ("system_os", OperatingSystem.IsWindows() ? "WINDOWS" : "LINUX"), ("initialize_dram", "YES")));
         AdvertiseHostCommands();
-        Simple("SET-HOST-INFO", Args(("info", "GeekFlashCore")));
-        Begin("NOTIFY-INIT-HW", Args());
+        Simple(MtkXmlCommand.SetHostInfo, Args(("info", "GeekFlashCore")));
+        Begin(MtkXmlCommand.NotifyInitHw, Args());
         Progress();
-        Lifetime("END");
+        Lifetime(MtkXmlCommand.End);
     }
-    public void Initialize(MtkDaImage image, MtkEmiImage? emi, MtkTargetInfo target,
-        Func<MtkExploitStage, MtkDaImage> checkpoint)
+
+    public void Initialize(MtkDaImage image, MtkEmiImage? emi, MtkTargetInfo target, Func<MtkExploitStage, MtkDaImage> checkpoint)
     {
         image = checkpoint(MtkExploitStage.Da1Ready);
         var region = image.Entry.Regions[image.Entry.EntryRegionIndex + 1];
         long length = region.Length - region.SignatureLength;
         using Stream source = new MtkDataWindow(image.Source, region.FileOffset, length).OpenStream();
         string address = $"0x{region.Address:x}";
-        Begin("BOOT-TO", Args(("at_address", address), ("jmp_address", address), ("source_file", "MEM://0x0:0x0")));
+        Begin(MtkXmlCommand.BootTo, Args(("at_address", address), ("jmp_address", address), ("source_file", "MEM://0x0:0x0")));
         Download(length, source);
-        Lifetime("END");
+        Lifetime(MtkXmlCommand.End);
         wire.Stage = MtkBootStage.Da2;
         AdvertiseHostCommands();
-        Begin("NOTIFY-INIT-HW", Args());
+        Begin(MtkXmlCommand.NotifyInitHw, Args());
         Progress();
-        Lifetime("END");
+        Lifetime(MtkXmlCommand.End);
         checkpoint(MtkExploitStage.Da2Ready);
     }
+
     public MtkDaAuthenticationState AuthenticationState { get; private set; }
+
     private bool BeginSlaProperty()
     {
-        if (BeginOptional("GET-SYS-PROPERTY", Args(("key", "DA.SLA"), ("target_file", "MEM://0x0:0x200000"))))
+        if (BeginOptional(MtkXmlCommand.GetSysProperty, Args(("key", "DA.SLA"), ("target_file", "MEM://0x0:0x200000"))))
             return true;
         AuthenticationState = MtkDaAuthenticationState.Unsupported;
         return false;
     }
+
     public byte[]? GetAuthenticationChallenge()
     {
         AuthenticationState = MtkDaAuthenticationState.NotQueried;
-        if (!BeginSlaProperty()) return null;
+        if (!BeginSlaProperty())
+            return null;
         using var property = new MemoryStream();
         Upload(property, null, options.MaximumXmlSize);
-        Lifetime("END");
+        Lifetime(MtkXmlCommand.End);
         var document = MtkXmlCodec.Parse(property.ToArray(), options.MaximumXmlSize, allowPropertyKey: true);
-        var items = document.DescendantsAndSelf("item").Where(e => (string?)e.Attribute("key") == "DA.SLA").ToArray();
+        var items = document.DescendantsAndSelf("item").Where(e => (string? )e.Attribute("key") == "DA.SLA").ToArray();
         if (items.Length != 1 || items[0].HasElements)
             throw new MtkResourceException("XML DA.SLA property");
         string state = items[0].Value.Trim();
@@ -137,15 +153,16 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
             AuthenticationState = MtkDaAuthenticationState.NotRequired;
             return null;
         }
+
         if (state != "ENABLED")
             throw wire.Failure();
-        Begin("SECURITY-GET-DEV-FW-INFO", Args(("target_file", "MEM://0x0:0x200000")));
+        Begin(MtkXmlCommand.SecurityGetDevFwInfo, Args(("target_file", "MEM://0x0:0x200000")));
         using var output = new MemoryStream();
         byte[]? challenge = null;
         try
         {
             Upload(output, null, options.MaximumXmlSize);
-            Lifetime("END");
+            Lifetime(MtkXmlCommand.End);
             challenge = output.ToArray();
             _ = MtkXmlCodec.Parse(challenge, options.MaximumXmlSize);
             return challenge;
@@ -156,62 +173,100 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
                 System.Security.Cryptography.CryptographicOperations.ZeroMemory(challenge);
             throw;
         }
-        finally { System.Security.Cryptography.CryptographicOperations.ZeroMemory(output.GetBuffer()); }
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(output.GetBuffer());
+        }
     }
+
     public void Authenticate(ReadOnlySpan<byte> response)
     {
         if (response.IsEmpty || response.Length > options.MaximumFrameSize)
             throw new MtkResourceException("DA SLA response length");
-        Begin("SECURITY-SET-FLASH-POLICY", Args(("source_file", "MEM://auth")));
+        Begin(MtkXmlCommand.SecuritySetFlashPolicy, Args(("source_file", "MEM://auth")));
         byte[] copy = response.ToArray();
         try
         {
             using var input = new MemoryStream(copy, false);
             Download(copy.Length, input);
-            Lifetime("END");
+            Lifetime(MtkXmlCommand.End);
         }
-        finally { System.Security.Cryptography.CryptographicOperations.ZeroMemory(copy); }
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(copy);
+        }
     }
-    public byte[] QueryFile(string command,int? maximum=null)
+
+    public byte[] QueryFile(string command, int? maximum = null)
     {
         Begin(command, Args(("target_file", "MEM://0x0:0x200000")));
         using var output = new MemoryStream();
-        try { Upload(output, null, Math.Min(maximum??options.MaximumXmlSize,options.MaximumXmlSize)); Lifetime("END"); return output.ToArray(); }
-        finally { System.Security.Cryptography.CryptographicOperations.ZeroMemory(output.GetBuffer()); }
+        try
+        {
+            Upload(output, null, Math.Min(maximum ?? options.MaximumXmlSize, options.MaximumXmlSize));
+            Lifetime(MtkXmlCommand.End);
+            return output.ToArray();
+        }
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(output.GetBuffer());
+        }
     }
+
     public byte[] GetSystemProperty(string key)
     {
-        Begin("GET-SYS-PROPERTY", Args(("key", key), ("target_file", "MEM://0x0:0x200000")));
+        Begin(MtkXmlCommand.GetSysProperty, Args(("key", key), ("target_file", "MEM://0x0:0x200000")));
         using var output = new MemoryStream();
-        try { Upload(output, null, options.MaximumXmlSize); Lifetime("END"); return output.ToArray(); }
-        finally { System.Security.Cryptography.CryptographicOperations.ZeroMemory(output.GetBuffer()); }
+        try
+        {
+            Upload(output, null, options.MaximumXmlSize);
+            Lifetime(MtkXmlCommand.End);
+            return output.ToArray();
+        }
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(output.GetBuffer());
+        }
     }
+
     public uint ReadRegister(uint address)
     {
-        Begin("READ-REGISTER", Args(("bit_width", "32"), ("base_address", $"0x{address:X}"), ("target_file", "MEM://0x0:0x4")));
+        Begin(MtkXmlCommand.ReadRegister, Args(("bit_width", "32"), ("base_address", $"0x{address:X}"), ("target_file", "MEM://0x0:0x4")));
         string size = ReceiveText(64);
-        if (size != "OK@0x4") throw wire.Failure();
-        Ack(); ReadAck(); Ack();
+        if (size != "OK@0x4")
+            throw wire.Failure();
+        Ack();
+        ReadAck();
+        Ack();
         Span<byte> data = stackalloc byte[4];
-        if (wire.ReadFrame(data) != 4) throw wire.Failure();
-        Ack(); Lifetime("END"); return BinaryPrimitives.ReadUInt32LittleEndian(data);
+        if (wire.ReadFrame(data) != 4)
+            throw wire.Failure();
+        Ack();
+        Lifetime(MtkXmlCommand.End);
+        return BinaryPrimitives.ReadUInt32LittleEndian(data);
     }
-    public void WriteFile(string command,Stream source,long length)
+
+    public void WriteFile(string command, Stream source, long length)
     {
-        Begin(command,Args(("source_file","MEM://0x0:0x200000")));Download(length,source);Lifetime("END");
+        Begin(command, Args(("source_file", "MEM://0x0:0x200000")));
+        Download(length, source);
+        Lifetime(MtkXmlCommand.End);
     }
+
     public void WriteRegister(uint address, uint value)
     {
-        Begin("WRITE-REGISTER", Args(("bit_width", "32"), ("base_address", $"0x{address:X}"), ("source_file", "MEM://0x0:0x4")));
+        Begin(MtkXmlCommand.WriteRegister, Args(("bit_width", "32"), ("base_address", $"0x{address:X}"), ("source_file", "MEM://0x0:0x4")));
         using var source = new MemoryStream(MtkWire.Le32(value), false);
-        Download(4, source); Lifetime("END");
+        Download(4, source);
+        Lifetime(MtkXmlCommand.End);
     }
+
     public MtkStorageInfo GetStorage()
     {
-        Begin("GET-HW-INFO", Args(("target_file", "MEM://0x0:0x200000")));
+        Begin(MtkXmlCommand.GetHwInfo, Args(("target_file", "MEM://0x0:0x200000")));
         using var output = new MemoryStream();
         Upload(output, null, options.MaximumXmlSize);
-        Lifetime("END");
+        Lifetime(MtkXmlCommand.End);
         XElement root = MtkXmlCodec.Parse(output.ToArray(), options.MaximumXmlSize);
         string kind = MtkXmlCodec.Value(root, "storage");
         var sections = root.DescendantsAndSelf(kind.ToLowerInvariant()).ToArray();
@@ -224,16 +279,25 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         if (kind == "NAND")
         {
             ulong page = Number("page_size"), spare = Number("spare_size"), total = Number("total_size");
-            if (page is < 512 or > 65536 || (page & (page - 1)) != 0 || spare > page || block < (long)page ||
-                block > 16777216 || block % (long)page != 0 || total == 0 || total > long.MaxValue || total % (ulong)block != 0)
+            if (page is < 512 or > 65536 || (page & (page - 1)) != 0 || spare > page || block < (long)page || block > 16777216 || block % (long)page != 0 || total == 0 || total > long.MaxValue || total % (ulong)block != 0)
                 throw new MtkResourceException("XML NAND geometry");
-            ulong usable=options.NandLogicalCapacity is { } configured?(ulong)configured:total;
-            if(usable==0 || usable>total || usable%(ulong)block!=0)throw new MtkResourceException("NAND logical capacity");
+            ulong usable = options.NandLogicalCapacity is { } configured ? (ulong)configured : total;
+            if (usable == 0 || usable > total || usable % (ulong)block != 0)
+                throw new MtkResourceException("NAND logical capacity");
             var region = new MtkStorageRegion(MtkStorageKind.Nand, 8, "NAND-WHOLE", usable, (int)page)
-            { CanWrite = options.EnableNandLogicalWrites && options.NandLogicalCapacity.HasValue, EraseBlockSize = block };
-            return new(MtkStorageKind.Nand, Array.AsReadOnly(new[] { region }), 8, 0) {
-                Nand = new(0, (int)page, (int)spare, block, total, usable, false) { LogicalCapacityConfirmed = options.NandLogicalCapacity.HasValue } };
+            {
+                CanWrite = options.EnableNandLogicalWrites && options.NandLogicalCapacity.HasValue,
+                EraseBlockSize = block
+            };
+            return new(MtkStorageKind.Nand, Array.AsReadOnly(new[] { region }), 8, 0)
+            {
+                Nand = new(0, (int)page, (int)spare, block, total, usable, false)
+                {
+                    LogicalCapacityConfirmed = options.NandLogicalCapacity.HasValue
+                }
+            };
         }
+
         if (kind == "EMMC")
         {
             string[] sizes = ["boot1_size", "boot2_size", "rpmb_size", "gp1_size", "gp2_size", "gp3_size", "gp4_size", "user_size"];
@@ -246,19 +310,21 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
                     rpmb = size;
                     continue;
                 }
+
                 if (size > 0)
                     regions.Add(new(MtkStorageKind.Emmc, id, id switch
                     {
                         1 => "EMMC-BOOT1",
                         2 => "EMMC-BOOT2",
                         8 => "EMMC-USER",
-                        _ => $"EMMC-GP{id - 3}"
-                    }, size, block));
+                        _ => $"EMMC-GP{id - 3}"}, size, block));
             }
+
             if (!regions.Any(r => r.WireId == 8) || rpmb % 256 != 0)
                 throw new MtkResourceException("XML eMMC geometry");
             return new(MtkStorageKind.Emmc, regions.AsReadOnly(), 8, checked((uint)(rpmb / 256)));
         }
+
         if (kind != "UFS")
             throw new MtkCapabilityException("storage kind");
         for (uint i = 0; i < 3; i++)
@@ -267,45 +333,54 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
             if (size > 0)
                 regions.Add(new(MtkStorageKind.Ufs, i + 1, $"UFS-LUA{i}", size, block));
         }
+
         if (!regions.Any(r => r.WireId == 3))
             throw new MtkResourceException("XML UFS geometry");
         return new(MtkStorageKind.Ufs, regions.AsReadOnly(), 3, 0);
     }
+
     public void Read(MtkStorageRegion region, long offset, long length, Stream output)
     {
-        Begin("READ-FLASH", Args(("partition", region.Name), ("target_file", region.Name), ("length", $"0x{length:X}"), ("offset", $"0x{offset:X}")));
+        Begin(MtkXmlCommand.ReadFlash, Args(("partition", region.Name), ("target_file", region.Name), ("length", $"0x{length:X}"), ("offset", $"0x{offset:X}")));
         Upload(output, length, length);
-        Lifetime("END");
+        Lifetime(MtkXmlCommand.End);
     }
+
     public void Write(MtkStorageRegion region, long offset, long length, Stream input)
     {
-        if (!region.CanWrite) throw new MtkCapabilityException("read-only storage region");
-        Begin("WRITE-FLASH", Args(("partition", region.Name), ("source_file", $"MEM:\\0x0:0x{length:X}"), ("offset", $"0x{offset:X}")));
+        if (!region.CanWrite)
+            throw new MtkCapabilityException("read-only storage region");
+        Begin(MtkXmlCommand.WriteFlash, Args(("partition", region.Name), ("source_file", $"MEM:\\0x0:0x{length:X}"), ("offset", $"0x{offset:X}")));
         FileSize(length);
         Progress();
         Download(length, input);
-        Lifetime("END");
+        Lifetime(MtkXmlCommand.End);
     }
+
     public void Erase(MtkStorageRegion region, long offset, long length)
     {
-        if (!region.CanWrite || region.EraseBlockSize == 0) throw new MtkCapabilityException("erase geometry/policy");
-        if (offset % region.EraseBlockSize != 0 || length % region.EraseBlockSize != 0) throw new ArgumentOutOfRangeException(nameof(length));
-        Begin("ERASE-FLASH", Args(("partition", region.Name), ("length", $"0x{length:X}"), ("offset", $"0x{offset:X}")));
+        if (!region.CanWrite || region.EraseBlockSize == 0)
+            throw new MtkCapabilityException("erase geometry/policy");
+        if (offset % region.EraseBlockSize != 0 || length % region.EraseBlockSize != 0)
+            throw new ArgumentOutOfRangeException(nameof(length));
+        Begin(MtkXmlCommand.EraseFlash, Args(("partition", region.Name), ("length", $"0x{length:X}"), ("offset", $"0x{offset:X}")));
         Progress();
-        Lifetime("END");
+        Lifetime(MtkXmlCommand.End);
     }
+
     public void Reboot(ProtocolRebootMode mode)
     {
         if (mode == ProtocolRebootMode.PowerOff)
             throw new MtkCapabilityException("XML power off");
         if (mode == ProtocolRebootMode.Download)
-            Simple("SET-BOOT-MODE", Args(("mode", "FASTBOOT"), ("connect_type", "USB"), ("mobile_log", "OFF"), ("adb", "OFF")));
-        Simple("REBOOT", Args(("action", "IMMEDIATE")));
+            Simple(MtkXmlCommand.SetBootMode, Args(("mode", "FASTBOOT"), ("connect_type", "USB"), ("mobile_log", "OFF"), ("adb", "OFF")));
+        Simple(MtkXmlCommand.Reboot, Args(("action", "IMMEDIATE")));
     }
-    public long Upload(Stream output, long? expected, long maximum,XElement? request=null,Action? beforeFinalAck=null)
+
+    public long Upload(Stream output, long? expected, long maximum, XElement? request = null, Action? beforeFinalAck = null)
     {
         request ??= ReceiveXml();
-        Require("UPLOAD-FILE", request);
+        Require(MtkXmlCommand.UploadFile, request);
         int packet = PacketSize(request);
         Ack();
         string sizeText = ReceiveText(64);
@@ -327,18 +402,24 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
                 if (n != want)
                     throw wire.Failure();
                 output.Write(buffer.AsSpan(0, n));
-                if(done+n==size)beforeFinalAck?.Invoke();
+                if (done + n == size)
+                    beforeFinalAck?.Invoke();
                 Ack();
                 done += n;
             }
         }
-        finally { ArrayPool<byte>.Shared.Return(buffer, true); }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer, true);
+        }
+
         return size;
     }
+
     public void Download(long length, Stream input, XElement? request = null)
     {
         request ??= ReceiveXml();
-        Require("DOWNLOAD-FILE", request);
+        Require(MtkXmlCommand.DownloadFile, request);
         int packet = PacketSize(request);
         Ack();
         Ack(length.ToString(System.Globalization.CultureInfo.InvariantCulture));
@@ -358,8 +439,12 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
                 done += n;
             }
         }
-        finally { ArrayPool<byte>.Shared.Return(buffer, true); }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer, true);
+        }
     }
+
     private int PacketSize(XElement request)
     {
         ulong size = MtkXmlCodec.Number(MtkXmlCodec.Value(request, "packet_length"));
@@ -367,10 +452,11 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
             throw wire.Failure();
         return (int)size; // Must retain the negotiated XML packet boundary.
     }
+
     private void FileSize(long length)
     {
         var request = ReceiveXml();
-        Require("FILE-SYS-OPERATION", request);
+        Require(MtkXmlCommand.FileSysOperation, request);
         if (MtkXmlCodec.Value(request, "key") != "FILE-SIZE")
             throw wire.Failure();
         if (MtkXmlCodec.Value(request, "file_path") != $"MEM:\\0x0:0x{length:X}")
@@ -378,9 +464,10 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         Ack();
         Ack(length.ToString("X", System.Globalization.CultureInfo.InvariantCulture));
     }
+
     private void Progress(XElement? request = null)
     {
-        Require("PROGRESS-REPORT", request ?? ReceiveXml());
+        Require(MtkXmlCommand.ProgressReport, request ?? ReceiveXml());
         Ack();
         for (int i = 0; i < options.MaximumProgressEvents; i++)
         {
@@ -390,39 +477,68 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
                 Ack();
                 return;
             }
-            if (!text.StartsWith("OK!PROGRESS@", StringComparison.Ordinal) ||
-                !uint.TryParse(text[12..], out uint percent) || percent > 100)
+
+            if (!text.StartsWith("OK!PROGRESS@", StringComparison.Ordinal) || !uint.TryParse(text[12..], out uint percent) || percent > 100)
                 throw wire.Failure();
             Ack();
             wire.ProgressPercent?.Invoke((int)percent);
         }
+
         throw wire.Failure();
     }
-    public long ReadNamed(string name,Stream destination,long maximum)
+
+    public long ReadNamed(string name, Stream destination, long maximum)
     {
-        Begin("READ-PARTITION",Args(("partition",name),("target_file",name+".bin")));long length=Upload(destination,null,maximum);Lifetime("END");return length;
+        Begin(MtkXmlCommand.ReadPartition, Args(("partition", name), ("target_file", name + ".bin")));
+        long length = Upload(destination, null, maximum);
+        Lifetime(MtkXmlCommand.End);
+        return length;
     }
-    public void WriteNamed(string name,Stream source,long length)
+
+    public void WriteNamed(string name, Stream source, long length)
     {
-        Begin("WRITE-PARTITION",Args(("partition",name),("source_file",name+".bin")));bool downloaded=false;
-        for(int i=0;i<options.MaximumMessages;i++)
+        Begin(MtkXmlCommand.WritePartition, Args(("partition", name), ("source_file", name + ".bin")));
+        bool downloaded = false;
+        for (int i = 0; i < options.MaximumMessages; i++)
         {
-            XElement request=ReceiveXml();string command=MtkXmlCodec.Value(request,"command");
-            switch(command)
+            XElement request = ReceiveXml();
+            string command = MtkXmlCodec.Value(request, "command");
+            switch (command)
             {
-                case "CMD:PROGRESS-REPORT":Progress(request);break;
-                case "CMD:FILE-SYS-OPERATION":
-                    Require("FILE-SYS-OPERATION",request);
-                    if(MtkXmlCodec.Value(request,"key")!="FILE-SIZE" || MtkXmlCodec.Value(request,"file_path")!=name+".bin")throw new MtkResourceException("named virtual file");
-                    Ack();Ack(length.ToString("X",System.Globalization.CultureInfo.InvariantCulture));break;
-                case "CMD:DOWNLOAD-FILE":
-                    if(downloaded)throw wire.Failure();Download(length,source,request);downloaded=true;break;
-                case "CMD:END":Require("END",request);if(!downloaded)throw wire.Failure();Ack();return;
-                default:throw wire.Failure();
+                case MtkXmlCommand.Prefix + MtkXmlCommand.ProgressReport:
+                    Progress(request);
+                    break;
+                case MtkXmlCommand.Prefix + MtkXmlCommand.FileSysOperation:
+                    Require(MtkXmlCommand.FileSysOperation, request);
+                    if (MtkXmlCodec.Value(request, "key") != "FILE-SIZE" || MtkXmlCodec.Value(request, "file_path") != name + ".bin")
+                        throw new MtkResourceException("named virtual file");
+                    Ack();
+                    Ack(length.ToString("X", System.Globalization.CultureInfo.InvariantCulture));
+                    break;
+                case MtkXmlCommand.Prefix + MtkXmlCommand.DownloadFile:
+                    if (downloaded)
+                        throw wire.Failure();
+                    Download(length, source, request);
+                    downloaded = true;
+                    break;
+                case MtkXmlCommand.Prefix + MtkXmlCommand.End:
+                    Require(MtkXmlCommand.End, request);
+                    if (!downloaded)
+                        throw wire.Failure();
+                    Ack();
+                    return;
+                default:
+                    throw wire.Failure();
             }
         }
+
         throw wire.Failure();
     }
+
     public void EraseNamed(string name)
-    { Begin("ERASE-PARTITION",Args(("partition",name)));Progress();Lifetime("END"); }
+    {
+        Begin(MtkXmlCommand.ErasePartition, Args(("partition", name)));
+        Progress();
+        Lifetime(MtkXmlCommand.End);
+    }
 }

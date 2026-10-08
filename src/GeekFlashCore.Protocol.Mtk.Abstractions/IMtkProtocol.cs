@@ -86,6 +86,9 @@ public interface IMtkDaChannel
     {
         get;
     }
+    /// <summary>Bounded host read packet size. Older external channels default to their write limit;
+    /// the core channel reports the independently negotiated XFlash read limit.</summary>
+    int ReadPacketLength => WritePacketLength;
     /// <summary>Sends a binary command and validates its initial status.</summary>
     void SendCommand(uint command);
     /// <summary>Sends one framed binary payload.</summary>

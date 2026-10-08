@@ -22,12 +22,29 @@ public interface IMtkDaDiagnostics
 /// <summary>Allowlisted read-only XFlash controls. XML implements firmware/hardware information and version.</summary>
 public enum MtkDaQuery : uint
 {
-    EmmcInfo = 0x40001, NandInfo = 0x40002, NorInfo = 0x40003, UfsInfo = 0x40004,
-    Version = 0x40005, Expiration = 0x40006, PacketLength = 0x40007, RandomId = 0x40008,
-    PartitionTableCategory = 0x40009, ConnectionAgent = 0x4000a, UsbSpeed = 0x4000b,
-    RamInfo = 0x4000c, ChipId = 0x4000d, OtpLockStatus = 0x4000e, BatteryVoltage = 0x4000f,
-    RpmbStatus = 0x40010, ExpirationDate = 0x40011, DramType = 0x40012, DeviceFirmwareInfo = 0x40013,
-    HardwareId = 0x40014, ErrorDetail = 0x40015, SlaStatus = 0x40016,
+    EmmcInfo = (uint)MtkXFlashCommand.GetEmmcInfo,
+    NandInfo = (uint)MtkXFlashCommand.GetNandInfo,
+    NorInfo = (uint)MtkXFlashCommand.GetNorInfo,
+    UfsInfo = (uint)MtkXFlashCommand.GetUfsInfo,
+    Version = (uint)MtkXFlashCommand.GetDaVersion,
+    Expiration = (uint)MtkXFlashCommand.GetExpireData,
+    PacketLength = (uint)MtkXFlashCommand.GetPacketLength,
+    RandomId = (uint)MtkXFlashCommand.GetRandomId,
+    PartitionTableCategory = (uint)MtkXFlashCommand.GetPartitionTblCata,
+    ConnectionAgent = (uint)MtkXFlashCommand.GetConnectionAgent,
+    UsbSpeed = (uint)MtkXFlashCommand.GetUsbSpeed,
+    RamInfo = (uint)MtkXFlashCommand.GetRamInfo,
+    ChipId = (uint)MtkXFlashCommand.GetChipId,
+    OtpLockStatus = (uint)MtkXFlashCommand.GetOtpLockStatus,
+    BatteryVoltage = (uint)MtkXFlashCommand.GetBatteryVoltage,
+    RpmbStatus = (uint)MtkXFlashCommand.GetRpmbStatus,
+    ExpirationDate = (uint)MtkXFlashCommand.GetExpireDate,
+    DramType = (uint)MtkXFlashCommand.GetDramType,
+    DeviceFirmwareInfo = (uint)MtkXFlashCommand.GetDevFwInfo,
+    HardwareId = (uint)MtkXFlashCommand.GetHrid,
+    ErrorDetail = (uint)MtkXFlashCommand.GetErrorDetail,
+    SlaStatus = (uint)MtkXFlashCommand.SlaEnabledStatus,
+    /// <summary>Synthetic cross-dialect query, never sent as an XFlash command.</summary>
     HardwareInfo = 0x1000000
 }
 

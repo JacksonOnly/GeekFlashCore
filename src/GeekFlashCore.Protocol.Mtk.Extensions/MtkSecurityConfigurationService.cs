@@ -11,36 +11,44 @@ public sealed class MtkSecurityConfigurationService : IMtkSecurityConfigurationS
     public MtkSecurityConfigurationService(IMtkProtocol protocol, IReadOnlyList<IMtkSecurityCipher>? ciphers = null)
     {
         _access = protocol as IMtkSessionAccess ?? throw new MtkCapabilityException("scoped session");
-        _ciphers = ciphers?.ToArray() ?? [new MtkPlainSecurityCipher(),new MtkSoftwareSecurityCipher()];
+        _ciphers = ciphers?.ToArray() ?? [new MtkPlainSecurityCipher(), new MtkSoftwareSecurityCipher()];
         if (_ciphers.Count is 0 or > 8 || _ciphers.Any(c => c is null))
             throw new ArgumentOutOfRangeException(nameof(ciphers));
     }
-    public MtkSecurityChangePlan Plan(MtkFlashRange range, bool locked, CancellationToken cancellationToken = default) =>
-        _access.UseSession(c =>
+
+    public MtkSecurityChangePlan Plan(MtkFlashRange range, bool locked, CancellationToken cancellationToken = default) => _access.UseSession(c =>
+    {
+        var region = c.Storage.Regions.SingleOrDefault(r => r.WireId == range.RegionId) ?? throw new MtkCapabilityException("seccfg region");
+        if (range.Length < region.BlockSize || range.Offset < 0 || range.Offset % region.BlockSize != 0 || range.Offset > region.Length - range.Length)
+            throw new ArgumentOutOfRangeException(nameof(range));
+        byte[] first = new byte[region.BlockSize];
+        byte[]? original = null;
+        try
         {
-            var region = c.Storage.Regions.SingleOrDefault(r => r.WireId == range.RegionId) ?? throw new MtkCapabilityException("seccfg region");
-            if (range.Length < region.BlockSize || range.Offset < 0 || range.Offset % region.BlockSize != 0 || range.Offset > region.Length - range.Length)
-                throw new ArgumentOutOfRangeException(nameof(range));
-            byte[] first = new byte[region.BlockSize];
-            byte[]? original = null;
-            try
-            {
-                using (var output = new MemoryStream(first, true))
-                    c.ReadFlash(new(range.RegionId, range.Offset, first.Length), output);
-                int declared = MtkSecurityCodec.DeclaredSize(first), size = checked((declared + region.BlockSize - 1) / region.BlockSize * region.BlockSize);
-                if (size > range.Length || size > 65536)
-                    throw new MtkResourceException("seccfg range");
-                original = new byte[size];
-                first.CopyTo(original, 0);
-                if (size > first.Length)
-                    using (var output = new MemoryStream(original, first.Length, size - first.Length, true))
-                        c.ReadFlash(new(range.RegionId, range.Offset + first.Length, size - first.Length), output);
-                byte[] replacement = MtkSecurityCodec.Change(original, locked, _ciphers, c, out string algorithm);
-                return new MtkSecurityChangePlan(c.Generation, new(range.RegionId, range.Offset, size), locked, algorithm, original, replacement);
-            }
-            catch { if (original is not null) CryptographicOperations.ZeroMemory(original); throw; }
-            finally { CryptographicOperations.ZeroMemory(first); }
-        }, cancellationToken);
+            using (var output = new MemoryStream(first, true))
+                c.ReadFlash(new(range.RegionId, range.Offset, first.Length), output);
+            int declared = MtkSecurityCodec.DeclaredSize(first), size = checked((declared + region.BlockSize - 1) / region.BlockSize * region.BlockSize);
+            if (size > range.Length || size > 65536)
+                throw new MtkResourceException("seccfg range");
+            original = new byte[size];
+            first.CopyTo(original, 0);
+            if (size > first.Length)
+                using (var output = new MemoryStream(original, first.Length, size - first.Length, true))
+                    c.ReadFlash(new(range.RegionId, range.Offset + first.Length, size - first.Length), output);
+            byte[] replacement = MtkSecurityCodec.Change(original, locked, _ciphers, c, out string algorithm);
+            return new MtkSecurityChangePlan(c.Generation, new(range.RegionId, range.Offset, size), locked, algorithm, original, replacement);
+        }
+        catch
+        {
+            if (original is not null)
+                CryptographicOperations.ZeroMemory(original);
+            throw;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(first);
+        }
+    }, cancellationToken);
     public void Apply(MtkSecurityChangePlan plan, Stream backup, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(plan);
@@ -70,9 +78,16 @@ public sealed class MtkSecurityConfigurationService : IMtkSecurityConfigurationS
                     if (algorithm != plan.Algorithm || !CryptographicOperations.FixedTimeEquals(checkedPlan, replacement.Span))
                         throw new MtkResourceException("seccfg plan integrity");
                 }
-                finally { CryptographicOperations.ZeroMemory(checkedPlan); }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(checkedPlan);
+                }
+
                 backup.Write(original.Span);
-                backup.Flush();
+                if (backup is FileStream file)
+                    file.Flush(true);
+                else
+                    backup.Flush();
                 int block = c.Storage.Regions.Single(r => r.WireId == plan.Range.RegionId).BlockSize;
                 int first = -1, last = 0;
                 for (int i = 0; i < current.Length; i++)
@@ -84,6 +99,7 @@ public sealed class MtkSecurityConfigurationService : IMtkSecurityConfigurationS
                         last = i + 1;
                     }
                 }
+
                 if (first < 0)
                     return 0;
                 int start = first / block * block, end = checked((last + block - 1) / block * block);
@@ -94,19 +110,26 @@ public sealed class MtkSecurityConfigurationService : IMtkSecurityConfigurationS
                     writing = true;
                     c.WriteFlash(new(plan.Range.RegionId, plan.Range.Offset + start, end - start), input);
                 }
-                finally { CryptographicOperations.ZeroMemory(data); }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(data);
+                }
+
                 using (var output = new MemoryStream(current, true))
                     c.ReadFlash(plan.Range, output);
                 if (!CryptographicOperations.FixedTimeEquals(current, replacement.Span))
                     throw new MtkResourceException("seccfg readback");
                 return 0;
             }
-            catch (Exception ex) when (writing)
+            catch (Exception ex)when (writing)
             {
                 c.Invalidate();
                 throw new MtkSecurityWriteException(ex);
             }
-            finally { CryptographicOperations.ZeroMemory(current); }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(current);
+            }
         }, cancellationToken);
     }
 }

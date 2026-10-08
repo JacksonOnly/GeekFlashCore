@@ -10,7 +10,13 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
 {
     private MtkStorageInfo? _storage;
     public MtkDaKind Kind => MtkDaKind.Legacy;
-    private void Ack(byte expected = 0x5a)
+    private void SendCommand(MtkLegacyCommand command)
+    {
+        wire.Command = (byte)command;
+        wire.WriteByte((byte)command);
+    }
+    private void Ack(MtkLegacyResponse expected = MtkLegacyResponse.Ack) => Ack((byte)expected);
+    private void Ack(byte expected)
     {
         byte actual = wire.ReadByte();
         if (actual != expected)
@@ -35,7 +41,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
     public void Initialize(MtkDaImage image, MtkEmiImage? emi, MtkTargetInfo target,
         Func<MtkExploitStage, MtkDaImage> checkpoint)
     {
-        if (wire.ReadByte() != 0xc0)
+        if (wire.ReadByte() != (byte)MtkLegacyResponse.Sync)
             throw wire.Failure();
         wire.Stage = MtkBootStage.Da1;
         if(options.LegacyIoT) { InitializeIoT(image,checkpoint);return; }
@@ -47,7 +53,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
         _ = wire.Read32();
         Span<byte> ids = stackalloc byte[16];
         wire.Read(ids);
-        wire.WriteByte(0x5a);
+        wire.WriteByte((byte)MtkLegacyResponse.Ack);
         Discard(3);
         // Known common Legacy configuration. Chip-specific trailing fields stay explicit.
         using var config = new MemoryStream();
@@ -108,7 +114,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
             }
         }
         finally { ArrayPool<byte>.Shared.Return(buffer, true); }
-        wire.WriteByte(0x5a);
+        wire.WriteByte((byte)MtkLegacyResponse.Ack);
         Ack();
         wire.Stage = MtkBootStage.Da2;
         Span<byte> nor = stackalloc byte[0x1c];
@@ -151,7 +157,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
             Discard(4);
         Span<byte> pass = stackalloc byte[10];
         wire.Read(pass);
-        if (pass[0] != 0x5a)
+        if (pass[0] != (byte)MtkLegacyResponse.Ack)
             throw wire.Failure();
         CheckUsbSpeed(); // No automatic speed switch or reset.
         checkpoint(MtkExploitStage.Da2Ready);
@@ -168,7 +174,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
         if (emi is null || emi.Version is not (0 or 0x0b or 0x0c or 0x0d or 0x0f or 0x10 or 0x11 or 0x14 or 0x15) ||
             emi.Source.Length is <= 0 or > 1048576)
             throw new MtkResourceException("Legacy EMI");
-        wire.WriteByte(0xe8);
+        SendCommand(MtkLegacyCommand.InitExtRam);
         Write32(emi.Version == 0 ? uint.MaxValue : emi.Version);
         Ack();
         if (emi.Version == 0x0b)
@@ -176,7 +182,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
         uint required = wire.Read32();
         if (required == 0 || required > emi.Source.Length)
             throw wire.Failure();
-        wire.WriteByte(0x5a);
+        wire.WriteByte((byte)MtkLegacyResponse.Ack);
         bool truncate = emi.Version is 0 or 0x0c or 0x0d;
         int size = checked((int)(truncate ? required : emi.Source.Length));
         if (emi.Version is 0 or 0x0f or 0x10 or 0x11 or 0x14 or 0x15 && target.HardwareCode != 0x8127)
@@ -188,7 +194,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
             BinaryPrimitives.WriteUInt32BigEndian(data, 0x100);
         wire.Write(data);
         _ = wire.Read16(); // Legacy EMI checksum algorithm is not specified by the reference.
-        wire.WriteByte(0x5a);
+        wire.WriteByte((byte)MtkLegacyResponse.Ack);
         Write32(0x80000001);
         uint status = wire.Read32();
         if (status != 0)
@@ -206,43 +212,39 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
     }
     public byte GetUsbSpeed()
     {
-        wire.Command = 0x72;
-        wire.WriteByte(0x72);
+        SendCommand(MtkLegacyCommand.GetUsbSpeed);
         Ack();
         return wire.ReadByte();
     }
     public uint ReadRegister(uint address)
     {
-        wire.Command = 0x7a;
-        wire.WriteByte(0x7a); Write32(address);
+        SendCommand(MtkLegacyCommand.ReadRegister); Write32(address);
         uint result = wire.Read32(); Ack(); return result;
     }
     public void WriteRegister(uint address, uint value)
     {
-        wire.Command = 0x7b;
-        wire.WriteByte(0x7b); Write32(address); Write32(value); Ack();
+        SendCommand(MtkLegacyCommand.WriteRegister); Write32(address); Write32(value); Ack();
     }
     public byte[] ReadPmt()
     {
-        wire.Command = 0xa5; wire.WriteByte(0xa5); Ack();
+        SendCommand(MtkLegacyCommand.ReadPartitionTable); Ack();
         uint length = wire.Read32();
         if (length == 0 || length > 393216) throw new MtkResourceException("PMT length");
-        wire.WriteByte(0x5a);
-        byte[] bytes = new byte[(int)length]; wire.Read(bytes); wire.WriteByte(0x5a); return bytes;
+        wire.WriteByte((byte)MtkLegacyResponse.Ack);
+        byte[] bytes = new byte[(int)length]; wire.Read(bytes); wire.WriteByte((byte)MtkLegacyResponse.Ack); return bytes;
     }
     private void Switch(MtkStorageRegion region)
     {
-        wire.WriteByte(0x60);
+        SendCommand(MtkLegacyCommand.SwitchPartition);
         Ack();
         wire.WriteByte(checked((byte)region.WireId));
         Ack();
     }
-    private void Header(byte command, MtkStorageRegion region, long offset, long length, bool write)
+    private void Header(MtkLegacyCommand command, MtkStorageRegion region, long offset, long length, bool write)
     {
         if(!write && options.LegacyIoT && region.Kind==MtkStorageKind.Nor && (offset<0 || length<=0 || (ulong)offset+(ulong)length>uint.MaxValue))
             throw new ArgumentOutOfRangeException(nameof(length));
-        wire.Command = command;
-        wire.WriteByte(command);
+        SendCommand(command);
         if (write)
             wire.WriteByte((byte)region.Kind);
         else
@@ -272,7 +274,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
             throw new MtkCapabilityException("Legacy SDMMC read");
         if(!options.LegacyIoT)CheckUsbSpeed();
         if (region.Kind == MtkStorageKind.Emmc) Switch(region);
-        Header(0xd6, region, offset, length, false);
+        Header(MtkLegacyCommand.ReadData, region, offset, length, false);
         byte[] buffer = ArrayPool<byte>.Shared.Rent(options.BufferSize);
         try
         {
@@ -284,7 +286,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
                 if (sum != MtkWire.Sum(buffer.AsSpan(0, n)))
                     throw wire.Failure(sum);
                 output.Write(buffer.AsSpan(0, n));
-                wire.WriteByte(0x5a);
+                wire.WriteByte((byte)MtkLegacyResponse.Ack);
                 length -= n;
             }
         }
@@ -293,7 +295,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
     public void Write(MtkStorageRegion region, long offset, long length, Stream input)
     {
         if(!region.CanWrite)throw new MtkCapabilityException("NAND logical writes");
-        Header(0x62, region, offset, length, true);
+        Header(MtkLegacyCommand.WriteData, region, offset, length, true);
         byte[] buffer = ArrayPool<byte>.Shared.Rent(options.BufferSize);
         Span<byte> b = stackalloc byte[2];
         try
@@ -303,12 +305,12 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
                 wire.Check();
                 int n = (int)Math.Min(options.BufferSize, length);
                 input.ReadExactly(buffer.AsSpan(0, n));
-                wire.WriteByte(0x5a);
+                wire.WriteByte((byte)MtkLegacyResponse.Ack);
                 wire.Write(buffer.AsSpan(0, n));
                 ushort sum = MtkWire.Sum(buffer.AsSpan(0, n));
                 BinaryPrimitives.WriteUInt16BigEndian(b, sum);
                 wire.Write(b);
-                Ack(0x69);
+                Ack(MtkLegacyResponse.Continue);
                 length -= n;
             }
         }
@@ -320,7 +322,8 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
             throw new MtkCapabilityException("Legacy storage erase");
         CheckUsbSpeed();
         Switch(region);
-        wire.Write([0xd4, 2, 0, 0, 0]);
+        wire.Command = (byte)MtkLegacyCommand.Format;
+        wire.Write([(byte)MtkLegacyCommand.Format, 2, 0, 0, 0]);
         Span<byte> p = stackalloc byte[16];
         BinaryPrimitives.WriteUInt64BigEndian(p, (ulong)offset);
         BinaryPrimitives.WriteUInt64BigEndian(p[8..], (ulong)length);
@@ -333,7 +336,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
             byte percent = wire.ReadByte();
             if (percent > 100)
                 throw wire.Failure();
-            wire.WriteByte(0x5a);
+            wire.WriteByte((byte)MtkLegacyResponse.Ack);
             wire.ProgressPercent?.Invoke(percent);
             if (percent == 100)
             {
@@ -348,7 +351,7 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
     {
         if (mode != ProtocolRebootMode.System)
             throw new MtkCapabilityException("Legacy reboot mode");
-        wire.WriteByte(0xd9);
+        SendCommand(MtkLegacyCommand.Shutdown);
         Ack();
         Write32(0);
         Ack();

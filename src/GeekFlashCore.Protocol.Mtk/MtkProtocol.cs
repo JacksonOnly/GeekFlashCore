@@ -600,6 +600,14 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 return owner._wire.WritePacketLength;
             }
         }
+        public int ReadPacketLength
+        {
+            get
+            {
+                Check();
+                return owner._wire.ReadPacketLength;
+            }
+        }
         public void SendCommand(uint command)
         {
             Check();

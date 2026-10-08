@@ -18,4 +18,6 @@
 <data name="ExploitCheckpointSkipped" xml:space="preserve"><value>Host extension checkpoint {0} skipped callback: {1}.</value></data>
 <data name="HandshakeStep" xml:space="preserve"><value>BROM handshake step {0}/{1}.</value></data>
 <data name="ExploitStrategyStarting" xml:space="preserve"><value>Host extension checkpoint {0} is invoking strategy {1}/{2}.</value></data>
+<data name="RscProgress" xml:space="preserve"><value>Writing RSC information</value></data>
+<data name="ScatterProgress" xml:space="preserve"><value>Flashing scatter images</value></data>
 </root>

@@ -33,7 +33,9 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
     {
         ArgumentNullException.ThrowIfNull(context);
         if (context.Da2Base == 0 || context.Da2Size == 0 || (ulong)context.Da2Base + context.Da2Size > (ulong)uint.MaxValue + 1 ||
-            context.UfsRpmbDataBlocks.Count > 4 || !Enum.IsDefined(context.Abi) || context.AllowedMemoryRanges.Any(r => !r.Contains(r.Address, r.Length)))
+            context.UfsRpmbDataBlocks is null || context.UfsRpmbDataBlocks.Count > 4 || !Enum.IsDefined(context.Abi) ||
+            context.AllowedMemoryRanges is null || context.AllowedMemoryRanges.Count > 256 ||
+            context.AllowedMemoryRanges.Any(r => !r.Contains(r.Address, r.Length)))
             throw new ArgumentOutOfRangeException(nameof(context));
         _access.UseSession(c =>
         {
@@ -49,26 +51,26 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
             _generation = -1;
             if (c.Kind == MtkDaKind.XFlash)
             {
-                Control(c, 0xf0000);
+                Control(c, MtkXFlashCommand.ExtAck);
                 Span<byte> ack = stackalloc byte[4];
                 if (c.ReceiveData(ack) != 4 || BinaryPrimitives.ReadUInt32LittleEndian(ack) != 0)
-                    throw new MtkProtocolException(MtkBootStage.Da2, 0xf0000);
+                    throw new MtkProtocolException(MtkBootStage.Da2, (uint)MtkXFlashCommand.ExtAck);
                 c.CheckStatus();
                 byte[] bytes = new byte[32];
-                uint[] fields = [context.SejBase, context.TzccBase, context.Da2Base, context.Da2Size, (uint)c.WritePacketLength, (uint)c.WritePacketLength, (uint)c.Storage.Kind, 0];
+                uint[] fields = [context.SejBase, context.TzccBase, context.Da2Base, context.Da2Size, (uint)c.WritePacketLength, (uint)c.ReadPacketLength, (uint)c.Storage.Kind, 0];
                 for (int i = 0; i < fields.Length; i++)
                     BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(i * 4), fields[i]);
-                Control(c, 0xf0001, bytes);
+                Control(c, MtkXFlashCommand.ExtSetupDaCtx, bytes);
             }
             else
             {
-                c.BeginXmlCommand("EXT-ACK", Args());
+                c.BeginXmlCommand(MtkXmlCommand.ExtAck, Args());
                 using var response = new MemoryStream();
                 c.ReceiveXmlFile(response, null, 4096);
                 c.EndXmlCommand();
                 if (XmlValue(response.ToArray(), "status") != "OK")
-                    throw new MtkProtocolException(MtkBootStage.Da2, 0xf0000);
-                c.BeginXmlCommand("EXT-DA-CTX", Args(("sej_base", Hex(context.SejBase)), ("tzcc_base", Hex(context.TzccBase)),
+                    throw new MtkProtocolException(MtkBootStage.Da2, (uint)MtkXFlashCommand.ExtAck);
+                c.BeginXmlCommand(MtkXmlCommand.ExtDaCtx, Args(("sej_base", Hex(context.SejBase)), ("tzcc_base", Hex(context.TzccBase)),
                     ("ssr_base", Hex(context.SsrBase)), ("da2_base", Hex(context.Da2Base)), ("da2_size", Hex(context.Da2Size)),
                     ("storage", c.Storage.Kind == MtkStorageKind.Emmc ? "EMMC" : "UFS"), ("usb_log", "no")));
                 c.EndXmlCommand();
@@ -95,10 +97,10 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
     }
     private static string Hex(uint value) => $"0x{value:X}";
     private static Dictionary<string, string> Args(params (string Key, string Value)[] values) => values.ToDictionary(v => v.Key, v => v.Value);
-    private static void Control(IMtkDaChannel c, uint command, params byte[][] parameters)
+    private static void Control(IMtkDaChannel c, MtkXFlashCommand command, params byte[][] parameters)
     {
-        c.SendCommand(0x10009);
-        c.SendCommand(command);
+        c.SendCommand((uint)MtkXFlashCommand.DeviceCtrl);
+        c.SendCommand((uint)command);
         if (parameters.Length > 0)
         {
             foreach (var p in parameters)
@@ -170,12 +172,12 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
                 _ = Capacity(c, region);
                 if (c.Kind == MtkDaKind.XFlash)
                 {
-                    Control(c, 0xf0008, LE(region), copy);
+                    Control(c, MtkXFlashCommand.ExtRpmbInit, LE(region), copy);
                     c.CheckStatus();
                 }
                 else
                 {
-                    c.BeginXmlCommand("EXT-RPMB-INIT", Args(("partition", region.ToString()), ("key", Convert.ToHexString(copy))));
+                    c.BeginXmlCommand(MtkXmlCommand.ExtRpmbInit, Args(("partition", region.ToString()), ("key", Convert.ToHexString(copy))));
                     c.EndXmlCommand();
                 }
                 lock (_authenticated)
@@ -204,13 +206,13 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
                 throw new ArgumentException(nameof(destination));
             if (c.Kind == MtkDaKind.XFlash)
             {
-                Control(c, 0xf0009, LE(region), Range(startBlock, blockCount));
+                Control(c, MtkXFlashCommand.ExtRpmbRead, LE(region), Range(startBlock, blockCount));
                 Upload(c, length, destination);
                 c.CheckStatus();
             }
             else
             {
-                c.BeginXmlCommand("EXT-RPMB-READ", RpmbArgs(region, startBlock, blockCount));
+                c.BeginXmlCommand(MtkXmlCommand.ExtRpmbRead, RpmbArgs(region, startBlock, blockCount));
                 c.ReceiveXmlFile(destination, length, length);
                 c.EndXmlCommand();
             }
@@ -227,13 +229,13 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
                 throw new MtkResourceException("RPMB source length");
             if (c.Kind == MtkDaKind.XFlash)
             {
-                Control(c, 0xf000a, LE(region), Range(startBlock, blockCount));
+                Control(c, MtkXFlashCommand.ExtRpmbWrite, LE(region), Range(startBlock, blockCount));
                 Download(c, length, source);
                 c.CheckStatus();
             }
             else
             {
-                c.BeginXmlCommand("EXT-RPMB-WRITE", RpmbArgs(region, startBlock, blockCount));
+                c.BeginXmlCommand(MtkXmlCommand.ExtRpmbWrite, RpmbArgs(region, startBlock, blockCount));
                 c.SendXmlFile(source, length);
                 c.EndXmlCommand();
             }
@@ -290,14 +292,14 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
             Span<byte> data = stackalloc byte[4];
             if (c.Kind == MtkDaKind.XFlash)
             {
-                Control(c, 0xf0004, LE(address));
+                Control(c, MtkXFlashCommand.ExtReadRegister, LE(address));
                 if (c.ReceiveData(data) != 4)
                     throw new MtkResourceException("register read");
                 c.CheckStatus();
             }
             else
             {
-                c.BeginXmlCommand("EXT-READ-MEM", Args(("address", Hex(address)), ("length", "0x4")));
+                c.BeginXmlCommand(MtkXmlCommand.ExtReadMem, Args(("address", Hex(address)), ("length", "0x4")));
                 using var output = new MemoryStream();
                 c.ReceiveXmlFile(output, 4, 4);
                 c.EndXmlCommand();
@@ -313,10 +315,10 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
                 throw new ArgumentOutOfRangeException(nameof(address));
             Memory(c, address, 4);
             if (c.Kind == MtkDaKind.XFlash)
-                Control(c, 0xf0005, LE(address), LE(value));
+                Control(c, MtkXFlashCommand.ExtWriteRegister, LE(address), LE(value));
             else
             {
-                c.BeginXmlCommand("EXT-WRITE-MEM", Args(("address", Hex(address)), ("length", "0x4")));
+                c.BeginXmlCommand(MtkXmlCommand.ExtWriteMem, Args(("address", Hex(address)), ("length", "0x4")));
                 using var input = new MemoryStream(LE(value), false);
                 c.SendXmlFile(input, 4);
                 c.EndXmlCommand();
@@ -336,14 +338,14 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
             {
                 if (c.Kind == MtkDaKind.XFlash)
                 {
-                    Control(c, 0xf0006, LE(0));
+                    Control(c, MtkXFlashCommand.ExtKeyDerive, LE(0));
                     if (c.ReceiveData(key) != 32)
                         throw new MtkResourceException("RPMB derived key");
                     c.CheckStatus();
                 }
                 else
                 {
-                    c.BeginXmlCommand("EXT-KEY-DERIVE", Args(("key_type", "RPMB")));
+                    c.BeginXmlCommand(MtkXmlCommand.ExtKeyDerive, Args(("key_type", "RPMB")));
                     using var output = new MemoryStream();
                     c.ReceiveXmlFile(output, null, 4096);
                     c.EndXmlCommand();
@@ -376,13 +378,13 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
                 throw new ArgumentException(nameof(destination));
             if (c.Kind == MtkDaKind.XFlash)
             {
-                Control(c, 0xf0002, MemoryParams(address, length));
+                Control(c, MtkXFlashCommand.ExtReadMem, MemoryParams(address, length));
                 Upload(c, length, destination);
                 c.CheckStatus();
             }
             else
             {
-                c.BeginXmlCommand("EXT-READ-MEM", Args(("address", Hex(address)), ("length", Hex(length))));
+                c.BeginXmlCommand(MtkXmlCommand.ExtReadMem, Args(("address", Hex(address)), ("length", Hex(length))));
                 c.ReceiveXmlFile(destination, length, length);
                 c.EndXmlCommand();
             }
@@ -399,13 +401,13 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
                 throw new MtkResourceException("memory source");
             if (c.Kind == MtkDaKind.XFlash)
             {
-                Control(c, 0xf0003, MemoryParams(address, length));
+                Control(c, MtkXFlashCommand.ExtWriteMem, MemoryParams(address, length));
                 Download(c, length, source, c.WritePacketLength);
                 c.CheckStatus();
             }
             else
             {
-                c.BeginXmlCommand("EXT-WRITE-MEM", Args(("address", Hex(address)), ("length", Hex(length))));
+                c.BeginXmlCommand(MtkXmlCommand.ExtWriteMem, Args(("address", Hex(address)), ("length", Hex(length))));
                 c.SendXmlFile(source, length);
                 c.EndXmlCommand();
             }
@@ -454,7 +456,7 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
                 p[7] = legacy ? (byte)1 : (byte)0;
                 p[8] = 1;
                 p[10] = 2;
-                Control(c, 0xf0007, p);
+                Control(c, MtkXFlashCommand.ExtSej, p);
                 Download(c, copy.Length, input, c.WritePacketLength);
                 Upload(c, copy.Length, output);
                 c.CheckStatus();
@@ -463,7 +465,7 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
             {
                 if (legacy || xor)
                     throw new MtkCapabilityException("XML legacy SEJ");
-                c.BeginXmlCommand("EXT-SEJ", Args(("encrypt", encrypt ? "yes" : "no"), ("ac", antiClone ? "yes" : "no"), ("length", Hex((uint)copy.Length))));
+                c.BeginXmlCommand(MtkXmlCommand.ExtSej, Args(("encrypt", encrypt ? "yes" : "no"), ("ac", antiClone ? "yes" : "no"), ("length", Hex((uint)copy.Length))));
                 c.SendXmlFile(input, copy.Length);
                 c.ReceiveXmlFile(output, copy.Length, copy.Length);
                 c.EndXmlCommand();

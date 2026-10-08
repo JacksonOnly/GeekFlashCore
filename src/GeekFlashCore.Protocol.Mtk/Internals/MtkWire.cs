@@ -22,6 +22,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         get; set;
     }
     public int WritePacketLength { get; set; } = options.BufferSize;
+    public int ReadPacketLength { get; set; } = options.MaximumFrameSize;
     public Action<int>? ProgressPercent { get; set; }
     public void Begin(CancellationToken token, int timeout)
     {
@@ -158,15 +159,15 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         // Zero-length parameter frames are required by the explicit V2 key-derive label/salt ABI.
         if (length < 0 || length > uint.MaxValue)
             throw new MtkResourceException("frame length");
-        Span<byte> header = stackalloc byte[12];
-        BinaryPrimitives.WriteUInt32LittleEndian(header, 0xfeeeeeef);
-        BinaryPrimitives.WriteUInt32LittleEndian(header[4..], 1);
+        Span<byte> header = stackalloc byte[MtkDaFrame.HeaderSize];
+        BinaryPrimitives.WriteUInt32LittleEndian(header, MtkDaFrame.Magic);
+        BinaryPrimitives.WriteUInt32LittleEndian(header[4..], (uint)MtkDaFrameType.Flow);
         BinaryPrimitives.WriteUInt32LittleEndian(header[8..], (uint)length);
         Write(header);
     }
     public int ReadFrame(Span<byte> destination)
     {
-        Span<byte> header = stackalloc byte[12];
+        Span<byte> header = stackalloc byte[MtkDaFrame.HeaderSize];
         byte[]? message = null;
         try
         {
@@ -175,9 +176,9 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
                 Read(header);
                 uint magic = BinaryPrimitives.ReadUInt32LittleEndian(header), type = BinaryPrimitives.ReadUInt32LittleEndian(header[4..]),
                     length = BinaryPrimitives.ReadUInt32LittleEndian(header[8..]);
-                if (magic != 0xfeeeeeef || type is not (1 or 2) || length == 0 || length > options.MaximumFrameSize)
+                if (magic != MtkDaFrame.Magic || type is not ((uint)MtkDaFrameType.Flow or (uint)MtkDaFrameType.Message) || length == 0 || length > options.MaximumFrameSize)
                     throw Failure();
-                if (type == 1)
+                if (type == (uint)MtkDaFrameType.Flow)
                 {
                     if (length > destination.Length)
                         throw Failure();

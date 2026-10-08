@@ -83,6 +83,7 @@ public sealed record MtkExtensionContext(ushort HardwareCode, uint Da2Base, uint
     public MtkExtensionAbi Abi { get; init; }
     /// <summary>Explicit UFS RPMB capacities (256-byte blocks); standard UFS info does not supply them.</summary>
     public IReadOnlyList<uint> UfsRpmbDataBlocks { get; init; } = [];
+    /// <summary>At most 256 explicitly approved memory windows; an empty list permits no memory access.</summary>
     public IReadOnlyList<MtkMemoryRange> AllowedMemoryRanges { get; init; } = [];
 }
 public enum MtkExtensionAbi { Legacy,Penumbra2 }

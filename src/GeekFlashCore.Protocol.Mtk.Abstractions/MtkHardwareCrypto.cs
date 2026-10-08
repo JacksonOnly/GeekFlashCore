@@ -22,6 +22,7 @@ public interface IMtkBromSessionControl
 /// <summary>Standard Legacy/XML register access scoped to one DA gate and explicit approved windows.</summary>
 public interface IMtkDaHardwareSessionAccess
 {
+    /// <summary>Runs one synchronous action with 1..256 approved aligned windows; retained access expires on return.</summary>
     T UseDaHardware<T>(IReadOnlyList<MtkMemoryRange> allowedRanges,Func<IMtkHardwareAccess,T> action,CancellationToken cancellationToken=default);
 }
 /// <summary>No padding is added by hardware AES operations.</summary>

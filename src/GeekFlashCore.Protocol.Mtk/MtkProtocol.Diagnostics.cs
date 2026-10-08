@@ -14,12 +14,12 @@ public sealed partial class MtkProtocol : IMtkDaDiagnostics
         if (!Enum.IsDefined(query))
             throw new ArgumentOutOfRangeException(nameof(query));
         if (_da is XFlashSession x && query != MtkDaQuery.HardwareInfo)
-            return x.Control((uint)query, maximum: _options.MaximumFrameSize);
+            return x.Control((MtkXFlashCommand)(uint)query, maximum: _options.MaximumFrameSize);
         if (_da is XmlSession xml)
             return query switch
             {
-                MtkDaQuery.DeviceFirmwareInfo => xml.QueryFile("SECURITY-GET-DEV-FW-INFO"),
-                MtkDaQuery.HardwareInfo => xml.QueryFile("GET-HW-INFO"),
+                MtkDaQuery.DeviceFirmwareInfo => xml.QueryFile(MtkXmlCommand.SecurityGetDevFwInfo),
+                MtkDaQuery.HardwareInfo => xml.QueryFile(MtkXmlCommand.GetHwInfo),
                 MtkDaQuery.Version => xml.GetSystemProperty("DA.VERSION"),
                 _ => throw new MtkCapabilityException("DA query/dialect")
             };
@@ -84,7 +84,7 @@ public sealed partial class MtkProtocol : IMtkDaDiagnostics
     {
         Ready();
         if (_da is not XmlSession xml) throw new MtkCapabilityException("XML partition table");
-        byte[] bytes = xml.QueryFile("READ-PARTITION-TABLE");
+        byte[] bytes = xml.QueryFile(MtkXmlCommand.ReadPartitionTable);
         try
         {
             var root = MtkXmlCodec.Parse(bytes, _options.MaximumXmlSize, allowPartitionVersion: true);

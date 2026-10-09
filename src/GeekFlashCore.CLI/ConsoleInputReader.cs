@@ -10,6 +10,23 @@ internal sealed class ConsoleInputReader(TextReader? input = null)
     private readonly List<string> _history = [];
 
     internal bool CanPrompt => input is not null || !Console.IsInputRedirected;
+    internal bool CanPollKeys => input is null && !Console.IsInputRedirected && !Console.IsOutputRedirected;
+
+    internal async Task WaitForEscapeAsync(Action cancel, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            while (true)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (Console.KeyAvailable && Console.ReadKey(intercept: true).Key == ConsoleKey.Escape)
+                { cancel(); return; }
+                await Task.Delay(25, ct).ConfigureAwait(false);
+            }
+        }
+        finally { _gate.Release(); }
+    }
 
     internal async Task<string?> ReadCommandAsync(string prompt, Func<string, IReadOnlyList<string>> complete, CancellationToken ct)
     {

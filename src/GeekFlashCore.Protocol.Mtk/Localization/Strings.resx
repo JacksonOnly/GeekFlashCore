@@ -20,6 +20,7 @@
 <data name="ExploitStrategyStarting" xml:space="preserve"><value>宿主扩展阶段 {0} 正在调用策略 {1}/{2}。</value></data>
 <data name="RscProgress" xml:space="preserve"><value>写入 RSC 信息</value></data>
 <data name="ScatterProgress" xml:space="preserve"><value>刷写 Scatter 镜像</value></data>
+<data name="SparseWritePlan" xml:space="preserve"><value>MTK Sparse：展开 {ExpandedLength} 字节，实际传输 {TransferLength} 字节，{RegionCount} 个连续区域。</value></data>
 <data name="WireCommand" xml:space="preserve"><value>MTK {BootStage}：命令 {CommandName}（0x{Command:X8}）。</value></data>
 <data name="WireStatus" xml:space="preserve"><value>MTK {BootStage}：命令 0x{Command:X8}，状态 0x{Status:X8}，接受={StatusAccepted}。</value></data>
 <data name="WireWrite" xml:space="preserve"><value>MTK {BootStage}：命令 0x{Command:X8}，写入 {RequestedLength} 字节，耗时 {ElapsedMilliseconds} ms。</value></data>
@@ -82,7 +83,9 @@
 <data name="CdcSetup" xml:space="preserve"><value>MTK CDC：控制接口 {ControlInterfaceNumber}，波特率 {BaudRate}，控制线 {ControlLineState}。</value></data>
 <data name="StartupPacketRead" xml:space="preserve"><value>MTK 启动 IN：缓冲 {RequestedLength} 字节，收到 {ReceivedLength} 字节，耗时 {ElapsedMilliseconds} ms，预算 {TimeoutMilliseconds} ms。</value></data>
 <data name="HandshakePrefix" xml:space="preserve"><value>MTK 首个握手应答前已跳过 {HandshakePrefixCount} 字节启动前缀。</value></data>
-<data name="HandshakeWakeDuplicate" xml:space="preserve"><value>MTK Preloader：消费一次重复的唤醒应答；未重发命令。</value></data>
+<data name="HandshakePrefixLimit" xml:space="preserve"><value>MTK 启动前缀 {HandshakePrefixCount} 字节，超过上限 {HandshakePrefixLimit}；停止握手。</value></data>
+<data name="PreloaderReadySync" xml:space="preserve"><value>MTK Preloader 仍返回 READY；同步首步 A0 {HandshakeStartAttempt}/{HandshakeStartLimit}。</value></data>
+<data name="HandshakeWakeDuplicate" xml:space="preserve"><value>MTK Preloader：消费重复的首步应答，不重发后续命令。</value></data>
 <data name="HandshakeResponse" xml:space="preserve"><value>MTK 握手步骤 {HandshakeStep}：应答 0x{HandshakeResponse:X2}，预期 0x{HandshakeExpected:X2}。</value></data>
 <data name="HandshakeIdentified" xml:space="preserve"><value>MTK 握手及完整 FD 身份校验通过，已握手候选 {AlreadyHandshaken}；阶段仍需 FE 确认。</value></data>
 <data name="Da1ReplacementChecked" xml:space="preserve"><value>MTK {Dialect}：已检查上传前 DA1 替换，非签名字节实际修改={Da1Modified}；不等同于认证成功。</value></data>
@@ -103,4 +106,6 @@
 <data name="GptCrcChecked" xml:space="preserve"><value>MTK 区域 {RegionId} {GptCopy} GPT：{ValidationStep} 校验通过={ValidationPassed}。</value></data>
 <data name="GptCopyRejected" xml:space="preserve"><value>MTK 区域 {RegionId} {GptCopy} GPT：副本校验拒绝，阶段 {ValidationStep}。</value></data>
 <data name="GptUfsBoundarySelected" xml:space="preserve"><value>MTK UFS 区域 {RegionId}：4K GPT 声明起始 LBA {DeclaredFirstUsableLba}，实际首分区 LBA {FirstPartitionLba}；原始 CRC 已通过，按物理元数据末端 LBA {MetadataEndLba} 严格验证并以首分区界定 PGPT。仅宿主兼容解析，不改写设备。</value></data>
+<data name="PreloaderDaSignatureRequired" xml:space="preserve"><value>安全 Preloader 所需的 DA1 签名</value></data>
+<data name="PreloaderDaVerification" xml:space="preserve"><value>MTK Preloader：DA1 签名 {SignatureLength} 字节，由设备校验；不执行 BROM 前置认证。</value></data>
 </root>

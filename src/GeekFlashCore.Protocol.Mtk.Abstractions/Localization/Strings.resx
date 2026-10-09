@@ -12,4 +12,5 @@
 <data name="ScatterWriteUnknown" xml:space="preserve"><value>Scatter 刷写可能已部分完成；请使用保存的备份检查设备，禁止自动重试。</value></data>
 <data name="RpmbLockWriteUnknown" xml:space="preserve"><value>RPMB 锁状态可能已写入；请重新连接并检查原始备份与设备状态，禁止自动重试。</value></data>
 <data name="FlashFillUnknown" xml:space="preserve"><value>逻辑填充可能已部分写入；请重新连接并检查目标范围，禁止自动重试。</value></data>
+<data name="ScatterYamlStructure" xml:space="preserve"><value>Scatter YAML 结构、缩进或映射上限</value></data>
 </root>

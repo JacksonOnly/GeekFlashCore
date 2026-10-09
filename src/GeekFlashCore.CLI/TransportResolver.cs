@@ -14,7 +14,8 @@ namespace GeekFlashCore.CLI;
 
 internal sealed record TransportResolution(ITransport Transport, ProtocolRegistration Registration, CliOptions? PreparedOptions = null);
 
-internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, CancellationToken, Task<CliOptions>>? prepareOptions = null)
+internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, CancellationToken, Task<CliOptions>>? prepareOptions = null,
+    Func<string, Action, IAsyncDisposable>? beginDeviceWait = null, Action<string>? reportMessage = null)
 {
     private int _reportedMtkWaiting;
     private int _reportedMtkRetry;
@@ -112,19 +113,23 @@ internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, C
         if (prepareOptions is not null)
             options = await prepareOptions(registration, options, ct).ConfigureAwait(false);
         NativeUsbRuntime.EnsureAvailable();
+        using var waiting = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        ct = waiting.Token;
+        await using var activity = registration.Type == ProtocolType.Mtk ? beginDeviceWait?.Invoke(registration.WaitingMessage, waiting.Cancel) : null;
+        var preparation = new MtkUsbPreparation();
         var elapsed = System.Diagnostics.Stopwatch.StartNew();
         bool reportedDisconnect = false;
         int timeout = DeviceWaitTimeout(registration, options);
         string retryMessage = registration.Type == ProtocolType.Mtk
             ? Strings.Cli_MtkUsbDiscoveryRetry : Strings.Cli_UsbOpenDisconnectedRetry;
-        if (registration.Type == ProtocolType.Mtk && Interlocked.Exchange(ref _reportedMtkWaiting, 1) == 0)
+        if (registration.Type == ProtocolType.Mtk && activity is null && Interlocked.Exchange(ref _reportedMtkWaiting, 1) == 0)
             Console.WriteLine(registration.WaitingMessage);
         void ReportRetry(Exception? exception = null)
         {
             if (exception is not null) Log.Debug(exception, retryMessage);
             if (reportedDisconnect) return;
             if (registration.Type == ProtocolType.Mtk && Interlocked.Exchange(ref _reportedMtkRetry, 1) != 0) return;
-            Console.WriteLine(retryMessage);
+            if (reportMessage is null) Console.WriteLine(retryMessage); else reportMessage(retryMessage);
             reportedDisconnect = true;
         }
         while (true)
@@ -134,13 +139,15 @@ internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, C
                 throw DeviceWaitExpired(registration, options);
             // MTK explicit admission includes preparation; preserve other protocols' old discovery budget.
             if (registration.Type != ProtocolType.Mtk) elapsed.Stop();
-            await PrepareNativeUsbAsync(registration, options, ct).ConfigureAwait(false);
+            if (registration.Type == ProtocolType.Mtk)
+                await preparation.EnsureAsync(token => PrepareNativeUsbAsync(registration, options, token), ct).ConfigureAwait(false);
+            else await PrepareNativeUsbAsync(registration, options, ct).ConfigureAwait(false);
             if (registration.Type != ProtocolType.Mtk) elapsed.Start();
             ct.ThrowIfCancellationRequested();
             if (timeout != Timeout.Infinite && elapsed.ElapsedMilliseconds >= timeout)
                 throw DeviceWaitExpired(registration, options);
             IReadOnlyList<UsbTransportIdentity> enumerated;
-            try { enumerated = LibUsbTransportFactory.Enumerate(serialNumber: options.UsbSerial); }
+            try { enumerated = LibUsbTransportFactory.Enumerate(registration.Type == ProtocolType.Mtk ? (ushort?)0x0e8d : null, serialNumber: options.UsbSerial); }
             catch (Exception exception) when (registration.Type == ProtocolType.Mtk && IsMtkUsbDiscoveryFailure(exception))
             {
                 ct.ThrowIfCancellationRequested();
@@ -158,12 +165,15 @@ internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, C
                     : TryOpenNativeTransport(() => registration.UsbFactory!(identity, options), ct);
                 if (transport is not null)
                 {
-                    if (timeout != Timeout.Infinite && elapsed.ElapsedMilliseconds >= timeout)
+                    try
                     {
-                        transport.Dispose();
-                        throw DeviceWaitExpired(registration, options);
+                        if (activity is not null) await activity.DisposeAsync().ConfigureAwait(false);
+                        ct.ThrowIfCancellationRequested();
+                        if (timeout != Timeout.Infinite && elapsed.ElapsedMilliseconds >= timeout)
+                            throw DeviceWaitExpired(registration, options);
+                        return new(transport, registration, options);
                     }
-                    return new(transport, registration, options);
+                    catch { transport.Dispose(); throw; }
                 }
                 ReportRetry();
             }

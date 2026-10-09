@@ -23,6 +23,8 @@ internal ref struct MtkHandshakeReader
             throw new TimeoutException(Strings.Timeout);
     }
 
+    public bool HasBufferedData => _position < _length;
+
     public byte ReadByte()
     {
         Check();

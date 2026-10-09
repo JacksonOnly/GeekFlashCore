@@ -1,4 +1,5 @@
 using GeekFlashCore.Android.Sparse;
+using GeekFlashCore.Android.Sparse.Types;
 using GeekFlashCore.BlockDevice;
 using GeekFlashCore.BlockDevice.Abstractions;
 using GeekFlashCore.Protocol.Abstractions;
@@ -9,6 +10,17 @@ namespace GeekFlashCore.Protocol.Mtk;
 public sealed partial class MtkProtocol
 {
     private List<(string Name, MtkFlashRange Range)>? _partitions;
+    private MtkStorageRegion? PreloaderRegion(StorageTarget target)
+    {
+        if (target is not PartitionTarget partition || !MtkPartitionNames.IsPreloader(partition.Name)) return null;
+        Ready();
+        if (_da is not (Da.XFlashSession or Da.XmlSession)) throw new MtkCapabilityException("native Preloader header handling");
+        uint id = MtkPartitionNames.Display(partition.Name) == MtkPartitionNames.Preloader ? 1u : 2u;
+        if (partition.PhysicalPartitionNumber is { } selected && selected != id)
+            throw new MtkResourceException("Preloader region");
+        return _storage!.Regions.SingleOrDefault(r => r.WireId == id && r.Kind is MtkStorageKind.Emmc or MtkStorageKind.Ufs)
+            ?? throw new MtkCapabilityException("Preloader boot region");
+    }
     private MtkFlashRange Resolve(StorageTarget target)
     {
         ArgumentNullException.ThrowIfNull(target);
@@ -38,6 +50,20 @@ public sealed partial class MtkProtocol
         ArgumentNullException.ThrowIfNull(destination);
         return Task.FromResult(Execute(() =>
         {
+            if (PreloaderRegion(destination.Target) is { } boot)
+            {
+                if (!destination.OutputStream.CanWrite) throw new ArgumentException(nameof(destination));
+                string name = MtkPartitionNames.Wire(((PartitionTarget)destination.Target).Name);
+                var bootTrace = StartTransfer(MtkTransferKind.NamedRead, boot.WireId, 0, boot.Length, name);
+                var bootProgress = new TransferProgress(progress, boot.Length, "read");
+                bootProgress.Report(0, ProgressPhase.Started);
+                using var bootOutput = new ProgressStream(destination.OutputStream, n => bootProgress.Report(n));
+                long actual = _da is Da.XFlashSession x ? x.ReadNamed(name, bootOutput, boot.Length)
+                    : ((Da.XmlSession)_da!).ReadNamed(name, bootOutput, boot.Length);
+                CompleteTransfer(bootTrace, actual);
+                progress?.Report(new(actual, actual, Strings.FormatPhase("read")) { Unit = ProgressUnit.Bytes, Phase = ProgressPhase.Completed });
+                return destination;
+            }
             var range = Resolve(destination.Target);
             var region = Range(range);
             if (!destination.OutputStream.CanWrite)
@@ -57,6 +83,25 @@ public sealed partial class MtkProtocol
         ArgumentNullException.ThrowIfNull(source);
         return Task.FromResult(Execute(() =>
         {
+            if (PreloaderRegion(source.Target) is { } boot)
+            {
+                if (!boot.CanWrite) throw new MtkCapabilityException("Preloader write policy");
+                if (source.Source.Length <= 0 || source.Source.Length > boot.Length) throw new MtkResourceException("Preloader image length");
+                using Stream bootInput = source.Source.OpenStream();
+                if (!bootInput.CanRead || !bootInput.CanSeek || bootInput.Position != 0 || bootInput.Length != source.Source.Length || SparseImageParser.IsSparse(bootInput))
+                    throw new MtkResourceException("Preloader image source");
+                string name = MtkPartitionNames.Wire(((PartitionTarget)source.Target).Name);
+                var bootTrace = StartTransfer(MtkTransferKind.NamedWrite, boot.WireId, 0, source.Source.Length, name);
+                var bootProgress = new TransferProgress(progress, source.Source.Length, "write");
+                bootProgress.Report(0, ProgressPhase.Started);
+                using var tracked = new ProgressStream(bootInput, n => bootProgress.Report(n));
+                if (_da is Da.XFlashSession x) x.WriteNamed(name, tracked, source.Source.Length);
+                else ((Da.XmlSession)_da!).WriteNamed(name, tracked, source.Source.Length);
+                _partitions = null;
+                CompleteTransfer(bootTrace);
+                bootProgress.Report(source.Source.Length, ProgressPhase.Completed);
+                return source.Source.Length;
+            }
             var range = Resolve(source.Target);
             var region = Range(range);
             if (source.Source.Length <= 0)
@@ -69,33 +114,39 @@ public sealed partial class MtkProtocol
             long written;
             TransferProgress tracker;
             MtkTransferLog trace;
+            long transferLength;
             if (SparseImageParser.IsSparse(content))
             {
                 using var block = new StreamBlockDevice(content, source.Source.Length, DeviceOwnership.Borrow);
                 using var sparse = SparseImageParser.Open(block, DeviceOwnership.Borrow);
                 if (sparse.ExpandedLength <= 0 || sparse.ExpandedLength > range.Length || sparse.Header.BlockSize % region.BlockSize != 0)
                     throw new MtkResourceException("Sparse geometry");
-                sparse.VerifyChecksum(cancellationToken: ct);
-                var data = sparse.CreateDataRegions();
+                if (sparse.ChecksumStatus == SparseChecksumStatus.NotVerified)
+                    sparse.VerifyChecksum(cancellationToken: ct);
+                var data = sparse.CreateContiguousDataRegions();
+                transferLength = data.Sum(part => part.Length);
                 // Validate every expanded region before the first storage write.
                 foreach (var part in data)
                     _ = Range(new(range.RegionId, checked(range.Offset + part.StartBlock * (long)sparse.Header.BlockSize), part.Length));
                 trace = StartTransfer(MtkTransferKind.Write, range.RegionId, range.Offset, sparse.ExpandedLength);
-                tracker = new(progress, sparse.ExpandedLength, "write");
+                MtkDiagnostics.Summary(_logger, Strings.SparseWritePlan, sparse.ExpandedLength, transferLength, data.Count);
+                tracker = new(progress, transferLength, "write");
                 tracker.Report(0, ProgressPhase.Started);
+                long completed = 0;
                 foreach (var part in data)
                 {
                     long start = checked(part.StartBlock * (long)sparse.Header.BlockSize);
-                    tracker.Report(start);
                     using var partStream = part.OpenRead(content, true);
-                    using var tracked = new ProgressStream(partStream, n => tracker.Report(checked(start + n)));
+                    using var tracked = new ProgressStream(partStream, n => tracker.Report(checked(completed + n)));
                     _da!.Write(region, checked(range.Offset + start), part.Length, tracked);
+                    completed = checked(completed + part.Length);
                 }
                 written = sparse.ExpandedLength;
             }
             else
             {
                 written = source.Source.Length;
+                transferLength = written;
                 long padded = checked((written + region.BlockSize - 1) / region.BlockSize * region.BlockSize);
                 if (padded > range.Length)
                     throw new ArgumentOutOfRangeException(nameof(source));
@@ -107,14 +158,16 @@ public sealed partial class MtkProtocol
                 _da!.Write(region, range.Offset, padded, padding);
             }
             _partitions = null;
-            CompleteTransfer(trace);
-            tracker.Report(written, ProgressPhase.Completed);
+            CompleteTransfer(trace, transferLength);
+            tracker.Report(transferLength, ProgressPhase.Completed);
             return written;
         }, ct));
     }
     public Task<bool> EraseAsync(StorageTarget target, IProgress<ProgressRecord>? progress = null, CancellationToken ct = default) =>
         Task.FromResult(Execute(() =>
         {
+            if (target is PartitionTarget named && MtkPartitionNames.IsPreloader(named.Name))
+                throw new MtkCapabilityException("native Preloader erase (use explicit boot-region sector addressing for raw erase)");
             var range = Resolve(target); var region = Range(range);
             var trace = StartTransfer(MtkTransferKind.Erase, range.RegionId, range.Offset, range.Length);
             var tracker = new TransferProgress(progress, range.Length, "erase");
@@ -126,7 +179,8 @@ public sealed partial class MtkProtocol
             tracker.Report(range.Length, ProgressPhase.Completed); return true;
         }, ct));
     public Task<IReadOnlyList<PartitionInfo>> GetPartitionsAsync(IProgress<ProgressRecord>? progress = null, CancellationToken ct = default) =>
-        Task.FromResult(Execute<IReadOnlyList<PartitionInfo>>(() => LoadPartitionsCore().Select(p => new PartitionInfo(p.Name, p.Range.Offset, p.Range.Offset, p.Range.Length,
+        Task.FromResult(Execute<IReadOnlyList<PartitionInfo>>(() => LoadPartitionsCore().Select(p => new PartitionInfo(p.Name,
+            p.Range.Offset, p.Range.Offset / _storage!.Regions.Single(r => r.WireId == p.Range.RegionId).BlockSize, p.Range.Length,
             new Dictionary<string, string>
             {
                 { "PhysicalPartitionNumber", p.Range.RegionId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
@@ -190,10 +244,16 @@ public sealed partial class MtkProtocol
     private sealed class TransferProgress(IProgress<ProgressRecord>? progress, long total, string phase)
     {
         private long _current;
+        private long _lastReport;
+        private bool _runningReported;
         private readonly string _label = Strings.FormatPhase(phase);
         public void Report(long current, ProgressPhase state = ProgressPhase.Running)
         {
             _current = Math.Clamp(current, _current, total);
+            long now = Environment.TickCount64;
+            if (state == ProgressPhase.Running && _runningReported && _current != total && now - _lastReport < 100) return;
+            if (state == ProgressPhase.Running) _runningReported = true;
+            _lastReport = now;
             progress?.Report(new(total, _current, _label) { Unit = ProgressUnit.Bytes, Phase = state });
         }
     }

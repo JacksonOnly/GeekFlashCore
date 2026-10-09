@@ -280,14 +280,7 @@ group-remove 仅允许空分组；默认分组受保护。示例：lp rename . s
   --usb-interface N --usb-control-interface N --usb-alt N
   --mtk-ufs-rpmb-blocks N,N
   --mtk-sej-base ADDR --mtk-tzcc-base ADDR --mtk-ssr-base ADDR
-MTK 命令：
-  devices
-  mtk-probe
-  mtk-capabilities
-  mtk-rpmb read|write region start count key-file data-file
-  mtk-memory read|write address length file
-  mtk-seccfg lock|unlock region offset length backup-file
-MTK 默认连接预算 60000 ms，资源预算 30000 ms，均为有限时限。
+MTK 默认连接预算 180000 ms，资源预算 30000 ms，均为有限时限。
 --connect-timeout 覆盖整个 MTK 连接；--resource-timeout 覆盖每次资源请求预算。</value></data>
   <data name="Cli_UsbTopology" xml:space="preserve"><value>{0}:{1} bus={2} port={3}</value></data>
   <data name="Cli_UsbAmbiguous" xml:space="preserve"><value>匹配到多台 USB 设备，请通过序列号或总线/端口路径明确选择。</value></data>
@@ -379,7 +372,7 @@ Cache 命令阻止：{8}</value></data>
 键名使用 MtkKeyDeriveId 枚举：
   Rpmb、Fde、Tee、AesImageEncryption、AesCustom、Motorola、RootOfTrust。
 输入最多各 32 字节，- 表示空输入。
-必须指定 --mtk-extension-abi penumbra2 及对应加密基址，并已合法加载兼容扩展。
+需要 Penumbra2 扩展（默认 ABI）及已确认的对应加密基址。
 密钥仅写入文件。</value></data>
   <data name="Cli_MtkRpmbLockState" xml:space="preserve"><value>RPMB 锁配置版本={0}，状态={1}。</value></data>
   <data name="Cli_HelpMtkWriteExtras" xml:space="preserve"><value>MTK 写入命令：
@@ -461,9 +454,72 @@ Cache 命令阻止：{8}</value></data>
 <data name="Cli_SprdChipUid" xml:space="preserve"><value>SPRD Chip UID：{0}</value></data>
   <data name="Cli_MtkInitialProbeRetry" xml:space="preserve"><value>MTK 初始接入未完成，已释放旧连接，继续等待设备；按 Ctrl+C 停止。</value></data>
   <data name="Cli_MtkUsbDiscoveryRetry" xml:space="preserve"><value>MTK USB 枚举或打开未完成，继续等待设备；按 Ctrl+C 停止，诊断原因见文件日志。</value></data>
-  <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>MTK 当前操作已停止，会话已失效。请重新连接设备；不会自动重试认证、DA 或读写命令。</value></data>
+  <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>MTK 会话已失效，不自动重试。若写入中断，目标内容可能不完整；先复位设备至空闲状态，再 reconnect 并从头重刷。</value></data>
   <data name="Cli_MtkBromChunkInvalid" xml:space="preserve"><value>BROM 宿主上传块必须为 64～1048576 字节。</value></data>
   <data name="Cli_ProgramWriteModeQcomOnly" xml:space="preserve"><value>--program-write-mode 仅适用于 Qualcomm 协议。</value></data>
   <data name="Cli_ProgramWriteModeInvalid" xml:space="preserve"><value>写入模式必须为 program、auto 或 patch。</value></data>
   <data name="Cli_PatchProgramAvailable" xml:space="preserve"><value>框架 PROGRAM 模式：{0}；PATCH 后端仍需设备接受 PATCH，命令清单保持设备报告值。</value></data>
+  <data name="Cli_MtkExtensionLoaded" xml:space="preserve"><value>MTK：DA 扩展已加载。</value></data>
+  <data name="Cli_MtkExtensionNotPrepared" xml:space="preserve"><value>MTK：DA 扩展未加载，缺少已验证的加载器或函数地址。</value></data>
+  <data name="Cli_MtkScatterConverted" xml:space="preserve"><value>MTK：分区表转换完成。</value></data>
+  <data name="Cli_MtkScatterLayoutChanged" xml:space="preserve"><value>Scatter 布局不匹配的分区：{0}。</value></data>
+  <data name="Cli_MtkScatterConfirm" xml:space="preserve"><value>是否备份当前主/备 GPT、更新分区表并继续刷写？仅备份分区表，不备份或迁移分区内容；布局变化可能使原数据不可用。输入 yes 继续，其余取消：</value></data>
+  <data name="Cli_HelpMtkRepair" xml:space="preserve"><value>交互模式保持会话；reconnect [auto|brom|da1|da2] [xflash|legacy|xml] 重连。优先使用启动帧与原会话信息，未知阶段/身份需确认；Legacy DA2 需要原会话存储信息。
+Scatter flash/update 只显示不匹配分区；确认后仅备份原 GPT、更新并刷写，不备份全部分区。
+  mtk-scatter to-gpt scatter-file output-prefix emmc|ufs block-size user-capacity
+  mtk-scatter from-gpt gpt-file scatter-file emmc|ufs block-size user-capacity platform
+转换离线执行；容量单位为字节，块大小为 512 或 4096。to-gpt 输出 .pgpt.bin/.sgpt.bin；from-gpt 不推测下载文件名，默认禁止下载。GPT 只保存 USER 布局。</value></data>
+  <data name="Cli_MtkReconnectIdentity" xml:space="preserve"><value>无法确认是原设备。确认当前连接使用原设备 DA 和存储信息？输入 yes 继续</value></data>
+  <data name="Cli_MtkReconnectStage" xml:space="preserve"><value>无法可靠区分当前阶段。请确认设备处于 brom、da1 或 da2；传输中断后请先重新接入到命令边界</value></data>
+  <data name="Cli_MtkReconnectDialect" xml:space="preserve"><value>请输入已加载 DA 的协议：xflash、legacy 或 xml</value></data>
+  <data name="Cli_MtkReconnectHardware" xml:space="preserve"><value>DA 无法查询完整硬件信息。请输入已确认的 hardware-code subcode hardware-version software-version BROM-version security-raw（支持 0x）</value></data>
+  <data name="Cli_MtkPreloaderPrompt" xml:space="preserve"><value>DA1 可能需要 EMI。请选择匹配的 Preloader 文件（若已完成 DRAM 初始化可留空）</value></data>
+  <data name="Cli_MtkReconnectBoundary" xml:space="preserve"><value>未确认上次传输已结束。请先物理复位/重新进入 DA，确认已处于空闲命令边界（不是等待镜像数据）；输入 yes 继续</value></data>
+  <data name="Cli_MtkBackupSaved" xml:space="preserve"><value>备份：{0}</value></data>
+  <data name="Cli_MtkWriteConfirm" xml:space="preserve"><value>确认执行 {0}？输入 yes 继续，其余取消：</value></data>
+  <data name="Cli_MtkRpmbCapacityRequired" xml:space="preserve"><value>UFS RPMB R{0} 未上报容量。请输入已确认的容量（256 字节数据块数）；不知道请取消，不按镜像长度推测：</value></data>
+  <data name="Cli_MtkRpmbCapacity" xml:space="preserve"><value>RPMB R{0}：{1} 个数据块，{2} 字节。</value></data>
+  <data name="Cli_MtkRpmbAuthenticated" xml:space="preserve"><value>RPMB 认证完成。</value></data>
+  <data name="Cli_MtkEfuseWriteTitle" xml:space="preserve"><value>eFuse 写入（可能不可逆，备份不能撤销熔丝烧写）</value></data>
+  <data name="Cli_HelpMtkCommands" xml:space="preserve"><value>MTK 命令（旧 mtk-* 入口继续兼容）：
+  mtk probe | capabilities
+  mtk seccfg lock|unlock [--backup 文件]
+  mtk slot read | set a|b [--backup 文件]
+  mtk rpmb info [--region 0..3]
+  mtk rpmb read|write 文件 [--region N] [--start 块] [--count 块数] [--key-file 密钥]
+  mtk rpmb erase [--region N] [--start 块] [--count 块数] [--key-file 密钥]
+  mtk rpmb auth 密钥文件 [--region N]
+  mtk rpmb-lock read|lock|unlock [--key-file 密钥] [--backup 文件]
+  mtk key Rpmb|Fde|Tee|RootOfTrust|... 输出文件
+  mtk memory read|write 地址 字节数 文件
+  mtk register read 地址 | write 地址 数值
+  mtk partition read|write 分区 文件 [--maximum 字节上限] | erase 分区
+  mtk scatter [文件] | plan 文件 | flash|update 文件 [镜像目录] [--backup 备份目录]
+  mtk efuse read 文件 | write 文件 [--backup 文件]
+  mtk query 查询名 输出文件 | property 属性名 输出文件
+  mtk pmt 32|64|96|disk|xml
+  mtk fill 区域 字节偏移 字节长度 填充值 | rsc 分区 文件
+seccfg/slot 自动读取分区位置；存在歧义时用 --partition 名称明确指定。
+RPMB 块为 256 字节，默认区域 0、起始 0；读/擦默认剩余容量，写默认文件块数。
+密钥省略时使用当前认证或 Penumbra2 派生，不打印/落盘；UFS 未报告的容量仍需确认。
+安全写入自动备份并确认，不自动重试未知写结果。地址、未知容量和厂商密钥不猜测。</value></data>
+  <data name="Cli_DeviceWaitStatus" xml:space="preserve"><value>{0} {1} {2}  Esc 取消</value></data>
+  <data name="Cli_MtkOffline" xml:space="preserve"><value>当前未连接。输入 reconnect 重新等待，help 查看命令，exit 退出；不会自动重试失败操作。</value></data>
+  <data name="Cli_MtkScatterFilePrompt" xml:space="preserve"><value>选择 Scatter 文件（txt/xml）</value></data>
+  <data name="Cli_MtkScatterFileInvalid" xml:space="preserve"><value>Scatter 文件不存在，请重新选择。</value></data>
+  <data name="Cli_MtkScatterSummary" xml:space="preserve"><value>Scatter：使用设备 {0} 布局，选中 {1} 个下载条目；镜像默认与 Scatter 同目录。</value></data>
+  <data name="Cli_MtkScatterPreflight" xml:space="preserve"><value>Scatter：检查镜像与容量，尚未写入。</value></data>
+  <data name="Cli_MtkScatterBackupGpt" xml:space="preserve"><value>Scatter：备份当前主/备 GPT。</value></data>
+  <data name="Cli_MtkScatterLayoutMatched" xml:space="preserve"><value>Scatter：分区布局一致。</value></data>
+  <data name="Cli_MtkScatterNativeConfirm" xml:space="preserve"><value>确认由 DA 更新分区并刷写？不预先备份全部分区，仅保存 DA 请求的迁移文件。输入 yes 继续，其余取消：</value></data>
+  <data name="Cli_MtkScatterFlashConfirm" xml:space="preserve"><value>确认继续刷写镜像？不备份分区内容，写后回读校验。输入 yes 继续，其余取消：</value></data>
+  <data name="Cli_HelpMtkScatterWorkflow" xml:space="preserve"><value>Scatter 刷写：
+  mtk scatter                         选择 Scatter 文件，按文件配置刷写
+  mtk scatter 文件                    镜像默认同目录，备份自动生成
+  mtk scatter plan 文件               只查看当前介质布局
+  mtk scatter flash 文件 [镜像目录] [--backup 备份目录]
+    --partitions boot_a,super         只刷指定下载项，仍比较完整布局
+刷写只显示布局不匹配的分区；同意后仅备份 GPT 再更新并刷写，不备份全部分区。
+分区内容不备份或迁移；写后回读保留，GPT 备份不能恢复被覆盖的数据。
+  --mtk-operation-timeout 毫秒        启动选项：MTK 单次核心操作预算，默认 1800000；单次 USB 超时不变。</value></data>
 </root>

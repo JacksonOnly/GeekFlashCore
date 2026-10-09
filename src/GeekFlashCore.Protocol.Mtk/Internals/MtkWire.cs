@@ -37,6 +37,23 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         get; private set;
     }
     private bool _hasRead;
+    private byte? _startupByte;
+    public MtkEntrySignal InspectEntrySignal()
+    {
+        Check();
+        if (_startupByte is null)
+        {
+            Span<byte> one = stackalloc byte[1];
+            _hasRead = true;
+            int count = transport.ReadAvailable(one);
+            Check();
+            if (count == 0) return MtkEntrySignal.None;
+            if (count != 1) throw Failure();
+            _startupByte = one[0];
+        }
+        return _startupByte.Value switch { 0xc0 => MtkEntrySignal.Da1Sync, 0xef => MtkEntrySignal.FramedDa, _ => MtkEntrySignal.Other };
+    }
+    public void ClearStartup() => _startupByte = null;
     public bool HasIoAttempted => HasWritten || _hasRead;
     public MtkBootStage Stage
     {
@@ -128,6 +145,8 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         long deadline = Math.Min(_deadline, checked(started + readTimeout));
         int budget = (int)Math.Clamp(deadline - started, 0, int.MaxValue);
         int done = 0, fragments = 0, zeroLengthPackets = 0;
+        if (!data.IsEmpty && _startupByte is { } pending)
+        { data[done++] = pending; _startupByte = null; _hasRead = true; }
         try
         {
             while (done < data.Length)
@@ -172,6 +191,8 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
     {
         // One native packet, not an exact fill: READY and its response may share an IN transfer.
         Check();
+        if (!data.IsEmpty && _startupByte is { } pending)
+        { data[0] = pending; _startupByte = null; _hasRead = true; return 1; }
         int timeout = Math.Min(maximumTimeout, Math.Min(options.ReadTimeoutMilliseconds, RemainingTimeoutMilliseconds));
         if (timeout <= 0)
             throw new TimeoutException(Strings.Timeout);
@@ -293,19 +314,54 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         int length = ReadFlowHeader(maximumLength);
         // All payload windows share a logical read deadline. A slow trickle cannot refresh it.
         long deadline = checked(Environment.TickCount64 + options.ReadTimeoutMilliseconds);
+        int buffered = 0;
         for (int remaining = length; remaining > 0;)
         {
             Check();
-            long timeout = deadline - Environment.TickCount64;
-            if (timeout <= 0) throw new TimeoutException(Strings.Timeout);
-            int count = Math.Min(remaining, buffer.Length);
-            Read(buffer[..count], checked((int)Math.Min(int.MaxValue, timeout)));
-            output.Write(buffer[..count]);
-            remaining -= count;
+            int count = Math.Min(remaining, Math.Min(options.BufferSize, buffer.Length - buffered));
+            int received = ReadStreamWindow(buffer.Slice(buffered, count), deadline);
+            buffered += received;
+            remaining -= received;
+            if (buffered == buffer.Length || remaining == 0)
+            {
+                output.Write(buffer[..buffered]);
+                buffered = 0;
+            }
         }
         Check();
         if (Environment.TickCount64 >= deadline) throw new TimeoutException(Strings.Timeout);
         return length;
+    }
+    private int ReadStreamWindow(Span<byte> buffer, long deadline)
+    {
+        long started = Environment.TickCount64;
+        deadline = Math.Min(deadline, _deadline);
+        int budget = (int)Math.Clamp(deadline - started, 0, int.MaxValue), fragments = 0;
+        try
+        {
+            for (int zeros = 0; ; zeros++)
+            {
+                Check();
+                long remaining = deadline - Environment.TickCount64;
+                if (remaining <= 0) throw new TimeoutException(Strings.Timeout);
+                _hasRead = true;
+                fragments++;
+                int received = transport.Read(buffer, checked((int)Math.Min(int.MaxValue, remaining)));
+                Check();
+                if (Environment.TickCount64 >= deadline) throw new TimeoutException(Strings.Timeout);
+                if (received == 0 && transport.IsOpen && zeros < MaximumConsecutiveDaZeroLengthPackets) continue;
+                if (received <= 0 || received > buffer.Length) throw new EndOfStreamException(Strings.FormatInvalidData("USB read"));
+                if (Logger.IsEnabled(LogEventLevel.Debug))
+                    Logger.Debug(Strings.WireRead, Stage, Command, received, fragments, Environment.TickCount64 - started, budget);
+                return received;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Debug(Strings.WireInterrupted, "Read", Stage, Command, buffer.Length, 0, fragments,
+                Environment.TickCount64 - started, budget, ex.GetType().Name);
+            throw;
+        }
     }
     private int ReadFlowHeader(int maximumFlowLength)
     {

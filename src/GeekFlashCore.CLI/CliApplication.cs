@@ -7,22 +7,28 @@ using GeekFlashCore.UsbWatcher.Abstractions;
 
 namespace GeekFlashCore.CLI;
 
-internal sealed class CliApplication
+internal sealed partial class CliApplication
 {
     private readonly ConsoleUi _ui;
     private readonly TransportResolver _transportResolver;
     private readonly IProgress<ProgressRecord> _progress;
+    private CliOptions? _sessionOptions;
+    private MtkReconnectSnapshot? _reconnectSnapshot;
+    private bool _cleanReconnectBoundary;
+    private string[] _reconnectArguments = [];
 
     public CliApplication(ConsoleUi? ui = null)
     {
         _ui = ui ?? new ConsoleUi();
-        _transportResolver = new(PrepareConnectionOptionsAsync);
+        _transportResolver = new(PrepareConnectionOptionsAsync, _ui.BeginDeviceWait, _ui.WriteLine);
         _progress = new ImmediateProgress<ProgressRecord>(_ui.Report);
     }
 
     public async Task<int> RunAsync(CliOptions options, CancellationToken ct)
     {
         options.Validate();
+        _sessionOptions = options;
+        if (options.Command == "reconnect") _reconnectArguments = options.Arguments;
         _ui.AllowPrompts = !options.NonInteractive;
         _ui.WriteBanner();
         if (options.Command != "help" && _ui.LogFilePath is not null)
@@ -36,6 +42,7 @@ internal sealed class CliApplication
         try { options = NormalizeAndValidate(options, requestedRegistration); }
         catch (CommandUsageException exception) { _ui.WriteLine(exception.Message); return 2; }
         if (options.Command == "help") { CommandLine.PrintRequestedHelp(options.Arguments, _ui); return 0; }
+        if (MtkScatterCommands.IsOffline(options)) { await MtkScatterCommands.ExecuteOfflineAsync(options, _ui, ct); return 0; }
         if (options.Command == "firmware") { FirmwareCommands.Execute(options.Arguments, _ui, ct); return 0; }
         if (options.Command == "lp" && LpCommands.IsHelp(options.Arguments)) { LpCommands.PrintHelp(_ui); return 0; }
         if (options.Command is "browse" or "browse-image" && BrowserCommands.ShowHelp(options.Arguments, _ui)) return 0;
@@ -62,7 +69,11 @@ internal sealed class CliApplication
                 return await special.ExecuteAsync(protocol, options.Arguments, _ui, progress, ct).ConfigureAwait(false);
 
             _ui.WriteLine(Strings.Cli_Connecting);
-            await protocol.ConnectAsync(progress, ct).ConfigureAwait(false);
+            if (!protocol.IsConnected)
+            {
+                await protocol.ConnectAsync(progress, ct).ConfigureAwait(false);
+                MtkProtocolHostAdapter.InitializeExtension(protocol, options, ct);
+            }
             return await ExecuteCommandAsync(protocol, connection.Registration, options, progress, ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException) { _ui.ShowCancelled(); EndMtkOperation(protocol); return 130; }
@@ -71,46 +82,104 @@ internal sealed class CliApplication
 
     private async Task<int> InteractiveAsync(CliOptions options, CancellationToken ct)
     {
-        var connection = await CreateConnectionAsync(options, null, ct).ConfigureAwait(false);
-        using ITransport transport = connection.Transport;
-        await using var protocol = connection.Protocol;
-        try
+        bool recover = IsMtkConnection(options);
+        while (true)
         {
-            _ui.WriteLine(Strings.Cli_Connecting);
-            await protocol.ConnectAsync(_progress, ct).ConfigureAwait(false);
-            _ui.WriteLine(Strings.FormatCli_ConnectedHelp(connection.Registration.DisplayName));
-            ShowQcomCommands(protocol);
-            return await ReadCommandsAsync(protocol, connection.Registration, ct).ConfigureAwait(false);
+            ActiveConnection? active = null;
+            int failure;
+            try
+            {
+                using (var search = recover ? _ui.BeginSearch(ct) : null)
+                {
+                    CancellationToken connecting = search?.Token ?? ct;
+                    var connection = await CreateConnectionAsync(options, null, connecting).ConfigureAwait(false);
+                    active = new(connection.Protocol, connection.Transport, connection.Registration);
+                    recover |= active.Protocol.Type == ProtocolType.Mtk;
+                    _ui.WriteLine(Strings.Cli_Connecting);
+                    if (!active.Protocol.IsConnected)
+                    {
+                        await active.Protocol.ConnectAsync(_progress, connecting).ConfigureAwait(false);
+                        MtkProtocolHostAdapter.InitializeExtension(active.Protocol, options, connecting);
+                    }
+                }
+                _ui.WriteLine(Strings.FormatCli_ConnectedHelp(active.Registration.DisplayName));
+                ShowQcomCommands(active.Protocol);
+                return await ReadCommandsAsync(active, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            { _ui.ShowCancelled(); failure = 130; }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception exception) { _ui.LogException(exception); failure = 1; }
+            finally
+            {
+                if (active is not null)
+                {
+                    try { await active.DisposeAsync().ConfigureAwait(false); }
+                    catch (Exception cleanup) when (active.Protocol.Type == ProtocolType.Mtk)
+                    { Serilog.Log.Debug(cleanup, Strings.Cli_MtkOperationStopped); }
+                }
+            }
+            if (!recover || !_ui.CanPrompt) return failure;
+            var retry = await WaitForMtkRetryAsync(options, ct).ConfigureAwait(false);
+            if (retry is null) return 0;
+            options = retry; _reconnectArguments = retry.Arguments;
+            _cleanReconnectBoundary = false;
+            _sessionOptions = retry with { Command = "interactive", Arguments = [] };
         }
-        catch (OperationCanceledException) { _ui.ShowCancelled(); EndMtkOperation(protocol); return 130; }
-        catch (Exception exception) { _ui.LogException(exception); EndMtkOperation(protocol); return 1; }
     }
 
-    private async Task<int> ReadCommandsAsync(IProtocol protocol, ProtocolRegistration registration, CancellationToken ct)
+    private async Task<int> ReadCommandsAsync(ActiveConnection active, CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
         {
             string line = await _ui.ReadCommandAsync("geekflash> ",
-                prefix => CommandCompletion.Complete(prefix, protocol, registration), ct).ConfigureAwait(false) ?? "exit";
+                prefix => CommandCompletion.Complete(prefix, active.Protocol, active.Registration), ct).ConfigureAwait(false) ?? "exit";
             if (line.Equals("exit", StringComparison.OrdinalIgnoreCase) || line.Equals("quit", StringComparison.OrdinalIgnoreCase)) break;
             try
             {
-                var parsed = CommandLine.Parse(Tokenize(line));
+                var defaults = _sessionOptions ?? new CliOptions();
+                if (active.Protocol.Type == ProtocolType.Mtk) defaults = defaults with { Protocol = "mtk" };
+                var parsed = CommandLine.ParseSession(Tokenize(line), defaults);
                 if (parsed.Command.Equals("interactive", StringComparison.OrdinalIgnoreCase)) continue;
-                int result = await ExecuteCommandAsync(protocol, registration, parsed, _progress, ct).ConfigureAwait(false);
+                if (parsed.Command == "reconnect" || parsed.Command == "connect" && !active.Protocol.IsConnected && active.Protocol.Type == ProtocolType.Mtk)
+                {
+                    CommandSyntax.Validate(parsed);
+                    if (active.Protocol.Type != ProtocolType.Mtk) throw new CommandUsageException("reconnect (MTK)");
+                    using var search = _ui.BeginSearch(ct);
+                    CancellationToken connecting = search.Token;
+                    _reconnectSnapshot = MtkProtocolHostAdapter.Capture(active.Protocol) ?? _reconnectSnapshot;
+                    _cleanReconnectBoundary = active.Protocol.IsConnected;
+                    _reconnectArguments = parsed.Arguments;
+                    if (_reconnectSnapshot is { } snapshot)
+                        parsed = parsed with { Protocol = "mtk", Usb = null,
+                            UsbSerial = snapshot.Identity.SerialNumber, UsbBus = snapshot.Identity.BusNumber, UsbPortPath = snapshot.Identity.PortPath };
+                    await active.ReleaseAsync();
+                    var next = await CreateConnectionAsync(parsed, active.Registration, connecting).ConfigureAwait(false);
+                    active.Replace(next.Protocol, next.Transport, next.Registration);
+                    if (!active.Protocol.IsConnected)
+                    {
+                        await active.Protocol.ConnectAsync(_progress, connecting).ConfigureAwait(false);
+                        MtkProtocolHostAdapter.InitializeExtension(active.Protocol, parsed, connecting);
+                    }
+                    _sessionOptions = parsed with { Command = "interactive", Arguments = [] };
+                    _ui.WriteLine(Strings.FormatCli_ConnectedHelp(active.Registration.DisplayName));
+                    continue;
+                }
+                _reconnectSnapshot = MtkProtocolHostAdapter.Capture(active.Protocol) ?? _reconnectSnapshot;
+                int result = await ExecuteCommandAsync(active.Protocol, active.Registration, parsed, _progress, ct).ConfigureAwait(false);
                 bool endsSession = parsed.Command is "reboot" or "power" ||
-                    result == 0 && !protocol.IsConnected ||
+                    result == 0 && !active.Protocol.IsConnected ||
                     parsed.Command == "qcom" && parsed.Arguments.Length > 0 &&
                     parsed.Arguments[0].Equals("power", StringComparison.OrdinalIgnoreCase);
                 if (result == 0 && endsSession)
                 {
                     _ui.WriteLine(Strings.Cli_SessionEnded);
-                    return 0;
+                    if (active.Protocol.Type != ProtocolType.Mtk) return 0;
                 }
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-            catch (OperationCanceledException) { _ui.ShowCancelled(); if (EndMtkOperation(protocol)) return 130; }
-            catch (Exception exception) { _ui.LogException(exception); if (EndMtkOperation(protocol)) return 1; }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { EndMtkOperation(active.Protocol); throw; }
+            catch (OperationCanceledException) { _ui.ShowCancelled(); EndMtkOperation(active.Protocol); }
+            catch (Exception exception) { _ui.LogException(exception); EndMtkOperation(active.Protocol); }
         }
         return 0;
     }
@@ -129,6 +198,7 @@ internal sealed class CliApplication
         try { options = NormalizeAndValidate(options, registration); }
         catch (CommandUsageException exception) { _ui.WriteLine(exception.Message); return 2; }
         ct.ThrowIfCancellationRequested();
+        if (MtkScatterCommands.IsOffline(options)) { await MtkScatterCommands.ExecuteOfflineAsync(options, _ui, ct); return 0; }
         if (options.Command == "firmware") { FirmwareCommands.Execute(options.Arguments, _ui, ct); return 0; }
         if (options.Command == "lp" && LpCommands.IsHelp(options.Arguments)) { LpCommands.PrintHelp(_ui); return 0; }
         if (options.Command is "browse" or "browse-image" && BrowserCommands.ShowHelp(options.Arguments, _ui)) return 0;
@@ -141,9 +211,14 @@ internal sealed class CliApplication
 
         switch (options.Command.ToLowerInvariant())
         {
+            case "reconnect":
+                if (protocol.Type != ProtocolType.Mtk) throw new CommandUsageException("reconnect (MTK)");
+                return 0;
             case "connect":
+                if (protocol.IsConnected) return 0;
                 _ui.WriteLine(Strings.Cli_Connecting);
                 await protocol.ConnectAsync(progress, ct).ConfigureAwait(false);
+                MtkProtocolHostAdapter.InitializeExtension(protocol, options, ct);
                 _ui.WriteLine(Strings.FormatCli_ConnectedHelp(registration.DisplayName));
                 ShowQcomCommands(protocol);
                 return 0;
@@ -200,6 +275,27 @@ internal sealed class CliApplication
         ProtocolRegistration registration = requested ?? resolution.Registration;
         if (registration.Type == ProtocolType.Mtk)
         {
+            bool daCandidate = resolution.Transport is IUsbTransport usb && usb.Identity.ProductId == 0x2001;
+            if (RequiresMtkLoader(registration, options) && (daCandidate || _reconnectArguments.FirstOrDefault() is "da1" or "da2" ||
+                _reconnectSnapshot is not null && _reconnectArguments.FirstOrDefault() != "brom"))
+            {
+                IProtocol? resumed = null;
+                try
+                {
+                    resumed = registration.Factory(new ProtocolHostContext(_ui, options), resolution.Transport);
+                    await MtkProtocolHostAdapter.ResumeAsync((GeekFlashCore.Protocol.Mtk.MtkProtocol)resumed, options, _ui,
+                        _reconnectSnapshot, _cleanReconnectBoundary, _reconnectArguments, ct).ConfigureAwait(false);
+                    return (resumed, resolution.Transport, registration);
+                }
+                catch
+                {
+                    try { if (resumed is not null) await resumed.DisposeAsync().ConfigureAwait(false); }
+                    catch (Exception cleanup) { Serilog.Log.Debug(cleanup, Strings.Cli_MtkOperationStopped); }
+                    try { resolution.Transport.Dispose(); }
+                    catch (Exception cleanup) { Serilog.Log.Debug(cleanup, Strings.Cli_MtkOperationStopped); }
+                    throw;
+                }
+            }
             int? remaining = options.HasExplicitDeviceWaitTimeout
                 ? (int)Math.Max(0, options.DeviceWaitTimeout - elapsed.ElapsedMilliseconds) : null;
             TransportResolution? candidate = resolution;
@@ -249,7 +345,13 @@ internal sealed class CliApplication
             if (admitted is not null)
             {
                 if (options.Command != "mtk-capabilities")
-                    MtkProtocolHostAdapter.ProbeForAdmission((GeekFlashCore.Protocol.Mtk.MtkProtocol)protocol, ct);
+                {
+                    var mtk = (GeekFlashCore.Protocol.Mtk.MtkProtocol)protocol;
+                    if (options.Command == "reconnect" && options.Arguments.FirstOrDefault() is null or "auto" &&
+                        mtk.InspectEntrySignal(ct) is GeekFlashCore.Protocol.Mtk.Abstractions.MtkEntrySignal.Da1Sync or GeekFlashCore.Protocol.Mtk.Abstractions.MtkEntrySignal.FramedDa)
+                        await MtkProtocolHostAdapter.ResumeAsync(mtk, options, _ui, null, false, [], ct).ConfigureAwait(false);
+                    else MtkProtocolHostAdapter.ProbeForAdmission(mtk, ct);
+                }
                 admitted();
             }
             return protocol;
@@ -340,6 +442,23 @@ internal sealed class CliApplication
         if (quote != '\0') throw new ArgumentException(Strings.Cli_UnclosedQuote);
         if (current.Length > 0) tokens.Add(current.ToString());
         return tokens.ToArray();
+    }
+
+    private sealed class ActiveConnection(IProtocol protocol, ITransport transport, ProtocolRegistration registration) : IAsyncDisposable
+    {
+        public IProtocol Protocol { get; private set; } = protocol;
+        public ProtocolRegistration Registration { get; private set; } = registration;
+        private ITransport? _transport = transport;
+        public async ValueTask ReleaseAsync()
+        {
+            if (_transport is not { } owned) return;
+            _transport = null;
+            try { await Protocol.DisposeAsync(); }
+            finally { owned.Dispose(); }
+        }
+        public void Replace(IProtocol next, ITransport nextTransport, ProtocolRegistration nextRegistration)
+        { Protocol = next; _transport = nextTransport; Registration = nextRegistration; }
+        public ValueTask DisposeAsync() => ReleaseAsync();
     }
 }
 

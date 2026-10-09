@@ -205,7 +205,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             LogSelectedDa(resources);
             target = _target!;
             SendBootResources(resources, target);
-            if (target.Security.Sla)
+            if (target.Stage != MtkBootStage.Preloader && target.Security.Sla)
             {
                 if (resources.SynchronousSigner is null)
                     throw new MtkResourceException("synchronous BROM SLA signer");
@@ -254,7 +254,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             LogSelectedDa(resources);
             target = _target!;
             SendBootResources(resources, target);
-            if (target.Security.Sla)
+            if (target.Stage != MtkBootStage.Preloader && target.Security.Sla)
                 await AuthenticateAsync(MtkAuthenticationKind.BromSla, _brom.StartSla(), resources, ct).ConfigureAwait(false);
             var entry = resources.DownloadAgent.Entry;
             var da1 = entry.Regions[entry.EntryRegionIndex];
@@ -375,9 +375,13 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 throw new MtkResourceException("DA region");
             using var stream = new MtkDataWindow(image.Source, region.FileOffset, region.Length).OpenStream();
         }
-        if (requireBootAuthentication && target.Security.Daa && resources.Authentication is null)
+        bool requireBromAuthentication = requireBootAuthentication && target.Stage != MtkBootStage.Preloader;
+        if (requireBootAuthentication && target.Stage == MtkBootStage.Preloader &&
+            (target.Security.SecureBoot || target.Security.Daa) && entry.Regions[entry.EntryRegionIndex].SignatureLength == 0)
+            throw new MtkResourceException(Strings.PreloaderDaSignatureRequired);
+        if (requireBromAuthentication && target.Security.Daa && resources.Authentication is null)
             throw new MtkResourceException("DAA authentication");
-        if (requireBootAuthentication && target.Security.CertificateRequired && resources.Certificate is null)
+        if (requireBromAuthentication && target.Security.CertificateRequired && resources.Certificate is null)
             throw new MtkResourceException("certificate");
         foreach (var sensitive in new[] { resources.Authentication, resources.Certificate })
             if (sensitive is not null && (sensitive.Memory.Length == 0 ||
@@ -402,6 +406,12 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     {
         _target = target with { WatchdogState = _brom.DisableWatchdog(target) };
         MtkDiagnostics.Summary(_logger, Strings.WatchdogEvidence, _target.WatchdogState);
+        if (target.Stage == MtkBootStage.Preloader)
+        {
+            MtkDiagnostics.Summary(_logger, Strings.PreloaderDaVerification,
+                resources.DownloadAgent.Entry.Regions[resources.DownloadAgent.Entry.EntryRegionIndex].SignatureLength);
+            return;
+        }
         if (resources.Certificate is { } certificate)
             _brom.SendResource(MtkBromCommand.SendCertificate, certificate.Memory.Span);
         if (resources.Authentication is { } auth)
@@ -452,6 +462,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     }
     private void Fault(Exception? exception = null)
     {
+        _wire.ClearStartup();
         var previousState = _state;
         _da = null;
         _storage = null;
@@ -535,6 +546,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     }
     private void DisconnectCore()
     {
+        _wire.ClearStartup();
         bool connected = _state is not (MtkSessionState.Disconnected or MtkSessionState.Faulted);
         _hasIdentifiedTarget = false;
         _da = null;

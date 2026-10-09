@@ -280,14 +280,7 @@ Device capabilities:
   --usb-interface N --usb-control-interface N --usb-alt N
   --mtk-ufs-rpmb-blocks N,N
   --mtk-sej-base ADDR --mtk-tzcc-base ADDR --mtk-ssr-base ADDR
-MTK commands:
-  devices
-  mtk-probe
-  mtk-capabilities
-  mtk-rpmb read|write region start count key-file data-file
-  mtk-memory read|write address length file
-  mtk-seccfg lock|unlock region offset length backup-file
-MTK defaults: connection budget 60000 ms, resource budget 30000 ms; both are finite.
+MTK defaults: connection budget 180000 ms, resource budget 30000 ms; both are finite.
 --connect-timeout covers the entire MTK connection; --resource-timeout overrides the per-resource budget.</value></data>
   <data name="Cli_UsbTopology" xml:space="preserve"><value>{0}:{1} bus={2} port={3}</value></data>
   <data name="Cli_UsbAmbiguous" xml:space="preserve"><value>Multiple USB devices match; select a serial number or bus/port path.</value></data>
@@ -379,7 +372,7 @@ Backup files must not already exist.</value></data>
 Key names use MtkKeyDeriveId:
   Rpmb, Fde, Tee, AesImageEncryption, AesCustom, Motorola, RootOfTrust.
 Inputs are at most 32 bytes each; - means empty.
-Requires --mtk-extension-abi penumbra2, confirmed crypto addresses and an already legitimately loaded compatible extension.
+Requires a Penumbra2 extension (the default ABI) and confirmed crypto addresses.
 Keys go only to files.</value></data>
   <data name="Cli_MtkRpmbLockState" xml:space="preserve"><value>RPMB lock metadata version={0}, state={1}.</value></data>
   <data name="Cli_HelpMtkWriteExtras" xml:space="preserve"><value>MTK write commands:
@@ -461,9 +454,72 @@ Keys go only to files.</value></data>
 <data name="Cli_SprdChipUid" xml:space="preserve"><value>SPRD Chip UID: {0}</value></data>
   <data name="Cli_MtkInitialProbeRetry" xml:space="preserve"><value>MTK initial admission did not complete. Released the old connection; waiting for a device again. Press Ctrl+C to stop.</value></data>
   <data name="Cli_MtkUsbDiscoveryRetry" xml:space="preserve"><value>MTK USB enumeration or opening did not complete. Waiting for a device; press Ctrl+C to stop. See the file log for diagnostics.</value></data>
-  <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>The current MTK operation has stopped and the session is invalid. Reconnect the device; authentication, DA and read/write commands will not be retried automatically.</value></data>
+  <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>MTK session invalid; no automatic retry. An interrupted write may leave incomplete contents. Reset the device to an idle state, reconnect, and flash again from the beginning.</value></data>
   <data name="Cli_MtkBromChunkInvalid" xml:space="preserve"><value>BROM host upload chunk must be 64–1048576 bytes.</value></data>
   <data name="Cli_ProgramWriteModeQcomOnly" xml:space="preserve"><value>--program-write-mode is only available for Qualcomm.</value></data>
   <data name="Cli_ProgramWriteModeInvalid" xml:space="preserve"><value>PROGRAM write mode must be program, auto, or patch.</value></data>
   <data name="Cli_PatchProgramAvailable" xml:space="preserve"><value>Framework PROGRAM mode: {0}; the PATCH backend still requires device acceptance. Command lists retain device-reported values.</value></data>
+  <data name="Cli_MtkExtensionLoaded" xml:space="preserve"><value>MTK: DA extension loaded.</value></data>
+  <data name="Cli_MtkExtensionNotPrepared" xml:space="preserve"><value>MTK: DA extension unavailable; verified loader or function addresses are missing.</value></data>
+  <data name="Cli_MtkScatterConverted" xml:space="preserve"><value>MTK: partition table conversion completed.</value></data>
+  <data name="Cli_MtkScatterLayoutChanged" xml:space="preserve"><value>Scatter layout mismatches: {0}.</value></data>
+  <data name="Cli_MtkScatterConfirm" xml:space="preserve"><value>Back up the current primary/backup GPT, update the partition table, and continue flashing? Only the table is backed up; partition contents are not backed up or migrated. Layout changes may make original data inaccessible. Type yes to continue; otherwise cancel:</value></data>
+  <data name="Cli_HelpMtkRepair" xml:space="preserve"><value>Interactive mode keeps its session. Use reconnect [auto|brom|da1|da2] [xflash|legacy|xml]. Startup evidence and the previous session are preferred; unknown stage/identity needs confirmation. Legacy DA2 requires previous storage geometry.
+Scatter flash/update shows only mismatches; after approval, back up only the current GPT, update, and flash. No backup of all partitions.
+  mtk-scatter to-gpt scatter-file output-prefix emmc|ufs block-size user-capacity
+  mtk-scatter from-gpt gpt-file scatter-file emmc|ufs block-size user-capacity platform
+Conversions run offline. Capacity is in bytes; block size is 512 or 4096. to-gpt outputs .pgpt.bin/.sgpt.bin; from-gpt disables downloads and does not guess image filenames. GPT contains only the USER layout.</value></data>
+  <data name="Cli_MtkReconnectIdentity" xml:space="preserve"><value>Physical identity is unconfirmed. Use the previous device's DA and geometry? Type yes to continue</value></data>
+  <data name="Cli_MtkReconnectStage" xml:space="preserve"><value>Confirm the current stage: brom, da1 or da2. After an interrupted transfer, first reconnect at a known command boundary</value></data>
+  <data name="Cli_MtkReconnectDialect" xml:space="preserve"><value>Enter the running DA dialect: xflash, legacy or xml</value></data>
+  <data name="Cli_MtkReconnectHardware" xml:space="preserve"><value>DA cannot query complete hardware identity. Enter confirmed hardware-code subcode hardware-version software-version BROM-version security-raw (0x supported)</value></data>
+  <data name="Cli_MtkPreloaderPrompt" xml:space="preserve"><value>DA1 may need EMI. Select a matching Preloader file (leave blank if DRAM is already initialized)</value></data>
+  <data name="Cli_MtkReconnectBoundary" xml:space="preserve"><value>The previous transfer boundary is unconfirmed. Reset/re-enter DA first; confirm it is idle and not awaiting image data. Type yes to continue</value></data>
+  <data name="Cli_MtkBackupSaved" xml:space="preserve"><value>Backup: {0}</value></data>
+  <data name="Cli_MtkWriteConfirm" xml:space="preserve"><value>Confirm {0}? Enter yes to continue; anything else cancels:</value></data>
+  <data name="Cli_MtkRpmbCapacityRequired" xml:space="preserve"><value>UFS RPMB R{0} does not report capacity. Enter its confirmed capacity in 256-byte data blocks; cancel if unknown. Image length is not capacity:</value></data>
+  <data name="Cli_MtkRpmbCapacity" xml:space="preserve"><value>RPMB R{0}: {1} data blocks, {2} bytes.</value></data>
+  <data name="Cli_MtkRpmbAuthenticated" xml:space="preserve"><value>RPMB authenticated.</value></data>
+  <data name="Cli_MtkEfuseWriteTitle" xml:space="preserve"><value>eFuse write (potentially irreversible; a backup cannot undo fuse programming)</value></data>
+  <data name="Cli_HelpMtkCommands" xml:space="preserve"><value>MTK commands (existing mtk-* aliases remain compatible):
+  mtk probe | capabilities
+  mtk seccfg lock|unlock [--backup file]
+  mtk slot read | set a|b [--backup file]
+  mtk rpmb info [--region 0..3]
+  mtk rpmb read|write file [--region N] [--start block] [--count blocks] [--key-file key]
+  mtk rpmb erase [--region N] [--start block] [--count blocks] [--key-file key]
+  mtk rpmb auth key-file [--region N]
+  mtk rpmb-lock read|lock|unlock [--key-file key] [--backup file]
+  mtk key Rpmb|Fde|Tee|RootOfTrust|... output-file
+  mtk memory read|write address length file
+  mtk register read address | write address value
+  mtk partition read|write name file [--maximum bytes] | erase name
+  mtk scatter [file] | plan file | flash|update file [image-directory] [--backup directory]
+  mtk efuse read file | write file [--backup file]
+  mtk query query-name output-file | property key output-file
+  mtk pmt 32|64|96|disk|xml
+  mtk fill region offset length byte-value | rsc partition file
+seccfg/slot resolve partition geometry automatically; use --partition for an ambiguous target.
+RPMB blocks are 256 bytes; region/start default to zero. Read/erase use remaining confirmed capacity; writes use file block count.
+Without a key file, reuse current authentication or derive with Penumbra2. Keys are never logged or implicitly saved. Unknown UFS capacity still requires confirmation.
+Safety-sensitive writes require backup/confirmation. Unknown writes are not retried; addresses, unknown capacities and OEM keys are not guessed.</value></data>
+  <data name="Cli_DeviceWaitStatus" xml:space="preserve"><value>{0} {1} {2}  Esc to cancel</value></data>
+  <data name="Cli_MtkOffline" xml:space="preserve"><value>Disconnected. Enter reconnect to wait again, help for commands, or exit to quit. Failed operations are not retried automatically.</value></data>
+  <data name="Cli_MtkScatterFilePrompt" xml:space="preserve"><value>Select a Scatter file (txt/xml)</value></data>
+  <data name="Cli_MtkScatterFileInvalid" xml:space="preserve"><value>Scatter file does not exist; select another file.</value></data>
+  <data name="Cli_MtkScatterSummary" xml:space="preserve"><value>Scatter: using the device's {0} layout, {1} download entries selected; images default to the Scatter directory.</value></data>
+  <data name="Cli_MtkScatterPreflight" xml:space="preserve"><value>Scatter: checking images and capacity; no writes yet.</value></data>
+  <data name="Cli_MtkScatterBackupGpt" xml:space="preserve"><value>Scatter: backing up the current primary/backup GPT.</value></data>
+  <data name="Cli_MtkScatterLayoutMatched" xml:space="preserve"><value>Scatter: partition layouts match.</value></data>
+  <data name="Cli_MtkScatterNativeConfirm" xml:space="preserve"><value>Update partitions and flash through the DA? No upfront backup of all partitions; only DA-requested migration files are saved. Type yes to continue; otherwise cancel:</value></data>
+  <data name="Cli_MtkScatterFlashConfirm" xml:space="preserve"><value>Continue flashing images? Partition contents are not backed up; readback verification is retained. Type yes to continue; otherwise cancel:</value></data>
+  <data name="Cli_HelpMtkScatterWorkflow" xml:space="preserve"><value>Scatter flashing:
+  mtk scatter                         Select a Scatter file and use its download entries
+  mtk scatter file                    Images default to its directory; backups are automatic
+  mtk scatter plan file               View the current medium's layout only
+  mtk scatter flash file [image-directory] [--backup backup-directory]
+    --partitions boot_a,super         Flash only named downloads; compare the full layout
+Flashing shows only layout mismatches. After approval, back up only GPT, update, and flash; no backup of all partitions.
+Partition contents are not backed up or migrated. Readback is retained; GPT backups do not restore overwritten data.
+  --mtk-operation-timeout ms          Startup option: MTK core operation budget, default 1800000; native USB timeouts unchanged.</value></data>
 </root>

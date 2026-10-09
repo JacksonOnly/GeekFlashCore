@@ -5,10 +5,12 @@ namespace GeekFlashCore.CLI;
 
 internal static class CommandLine
 {
-    public static CliOptions Parse(string[] args)
+    public static CliOptions Parse(string[] args) => ParseCore(args, new CliOptions());
+    internal static CliOptions ParseSession(string[] args, CliOptions defaults) => ParseCore(args, defaults);
+    private static CliOptions ParseCore(string[] args, CliOptions defaults)
     {
         var positional = new List<string>();
-        var builder = new CliOptions();
+        var builder = defaults;
         for (int i = 0; i < args.Length; i++)
         {
             string arg = args[i];
@@ -35,6 +37,13 @@ internal static class CommandLine
                     "patch" => FirehoseProgramWriteMode.Patch,
                     _ => throw new ArgumentException(Strings.Cli_ProgramWriteModeInvalid)
                 }, HasExplicitProgramWriteMode = true };
+                continue;
+            }
+            if (MtkCommandRequest.LocalOptions.Contains(name) && positional.FirstOrDefault() is { } root &&
+                (root.Equals("mtk", StringComparison.OrdinalIgnoreCase) || root.StartsWith("mtk-", StringComparison.OrdinalIgnoreCase)))
+            {
+                value ??= i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] : throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
+                positional.Add(name + "=" + value);
                 continue;
             }
             if (name == "--mtk-brom-chunk")
@@ -88,8 +97,14 @@ internal static class CommandLine
             if(name=="--mtk-extension-abi")
             {
                 value??=i+1<args.Length?args[++i]:throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
-                builder=builder with {MtkExtensionAbi=value.ToLowerInvariant() switch
+                builder=builder with {HasExplicitMtkExtensionAbi=true, MtkExtensionAbi=value.ToLowerInvariant() switch
                 {"legacy" or "1"=>GeekFlashCore.Protocol.Mtk.Abstractions.MtkExtensionAbi.Legacy,"penumbra2" or "2"=>GeekFlashCore.Protocol.Mtk.Abstractions.MtkExtensionAbi.Penumbra2,_=>throw new ArgumentException(Strings.Cli_MtkExtensionAbiInvalid)}};
+                continue;
+            }
+            if (name == "--mtk-operation-timeout")
+            {
+                value ??= i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] : throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
+                builder = builder with { MtkOperationTimeout = checked((int)CommandSyntax.Number(value)) };
                 continue;
             }
             if (name.StartsWith("--", StringComparison.Ordinal))
@@ -137,6 +152,7 @@ internal static class CommandLine
             positional.Add(arg);
         }
         builder = builder with { Command = positional.FirstOrDefault() ?? "interactive", Arguments = positional.Skip(1).ToArray() };
+        builder = MtkCommandRequest.Normalize(builder);
         builder.Validate();
         if (builder.NonInteractive && builder.Command == "interactive")
             throw new ArgumentException(Strings.Cli_NonInteractiveCommandRequired);
@@ -162,6 +178,8 @@ internal static class CommandLine
         string? requested = arguments.FirstOrDefault()?.ToLowerInvariant();
         if (requested == "lp") { LpCommands.PrintHelp(ui); return; }
         if (requested is "sprd" or "unisoc" or "spreadtrum") { ui.WriteLine(Strings.Cli_HelpSprd); return; }
+        if (requested == "mtk-scatter") { ui.WriteLine(Strings.Cli_HelpMtkScatterWorkflow); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
+        if (requested is "mtk" or "mediatek" || requested?.StartsWith("mtk-", StringComparison.OrdinalIgnoreCase) == true) { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkCommands); ui.WriteLine(Strings.Cli_HelpMtkScatterWorkflow); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
         if (requested == "sprd-chip-uid") { PrintUsage("sprd-chip-uid", ui); return; }
         if (requested is not (null or "all" or "qcom"))
         {
@@ -173,9 +191,7 @@ internal static class CommandLine
         ui.WriteLine(Strings.Cli_Title);
         ui.WriteLine(Strings.Cli_HelpUsage);
         ui.WriteLine(Strings.Cli_HelpCommands);
-        foreach (string usage in CommandSyntax.Usages.Values.Where(x => x.Length > 0)) PrintUsage(usage, ui);
-        ui.WriteLine("  " + FirehoseCommands.Usages["rawprogram"]);
-        ui.WriteLine("  patch <xml-or-pattern> [...]");
+        foreach (var command in CommandSyntax.Usages.Where(x => x.Value.Length > 0 && x.Key != "reconnect")) PrintUsage(command.Value, ui);
         ui.WriteLine(Strings.Cli_InteractiveKeys);
         if (requested is null) { ui.WriteLine(Strings.Cli_HelpDetailsHint); return; }
         ui.WriteLine(Strings.Cli_HelpQcomCommands);
@@ -187,10 +203,9 @@ internal static class CommandLine
         ui.WriteLine(Strings.Cli_HelpOptionsTimeouts);
         ui.WriteLine(Strings.Cli_HelpOptionsLegacy);
         ui.WriteLine(Strings.Cli_HelpMtk);
-        ui.WriteLine(Strings.Cli_HelpMtkStandard);
-        ui.WriteLine(Strings.Cli_HelpMtkParity);
-        ui.WriteLine(Strings.Cli_HelpMtkKeys);
-        ui.WriteLine(Strings.Cli_HelpMtkWriteExtras);
+        ui.WriteLine(Strings.Cli_HelpMtkCommands);
+        ui.WriteLine(Strings.Cli_HelpMtkScatterWorkflow);
+        ui.WriteLine(Strings.Cli_HelpMtkRepair);
         ui.WriteLine(Strings.Cli_HelpSprd);
     }
 

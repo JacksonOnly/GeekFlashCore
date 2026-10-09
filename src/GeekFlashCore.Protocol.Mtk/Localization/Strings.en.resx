@@ -20,6 +20,7 @@
 <data name="ExploitStrategyStarting" xml:space="preserve"><value>Host extension checkpoint {0} is invoking strategy {1}/{2}.</value></data>
 <data name="RscProgress" xml:space="preserve"><value>Writing RSC information</value></data>
 <data name="ScatterProgress" xml:space="preserve"><value>Flashing scatter images</value></data>
+<data name="SparseWritePlan" xml:space="preserve"><value>MTK Sparse: expanded {ExpandedLength} bytes, transferring {TransferLength} bytes in {RegionCount} contiguous regions.</value></data>
 <data name="WireCommand" xml:space="preserve"><value>MTK {BootStage}: command {CommandName} (0x{Command:X8}).</value></data>
 <data name="WireStatus" xml:space="preserve"><value>MTK {BootStage}: command 0x{Command:X8}, status 0x{Status:X8}, accepted={StatusAccepted}.</value></data>
 <data name="WireWrite" xml:space="preserve"><value>MTK {BootStage}: command 0x{Command:X8}, wrote {RequestedLength} bytes in {ElapsedMilliseconds} ms.</value></data>
@@ -82,7 +83,9 @@
 <data name="CdcSetup" xml:space="preserve"><value>MTK CDC: control interface {ControlInterfaceNumber}, baud rate {BaudRate}, control lines {ControlLineState}.</value></data>
 <data name="StartupPacketRead" xml:space="preserve"><value>MTK startup IN: buffer {RequestedLength} bytes, received {ReceivedLength} bytes, elapsed {ElapsedMilliseconds} ms, budget {TimeoutMilliseconds} ms.</value></data>
 <data name="HandshakePrefix" xml:space="preserve"><value>MTK skipped {HandshakePrefixCount} startup prefix bytes before the first handshake response.</value></data>
-<data name="HandshakeWakeDuplicate" xml:space="preserve"><value>MTK Preloader: consumed one duplicate wakeup response; no command was resent.</value></data>
+<data name="HandshakePrefixLimit" xml:space="preserve"><value>MTK startup prefix reached {HandshakePrefixCount} bytes, exceeding the limit of {HandshakePrefixLimit}; stopping the handshake.</value></data>
+<data name="PreloaderReadySync" xml:space="preserve"><value>MTK Preloader still reports READY; synchronizing initial A0 {HandshakeStartAttempt}/{HandshakeStartLimit}.</value></data>
+<data name="HandshakeWakeDuplicate" xml:space="preserve"><value>MTK Preloader: consumed a duplicate initial response without resending subsequent commands.</value></data>
 <data name="HandshakeResponse" xml:space="preserve"><value>MTK handshake step {HandshakeStep}: response 0x{HandshakeResponse:X2}, expected 0x{HandshakeExpected:X2}.</value></data>
 <data name="HandshakeIdentified" xml:space="preserve"><value>MTK handshake and complete FD identity validation succeeded, already-handshaken candidate {AlreadyHandshaken}; FE must still confirm the stage.</value></data>
 <data name="Da1ReplacementChecked" xml:space="preserve"><value>MTK {Dialect}: checked pre-upload DA1 replacement, non-signature bytes modified={Da1Modified}; this is not authentication evidence.</value></data>
@@ -103,4 +106,6 @@
 <data name="GptCrcChecked" xml:space="preserve"><value>MTK region {RegionId} {GptCopy} GPT: {ValidationStep} passed={ValidationPassed}.</value></data>
 <data name="GptCopyRejected" xml:space="preserve"><value>MTK region {RegionId} {GptCopy} GPT: copy rejected at {ValidationStep}.</value></data>
 <data name="GptUfsBoundarySelected" xml:space="preserve"><value>MTK UFS region {RegionId}: 4K GPT declares first usable LBA {DeclaredFirstUsableLba}, but its first partition starts at LBA {FirstPartitionLba}. Original CRCs passed; validating strictly from physical metadata end LBA {MetadataEndLba} and ending PGPT at the first partition. Host compatibility parsing only; device unchanged.</value></data>
+<data name="PreloaderDaSignatureRequired" xml:space="preserve"><value>DA1 signature required by secure Preloader</value></data>
+<data name="PreloaderDaVerification" xml:space="preserve"><value>MTK Preloader: DA1 has {SignatureLength} signature bytes for device verification; no BROM pre-authentication.</value></data>
 </root>

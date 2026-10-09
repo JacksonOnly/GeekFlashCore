@@ -211,6 +211,20 @@ internal sealed partial class LegacySession(MtkWire wire, MtkProtocolOptions opt
     public byte[]? GetAuthenticationChallenge() => null; // Authentication completed before Legacy DA1.
     public void Authenticate(ReadOnlySpan<byte> response) => throw new MtkCapabilityException("Legacy DA SLA");
     public MtkStorageInfo GetStorage() => _storage ?? throw new MtkResourceException("Legacy storage");
+    internal static void ValidateResumeStorage(MtkStorageInfo? storage)
+    {
+        if (storage?.Regions is not { Count: > 0 and <= 8 } ||
+            storage.Regions.Any(r => r is null || r.Kind != storage.Kind) ||
+            storage.Regions.Select(r => r.WireId).Distinct().Count() != storage.Regions.Count ||
+            !storage.Regions.Any(r => r.WireId == storage.UserRegionId) || storage.Kind is not (MtkStorageKind.Emmc or MtkStorageKind.Sdmmc or MtkStorageKind.Nor))
+            throw new MtkResourceException("previously observed Legacy geometry (NAND requires BROM reconnect)");
+    }
+    internal void Resume(MtkStorageInfo storage)
+    {
+        ValidateResumeStorage(storage);
+        _ = GetUsbSpeed();
+        _storage = storage with { Regions = storage.Regions.ToArray() };
+    }
     private void CheckUsbSpeed()
     {
         _ = GetUsbSpeed();

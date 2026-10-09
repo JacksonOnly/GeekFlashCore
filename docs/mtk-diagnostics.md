@@ -23,7 +23,7 @@ SDK 对应 `MtkProtocolOptions.BromUploadChunkSize`（0 使用 BufferSize，其�
 - 默认 UI：连接、DA、EMI、认证证据、存储几何和读写擦除开始/完成；可恢复回退 Warning。命名擦除不猜测容量。
 - `--verbose`：追加 Debug 的命令、USB 写长度、帧、ACK/status、读片数/预算/耗时和失败上下文。
 - 分区/读写/浏览的工具输出期间仍压制高频Info/Debug，但已批准MTK Warning/Error摘要继续显示；异常详情、设备正文、重复UserPresentation始终不显示。文件日志保持完整诊断，其他协议过滤不改。
-- 文件日志：CLI 默认已收集 Debug，可用 `--log-file` 指定位置，沿用原 16MiB 分卷。SDK 宿主应在创建 `MtkProtocol` **之前**配置 Serilog；用 `MtkSessionId` 关联同一会话。
+- 文件日志：CLI 默认 Information 及以上，`--verbose` 才收集 Debug；可用 `--log-file` 指定位置，沿用原 16MiB 分卷。SDK 宿主应在创建 `MtkProtocol` **之前**配置 Serilog；用 `MtkSessionId` 关联同一会话。
 - 不输出原始载荷、签名、Challenge、Token、checksum 数值、私密标识、XML 全文/参数或设备 MESSAGE 正文。标准分区名经过 ASCII/64-byte 校验后可出现在操作摘要。
 
 “DA 上传已验证”只说明 checksum/status 接受，不代表认证成功或存储可用。`Unsupported`、`NotRequired` 和设备允许跳过材料交换，不应解读为本次宿主认证成功。Sparse 操作大小是逻辑镜像范围（洞保留原内容），Raw 写大小包含对齐补零；不是物理 USB 流量统计。
@@ -50,12 +50,14 @@ DA1/DA2成功零字节USB IN可为ZLP，不直接解释成EOF；仍open的连接
 
 DA2 摘要区分请求标准 BootTo（尚待命令确认）与参数组/执行状态均确认。Debug 另记录命令接受与载荷已发送待确认。双状态通过后若 `SlaEnabledStatus` 查询失败，则是 DA2 后续认证查询，不是上传失败。用户231901日志已确认正常DA2启动，详情见 [回调记录](plans/2026-10-08-mtk-da2-callback-implementation.md)。
 
-旧DA在SlaEnabledStatus子命令初始ACK完整返回0xC0010004时，输出Warning并记录认证证据Unsupported，继续包长/存储查询；不是认证成功或SLA禁用证明。父命令、结果帧/尾ACK、已启用后挑战/签名错误、未知状态、取消/超时不会降级。用户232837日志已确认此路径，见 [SLA兼容记录](plans/2026-10-08-mtk-xflash-sla-compatibility-implementation.md)。
+旧DA在SlaEnabledStatus子命令初始ACK完整返回0xC0010004时，仅以Debug记录认证证据Unsupported，继续包长/存储查询；不是认证成功或SLA禁用证明。父命令、结果帧/尾ACK、已启用后挑战/签名错误、未知状态、取消/超时不会降级。用户232837日志已确认此路径，见 [SLA兼容记录](plans/2026-10-08-mtk-xflash-sla-compatibility-implementation.md)。
 
-XFlash设备包上限可为2MiB，不能按旧1MiB宿主小帧限制拒绝能力查询。宿主写块仍默认64KiB；大存储FLOW用小池化窗口接收，完整帧才ACK。SDK `MaximumXFlashDataFrameSize` 默认2MiB，可限制512～2MiB；小帧/消息/认证/scoped ReceiveData仍由 `MaximumFrameSize` 控制，默认1MiB。每个payload窗口共享读预算。Debug在拒绝前记录响应长度和设备包长，status0本地校验失败不等于设备返回NAK。用户233705已联机到UFS，见 [包长实施](plans/2026-10-08-mtk-xflash-packet-capacity-implementation.md)。
+XFlash设备包上限可为2MiB，不能按旧1MiB宿主小帧限制拒绝能力查询。宿主写块按协商包长，上限默认2MiB，与BROM缓冲独立；大存储FLOW默认以64KiB USB请求接收，短包直接消费，以最多1MiB池化缓冲合并输出写入，完整帧落入输出流才ACK。SDK `MaximumXFlashDataFrameSize`/`MaximumXFlashWritePacketLength` 默认2MiB，可限制512～2MiB；小帧/消息/认证/scoped ReceiveData仍由 `MaximumFrameSize` 控制，默认1MiB。每个payload窗口共享读预算。Debug在拒绝前记录响应长度和设备包长，status0本地校验失败不等于设备返回NAK。用户20261009-103949日志证明1MiB原生请求在2MiB帧末尾超时，104320确认恢复64KiB后完整读取；104747确认短包优化后读取约39.8MiB/s。合并输出优化尚待实机复测。
 
 ## GPT 与 Boot 区域
 
-分区发现不再读取eMMC BOOT1/2或UFS LU0/LU1的头尾GPT；Preloader/backup直接采用已报告容量。UFS User为wire3（LU2），eMMC User为wire8，不能使用通常的零基LUN号替换DA wire编号。XFlash参数编码没有偏移错误，旧Boot读取来自枚举循环。Info摘要记录发现开始的介质/User ID及完成条目数（CLI工具模式只在文件中保留），Debug明确Boot只生成元数据和实际GPT读取的region。显式Boot raw/别名操作仍访问1/2，eMMC GP独立GPT能力保留；User CRC/主备/坏表边界不降级。实机完整列表待确认，见 [区域发现记录](plans/2026-10-08-mtk-boot-region-discovery-implementation.md)。
+分区发现不读取eMMC BOOT1/2或UFS LU0/LU1的头尾GPT；列表的Preloader/backup容量仅是已报告的Boot区域上限。命名读写现走XFlash/XML原生接口处理启动头，读取实际镜像长度，不将整个Boot区当作Preloader。UFS User为wire3（LU2），eMMC User为wire8，不能使用通常的零基LUN号替换DA wire编号。原始sector入口仍显式访问1/2，eMMC GP独立GPT能力保留；User CRC/主备/坏表边界不降级。实机完整列表待确认。
 
-已观察UFS 4K GPT可声明FirstUsable34，却有已通过原始CRC的分区从8开始。只对UFS User/128×128/明确物理数组布局，以元数据末端6严格验证；PGPT截止真实首分区（抓包32KiB），避免覆盖分区。其他布局不降级，CRC/重叠/越界/身份/名字校验继续。Warning摘要说明仅宿主兼容，不改写设备，工具输出时仍显示该警告；Debug记录主备几何、CRC布尔和失败阶段，不记录校验数值/GUID/载荷。文件日志仍完整。见 [UFS边界记录](plans/2026-10-09-mtk-ufs-gpt-first-usable-implementation.md) 和 [UI警告记录](plans/2026-10-09-mtk-warning-visibility-implementation.md)。
+已观察UFS 4K GPT可声明FirstUsable34，却有已通过原始CRC的分区从8开始。只对UFS User/128×128/明确物理数组布局，以元数据末端6严格验证；PGPT截止真实首分区（抓包32KiB），避免覆盖分区。其他布局不降级，CRC/重叠/越界/身份/名字校验继续。兼容说明移至Debug，不改写设备；主备几何、CRC布尔和失败阶段也仅Debug记录，不记录校验数值/GUID/载荷。
+
+Preloader、扩展加载、Scatter转换/更新及安全重连用法见 [MediaTek CLI](cli-mtk.md)。普通帮助不再列出仅高通支持的rawprogram/patch，使用 `help qcom` 查看。

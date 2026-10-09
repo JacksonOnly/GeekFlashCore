@@ -1,0 +1,123 @@
+# MediaTek CLI
+
+## 连接与重连
+
+```text
+geekflash --protocol mtk --loader DA.bin --mtk-preloader preloader.bin
+```
+
+不指定命令进入交互模式，成功命令保持会话；操作失败时保留提示符，但未知线上结果仍使旧会话失效，不能继续使用旧块设备或扩展。`exit` 退出。显式单次命令仍在完成后退出进程。
+
+前置认证按完整握手确认的阶段选择，而非仅凭 USB PID 或安全位。BROM 保持 Auth/证书和宿主 SLA 要求；Preloader 不发送 BROM 前置认证命令，SBC/DAA 开启时要求带签名的 DA1，原签名和完整区域通过标准 SEND_DA 交给设备验证。签名存在不代表认证成功，设备拒绝或 checksum 错误仍停止连接，不降级或重试。如果 SEND_DA 明确请求 SLA，或后续 DA1/DA2 明确要求认证，仍须提供合法 signer。附带的 BROM Auth/证书在 Preloader 路径不发送，敏感资源所有权与清零规则不变。
+
+指定 MTK 的交互启动在等待接入时显示单行动态状态和已等待时间，可按 Esc 或 Ctrl+C 取消；首次接入取消/失败后保留 `geekflash[offline]>`，可输入 `reconnect` 重新等待、`help` 查看命令、`devices` 查看候选或 `exit` 退出，不自动重放失败操作。接入后的普通提示符中执行 reconnect，等待取消也返回提示符。重定向或非交互环境只输出静态等待行，不输出动画、不抢读后续 DA 文件输入。USB 候选仍约每 100 ms 枚举，驱动绑定在每轮首次检查，此后最多每秒复核，避免高频重复注册表扫描。
+
+等待动画在交给 Probe/Loader 之前完全停止；连接阶段沿用核心阶段提示。取消仍需等待当前有限 native USB 调用返回，不能保证瞬时中断。未显式选择协议的跨协议发现、单次命令与非交互失败退出语义不变；不后台自动重连已失效会话。
+
+```text
+reconnect
+reconnect brom
+reconnect da1 xflash
+reconnect da2 xml
+```
+
+重连重新打开 USB，优先使用原物理拓扑/序列号、原 DA 和存储快照。Auto 被动检查一次可用启动字节并保留给后续协议；C0 由 DA1 初始化线路继续验证。已有干净命令边界且设备没有新启动帧时可沿原 DA2 继续。XML 启动帧不能单独区分 DA1/DA2；USB PID 也不是阶段证明，信息不足时要求确认，不依次发送不同方言试探。
+
+DA1 继续初始化/EMI 和 DA2 上传，不重发 BROM 上传；DA2 只验证对应协议、认证状态和存储，不再次上传 DA。Legacy DA2 必须有原会话已观察的存储几何，并验证 USB speed ACK；没有几何或 NAND 时请复位回 BROM。首次接入已有 DA，完整硬件身份无法查询时会询问硬件编号、subcode、硬件/软件版本、BROM 版本与 security raw，DA 文件必须匹配。
+
+中途读写失败后，不自动重发命令。重新接管 DA2 前必须确认已经复位/重新进入空闲命令边界；不能向仍等待镜像数据的设备发送查询帧。取消确认不发送恢复命令。非交互模式无法确认缺失信息时直接报错。写入中断可能留下不完整内容，应在复位并重新连接后从头刷写，不能直接续传或把进度百分比当作安全恢复点。
+
+## 传输与日志
+
+- XFlash 写包遵循设备协商，上限默认 2 MiB，不再被 BROM 的 64 KiB 缓冲截断；读取按实际帧长度接收，并受协商的 `ReadPacketLength` 限制。默认 64 KiB 是单次 USB 请求窗口，不是 DA 包长；完整数据帧接收并输出后才 ACK/状态确认。原生短包直接消费，不为凑满窗口额外发起小读取；文件输出合并到最多 1 MiB，缓冲与镜像总大小无关。SDK 可用 `MaximumXFlashWritePacketLength` 限制写包。
+- 进度节流约 100 ms，保留开始、首个进度和完成事件；不并行发送协议命令。
+- Sparse 只在携带 CRC 时执行写前全量校验；无 CRC 不扫描整幅展开镜像。普通写入与宿主 Scatter 写入合并相邻 Raw/Fill 为连续传输，绝不跨越 DontCare，空洞仍不写。进度与平均速度按实际传输字节计，容量验证与返回长度仍按展开长度；最终 ACK/状态成功后才报告完成。
+- CLI 的 MTK 单次核心操作默认预算为 30 分钟，可通过启动选项 `--mtk-operation-timeout 毫秒` 调整。普通 write 包含全部连续区域；Scatter Apply 包含必要的 GPT 备份、写入与回读；交互选文件、确认和独立预检/比较不共享这一截止时间。SDK 默认仍为 120 秒，单次 USB 读写超时不变；大镜像和回读可能需要增加操作预算，而不是无限等待或重发写入。
+- 默认控制台和文件仅 Information 及以上；`--verbose` 才记录逐包 Debug。旧 DA 不支持 SLA 查询和已验证的旧 UFS GPT 边界仅为 Debug，验证逻辑不放宽。
+- 分区偏移显示原始字节数，起始扇区使用该区域真实逻辑块单位；`read/write sector` 的 MTK 区域编号为 DA wire ID（UFS USER=3、eMMC USER=8），不是零基 LUN。
+
+用户 MT6893/UFS 实机日志确认扩展加载、分区发现和 persist 读取成功；开启逐包 Debug 日志时读取 69,697,536 字节用时约 1.78 秒（37.28 MiB/s），短包优化后用户报告 1.670 秒（39.8 MiB/s）。输出合并版为 1.675 秒（39.67 MiB/s），没有明显提速，且该份日志仍包含逐包 DBG。不能据模拟传输承诺倍率。此前 1 MiB USB 请求曾出现帧尾接收超时，未证实底层原因，不自动放大窗口或在半包状态重试。界面沿用 MB 标签，数值按 1024 进制计算；目标项目的速度单位和同文件摘要尚未取得。
+
+用户此次 `super.img` 离线确认展开长度约 8.5 GiB、实际 Raw/Fill 约 2.48 GiB、没有 CRC。旧实现仍做展开全量校验，且产生 2690 次区域写入；连续区域计划仅需 7 次，不额外物化大镜像。新版离线元数据规划约 24 ms、分配低于 1 MiB；这是离线证据，不是设备写速，实机吞吐仍待复测。
+
+## 命令与安全操作
+
+统一入口为 `mtk <子命令>`，原 `mtk-*` 入口及显式几何语法继续兼容。完整列表见 `help mtk`。常用操作无需填写区域、偏移和长度：
+
+```text
+mtk capabilities
+mtk seccfg unlock
+mtk seccfg lock --backup seccfg-original.bin
+mtk slot read
+mtk slot set a
+mtk rpmb info
+mtk rpmb read rpmb.bin
+mtk rpmb write rpmb.bin --start 0 --count 128 --key-file rpmb-key.bin
+mtk rpmb erase --region 0 --start 0 --count 128
+mtk rpmb auth rpmb-key.bin
+mtk rpmb-lock read
+mtk key Rpmb rpmb-key.bin
+mtk partition read boot_a boot_a.img
+mtk efuse read efuses.bin
+```
+
+seccfg 从 USER 的唯一 `seccfg` 分区定位；slot 从 USER 的 `misc`/`para` 定位。缺失或歧义直接拒绝，可用 `--partition` 指定实际名称，不退回偏移 0。seccfg 先持久备份，再要求 `yes`，随后重新比对原数据、最小对齐写入和完整回读。slot 也要求确认，并在写入前持久保存原扇区。自动备份在当前目录的 `backups` 下，以时间和随机标识命名，显式备份也不覆盖已有文件。
+
+RPMB 与普通块设备分离，块固定为 256 字节；默认区域 0、起始块 0。读取/擦除默认覆盖已确认容量的剩余范围，写入默认采用文件块数，输入必须精确对齐且与 `--count` 一致。eMMC 容量取设备上报值；UFS 未知容量必须交互提供该区域已确认的块数，或通过 `--mtk-ufs-rpmb-blocks` 指定，按区域和会话代数缓存。不沿用参考项目的固定 UFS 容量，也不用输入文件长度猜容量。
+
+省略 `--key-file` 时复用当前区域认证，或请求 Penumbra2 RPMB 派生服务；派生密钥仅在内存使用并及时清零，不隐式保存或打印。厂商密钥不匹配时应提供实际 32 字节密钥文件；不尝试多组密钥。RPMB 写/擦和 XML/UFS 的 rpmb-lock 写入先持久备份，再确认，未知写入结果不重试。备份不是 RPMB 计数器或安全状态的通用回滚保证。
+
+`mtk partition read|write 名称 文件` 从唯一分区长度确定上限；无可用分区表时仍需显式 `--maximum`，不猜整盘容量。内存、寄存器、填充和 RSC 等操作保留实际必需的地址/范围参数。eFuse 写入另要求备份与明确确认；它可能永久烧写，备份不能还原已烧写位。非交互模式缺少容量或确认时拒绝，不视为默认同意。上述安全写入仅有模拟验证，不要求用户为测试实际修改设备。
+
+## Preloader 与扩展
+
+Preloader 接入先发送一次 A0 唤醒。若首步尚未应答且仍收到完整 `READY`，仅在当前接收缓存耗尽时有界补发首步 A0，首步最多 5 次；不会重放后续握手、FD 查询或 DA 上传。启动前缀默认最多 1024 字节，并受同一握手截止时间约束；SDK 显式设置 `MaximumHandshakePrefix` 仍是严格总字节上限。BROM 不执行 READY 同步，保持原 USB 读写形态；该公共默认额度也适用于 BROM，显式设置 64 可保留旧额度。
+
+```text
+read Preloader preloader.bin
+read PreloaderBackup preloader-backup.bin
+write Preloader preloader.bin
+write PreloaderBackup preloader.bin
+```
+
+XFlash/XML 使用 DA 原生命名接口处理启动头；读取以 BOOT 区容量为上限，实际输出为 DA 返回的镜像长度，不导出整个 BOOT1/2。写入不将 bin 原样写入原始 BOOT 区。Legacy 不猜测头布局，拒绝此命名入口；命名擦除也拒绝，原始 sector 操作仍是显式危险入口。
+
+连接后离线确认 DA2 确实包含扩展加载器，再解析 Penumbra 函数地址、填充嵌入扩展指针表，通过 BOOT-TO 上传并验证 ACK/context。只有这些步骤都成功才输出“DA 扩展已加载”。缺少加载器、UART 或函数地址时不上传，保持标准存储能力；线上失败使会话失效。XFlash DA2 的 Thumb2 定位独立于 DA1 的 ARM 架构。
+
+默认内置扩展 ABI 为 Penumbra2。另行接管宿主加载的旧扩展可显式指定 `--mtk-extension-abi legacy`。`IMtkProtocol.Capabilities` 的 RequiresExtension 表示核心需要可选扩展服务，不是加载结果；`mtk-capabilities` 使用已验证服务的 `MtkDaExtension.Capabilities`，仅当前代数有效。DA2 重连沿用此前已加载的扩展时重新验证 ACK/context，不再上传代码。加密基址及 UFS RPMB 容量仍需已确认的配置，不猜测容量；Supported 不表示 RPMB 已认证或写入无需密钥。
+
+## Scatter
+
+```text
+mtk scatter
+mtk scatter MT6893_scatter.txt
+mtk scatter plan MT6893_scatter.txt
+mtk scatter flash MT6893_scatter.txt --partitions boot_a,super
+mtk scatter flash MT6893_scatter.txt image-directory --backup backup-directory
+mtk scatter update MT6893_scatter.txt
+```
+
+不带文件时分步请求 txt/xml 文件；给文件即可按其下载项刷写，镜像默认相对 Scatter 父目录，不再强制填写镜像目录。默认备份目录在当前目录 `backups` 下自动唯一命名；旧 `flash|update 文件 镜像目录 备份目录` 仍兼容。`plan` 只查看布局，不预检镜像、不备份或写入。混合 EMMC/UFS 工厂 Scatter 只使用设备已确认的介质；同介质选中下载项缺少实际区域仍拒绝。
+
+YAML 支持平铺和 `description` 序列中的标量分区映射，字段顺序不限，不要求 `partition_index` 存在或排第一；不完整记录报错，不静默丢分区。YAML/XML 缺少 `operation_type` 默认 `INVISIBLE`，显式未知值仍拒绝。解析有长度、映射深度、字段和分区数量限制，不支持分区内嵌套对象、YAML 锚点或别名。`UFS_LU0_LU1` 按参考 ABI 兼容策略只映射 LU0，不能套用 eMMC 双 BOOT 语义。
+
+刷写只显示布局不匹配的分区名，不再枚举所有匹配分区的文件和字节范围；全部所选镜像预检通过后比较布局，再明确要求 `yes`。`--partitions` 仅选择文件内可下载的名称，不修改完整布局；未知或不可下载名称拒绝。非交互模式无法确认时不刷写。
+
+eMMC/UFS USER 的完整布局按名称、偏移和长度与设备比较。不一致时先显示差异分区，再询问是否备份当前主/备 GPT、更新布局并继续刷写。输入 `yes` 后才持久保存两份当前 GPT，全部备份成功才写新备 GPT、主 GPT 和镜像；拒绝则不备份、不写入。相同布局不重建 GPT，保留 GUID/属性，确认后直接刷镜像并回读。选中原始 GPT 镜像时也会先备份当前分区表。备份文件不覆盖，重试需另选目录。
+
+重建 GPT 不能同时下载 USER 区的 `pgpt`、`sgpt`、`PrimaryGPT` 或 `BackupGPT` 镜像（大小写无关）；这种冲突在任何备份或写入前拒绝，避免原始镜像覆盖刚生成的新表。
+
+CLI 仅备份分区表，不再备份所有待刷分区，也不额外备份/恢复 Protected 或 BinRegion 内容。布局变化可能使原数据不可用，GPT 备份不能恢复被覆盖的分区内容；确认提示明确说明此风险。写后回读、Sparse 空洞、启动头处理、有限预算与未知写结果不重试仍保留。SDK 的既有 `MtkScatterService.Apply` 默认完整备份/保护数据迁移行为与签名不变；需要相同轻量流程的宿主使用新增 `ApplyWithBackupPolicy` 入口并显式指定 `MtkScatterBackupPolicy.PartitionTableOnly`。
+
+NAND 不套用 GPT，保留显式 `update` 的 XML 原生 Scatter 线路，不做宿主全分区预备份；DA 按需请求的上传/下载迁移文件仍须保存并响应，提示另行说明，不能跳过必需协议请求。此原生更新不支持 `--partitions`，避免过滤宿主计划却仍下发整份 Scatter。DA 管理的 BOOTLOADERS 沿用原生命名接口与最终状态，不将其转换后的启动头与宿主 bin 直接比较。
+
+离线转换无需 USB/Loader：
+
+```text
+mtk-scatter to-gpt scatter.txt output-prefix ufs 4096 USER-CAPACITY-BYTES
+mtk-scatter from-gpt pgpt.bin scatter.txt ufs 4096 USER-CAPACITY-BYTES MT6893
+```
+
+存储可选 `emmc`/`ufs`，逻辑块为 512/4096，容量必须是已确认的 USER 字节数。to-gpt 输出紧凑 `.pgpt.bin` 和 `.sgpt.bin`，不物化整盘。from-gpt 支持严格校验的紧凑主/备 GPT，校验 CRC、容量、边界、名称和重叠；不静默修复损坏表。对已观察的 UFS 4K/128×128/FirstUsable=34 特定布局，先验证原始 CRC 与物理数组，再仅在宿主副本中以元数据末端 LBA 6 验证，不更改输入文件或设备。
+
+GPT 只有 USER 分区几何，不包含 BOOT 区、平台、镜像文件名或 Scatter 特有下载策略。导出使用 `file_name: NONE`、`is_download: false`，使用前须按实际镜像补充，不能把转换结果当作可直接刷写的完整工厂包。

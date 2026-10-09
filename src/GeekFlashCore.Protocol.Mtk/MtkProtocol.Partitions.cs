@@ -151,7 +151,7 @@ public sealed partial class MtkProtocol
             ulong firstPartition = table.Entries.Min(e => e.FirstLba);
             if (firstPartition < firstUsable)
             {
-                _logger.ForContext("MtkSummary", true).Warning(Strings.GptUfsBoundarySelected,
+                _logger.Debug(Strings.GptUfsBoundarySelected,
                     region.WireId, firstUsable, firstPartition, primaryMetadataEnd);
                 firstUsable = firstPartition;
             }

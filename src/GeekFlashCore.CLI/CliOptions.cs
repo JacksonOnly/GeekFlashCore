@@ -35,7 +35,8 @@ internal sealed record CliOptions
     public bool MtkIoT { get; init; }
     public int? MtkBromChunkSize { get; init; }
     public bool MtkBromZeroLengthPacket { get; init; }
-    public GeekFlashCore.Protocol.Mtk.Abstractions.MtkExtensionAbi MtkExtensionAbi { get; init; }
+    public GeekFlashCore.Protocol.Mtk.Abstractions.MtkExtensionAbi MtkExtensionAbi { get; init; } = GeekFlashCore.Protocol.Mtk.Abstractions.MtkExtensionAbi.Penumbra2;
+    public bool HasExplicitMtkExtensionAbi { get; init; }
     public int MtkNorEraseBlockSize { get; init; }
     public string? MtkPmtLayout { get; init; }
     public string? UsbSerial { get; init; }
@@ -75,12 +76,13 @@ internal sealed record CliOptions
     public bool HasExplicitDeviceWaitTimeout { get; init; }
     public int ReadTimeout { get; init; } = QcomProtocolOptions.DefaultReadTimeoutMilliseconds;
     public int WriteTimeout { get; init; } = QcomProtocolOptions.DefaultWriteTimeoutMilliseconds;
+    public int MtkOperationTimeout { get; init; } = 30 * 60 * 1000;
     public string Command { get; init; } = "interactive";
     public string[] Arguments { get; init; } = [];
 
     public void Validate()
     {
-        if (ReadTimeout <= 0 || WriteTimeout <= 0 || ConnectTimeout <= 0 || DeviceWaitTimeout <= 0 ||
+        if (ReadTimeout <= 0 || WriteTimeout <= 0 || ConnectTimeout <= 0 || DeviceWaitTimeout <= 0 || MtkOperationTimeout <= 0 ||
             EffectiveResourceTimeout is 0 or < -1)
             throw new ArgumentException(Localization.Strings.Cli_TimeoutMustBePositive);
         if (OplusResume && EffectiveOplusMode == OplusDigestMode.None)
@@ -125,7 +127,7 @@ internal sealed record CliOptions
         {
             if (MtkPreloader is not null || MtkDaMode is not null || MtkAuthenticationFile is not null || MtkCertificateFile is not null ||
                 MtkSejBase != 0 || MtkTzccBase != 0 || MtkSsrBase != 0 || MtkUfsRpmbBlocks.Count > 0 ||
-                MtkNandWrite || MtkNandCapacity is not null || MtkIoT || MtkBromChunkSize is not null || MtkBromZeroLengthPacket || MtkExtensionAbi!=0 || MtkNorEraseBlockSize != 0 || MtkPmtLayout is not null ||
+                MtkNandWrite || MtkNandCapacity is not null || MtkIoT || MtkBromChunkSize is not null || MtkBromZeroLengthPacket || HasExplicitMtkExtensionAbi || MtkNorEraseBlockSize != 0 || MtkPmtLayout is not null ||
                 UsbInterface != -1 || UsbControlInterface is not null || UsbAlternateSetting != 0)
                 throw new ArgumentException(Localization.Strings.Cli_MtkOptionConflict);
             QcomProtocolHostAdapter.ValidateOptions(this);

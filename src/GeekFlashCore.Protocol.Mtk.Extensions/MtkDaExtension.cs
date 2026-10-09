@@ -6,10 +6,11 @@ using System.Security.Cryptography;
 using System.Xml;
 using System.Xml.Linq;
 using GeekFlashCore.Protocol.Mtk.Abstractions;
+using GeekFlashCore.Protocol.Abstractions;
 
 namespace GeekFlashCore.Protocol.Mtk.Extensions;
 
-/// <summary>Standard communication with an already loaded penumbra DA extension; no patch or exploit is performed.</summary>
+/// <summary>Boots explicitly prepared Penumbra extensions or validates an existing extension; performs no DA patching.</summary>
 public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseService
 {
     private readonly IMtkProtocol _protocol;
@@ -24,12 +25,39 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
         _access = protocol as IMtkSessionAccess ?? throw new MtkCapabilityException("scoped DA channel");
     }
     public bool IsReady => _context is not null && _protocol.IsConnected && _generation == _protocol.Generation;
+    /// <summary>Current-generation extension support; RPMB still requires confirmed capacity and authentication.</summary>
+    public MtkCapabilities Capabilities => !IsReady ? _protocol.Capabilities : _protocol.Capabilities with
+    {
+        Memory = MtkCapabilitySupport.Supported,
+        Crypto = _context!.SejBase != 0 ? MtkCapabilitySupport.Supported : MtkCapabilitySupport.Unknown,
+        Rpmb = MtkCapabilitySupport.Supported
+    };
     public bool IsAuthenticated(uint region)
     {
         lock (_authenticated)
             return IsReady && _authenticated.Contains(region);
     }
-    public void Initialize(MtkExtensionContext context, CancellationToken cancellationToken = default)
+    /// <summary>Validates an already running extension without uploading code.</summary>
+    public void Initialize(MtkExtensionContext context, CancellationToken cancellationToken = default) =>
+        Initialize(context, null, 0, cancellationToken);
+
+    /// <summary>Boots explicitly prepared extension bytes, then requires ACK and matching DA context. No patching is performed.</summary>
+    public void Load(MtkExtensionContext context, uint address, IDataSource source, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (address == 0 || address % 4 != 0 || source.Length is <= 0 or > 1048576 ||
+            (ulong)address + (ulong)source.Length > (ulong)uint.MaxValue + 1 ||
+            context is null || (ulong)address < (ulong)context.Da2Base + context.Da2Size && (ulong)context.Da2Base < (ulong)address + (ulong)source.Length)
+            throw new ArgumentOutOfRangeException(nameof(address));
+        using Stream stream = source.OpenStream();
+        if (!stream.CanRead || !stream.CanSeek || stream.Position != 0 || stream.Length != source.Length)
+            throw new MtkResourceException("extension source");
+        byte[] bytes = new byte[checked((int)source.Length)];
+        try { stream.ReadExactly(bytes); Initialize(context, bytes, address, cancellationToken); }
+        finally { CryptographicOperations.ZeroMemory(bytes); }
+    }
+    private void Initialize(MtkExtensionContext context, byte[]? payload, uint address, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
         if (context.Da2Base == 0 || context.Da2Size == 0 || (ulong)context.Da2Base + context.Da2Size > (ulong)uint.MaxValue + 1 ||
@@ -49,6 +77,25 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
                 _authenticated.Clear();
             _context = null;
             _generation = -1;
+            if (payload is not null)
+            {
+                if (c.Kind == MtkDaKind.XFlash)
+                {
+                    c.SendCommand((uint)MtkXFlashCommand.BootTo);
+                    byte[] range = new byte[16];
+                    BinaryPrimitives.WriteUInt64LittleEndian(range, address);
+                    BinaryPrimitives.WriteUInt64LittleEndian(range.AsSpan(8), (ulong)payload.Length);
+                    c.SendData(range); c.SendData(payload); c.CheckStatus();
+                    Span<byte> status = stackalloc byte[4];
+                    if (c.ReceiveData(status) != 4 || BinaryPrimitives.ReadUInt32LittleEndian(status) is not (0 or 0x434e5953))
+                        throw new MtkProtocolException(MtkBootStage.Da2, (uint)MtkXFlashCommand.BootTo);
+                }
+                else
+                {
+                    c.BeginXmlCommand("BOOT-TO", Args(("at_address", Hex(address)), ("jmp_address", Hex(address)), ("source_file", "MEM://0x0:0x0")));
+                    using var input = new MemoryStream(payload, false); c.SendXmlFile(input, payload.Length); c.EndXmlCommand();
+                }
+            }
             if (c.Kind == MtkDaKind.XFlash)
             {
                 Control(c, MtkXFlashCommand.ExtAck);

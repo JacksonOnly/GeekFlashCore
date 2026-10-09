@@ -56,7 +56,7 @@ internal static class SprdProtocolHostAdapter
             options.Vendor != GeekFlashCore.Protocol.Qcom.Abstractions.QcomVendorKind.Auto || options.AuthenticationKind is not null ||
             options.OnePlusProjectId is not null || options.MtkPreloader is not null || options.MtkDaMode is not null ||
             options.MtkAuthenticationFile is not null || options.MtkCertificateFile is not null || options.MtkNandWrite ||
-            options.MtkNandCapacity is not null || options.MtkIoT || options.MtkExtensionAbi != 0 || options.MtkPmtLayout is not null ||
+            options.MtkNandCapacity is not null || options.MtkIoT || options.HasExplicitMtkExtensionAbi || options.MtkPmtLayout is not null ||
             options.MtkNorEraseBlockSize != 0 || options.MtkSejBase != 0 || options.MtkTzccBase != 0 || options.MtkSsrBase != 0 ||
             options.MtkUfsRpmbBlocks.Count != 0 || options.UsbInterface != -1 || options.UsbControlInterface is not null || options.UsbAlternateSetting != 0)
             throw new ArgumentException(Strings.Cli_SprdOptionConflict);

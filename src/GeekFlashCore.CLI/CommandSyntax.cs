@@ -20,6 +20,7 @@ internal static class CommandSyntax
         ["erase"] = "erase <partition> [lun] | erase sector <lun> <start> <count>",
         ["reboot"] = "reboot <system|download|poweroff>",
         ["info"] = "info", ["connect"] = "connect", ["devices"] = "devices",
+        ["reconnect"] = "reconnect [auto|brom|da1|da2] [xflash|legacy|xml]",
         ["help"] = "help [command|qcom|all]", ["interactive"] = ""
     };
 
@@ -69,6 +70,11 @@ internal static class CommandSyntax
                 case "partitions": Count(a, 1); if (!a[0].Equals("all", StringComparison.OrdinalIgnoreCase)) Lun(a[0]); break;
                 case "reboot": Count(a, 1); Choice(a[0], "system", "download", "poweroff"); break;
                 case "help": if (a.Length > 1) throw new FormatException(); break;
+                case "reconnect":
+                    if (a.Length > 2) throw new FormatException();
+                    if (a.Length > 0) Choice(a[0], "auto", "brom", "da1", "da2");
+                    if (a.Length > 1) Choice(a[1], "xflash", "legacy", "xml");
+                    break;
                 case "info": case "connect": case "devices": case "interactive": Count(a, 0); break;
                 default: throw new FormatException();
             }

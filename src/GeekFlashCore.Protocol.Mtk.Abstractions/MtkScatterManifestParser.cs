@@ -46,12 +46,12 @@ public static class MtkScatterManifestParser
                 "UFS_LU0" => (MtkStorageKind.Ufs, 1u),
                 "UFS_LU1" => (MtkStorageKind.Ufs, 2u),
                 "UFS_LU2" => (MtkStorageKind.Ufs, 3u),
-                "UFS_LU0_LU1" => (MtkStorageKind.Ufs, 0u),
+                "UFS_LU0_LU1" => (MtkStorageKind.Ufs, 1u),
                 "NAND" or "NAND_WHOLE" => (MtkStorageKind.Nand, 8u),
                 "NOR" => (MtkStorageKind.Nor, 8u),
                 "SDMMC_USER" => (MtkStorageKind.Sdmmc, 8u),
                 _ => throw new MtkResourceException("scatter region")};
-            var operation = Required("operation_type") switch
+            var operation = record.GetValueOrDefault("operation_type", "INVISIBLE") switch
             {
                 "BOOTLOADERS" => MtkScatterOperation.Bootloaders,
                 "" or "INVISIBLE" => MtkScatterOperation.Invisible,
@@ -123,8 +123,20 @@ public static class MtkScatterManifestParser
     private static List<Dictionary<string, string>> Yaml(string text)
     {
         List<Dictionary<string, string>> result = [];
-        Dictionary<string, string>? current = null;
-        int recordIndent = -1;
+        Stack<YamlMapping> mappings = [];
+        void Complete(int indent)
+        {
+            while (mappings.TryPeek(out var mapping) && mapping.Indent >= indent)
+            {
+                mappings.Pop();
+                if (!mapping.IsPartition) continue;
+                if (mapping.HasNestedEntries)
+                    throw new MtkResourceException(Localization.Strings.ScatterYamlStructure);
+                if (result.Count >= 4096)
+                    throw new MtkResourceException("scatter count");
+                result.Add(mapping.Fields);
+            }
+        }
         using var reader = new StringReader(text);
         string? line;
         while ((line = reader.ReadLine()) != null)
@@ -143,22 +155,56 @@ public static class MtkScatterManifestParser
                 throw new MtkResourceException("scatter YAML field");
             string key = item[..colon].Trim();
             string value = Scalar(item[(colon + 1)..].Trim());
-            if (sequence && key == "partition_index")
+            Complete(indent);
+            if (sequence)
             {
-                current = new(StringComparer.Ordinal);
-                result.Add(current);
-                recordIndent = indent;
+                if (mappings.TryPeek(out var parent))
+                {
+                    if (parent.IsPartition)
+                        throw new MtkResourceException(Localization.Strings.ScatterYamlStructure);
+                    parent.HasNestedEntries = true;
+                }
+                if (mappings.Count >= 12)
+                    throw new MtkResourceException(Localization.Strings.ScatterYamlStructure);
+                var mapping = new YamlMapping(indent);
+                mapping.Add(key, value);
+                mappings.Push(mapping);
             }
-            else if (sequence && indent <= recordIndent)
-                current = null;
-            if (current != null && (key == "partition_index" || indent > recordIndent))
+            else if (mappings.TryPeek(out var mapping))
             {
-                if (!current.TryAdd(key, value))
-                    throw new MtkResourceException("scatter YAML duplicate field");
+                if (indent != mapping.Indent + 2)
+                {
+                    if (mapping.IsPartition || IsPartitionField(key))
+                        throw new MtkResourceException(Localization.Strings.ScatterYamlStructure);
+                    mapping.HasNestedEntries = true;
+                    continue;
+                }
+                mapping.Add(key, value);
             }
+            else if (IsPartitionField(key))
+                throw new MtkResourceException(Localization.Strings.ScatterYamlStructure);
         }
-
+        Complete(0);
         return result;
+    }
+
+    private static bool IsPartitionField(string key) => key is "partition_index" or "partition_name" or
+        "file_name" or "is_download" or "linear_start_addr" or "partition_size";
+
+    private sealed class YamlMapping(int indent)
+    {
+        public int Indent { get; } = indent;
+        public Dictionary<string, string> Fields { get; } = new(StringComparer.Ordinal);
+        public bool IsPartition { get; private set; }
+        public bool HasNestedEntries { get; set; }
+        public void Add(string key, string value)
+        {
+            if (Fields.Count >= 256)
+                throw new MtkResourceException(Localization.Strings.ScatterYamlStructure);
+            if (!Fields.TryAdd(key, value))
+                throw new MtkResourceException("scatter YAML duplicate field");
+            IsPartition |= IsPartitionField(key);
+        }
     }
 
     private static string Scalar(string value)

@@ -99,9 +99,13 @@ mtk scatter update MT6893_scatter.txt
 
 不带文件时分步请求 txt/xml 文件；给文件即可按其下载项刷写，镜像默认相对 Scatter 父目录，不再强制填写镜像目录。默认备份目录在当前目录 `backups` 下自动唯一命名；旧 `flash|update 文件 镜像目录 备份目录` 仍兼容。`plan` 只查看布局，不预检镜像、不备份或写入。混合 EMMC/UFS 工厂 Scatter 只使用设备已确认的介质；同介质选中下载项缺少实际区域仍拒绝。
 
+YAML 支持平铺和 `description` 序列中的标量分区映射，字段顺序不限，不要求 `partition_index` 存在或排第一；不完整记录报错，不静默丢分区。YAML/XML 缺少 `operation_type` 默认 `INVISIBLE`，显式未知值仍拒绝。解析有长度、映射深度、字段和分区数量限制，不支持分区内嵌套对象、YAML 锚点或别名。`UFS_LU0_LU1` 按参考 ABI 兼容策略只映射 LU0，不能套用 eMMC 双 BOOT 语义。
+
 刷写只显示布局不匹配的分区名，不再枚举所有匹配分区的文件和字节范围；全部所选镜像预检通过后比较布局，再明确要求 `yes`。`--partitions` 仅选择文件内可下载的名称，不修改完整布局；未知或不可下载名称拒绝。非交互模式无法确认时不刷写。
 
 eMMC/UFS USER 的完整布局按名称、偏移和长度与设备比较。不一致时先显示差异分区，再询问是否备份当前主/备 GPT、更新布局并继续刷写。输入 `yes` 后才持久保存两份当前 GPT，全部备份成功才写新备 GPT、主 GPT 和镜像；拒绝则不备份、不写入。相同布局不重建 GPT，保留 GUID/属性，确认后直接刷镜像并回读。选中原始 GPT 镜像时也会先备份当前分区表。备份文件不覆盖，重试需另选目录。
+
+重建 GPT 不能同时下载 USER 区的 `pgpt`、`sgpt`、`PrimaryGPT` 或 `BackupGPT` 镜像（大小写无关）；这种冲突在任何备份或写入前拒绝，避免原始镜像覆盖刚生成的新表。
 
 CLI 仅备份分区表，不再备份所有待刷分区，也不额外备份/恢复 Protected 或 BinRegion 内容。布局变化可能使原数据不可用，GPT 备份不能恢复被覆盖的分区内容；确认提示明确说明此风险。写后回读、Sparse 空洞、启动头处理、有限预算与未知写结果不重试仍保留。SDK 的既有 `MtkScatterService.Apply` 默认完整备份/保护数据迁移行为与签名不变；需要相同轻量流程的宿主使用新增 `ApplyWithBackupPolicy` 入口并显式指定 `MtkScatterBackupPolicy.PartitionTableOnly`。
 

@@ -12,4 +12,5 @@
 <data name="ScatterWriteUnknown" xml:space="preserve"><value>Scatter flashing may have partially completed. Inspect the device using the saved backups; do not retry automatically.</value></data>
 <data name="RpmbLockWriteUnknown" xml:space="preserve"><value>RPMB lock metadata may have been written. Reconnect and inspect the original backup and device state; do not retry automatically.</value></data>
 <data name="FlashFillUnknown" xml:space="preserve"><value>Logical fill may have partially written the range. Reconnect and inspect the range; do not retry automatically.</value></data>
+<data name="ScatterYamlStructure" xml:space="preserve"><value>Scatter YAML structure, indentation, or mapping limit</value></data>
 </root>

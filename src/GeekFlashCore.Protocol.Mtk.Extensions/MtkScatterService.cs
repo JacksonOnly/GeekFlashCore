@@ -108,7 +108,7 @@ public sealed class MtkScatterService
                     throw new MtkCapabilityException("native bootloader channel");
                 if (rebuildGpt)
                 {
-                    if (opened.Any(i => i.Part.Range.RegionId == c.Storage.UserRegionId && (i.Part.Name.Equals("pgpt", StringComparison.OrdinalIgnoreCase) || i.Part.Name.Equals("sgpt", StringComparison.OrdinalIgnoreCase))))
+                    if (opened.Any(i => i.Part.Range.RegionId == c.Storage.UserRegionId && MtkScatterGptConverter.IsMetadata(i.Part.Name)))
                         throw new MtkResourceException("scatter GPT image conflicts with rebuild");
                     BuildGpt(parts, c.Storage, metadata);
                 }

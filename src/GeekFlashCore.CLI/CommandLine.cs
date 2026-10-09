@@ -26,6 +26,13 @@ internal static class CommandLine
             if (arg == "--mtk-brom-zlp") { builder = builder with { MtkBromZeroLengthPacket = true }; continue; }
             string? value = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..] : null;
             string name = arg.Contains('=') ? arg[..arg.IndexOf('=')] : arg;
+            if (MtkCommandRequest.LocalOptions.Contains(name) && positional.FirstOrDefault() is { } root &&
+                (root.Equals("mtk", StringComparison.OrdinalIgnoreCase) || root.StartsWith("mtk-", StringComparison.OrdinalIgnoreCase)))
+            {
+                value ??= i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] : throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
+                positional.Add(name + "=" + value);
+                continue;
+            }
             if (name == "--mtk-brom-chunk")
             {
                 value ??= i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] :
@@ -126,6 +133,7 @@ internal static class CommandLine
             positional.Add(arg);
         }
         builder = builder with { Command = positional.FirstOrDefault() ?? "interactive", Arguments = positional.Skip(1).ToArray() };
+        builder = MtkCommandRequest.Normalize(builder);
         builder.Validate();
         if (builder.NonInteractive && builder.Command == "interactive")
             throw new ArgumentException(Strings.Cli_NonInteractiveCommandRequired);
@@ -151,7 +159,7 @@ internal static class CommandLine
         string? requested = arguments.FirstOrDefault()?.ToLowerInvariant();
         if (requested == "lp") { LpCommands.PrintHelp(ui); return; }
         if (requested is "sprd" or "unisoc" or "spreadtrum") { ui.WriteLine(Strings.Cli_HelpSprd); return; }
-        if (requested is "mtk" or "mediatek") { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkParity); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
+        if (requested is "mtk" or "mediatek" || requested?.StartsWith("mtk-", StringComparison.OrdinalIgnoreCase) == true) { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkCommands); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
         if (requested == "mtk-scatter") { ui.WriteLine(Strings.Cli_HelpMtkParity); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
         if (requested == "sprd-chip-uid") { PrintUsage("sprd-chip-uid", ui); return; }
         if (requested is not (null or "all" or "qcom"))
@@ -176,11 +184,8 @@ internal static class CommandLine
         ui.WriteLine(Strings.Cli_HelpOptionsTimeouts);
         ui.WriteLine(Strings.Cli_HelpOptionsLegacy);
         ui.WriteLine(Strings.Cli_HelpMtk);
-        ui.WriteLine(Strings.Cli_HelpMtkStandard);
-        ui.WriteLine(Strings.Cli_HelpMtkParity);
+        ui.WriteLine(Strings.Cli_HelpMtkCommands);
         ui.WriteLine(Strings.Cli_HelpMtkRepair);
-        ui.WriteLine(Strings.Cli_HelpMtkKeys);
-        ui.WriteLine(Strings.Cli_HelpMtkWriteExtras);
         ui.WriteLine(Strings.Cli_HelpSprd);
     }
 

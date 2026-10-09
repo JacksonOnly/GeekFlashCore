@@ -279,14 +279,7 @@ group-remove 仅允许空分组；默认分组受保护。示例：lp rename . s
   --usb-interface N --usb-control-interface N --usb-alt N
   --mtk-ufs-rpmb-blocks N,N
   --mtk-sej-base ADDR --mtk-tzcc-base ADDR --mtk-ssr-base ADDR
-MTK 命令：
-  devices
-  mtk-probe
-  mtk-capabilities
-  mtk-rpmb read|write region start count key-file data-file
-  mtk-memory read|write address length file
-  mtk-seccfg lock|unlock region offset length backup-file
-MTK 默认连接预算 60000 ms，资源预算 30000 ms，均为有限时限。
+MTK 默认连接预算 180000 ms，资源预算 30000 ms，均为有限时限。
 --connect-timeout 覆盖整个 MTK 连接；--resource-timeout 覆盖每次资源请求预算。</value></data>
   <data name="Cli_UsbTopology" xml:space="preserve"><value>{0}:{1} bus={2} port={3}</value></data>
   <data name="Cli_UsbAmbiguous" xml:space="preserve"><value>匹配到多台 USB 设备，请通过序列号或总线/端口路径明确选择。</value></data>
@@ -478,4 +471,32 @@ Scatter flash/update 自动对比布局，不一致时备份原 GPT 并确认后
   <data name="Cli_MtkReconnectHardware" xml:space="preserve"><value>DA 无法查询完整硬件信息。请输入已确认的 hardware-code subcode hardware-version software-version BROM-version security-raw（支持 0x）</value></data>
   <data name="Cli_MtkPreloaderPrompt" xml:space="preserve"><value>DA1 可能需要 EMI。请选择匹配的 Preloader 文件（若已完成 DRAM 初始化可留空）</value></data>
   <data name="Cli_MtkReconnectBoundary" xml:space="preserve"><value>未确认上次传输已结束。请先物理复位/重新进入 DA，确认已处于空闲命令边界（不是等待镜像数据）；输入 yes 继续</value></data>
+  <data name="Cli_MtkBackupSaved" xml:space="preserve"><value>备份：{0}</value></data>
+  <data name="Cli_MtkWriteConfirm" xml:space="preserve"><value>确认执行 {0}？输入 yes 继续，其余取消：</value></data>
+  <data name="Cli_MtkRpmbCapacityRequired" xml:space="preserve"><value>UFS RPMB R{0} 未上报容量。请输入已确认的容量（256 字节数据块数）；不知道请取消，不按镜像长度推测：</value></data>
+  <data name="Cli_MtkRpmbCapacity" xml:space="preserve"><value>RPMB R{0}：{1} 个数据块，{2} 字节。</value></data>
+  <data name="Cli_MtkRpmbAuthenticated" xml:space="preserve"><value>RPMB 认证完成。</value></data>
+  <data name="Cli_MtkEfuseWriteTitle" xml:space="preserve"><value>eFuse 写入（可能不可逆，备份不能撤销熔丝烧写）</value></data>
+  <data name="Cli_HelpMtkCommands" xml:space="preserve"><value>MTK 命令（旧 mtk-* 入口继续兼容）：
+  mtk probe | capabilities
+  mtk seccfg lock|unlock [--backup 文件]
+  mtk slot read | set a|b [--backup 文件]
+  mtk rpmb info [--region 0..3]
+  mtk rpmb read|write 文件 [--region N] [--start 块] [--count 块数] [--key-file 密钥]
+  mtk rpmb erase [--region N] [--start 块] [--count 块数] [--key-file 密钥]
+  mtk rpmb auth 密钥文件 [--region N]
+  mtk rpmb-lock read|lock|unlock [--key-file 密钥] [--backup 文件]
+  mtk key Rpmb|Fde|Tee|RootOfTrust|... 输出文件
+  mtk memory read|write 地址 字节数 文件
+  mtk register read 地址 | write 地址 数值
+  mtk partition read|write 分区 文件 [--maximum 字节上限] | erase 分区
+  mtk scatter plan 文件 | flash|update 文件 镜像目录 [--backup 备份目录]
+  mtk efuse read 文件 | write 文件 [--backup 文件]
+  mtk query 查询名 输出文件 | property 属性名 输出文件
+  mtk pmt 32|64|96|disk|xml
+  mtk fill 区域 字节偏移 字节长度 填充值 | rsc 分区 文件
+seccfg/slot 自动读取分区位置；存在歧义时用 --partition 名称明确指定。
+RPMB 块为 256 字节，默认区域 0、起始 0；读/擦默认剩余容量，写默认文件块数。
+密钥省略时使用当前认证或 Penumbra2 派生，不打印/落盘；UFS 未报告的容量仍需确认。
+安全写入自动备份并确认，不自动重试未知写结果。地址、未知容量和厂商密钥不猜测。</value></data>
 </root>

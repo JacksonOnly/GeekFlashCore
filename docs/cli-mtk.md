@@ -23,12 +23,41 @@ DA1 继续初始化/EMI 和 DA2 上传，不重发 BROM 上传；DA2 只验证�
 
 ## 传输与日志
 
-- XFlash 写包遵循设备协商，上限默认 2 MiB，不再被 BROM 的 64 KiB 缓冲截断；读取默认使用 64 KiB 池化 USB 窗口，完整接收设备数据帧才 ACK/状态确认。原生短包直接消费，不为凑满宿主窗口额外发起小读取。SDK 可用 `MaximumXFlashWritePacketLength` 限制写包。
+- XFlash 写包遵循设备协商，上限默认 2 MiB，不再被 BROM 的 64 KiB 缓冲截断；读取按实际帧长度接收，并受协商的 `ReadPacketLength` 限制。默认 64 KiB 是单次 USB 请求窗口，不是 DA 包长；完整数据帧接收并输出后才 ACK/状态确认。原生短包直接消费，不为凑满窗口额外发起小读取；文件输出合并到最多 1 MiB，缓冲与镜像总大小无关。SDK 可用 `MaximumXFlashWritePacketLength` 限制写包。
 - 进度节流约 100 ms，保留开始、首个进度和完成事件；不并行发送协议命令。
 - 默认控制台和文件仅 Information 及以上；`--verbose` 才记录逐包 Debug。旧 DA 不支持 SLA 查询和已验证的旧 UFS GPT 边界仅为 Debug，验证逻辑不放宽。
 - 分区偏移显示原始字节数，起始扇区使用该区域真实逻辑块单位；`read/write sector` 的 MTK 区域编号为 DA wire ID（UFS USER=3、eMMC USER=8），不是零基 LUN。
 
-用户 MT6893/UFS 实机日志确认扩展加载、分区发现和 persist 读取成功；开启逐包 Debug 日志时读取 69,697,536 字节用时约 1.78 秒（37.28 MiB/s）。后续短包优化的吞吐仍需同模式复测，不能据模拟传输承诺倍率。界面沿用 MB 标签，数值按 1024 进制计算。
+用户 MT6893/UFS 实机日志确认扩展加载、分区发现和 persist 读取成功；开启逐包 Debug 日志时读取 69,697,536 字节用时约 1.78 秒（37.28 MiB/s），短包优化后用户报告 1.670 秒（39.8 MiB/s）。输出合并版为 1.675 秒（39.67 MiB/s），没有明显提速，且该份日志仍包含逐包 DBG。不能据模拟传输承诺倍率。此前 1 MiB USB 请求曾出现帧尾接收超时，未证实底层原因，不自动放大窗口或在半包状态重试。界面沿用 MB 标签，数值按 1024 进制计算；目标项目的速度单位和同文件摘要尚未取得。
+
+## 命令与安全操作
+
+统一入口为 `mtk <子命令>`，原 `mtk-*` 入口及显式几何语法继续兼容。完整列表见 `help mtk`。常用操作无需填写区域、偏移和长度：
+
+```text
+mtk capabilities
+mtk seccfg unlock
+mtk seccfg lock --backup seccfg-original.bin
+mtk slot read
+mtk slot set a
+mtk rpmb info
+mtk rpmb read rpmb.bin
+mtk rpmb write rpmb.bin --start 0 --count 128 --key-file rpmb-key.bin
+mtk rpmb erase --region 0 --start 0 --count 128
+mtk rpmb auth rpmb-key.bin
+mtk rpmb-lock read
+mtk key Rpmb rpmb-key.bin
+mtk partition read boot_a boot_a.img
+mtk efuse read efuses.bin
+```
+
+seccfg 从 USER 的唯一 `seccfg` 分区定位；slot 从 USER 的 `misc`/`para` 定位。缺失或歧义直接拒绝，可用 `--partition` 指定实际名称，不退回偏移 0。seccfg 先持久备份，再要求 `yes`，随后重新比对原数据、最小对齐写入和完整回读。slot 也要求确认，并在写入前持久保存原扇区。自动备份在当前目录的 `backups` 下，以时间和随机标识命名，显式备份也不覆盖已有文件。
+
+RPMB 与普通块设备分离，块固定为 256 字节；默认区域 0、起始块 0。读取/擦除默认覆盖已确认容量的剩余范围，写入默认采用文件块数，输入必须精确对齐且与 `--count` 一致。eMMC 容量取设备上报值；UFS 未知容量必须交互提供该区域已确认的块数，或通过 `--mtk-ufs-rpmb-blocks` 指定，按区域和会话代数缓存。不沿用参考项目的固定 UFS 容量，也不用输入文件长度猜容量。
+
+省略 `--key-file` 时复用当前区域认证，或请求 Penumbra2 RPMB 派生服务；派生密钥仅在内存使用并及时清零，不隐式保存或打印。厂商密钥不匹配时应提供实际 32 字节密钥文件；不尝试多组密钥。RPMB 写/擦和 XML/UFS 的 rpmb-lock 写入先持久备份，再确认，未知写入结果不重试。备份不是 RPMB 计数器或安全状态的通用回滚保证。
+
+`mtk partition read|write 名称 文件` 从唯一分区长度确定上限；无可用分区表时仍需显式 `--maximum`，不猜整盘容量。内存、寄存器、填充和 RSC 等操作保留实际必需的地址/范围参数。eFuse 写入另要求备份与明确确认；它可能永久烧写，备份不能还原已烧写位。非交互模式缺少容量或确认时拒绝，不视为默认同意。上述安全写入仅有模拟验证，不要求用户为测试实际修改设备。
 
 ## Preloader 与扩展
 
@@ -48,8 +77,9 @@ XFlash/XML 使用 DA 原生命名接口处理启动头；读取以 BOOT 区容�
 ## Scatter
 
 ```text
-mtk-scatter plan MT6893_scatter.txt
-mtk-scatter flash MT6893_scatter.txt image-directory backup-directory
+mtk scatter plan MT6893_scatter.txt
+mtk scatter flash MT6893_scatter.txt image-directory
+mtk scatter update MT6893_scatter.txt image-directory --backup backup-directory
 ```
 
 eMMC/UFS USER 布局按名称、偏移和长度与设备比较。不一致时先备份当前主/备 GPT，再显示差异，必须输入 `yes` 才更新 GPT 并刷写；其他输入取消，不写设备。随后沿用镜像预检、备份、备 GPT 先写、回读校验和保护数据恢复。备份文件不覆盖，重试需另选备份目录。相同布局不重建 GPT，保留其 GUID/属性；NAND 不套用 GPT，保留既有原生 Scatter 线路。

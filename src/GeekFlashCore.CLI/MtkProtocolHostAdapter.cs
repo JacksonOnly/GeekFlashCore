@@ -136,6 +136,8 @@ internal static partial class MtkProtocolHostAdapter
 
     internal static MtkCapabilities GetCapabilities(IMtkProtocol protocol) =>
         Extensions.TryGetValue(protocol, out var extension) ? extension.Capabilities : protocol.Capabilities;
+    internal static bool IsCurrentExtension(IMtkProtocol protocol, MtkDaExtension extension) =>
+        Extensions.TryGetValue(protocol, out var current) && ReferenceEquals(current, extension);
 
     private static void RememberExtension(IMtkProtocol protocol, MtkDaExtension extension)
     {
@@ -176,6 +178,16 @@ internal static partial class MtkProtocolHostAdapter
         uint sej = options.MtkSejBase != 0 ? options.MtkSejBase : p.TargetInfo!.HardwareCode == 0x950 ? 0x1000a000u : 0;
         return new(p.TargetInfo!.HardwareCode, da2.Address, da2.Length - da2.SignatureLength, sej, options.MtkTzccBase, options.MtkSsrBase)
         { AllowedMemoryRanges = ranges, Abi = MtkExtensionAbi.Penumbra2, UfsRpmbDataBlocks = options.MtkUfsRpmbBlocks };
+    }
+    internal static MtkDaExtension CreateExtension(IMtkProtocol p, CliOptions options, IReadOnlyList<MtkMemoryRange> ranges, CancellationToken ct)
+    {
+        if (ranges.Count == 0 && !options.HasExplicitMtkExtensionAbi && options.MtkSejBase == 0 && options.MtkTzccBase == 0 &&
+            options.MtkSsrBase == 0 && options.MtkUfsRpmbBlocks.Count == 0 && Extensions.TryGetValue(p, out var current) && current.IsReady)
+            return current;
+        var ext = new MtkDaExtension(p);
+        ext.Initialize(ExtensionContext(p, options, ranges) with { Abi = options.MtkExtensionAbi }, ct);
+        RememberExtension(p, ext);
+        return ext;
     }
     private static IProtocol Create(ProtocolHostContext context, ITransport transport,
         Func<MtkTargetInfo, MtkConnectionResources> resources)
@@ -225,7 +237,7 @@ internal static partial class MtkProtocolHostAdapter
         }
         catch { auth?.Dispose(); cert?.Dispose(); throw; }
     }
-    private static byte[] ReadBounded(string path, int maximum)
+    internal static byte[] ReadBounded(string path, int maximum)
     {
         using var s = File.OpenRead(ConsolePath.Normalize(path)!);
         if (s.Length <= 0 || s.Length > maximum)
@@ -283,9 +295,10 @@ internal static partial class MtkProtocolHostAdapter
             if (RequiresConnection(command) && !protocol.IsConnected)
                 throw new InvalidOperationException(Strings.Cli_ReconnectRequired);
         }
-        public void PrintHelp(IProtocol protocol, ConsoleUi ui) { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkStandard); ui.WriteLine(Strings.Cli_HelpMtkParity); ui.WriteLine(Strings.Cli_HelpMtkKeys); ui.WriteLine(Strings.Cli_HelpMtkWriteExtras); ui.WriteLine(Strings.Cli_HelpMtkRepair); }
+        public void PrintHelp(IProtocol protocol, ConsoleUi ui) { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkCommands); ui.WriteLine(Strings.Cli_HelpMtkRepair); }
         public void Validate(CliOptions options)
         {
+            if (MtkCommandRequest.TryValidate(options.Command, options.Arguments)) return;
             string[] a = options.Arguments;
             switch (options.Command)
             {
@@ -372,6 +385,7 @@ internal static partial class MtkProtocolHostAdapter
         public async Task<int> ExecuteAsync(IProtocol protocol, CliOptions options, ConsoleUi ui, IProgress<ProgressRecord> progress, CancellationToken ct)
         {
             var p = (IMtkProtocol)protocol;
+            if (await MtkCommandWorkflows.TryExecuteAsync(p, options, ui, progress, ct).ConfigureAwait(false)) return 0;
             string[] a = options.Arguments;
             if (options.Command == "mtk-probe")
             {
@@ -518,7 +532,7 @@ internal static partial class MtkProtocolHostAdapter
             if (options.Command == "mtk-seccfg")
             {
                 IReadOnlyList<IMtkSecurityCipher>? ciphers = null;
-                if (options.MtkSejBase != 0)
+                if (options.MtkSejBase != 0 || GetCapabilities(p).Crypto == MtkCapabilitySupport.Supported)
                 {
                     var extension = CreateExtension(p, options, [], ct);
                     ciphers = p.DownloadAgent!.Entry.Kind == MtkDaKind.XFlash ?
@@ -562,13 +576,6 @@ internal static partial class MtkProtocolHostAdapter
                 ext.WriteMemory(address, length, s, ct);
             }
             return 0;
-        }
-        private static MtkDaExtension CreateExtension(IMtkProtocol p, CliOptions options, IReadOnlyList<MtkMemoryRange> ranges, CancellationToken ct)
-        {
-            var ext = new MtkDaExtension(p);
-            ext.Initialize(ExtensionContext(p, options, ranges) with { Abi = options.MtkExtensionAbi }, ct);
-            RememberExtension(p, ext);
-            return ext;
         }
     }
 }

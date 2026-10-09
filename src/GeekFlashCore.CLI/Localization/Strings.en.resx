@@ -279,14 +279,7 @@ Device capabilities:
   --usb-interface N --usb-control-interface N --usb-alt N
   --mtk-ufs-rpmb-blocks N,N
   --mtk-sej-base ADDR --mtk-tzcc-base ADDR --mtk-ssr-base ADDR
-MTK commands:
-  devices
-  mtk-probe
-  mtk-capabilities
-  mtk-rpmb read|write region start count key-file data-file
-  mtk-memory read|write address length file
-  mtk-seccfg lock|unlock region offset length backup-file
-MTK defaults: connection budget 60000 ms, resource budget 30000 ms; both are finite.
+MTK defaults: connection budget 180000 ms, resource budget 30000 ms; both are finite.
 --connect-timeout covers the entire MTK connection; --resource-timeout overrides the per-resource budget.</value></data>
   <data name="Cli_UsbTopology" xml:space="preserve"><value>{0}:{1} bus={2} port={3}</value></data>
   <data name="Cli_UsbAmbiguous" xml:space="preserve"><value>Multiple USB devices match; select a serial number or bus/port path.</value></data>
@@ -478,4 +471,32 @@ Conversions run offline. Capacity is in bytes; block size is 512 or 4096. to-gpt
   <data name="Cli_MtkReconnectHardware" xml:space="preserve"><value>DA cannot query complete hardware identity. Enter confirmed hardware-code subcode hardware-version software-version BROM-version security-raw (0x supported)</value></data>
   <data name="Cli_MtkPreloaderPrompt" xml:space="preserve"><value>DA1 may need EMI. Select a matching Preloader file (leave blank if DRAM is already initialized)</value></data>
   <data name="Cli_MtkReconnectBoundary" xml:space="preserve"><value>The previous transfer boundary is unconfirmed. Reset/re-enter DA first; confirm it is idle and not awaiting image data. Type yes to continue</value></data>
+  <data name="Cli_MtkBackupSaved" xml:space="preserve"><value>Backup: {0}</value></data>
+  <data name="Cli_MtkWriteConfirm" xml:space="preserve"><value>Confirm {0}? Enter yes to continue; anything else cancels:</value></data>
+  <data name="Cli_MtkRpmbCapacityRequired" xml:space="preserve"><value>UFS RPMB R{0} does not report capacity. Enter its confirmed capacity in 256-byte data blocks; cancel if unknown. Image length is not capacity:</value></data>
+  <data name="Cli_MtkRpmbCapacity" xml:space="preserve"><value>RPMB R{0}: {1} data blocks, {2} bytes.</value></data>
+  <data name="Cli_MtkRpmbAuthenticated" xml:space="preserve"><value>RPMB authenticated.</value></data>
+  <data name="Cli_MtkEfuseWriteTitle" xml:space="preserve"><value>eFuse write (potentially irreversible; a backup cannot undo fuse programming)</value></data>
+  <data name="Cli_HelpMtkCommands" xml:space="preserve"><value>MTK commands (existing mtk-* aliases remain compatible):
+  mtk probe | capabilities
+  mtk seccfg lock|unlock [--backup file]
+  mtk slot read | set a|b [--backup file]
+  mtk rpmb info [--region 0..3]
+  mtk rpmb read|write file [--region N] [--start block] [--count blocks] [--key-file key]
+  mtk rpmb erase [--region N] [--start block] [--count blocks] [--key-file key]
+  mtk rpmb auth key-file [--region N]
+  mtk rpmb-lock read|lock|unlock [--key-file key] [--backup file]
+  mtk key Rpmb|Fde|Tee|RootOfTrust|... output-file
+  mtk memory read|write address length file
+  mtk register read address | write address value
+  mtk partition read|write name file [--maximum bytes] | erase name
+  mtk scatter plan file | flash|update file image-directory [--backup directory]
+  mtk efuse read file | write file [--backup file]
+  mtk query query-name output-file | property key output-file
+  mtk pmt 32|64|96|disk|xml
+  mtk fill region offset length byte-value | rsc partition file
+seccfg/slot resolve partition geometry automatically; use --partition for an ambiguous target.
+RPMB blocks are 256 bytes; region/start default to zero. Read/erase use remaining confirmed capacity; writes use file block count.
+Without a key file, reuse current authentication or derive with Penumbra2. Keys are never logged or implicitly saved. Unknown UFS capacity still requires confirmation.
+Safety-sensitive writes require backup/confirmation. Unknown writes are not retried; addresses, unknown capacities and OEM keys are not guessed.</value></data>
 </root>

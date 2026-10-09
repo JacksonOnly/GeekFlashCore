@@ -9,7 +9,7 @@ internal static class CommandCompletion
     {
         var names = CommandSyntax.Usages.Keys.Where(x => x != "interactive").Concat(["exit", "quit"]).ToList();
         if (protocol is not GeekFlashCore.Protocol.Mtk.Abstractions.IMtkProtocol) names.Remove("reconnect");
-        else names.Add("mtk-scatter");
+        else { names.Add("mtk"); names.AddRange(MtkCommandRequest.Commands.Select(x => "mtk-" + x)); }
         if (protocol is IQcomProtocol qcom)
         {
             names.AddRange(FirehoseCommands.MappedCommands(qcom));
@@ -35,6 +35,7 @@ internal static class CommandCompletion
         IEnumerable<string> choices = root switch
         {
             "qcom" => FirehoseCommands.Usages.Keys.Select(x => "qcom " + x).Where(x => names.Contains(x[5..])),
+            "mtk" => MtkCommandRequest.Commands.Select(x => "mtk " + x).Concat(new[] { "seccfg lock", "seccfg unlock", "slot read", "slot set a", "slot set b", "rpmb info", "rpmb read", "rpmb write", "rpmb erase", "rpmb auth" }.Select(x => "mtk " + x)),
             "help" => names.Concat(["all", "qcom", "mtk", "sprd"]).Select(x => "help " + x),
             "reconnect" => new[] { "auto", "brom", "da1", "da2" }.Select(x => "reconnect " + x),
             "mtk-scatter" => new[] { "plan", "flash", "update", "to-gpt", "from-gpt" }.Select(x => "mtk-scatter " + x),

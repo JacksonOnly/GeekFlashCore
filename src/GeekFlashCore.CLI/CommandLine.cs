@@ -88,6 +88,12 @@ internal static class CommandLine
                 {"legacy" or "1"=>GeekFlashCore.Protocol.Mtk.Abstractions.MtkExtensionAbi.Legacy,"penumbra2" or "2"=>GeekFlashCore.Protocol.Mtk.Abstractions.MtkExtensionAbi.Penumbra2,_=>throw new ArgumentException(Strings.Cli_MtkExtensionAbiInvalid)}};
                 continue;
             }
+            if (name == "--mtk-operation-timeout")
+            {
+                value ??= i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] : throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
+                builder = builder with { MtkOperationTimeout = checked((int)CommandSyntax.Number(value)) };
+                continue;
+            }
             if (name.StartsWith("--", StringComparison.Ordinal))
             {
                 if (name is not ("--port" or "--usb" or "--protocol" or "--loader" or "--digest" or "--vip-signed" or "--vip-chained" or "--oplus-digest" or "--oplus-sign" or "--oplus-mode" or "--oneplus-projid" or "--vendor" or "--auth" or "--read-timeout" or "--write-timeout" or "--connect-timeout" or "--resource-timeout" or "--device-wait-timeout" or "--log-file" or "--mtk-preloader" or "--mtk-da-mode" or "--mtk-auth-file" or "--mtk-cert" or "--usb-serial" or "--usb-bus" or "--usb-port-path" or "--mtk-sej-base" or "--mtk-tzcc-base" or "--mtk-ssr-base" or "--usb-interface" or "--usb-control-interface" or "--usb-alt" or "--mtk-ufs-rpmb-blocks" or "--mtk-nor-erase-block" or "--mtk-pmt-layout" or "--mtk-nand-capacity"))
@@ -159,8 +165,8 @@ internal static class CommandLine
         string? requested = arguments.FirstOrDefault()?.ToLowerInvariant();
         if (requested == "lp") { LpCommands.PrintHelp(ui); return; }
         if (requested is "sprd" or "unisoc" or "spreadtrum") { ui.WriteLine(Strings.Cli_HelpSprd); return; }
-        if (requested is "mtk" or "mediatek" || requested?.StartsWith("mtk-", StringComparison.OrdinalIgnoreCase) == true) { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkCommands); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
-        if (requested == "mtk-scatter") { ui.WriteLine(Strings.Cli_HelpMtkParity); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
+        if (requested == "mtk-scatter") { ui.WriteLine(Strings.Cli_HelpMtkScatterWorkflow); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
+        if (requested is "mtk" or "mediatek" || requested?.StartsWith("mtk-", StringComparison.OrdinalIgnoreCase) == true) { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkCommands); ui.WriteLine(Strings.Cli_HelpMtkScatterWorkflow); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
         if (requested == "sprd-chip-uid") { PrintUsage("sprd-chip-uid", ui); return; }
         if (requested is not (null or "all" or "qcom"))
         {
@@ -185,6 +191,7 @@ internal static class CommandLine
         ui.WriteLine(Strings.Cli_HelpOptionsLegacy);
         ui.WriteLine(Strings.Cli_HelpMtk);
         ui.WriteLine(Strings.Cli_HelpMtkCommands);
+        ui.WriteLine(Strings.Cli_HelpMtkScatterWorkflow);
         ui.WriteLine(Strings.Cli_HelpMtkRepair);
         ui.WriteLine(Strings.Cli_HelpSprd);
     }

@@ -1,3 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?><root><resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader><data name="ExtensionUnavailable" xml:space="preserve"><value>MTK extension context is unavailable or expired. Reconnect required.</value></data><data name="HardwareTimeout" xml:space="preserve"><value>MTK crypto hardware did not become ready within the configured limits. Reconnect required.</value></data><data name="HardwareFailure" xml:space="preserve"><value>MTK crypto hardware reported failure. Reconnect required.</value></data><data name="FillProgress" xml:space="preserve"><value>Filling storage range</value></data>
 <data name="ScatterProgress" xml:space="preserve"><value>Flashing scatter images</value></data>
+<data name="ScatterBackup" xml:space="preserve"><value>Scatter backup: {0}</value></data>
+<data name="ScatterWrite" xml:space="preserve"><value>Scatter write: {0}</value></data>
+<data name="ScatterReadback" xml:space="preserve"><value>Scatter readback verification: {0}</value></data>
 </root>

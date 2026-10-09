@@ -6,6 +6,46 @@ namespace GeekFlashCore.CLI;
 
 internal static class MtkScatterCommands
 {
+    internal const string OnlineUsage = "mtk scatter [file] | plan file | flash|update file [image-directory] [--backup directory] [--partitions name,...]";
+    internal static (string Action, string? Path, string? Images, string? Backup) OnlineArguments(MtkCommandRequest request)
+    {
+        string[] a = request.Arguments;
+        if (a.Length == 0) return ("flash", null, null, request.Value("--backup"));
+        if (a[0] is not ("plan" or "flash" or "update"))
+        {
+            if (a.Length != 1) throw new CommandUsageException(OnlineUsage);
+            return ("flash", a[0], null, request.Value("--backup"));
+        }
+        if (a[0] == "plan" && a.Length != 2 || a[0] != "plan" && a.Length is < 1 or > 4 ||
+            a.Length == 4 && request.Value("--backup") is not null)
+            throw new CommandUsageException(OnlineUsage);
+        return (a[0], a.ElementAtOrDefault(1), a.ElementAtOrDefault(2), a.ElementAtOrDefault(3) ?? request.Value("--backup"));
+    }
+    internal static string[]? SelectedNames(MtkCommandRequest request)
+    {
+        if (request.Value("--partitions") is not { } value) return null;
+        var names = value.Split(',');
+        if (names.Length is < 1 or > 4096 || names.Distinct(StringComparer.OrdinalIgnoreCase).Count() != names.Length ||
+            names.Any(n => n.Length is < 1 or > 128 || n.Any(c => !char.IsAsciiLetterOrDigit(c) && c is not ('_' or '-' or '.'))))
+            throw new CommandUsageException(OnlineUsage);
+        return names;
+    }
+    internal static void ValidateOnline(MtkCommandRequest request)
+    {
+        request.Allow("--backup", "--partitions");
+        _ = OnlineArguments(request);
+        _ = SelectedNames(request);
+        if (request.Arguments.Any(string.IsNullOrWhiteSpace)) throw new CommandUsageException(OnlineUsage);
+    }
+    internal static MtkScatterPlan SelectDownloads(MtkScatterPlan plan, string[]? names)
+    {
+        if (names is null) return plan;
+        foreach (string name in names)
+            if (!plan.Partitions.Any(p => p.Download && p.FileName is not null && p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                throw new MtkResourceException("scatter downloadable partition: " + name);
+        return plan with { Partitions = plan.Partitions.Select(p => p with
+            { Download = p.Download && names.Contains(p.Name, StringComparer.OrdinalIgnoreCase) }).ToArray() };
+    }
     internal static string ReadText(string path, CancellationToken ct)
     {
         using var reader = new StreamReader(File.OpenRead(path), detectEncodingFromByteOrderMarks: true);

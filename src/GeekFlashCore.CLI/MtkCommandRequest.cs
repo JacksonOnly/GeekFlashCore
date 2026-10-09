@@ -4,7 +4,7 @@ namespace GeekFlashCore.CLI;
 
 internal sealed record MtkCommandRequest(string[] Arguments, IReadOnlyDictionary<string, string> Options)
 {
-    internal static readonly string[] LocalOptions = ["--region", "--start", "--count", "--key-file", "--backup", "--maximum", "--partition"];
+    internal static readonly string[] LocalOptions = ["--region", "--start", "--count", "--key-file", "--backup", "--maximum", "--partition", "--partitions"];
     internal static readonly string[] Commands = ["probe", "capabilities", "seccfg", "slot", "rpmb", "rpmb-lock", "key", "memory", "register", "partition", "scatter", "efuse", "query", "property", "pmt", "fill", "rsc"];
     internal static CliOptions Normalize(CliOptions options)
     {
@@ -40,6 +40,11 @@ internal sealed record MtkCommandRequest(string[] Arguments, IReadOnlyDictionary
     internal static bool TryValidate(string command, string[] args)
     {
         var request = Parse(args); var a = request.Arguments;
+        if (command == "mtk-scatter" && a.FirstOrDefault() is not ("to-gpt" or "from-gpt"))
+        {
+            MtkScatterCommands.ValidateOnline(request);
+            return true;
+        }
         bool legacy = request.Options.Count == 0 && command switch
         {
             "mtk-seccfg" => a.Length == 5,

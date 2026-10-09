@@ -74,12 +74,13 @@ internal sealed record CliOptions
     public bool HasExplicitDeviceWaitTimeout { get; init; }
     public int ReadTimeout { get; init; } = QcomProtocolOptions.DefaultReadTimeoutMilliseconds;
     public int WriteTimeout { get; init; } = QcomProtocolOptions.DefaultWriteTimeoutMilliseconds;
+    public int MtkOperationTimeout { get; init; } = 30 * 60 * 1000;
     public string Command { get; init; } = "interactive";
     public string[] Arguments { get; init; } = [];
 
     public void Validate()
     {
-        if (ReadTimeout <= 0 || WriteTimeout <= 0 || ConnectTimeout <= 0 || DeviceWaitTimeout <= 0 ||
+        if (ReadTimeout <= 0 || WriteTimeout <= 0 || ConnectTimeout <= 0 || DeviceWaitTimeout <= 0 || MtkOperationTimeout <= 0 ||
             EffectiveResourceTimeout is 0 or < -1)
             throw new ArgumentException(Localization.Strings.Cli_TimeoutMustBePositive);
         if (OplusResume && EffectiveOplusMode == OplusDigestMode.None)

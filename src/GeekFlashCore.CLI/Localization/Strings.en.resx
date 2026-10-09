@@ -453,7 +453,7 @@ Keys go only to files.</value></data>
 <data name="Cli_SprdChipUid" xml:space="preserve"><value>SPRD Chip UID: {0}</value></data>
   <data name="Cli_MtkInitialProbeRetry" xml:space="preserve"><value>MTK initial admission did not complete. Released the old connection; waiting for a device again. Press Ctrl+C to stop.</value></data>
   <data name="Cli_MtkUsbDiscoveryRetry" xml:space="preserve"><value>MTK USB enumeration or opening did not complete. Waiting for a device; press Ctrl+C to stop. See the file log for diagnostics.</value></data>
-  <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>MTK session invalid; use reconnect. The interrupted command is not retried.</value></data>
+  <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>MTK session invalid; no automatic retry. An interrupted write may leave incomplete contents. Reset the device to an idle state, reconnect, and flash again from the beginning.</value></data>
   <data name="Cli_MtkBromChunkInvalid" xml:space="preserve"><value>BROM host upload chunk must be 64–1048576 bytes.</value></data>
   <data name="Cli_MtkExtensionLoaded" xml:space="preserve"><value>MTK: DA extension loaded.</value></data>
   <data name="Cli_MtkExtensionNotPrepared" xml:space="preserve"><value>MTK: DA extension unavailable; verified loader or function addresses are missing.</value></data>
@@ -490,7 +490,7 @@ Conversions run offline. Capacity is in bytes; block size is 512 or 4096. to-gpt
   mtk memory read|write address length file
   mtk register read address | write address value
   mtk partition read|write name file [--maximum bytes] | erase name
-  mtk scatter plan file | flash|update file image-directory [--backup directory]
+  mtk scatter [file] | plan file | flash|update file [image-directory] [--backup directory]
   mtk efuse read file | write file [--backup file]
   mtk query query-name output-file | property key output-file
   mtk pmt 32|64|96|disk|xml
@@ -501,4 +501,19 @@ Without a key file, reuse current authentication or derive with Penumbra2. Keys 
 Safety-sensitive writes require backup/confirmation. Unknown writes are not retried; addresses, unknown capacities and OEM keys are not guessed.</value></data>
   <data name="Cli_DeviceWaitStatus" xml:space="preserve"><value>{0} {1} {2}  Esc to cancel</value></data>
   <data name="Cli_MtkOffline" xml:space="preserve"><value>Disconnected. Enter reconnect to wait again, help for commands, or exit to quit. Failed operations are not retried automatically.</value></data>
+  <data name="Cli_MtkScatterFilePrompt" xml:space="preserve"><value>Select a Scatter file (txt/xml)</value></data>
+  <data name="Cli_MtkScatterFileInvalid" xml:space="preserve"><value>Scatter file does not exist; select another file.</value></data>
+  <data name="Cli_MtkScatterSummary" xml:space="preserve"><value>Scatter: using the device's {0} layout, {1} download entries selected; images default to the Scatter directory.</value></data>
+  <data name="Cli_MtkScatterPreflight" xml:space="preserve"><value>Scatter: checking images and capacity; no writes yet.</value></data>
+  <data name="Cli_MtkScatterBackupGpt" xml:space="preserve"><value>Scatter: backing up the current primary/backup GPT.</value></data>
+  <data name="Cli_MtkScatterFlashConfirm" xml:space="preserve"><value>Flash the listed images? Original contents will be backed up and readback verified; type yes to continue, otherwise cancel</value></data>
+  <data name="Cli_HelpMtkScatterWorkflow" xml:space="preserve"><value>Scatter flashing:
+  mtk scatter                         Select a Scatter file and use its download entries
+  mtk scatter file                    Images default to its directory; backups are automatic
+  mtk scatter plan file               View the current medium's layout only
+  mtk scatter flash file [image-directory] [--backup backup-directory]
+    --partitions boot_a,super         Flash only named downloads; compare the full layout
+Images are listed for confirmation. A layout mismatch requires GPT backup and update confirmation.
+Backup, write, and readback have separate progress; safety checks are retained.
+  --mtk-operation-timeout ms          Startup option: MTK core operation budget, default 1800000; native USB timeouts unchanged.</value></data>
 </root>

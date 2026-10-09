@@ -53,7 +53,7 @@ internal static partial class MtkCommandWorkflows
             case "mtk-efuse":
                 await EfuseAsync(protocol, request, ui, ct); return true;
             case "mtk-scatter":
-                a = [a[0], a[1], a[2], BackupPath(request.Value("--backup"), "scatter", true)]; break;
+                await ScatterAsync(protocol, request, ui, progress, ct); return true;
             default: throw new CommandUsageException(options.Command);
         }
         await MtkProtocolHostAdapter.Registration.CommandSet!.ExecuteAsync(protocol, options with { Arguments = a }, ui, progress, ct).ConfigureAwait(false);

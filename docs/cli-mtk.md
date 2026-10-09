@@ -23,16 +23,20 @@ reconnect da2 xml
 
 DA1 继续初始化/EMI 和 DA2 上传，不重发 BROM 上传；DA2 只验证对应协议、认证状态和存储，不再次上传 DA。Legacy DA2 必须有原会话已观察的存储几何，并验证 USB speed ACK；没有几何或 NAND 时请复位回 BROM。首次接入已有 DA，完整硬件身份无法查询时会询问硬件编号、subcode、硬件/软件版本、BROM 版本与 security raw，DA 文件必须匹配。
 
-中途读写失败后，不自动重发命令。重新接管 DA2 前必须确认已经复位/重新进入空闲命令边界；不能向仍等待镜像数据的设备发送查询帧。取消确认不发送恢复命令。非交互模式无法确认缺失信息时直接报错。
+中途读写失败后，不自动重发命令。重新接管 DA2 前必须确认已经复位/重新进入空闲命令边界；不能向仍等待镜像数据的设备发送查询帧。取消确认不发送恢复命令。非交互模式无法确认缺失信息时直接报错。写入中断可能留下不完整内容，应在复位并重新连接后从头刷写，不能直接续传或把进度百分比当作安全恢复点。
 
 ## 传输与日志
 
 - XFlash 写包遵循设备协商，上限默认 2 MiB，不再被 BROM 的 64 KiB 缓冲截断；读取按实际帧长度接收，并受协商的 `ReadPacketLength` 限制。默认 64 KiB 是单次 USB 请求窗口，不是 DA 包长；完整数据帧接收并输出后才 ACK/状态确认。原生短包直接消费，不为凑满窗口额外发起小读取；文件输出合并到最多 1 MiB，缓冲与镜像总大小无关。SDK 可用 `MaximumXFlashWritePacketLength` 限制写包。
 - 进度节流约 100 ms，保留开始、首个进度和完成事件；不并行发送协议命令。
+- Sparse 只在携带 CRC 时执行写前全量校验；无 CRC 不扫描整幅展开镜像。普通写入与宿主 Scatter 写入合并相邻 Raw/Fill 为连续传输，绝不跨越 DontCare，空洞仍不写。进度与平均速度按实际传输字节计，容量验证与返回长度仍按展开长度；最终 ACK/状态成功后才报告完成。
+- CLI 的 MTK 单次核心操作默认预算为 30 分钟，可通过启动选项 `--mtk-operation-timeout 毫秒` 调整。普通 write 包含全部连续区域；Scatter Apply 包含备份、写入与回读；交互选文件、确认和独立预检/比较不共享这一截止时间。SDK 默认仍为 120 秒，单次 USB 读写超时不变；大镜像、备份和回读可能需要增加操作预算，而不是无限等待或重发写入。
 - 默认控制台和文件仅 Information 及以上；`--verbose` 才记录逐包 Debug。旧 DA 不支持 SLA 查询和已验证的旧 UFS GPT 边界仅为 Debug，验证逻辑不放宽。
 - 分区偏移显示原始字节数，起始扇区使用该区域真实逻辑块单位；`read/write sector` 的 MTK 区域编号为 DA wire ID（UFS USER=3、eMMC USER=8），不是零基 LUN。
 
 用户 MT6893/UFS 实机日志确认扩展加载、分区发现和 persist 读取成功；开启逐包 Debug 日志时读取 69,697,536 字节用时约 1.78 秒（37.28 MiB/s），短包优化后用户报告 1.670 秒（39.8 MiB/s）。输出合并版为 1.675 秒（39.67 MiB/s），没有明显提速，且该份日志仍包含逐包 DBG。不能据模拟传输承诺倍率。此前 1 MiB USB 请求曾出现帧尾接收超时，未证实底层原因，不自动放大窗口或在半包状态重试。界面沿用 MB 标签，数值按 1024 进制计算；目标项目的速度单位和同文件摘要尚未取得。
+
+用户此次 `super.img` 离线确认展开长度约 8.5 GiB、实际 Raw/Fill 约 2.48 GiB、没有 CRC。旧实现仍做展开全量校验，且产生 2690 次区域写入；连续区域计划仅需 7 次，不额外物化大镜像。新版离线元数据规划约 24 ms、分配低于 1 MiB；这是离线证据，不是设备写速，实机吞吐仍待复测。
 
 ## 命令与安全操作
 
@@ -83,12 +87,21 @@ XFlash/XML 使用 DA 原生命名接口处理启动头；读取以 BOOT 区容�
 ## Scatter
 
 ```text
+mtk scatter
+mtk scatter MT6893_scatter.txt
 mtk scatter plan MT6893_scatter.txt
-mtk scatter flash MT6893_scatter.txt image-directory
-mtk scatter update MT6893_scatter.txt image-directory --backup backup-directory
+mtk scatter flash MT6893_scatter.txt --partitions boot_a,super
+mtk scatter flash MT6893_scatter.txt image-directory --backup backup-directory
+mtk scatter update MT6893_scatter.txt
 ```
 
-eMMC/UFS USER 布局按名称、偏移和长度与设备比较。不一致时先备份当前主/备 GPT，再显示差异，必须输入 `yes` 才更新 GPT 并刷写；其他输入取消，不写设备。随后沿用镜像预检、备份、备 GPT 先写、回读校验和保护数据恢复。备份文件不覆盖，重试需另选备份目录。相同布局不重建 GPT，保留其 GUID/属性；NAND 不套用 GPT，保留既有原生 Scatter 线路。
+不带文件时分步请求 txt/xml 文件；给文件即可按其下载项刷写，镜像默认相对 Scatter 父目录，不再强制填写镜像目录。默认备份目录在当前目录 `backups` 下自动唯一命名；旧 `flash|update 文件 镜像目录 备份目录` 仍兼容。`plan` 只查看布局，不预检镜像、不备份或写入。混合 EMMC/UFS 工厂 Scatter 只使用设备已确认的介质；同介质选中下载项缺少实际区域仍拒绝。
+
+刷写列出所选分区、文件和字节范围；全部所选镜像预检通过后比较布局，再明确要求 `yes`。`--partitions` 仅选择文件内可下载的名称，不修改完整布局；未知或不可下载名称拒绝。非交互模式无法确认时不刷写。
+
+eMMC/UFS USER 的完整布局按名称、偏移和长度与设备比较。不一致时先持久备份当前主/备 GPT，再显示差异，必须输入 `yes` 才更新 GPT 并刷写；其他输入取消，不写设备。相同布局不重建 GPT，保留其 GUID/属性，但刷镜像仍须确认。确认后保留原范围备份、备 GPT 先写、保护数据恢复和写后回读；备份、写入、回读分别显示阶段进度。原范围备份可能大于镜像实际传输量，整体耗时不等于 USB 写入耗时。备份文件不覆盖，重试需另选目录。
+
+NAND 不套用 GPT，保留显式 `update` 的 XML 原生 Scatter 线路；此原生更新不支持 `--partitions`，避免过滤宿主计划却仍下发整份 Scatter。DA 管理的 BOOTLOADERS 沿用原生命名接口与最终状态，不将其转换后的启动头与宿主 bin 直接比较。
 
 离线转换无需 USB/Loader：
 

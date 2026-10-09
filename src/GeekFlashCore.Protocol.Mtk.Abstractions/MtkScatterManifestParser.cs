@@ -195,11 +195,14 @@ public static class MtkScatterPlanBuilder
         ArgumentNullException.ThrowIfNull(storage);
         if (manifest.Partitions is null || manifest.Partitions.Count is < 1 or > 4096 || manifest.Partitions.Any(p => p is null || !Enum.IsDefined(p.Storage) || !Enum.IsDefined(p.Operation)))
             throw new MtkResourceException("scatter manifest entries");
-        if (manifest.Partitions.Any(p => p.Host is> 0))
+        var selected = manifest.Partitions.Where(p => p.Storage == storage.Kind).ToArray();
+        if (selected.Length == 0)
+            throw new MtkResourceException("scatter storage mismatch");
+        if (selected.Any(p => p.Host is> 0))
             throw new MtkCapabilityException("multi-host scatter requires separate geometry");
         // A selected download must never disappear because its physical region or file is absent.
         // Region zero explicitly mirrors both boot regions; one observed region is not enough.
-        foreach (var part in manifest.Partitions.Where(p => p.Download))
+        foreach (var part in selected.Where(p => p.Download))
         {
             if (part.FileName is null)
                 throw new MtkResourceException("scatter selected image");

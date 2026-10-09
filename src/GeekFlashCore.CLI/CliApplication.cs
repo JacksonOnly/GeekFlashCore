@@ -177,7 +177,7 @@ internal sealed partial class CliApplication
                     if (active.Protocol.Type != ProtocolType.Mtk) return 0;
                 }
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { EndMtkOperation(active.Protocol); throw; }
             catch (OperationCanceledException) { _ui.ShowCancelled(); EndMtkOperation(active.Protocol); }
             catch (Exception exception) { _ui.LogException(exception); EndMtkOperation(active.Protocol); }
         }

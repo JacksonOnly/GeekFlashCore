@@ -210,6 +210,7 @@ internal static partial class MtkProtocolHostAdapter
             LegacyPmtLayout = PmtLayout(o.MtkPmtLayout),
             ReadTimeoutMilliseconds = o.ReadTimeout,
             ConnectTimeoutMilliseconds = o.HasExplicitConnectTimeout ? o.ConnectTimeout : MtkProtocolOptions.DefaultConnectTimeoutMilliseconds,
+            OperationTimeoutMilliseconds = o.MtkOperationTimeout,
             ResourceTimeoutMilliseconds = o.ResourceTimeout is > 0 ? o.ResourceTimeout.Value : 30000
         }, resources: resources, leaveTransportOpen: true, exploitStrategies:
         [
@@ -295,7 +296,7 @@ internal static partial class MtkProtocolHostAdapter
             if (RequiresConnection(command) && !protocol.IsConnected)
                 throw new InvalidOperationException(Strings.Cli_ReconnectRequired);
         }
-        public void PrintHelp(IProtocol protocol, ConsoleUi ui) { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkCommands); ui.WriteLine(Strings.Cli_HelpMtkRepair); }
+        public void PrintHelp(IProtocol protocol, ConsoleUi ui) { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkCommands); ui.WriteLine(Strings.Cli_HelpMtkScatterWorkflow); ui.WriteLine(Strings.Cli_HelpMtkRepair); }
         public void Validate(CliOptions options)
         {
             if (MtkCommandRequest.TryValidate(options.Command, options.Arguments)) return;
@@ -462,35 +463,6 @@ internal static partial class MtkProtocolHostAdapter
                 else if(a[0]=="read")await AtomicReadOutput.WriteAsync(ConsolePath.Normalize(a[3])!,s=>
                 {partitions.ReadNamedPartition(a[1],s,(long)CommandSyntax.Number(a[2]),ct);return Task.CompletedTask;},ct);
                 else partitions.WriteNamedPartition(a[1],new FileDataSource(ConsolePath.Normalize(a[3])!),(long)CommandSyntax.Number(a[2]),ct);
-                return 0;
-            }
-            if(options.Command=="mtk-scatter")
-            {
-                string path=ConsolePath.Normalize(a[1])!;
-                string scatterText=MtkScatterCommands.ReadText(path, ct);var manifest=MtkScatterParser.Parse(scatterText);
-                var service=new MtkScatterService(p);var plan=service.Plan(manifest,ct);
-                foreach(var part in plan.Partitions)ui.WriteLine(Strings.FormatCli_MtkScatterRange(part.Name,part.Range.RegionId,part.Range.Offset,part.Range.Length,part.FileName??"-"));
-                if(a[0]!="plan")
-                {
-                    var store=new MtkScatterDirectoryStore(ConsolePath.Normalize(a[2])!,ConsolePath.Normalize(a[3])!);
-                    if (p.GetStorageInfo().Kind is not (MtkStorageKind.Emmc or MtkStorageKind.Ufs))
-                    {
-                        if (a[0] == "update" && p.DownloadAgent?.Entry.Kind == MtkDaKind.Xml)
-                            (p as IMtkNativeScatterAccess ?? throw new MtkCapabilityException("XML FLASH-UPDATE")).ApplyXmlScatter(scatterText,store.OpenImage,store,progress,ct);
-                        else service.Apply(plan,store.OpenImage,store,false,progress,ct);
-                        return 0;
-                    }
-                    var differences = service.CompareLayout(plan, ct);
-                    bool rebuild = differences.Count != 0;
-                    if (rebuild)
-                    {
-                        service.BackupPartitionTable(plan, store, ct);
-                        ui.WriteLine(Strings.FormatCli_MtkScatterLayoutChanged(string.Join(", ", differences)));
-                        string answer = await ui.AskAsync(Strings.Cli_MtkScatterConfirm, ct, "no");
-                        if (!answer.Equals("yes", StringComparison.OrdinalIgnoreCase)) return 0;
-                    }
-                    service.Apply(plan,store.OpenImage,store,rebuild,progress,ct);
-                }
                 return 0;
             }
             if (options.Command is "mtk-query" or "mtk-property" or "mtk-register" or "mtk-pmt")

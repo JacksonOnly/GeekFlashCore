@@ -3,6 +3,7 @@
 using System.Buffers;
 using System.Security.Cryptography;
 using GeekFlashCore.Android.Sparse;
+using GeekFlashCore.Android.Sparse.Types;
 using GeekFlashCore.BlockDevice;
 using GeekFlashCore.BlockDevice.Abstractions;
 using GeekFlashCore.Protocol.Abstractions;
@@ -22,6 +23,24 @@ public sealed class MtkScatterService
     }
 
     public MtkScatterPlan Plan(MtkScatterManifest manifest, CancellationToken cancellationToken = default) => _access.UseSession(c => MtkScatterPlanner.Create(manifest, c.Storage, c.Generation), cancellationToken);
+    /// <summary>Checks all selected sources without backing up or modifying storage.</summary>
+    public void ValidateImages(MtkScatterPlan plan, Func<string, IDataSource> images, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(images);
+        _access.UseSession(c =>
+        {
+            if (plan.Generation != c.Generation) throw new InvalidOperationException(Localization.Strings.ExtensionUnavailable);
+            Validate(plan.Partitions, c.Storage);
+            foreach (var part in plan.Partitions.Where(p => p.Download))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                using var image = Open(images(part.FileName!), part, c.Storage, cancellationToken);
+            }
+            _ = c.Generation;
+            return 0;
+        }, cancellationToken);
+    }
     /// <summary>Compares USER names and byte geometry before selecting a GPT update. Performs no writes.</summary>
     public IReadOnlyList<string> CompareLayout(MtkScatterPlan plan, CancellationToken cancellationToken = default) => _access.UseSession(c =>
     {
@@ -69,13 +88,15 @@ public sealed class MtkScatterService
             List<(MtkFlashRange Range, byte[] Data, string Name)> metadata = [];
             bool writing = false;
             long total = 0, done = 0;
+            HashSet<string> nativePlanned = new(StringComparer.Ordinal);
             try
             {
                 foreach (var part in parts.Where(p => p.Download && p.FileName != null))
                 {
                     var image = Open(images(part.FileName!), part, c.Storage, cancellationToken);
                     opened.Add(image);
-                    total = checked(total + image.ExpandedLength);
+                    if (part.Operation != MtkScatterOperation.Bootloaders || c.Kind is not (MtkDaKind.XFlash or MtkDaKind.Xml) || nativePlanned.Add(part.Name))
+                        total = checked(total + image.LengthFor(c.Kind));
                 }
 
                 if (opened.Count == 0 && !rebuildGpt)
@@ -92,9 +113,9 @@ public sealed class MtkScatterService
                 progress?.Report(new(total, 0, Localization.Strings.ScatterProgress) { Unit = ProgressUnit.Bytes, Phase = ProgressPhase.Started });
                 // Back up every range that will be overwritten, and any protected partition moved by the new layout.
                 foreach (var image in opened)
-                    Backup(c, image.Part.Range, $"original-{image.Part.Range.RegionId}-{image.Part.Name}.bin", backups);
+                    Backup(c, image.Part.Range, $"original-{image.Part.Range.RegionId}-{image.Part.Name}.bin", backups, progress);
                 foreach (var item in metadata)
-                    Backup(c, item.Range, $"original-{item.Name}.bin", backups);
+                    Backup(c, item.Range, $"original-{item.Name}.bin", backups, progress);
                 var protectedParts = parts.Where(p => p.Operation is MtkScatterOperation.Protected or MtkScatterOperation.BinRegion).ToArray();
                 if (rebuildGpt && protectedParts.Length > 0)
                 {
@@ -105,7 +126,7 @@ public sealed class MtkScatterService
                         if (matches.Length != 1 || matches[0].Range.Length != part.Range.Length)
                             throw new MtkResourceException("scatter protected geometry");
                         string name = $"protected-{part.Range.RegionId}-{part.Name}.bin";
-                        Backup(c, matches[0].Range, name, backups);
+                        Backup(c, matches[0].Range, name, backups, progress);
                         restores.Add((part.Range, name));
                     }
                 }
@@ -125,14 +146,14 @@ public sealed class MtkScatterService
                 {
                     using var source = new MemoryStream(item.Data, false);
                     writing = true;
-                    WriteVerified(c, item.Range, source, cancellationToken);
+                    WriteVerified(c, item.Range, source, cancellationToken, progress, item.Name);
                 }
 
                 foreach (var restore in restores)
                 {
                     using Stream source = backups.OpenRead(restore.Backup).OpenStream();
                     writing = true;
-                    WriteVerified(c, restore.Range, source, cancellationToken);
+                    WriteVerified(c, restore.Range, source, cancellationToken, progress, restore.Backup);
                 }
 
                 HashSet<string> nativeWritten = new(StringComparer.Ordinal);
@@ -143,8 +164,9 @@ public sealed class MtkScatterService
                         if (nativeWritten.Add(image.Part.Name))
                         {
                             writing = true;
-                            image.WriteNative((IMtkDaPartitionChannel)c);
+                            image.WriteNative((IMtkDaPartitionChannel)c, progress);
                         }
+                        else continue;
                     }
                     else
                         foreach (var(range, source)in image.Windows())
@@ -153,11 +175,11 @@ public sealed class MtkScatterService
                             {
                                 cancellationToken.ThrowIfCancellationRequested();
                                 writing = true;
-                                WriteVerified(c, range, source, cancellationToken);
+                                WriteVerified(c, range, source, cancellationToken, progress, image.Part.Name);
                             }
                         }
 
-                    done = checked(done + image.ExpandedLength);
+                    done = checked(done + image.LengthFor(c.Kind));
                     progress?.Report(new(total, done, Localization.Strings.ScatterProgress) { Unit = ProgressUnit.Bytes, Phase = ProgressPhase.Running });
                 }
 
@@ -190,7 +212,7 @@ public sealed class MtkScatterService
 
     private static void Validate(IReadOnlyList<MtkScatterPlannedPartition> parts, MtkStorageInfo storage)
     {
-        if (parts.Count is < 1 or > 4096)
+        if (parts is null || parts.Count is < 1 or > 4096)
             throw new MtkResourceException("scatter plan count");
         foreach (var p in parts)
         {
@@ -216,16 +238,19 @@ public sealed class MtkScatterService
         }
     }
 
-    private static void Backup(IMtkDaChannel c, MtkFlashRange range, string name, IMtkScatterBackupStore backups)
+    private static void Backup(IMtkDaChannel c, MtkFlashRange range, string name, IMtkScatterBackupStore backups, IProgress<ProgressRecord>? progress = null)
     {
         using Stream output = backups.Create(name);
         if (!output.CanWrite)
             throw new MtkResourceException("scatter backup stream");
-        c.ReadFlash(range, output);
+        var phase = new PhaseProgress(progress, range.Length, Localization.Strings.FormatScatterBackup(name));
+        using (var tracked = new CountStream(output, phase.Advance))
+            c.ReadFlash(range, tracked);
         if (output is FileStream file)
             file.Flush(true);
         else
             output.Flush();
+        phase.Complete();
     }
 
     private static void BuildGpt(IReadOnlyList<MtkScatterPlannedPartition> parts, MtkStorageInfo storage, List<(MtkFlashRange, byte[], string)> metadata)
@@ -270,22 +295,27 @@ public sealed class MtkScatterService
         }
     }
 
-    private static void WriteVerified(IMtkDaChannel c, MtkFlashRange range, Stream input, CancellationToken token)
+    private static void WriteVerified(IMtkDaChannel c, MtkFlashRange range, Stream input, CancellationToken token,
+        IProgress<ProgressRecord>? progress = null, string name = "")
     {
+        var write = new PhaseProgress(progress, range.Length, Localization.Strings.FormatScatterWrite(name));
         using var expected = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        using (var source = new HashStream(input, expected, token))
+        using (var source = new HashStream(input, expected, token, write.Advance))
             c.WriteFlash(range, source);
+        write.Complete();
         byte[] a = expected.GetHashAndReset();
         using var actual = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         try
         {
-            using (var output = new HashStream(null, actual, token))
+            var readback = new PhaseProgress(progress, range.Length, Localization.Strings.FormatScatterReadback(name));
+            using (var output = new HashStream(null, actual, token, readback.Advance))
                 c.ReadFlash(range, output);
             byte[] b = actual.GetHashAndReset();
             try
             {
                 if (!CryptographicOperations.FixedTimeEquals(a, b))
                     throw new MtkResourceException("scatter readback");
+                readback.Complete();
             }
             finally
             {
@@ -302,8 +332,12 @@ public sealed class MtkScatterService
     {
         private StreamBlockDevice? _device;
         private SparseDocument? _sparse;
+        private IReadOnlyList<GeekFlashCore.Android.Sparse.Models.SparseRegion>? _regions;
         public MtkScatterPlannedPartition Part => part;
         public long ExpandedLength { get; private set; }
+        public long TransferLength { get; private set; }
+        public long LengthFor(MtkDaKind kind) => part.Operation == MtkScatterOperation.Bootloaders &&
+            kind is MtkDaKind.XFlash or MtkDaKind.Xml ? stream.Length : TransferLength;
 
         public void Initialize(CancellationToken token)
         {
@@ -313,11 +347,14 @@ public sealed class MtkScatterService
                 _sparse = SparseImageParser.Open(_device, DeviceOwnership.Borrow);
                 if (_sparse.Header.BlockSize % block != 0)
                     throw new MtkResourceException("scatter sparse alignment");
-                _sparse.VerifyChecksum(cancellationToken: token);
+                if (_sparse.ChecksumStatus == SparseChecksumStatus.NotVerified)
+                    _sparse.VerifyChecksum(cancellationToken: token);
                 ExpandedLength = _sparse.ExpandedLength;
+                _regions = _sparse.CreateContiguousDataRegions();
+                TransferLength = _regions.Sum(r => r.Length);
             }
             else
-                ExpandedLength = checked((stream.Length + block - 1) / block * block);
+                TransferLength = ExpandedLength = checked((stream.Length + block - 1) / block * block);
             if (ExpandedLength <= 0)
                 throw new MtkResourceException("scatter image empty");
         }
@@ -330,14 +367,17 @@ public sealed class MtkScatterService
                 yield return (new(part.Range.RegionId, part.Range.Offset, ExpandedLength), new PaddedStream(stream, stream.Length, ExpandedLength));
             }
             else
-                foreach (var region in _sparse.CreateDataRegions())
+                foreach (var region in _regions!)
                     yield return (new(part.Range.RegionId, checked(part.Range.Offset + region.StartBlock * (long)_sparse.Header.BlockSize), region.Length), region.OpenRead(stream, true));
         }
 
-        public void WriteNative(IMtkDaPartitionChannel channel)
+        public void WriteNative(IMtkDaPartitionChannel channel, IProgress<ProgressRecord>? progress)
         {
             stream.Position = 0;
-            channel.WriteNamedPartition(part.Name, stream, stream.Length);
+            var phase = new PhaseProgress(progress, stream.Length, Localization.Strings.FormatScatterWrite(part.Name));
+            using var tracked = new CountStream(stream, phase.Advance);
+            channel.WriteNamedPartition(part.Name, tracked, stream.Length);
+            phase.Complete();
         }
 
         public void Dispose()
@@ -380,13 +420,14 @@ public sealed class MtkScatterService
         public override void Write(byte[] b, int o, int n) => throw new NotSupportedException();
     }
 
-    private sealed class HashStream(Stream? source, IncrementalHash hash, CancellationToken token) : Stream
+    private sealed class HashStream(Stream? source, IncrementalHash hash, CancellationToken token, Action<int>? advance = null) : Stream
     {
         public override int Read(Span<byte> data)
         {
             token.ThrowIfCancellationRequested();
             int n = source!.Read(data);
             hash.AppendData(data[..n]);
+            advance?.Invoke(n);
             return n;
         }
 
@@ -394,6 +435,7 @@ public sealed class MtkScatterService
         {
             token.ThrowIfCancellationRequested();
             hash.AppendData(data);
+            advance?.Invoke(data.Length);
         }
 
         public override int Read(byte[] b, int o, int n) => Read(b.AsSpan(o, n));
@@ -409,6 +451,49 @@ public sealed class MtkScatterService
         }
 
         public override long Seek(long o, SeekOrigin s) => throw new NotSupportedException();
+        public override void SetLength(long n) => throw new NotSupportedException();
+    }
+
+    private sealed class PhaseProgress
+    {
+        private readonly IProgress<ProgressRecord>? _progress;
+        private readonly long _total;
+        private readonly string _label;
+        private long _done, _last;
+        public PhaseProgress(IProgress<ProgressRecord>? progress, long total, string label)
+        {
+            _progress = progress; _total = total; _label = label;
+            progress?.Report(new(total, 0, label) { Unit = ProgressUnit.Bytes, Phase = ProgressPhase.Started });
+        }
+        public void Advance(int count)
+        {
+            if (count < 0 || count > _total - _done) throw new MtkResourceException("scatter transfer length");
+            _done = checked(_done + count);
+            long now = Environment.TickCount64;
+            if (now - _last < 100 && _done != _total) return;
+            _last = now;
+            _progress?.Report(new(_total, _done, _label) { Unit = ProgressUnit.Bytes, Phase = ProgressPhase.Running });
+        }
+        public void Complete()
+        {
+            if (_done != _total) throw new MtkResourceException("scatter transfer length");
+            _progress?.Report(new(_total, _total, _label) { Unit = ProgressUnit.Bytes, Phase = ProgressPhase.Completed });
+        }
+    }
+
+    private sealed class CountStream(Stream source, Action<int> advance) : Stream
+    {
+        public override int Read(Span<byte> data) { int n = source.Read(data); advance(n); return n; }
+        public override int Read(byte[] b, int o, int n) => Read(b.AsSpan(o, n));
+        public override void Write(ReadOnlySpan<byte> data) { source.Write(data); advance(data.Length); }
+        public override void Write(byte[] b, int o, int n) => Write(b.AsSpan(o, n));
+        public override bool CanRead => source.CanRead;
+        public override bool CanWrite => source.CanWrite;
+        public override bool CanSeek => false;
+        public override long Length => source.Length;
+        public override long Position { get => source.Position; set => throw new NotSupportedException(); }
+        public override void Flush() => source.Flush();
+        public override long Seek(long o, SeekOrigin origin) => throw new NotSupportedException();
         public override void SetLength(long n) => throw new NotSupportedException();
     }
 }

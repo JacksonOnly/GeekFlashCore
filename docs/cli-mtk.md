@@ -65,6 +65,8 @@ RPMB 与普通块设备分离，块固定为 256 字节；默认区域 0、起�
 
 ## Preloader 与扩展
 
+Preloader 接入先发送一次 A0 唤醒。若首步尚未应答且仍收到完整 `READY`，仅在当前接收缓存耗尽时有界补发首步 A0，首步最多 5 次；不会重放后续握手、FD 查询或 DA 上传。启动前缀默认最多 1024 字节，并受同一握手截止时间约束；SDK 显式设置 `MaximumHandshakePrefix` 仍是严格总字节上限。BROM 不执行 READY 同步，保持原 USB 读写形态；该公共默认额度也适用于 BROM，显式设置 64 可保留旧额度。
+
 ```text
 read Preloader preloader.bin
 read PreloaderBackup preloader-backup.bin

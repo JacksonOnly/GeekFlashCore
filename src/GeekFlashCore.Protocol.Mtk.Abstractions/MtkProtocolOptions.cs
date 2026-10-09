@@ -30,7 +30,7 @@ public sealed record MtkProtocolOptions
     public int MaximumProgressEvents { get; init; } = 4096;
     /// <summary>Maximum discarded startup bytes before the first handshake response.
     /// The default admits repeated Preloader READY messages within the same finite handshake budget.</summary>
-    public int MaximumHandshakePrefix { get; init; } = 64;
+    public int MaximumHandshakePrefix { get; init; } = 1024;
     public MtkDaKind? DaKind
     {
         get; init;

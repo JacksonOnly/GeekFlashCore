@@ -9,6 +9,7 @@ internal sealed partial class MtkBromSession
     private const byte HandshakeStart = 0xa0;
     private const byte HandshakeStartResponse = HandshakeStart ^ 0xff;
     private const int StartupPacketBufferSize = 1024;
+    private const int MaximumPreloaderStartAttempts = 5;
 
     private MtkBromHardwareCode HandshakeAndIdentify(Action? identified)
     {
@@ -22,33 +23,22 @@ internal sealed partial class MtkBromSession
             {
                 MtkDiagnostics.Summary(wire.Logger, Strings.PreloaderWake);
                 reader.Check();
-                wire.WriteByte(HandshakeStart); // Host detection; never repeated after this one wakeup.
+                wire.WriteByte(HandshakeStart);
             }
 
             ReadOnlySpan<byte> sequence = [HandshakeStart, 0x0a, 0x50, 0x05];
             bool alreadyHandshaken = false;
+            int startWrites = preloaderCandidate ? 2 : 1;
             for (int step = 0; step < sequence.Length; step++)
             {
                 wire.Logger.Debug(Strings.HandshakeStep, step + 1, sequence.Length);
                 reader.Check();
                 wire.WriteByte(sequence[step]);
                 byte response = reader.ReadByte();
-                int prefixes = 0;
-                while (step == 0 && response != HandshakeStartResponse && response != HandshakeStart)
-                {
-                    if (++prefixes > options.MaximumHandshakePrefix)
-                        throw wire.Failure();
-                    response = reader.ReadByte();
-                }
-                if (prefixes != 0)
-                    wire.Logger.Debug(Strings.HandshakePrefix, prefixes);
-                // Some preloaders acknowledge both the wakeup and the sequence's initial A0.
-                // Consume at most one duplicate 5F, without resending 0A or restarting the sequence.
-                if (step == 1 && preloaderCandidate && response == HandshakeStartResponse)
-                {
-                    wire.Logger.Debug(Strings.HandshakeWakeDuplicate);
-                    response = reader.ReadByte();
-                }
+                if (step == 0)
+                    response = ReadHandshakeStart(ref reader, response, preloaderCandidate, ref startWrites);
+                if (step == 1 && preloaderCandidate)
+                    response = ConsumeStartDuplicates(ref reader, response, HandshakeStartResponse, startWrites - 1);
                 wire.Logger.Debug(Strings.HandshakeResponse, step + 1, response, (byte)~sequence[step]);
                 if (step == 0 && response == HandshakeStart)
                 {
@@ -63,11 +53,8 @@ internal sealed partial class MtkBromSession
             reader.Check();
             wire.WriteByte((byte)MtkBromCommand.GetHardwareCode);
             byte echo = reader.ReadByte();
-            if (preloaderCandidate && alreadyHandshaken && echo == HandshakeStart)
-            {
-                wire.Logger.Debug(Strings.HandshakeWakeDuplicate);
-                echo = reader.ReadByte();
-            }
+            if (preloaderCandidate && alreadyHandshaken)
+                echo = ConsumeStartDuplicates(ref reader, echo, HandshakeStart, startWrites - 1);
             if (echo != (byte)MtkBromCommand.GetHardwareCode)
                 throw wire.Failure();
             var hardware = new MtkBromHardwareCode(reader.Read16(), reader.Read16());
@@ -80,5 +67,48 @@ internal sealed partial class MtkBromSession
             return hardware;
         }
         finally { packet.Clear(); }
+    }
+
+    private byte ReadHandshakeStart(ref MtkHandshakeReader reader, byte response, bool preloader, ref int startWrites)
+    {
+        ReadOnlySpan<byte> ready = "READY"u8;
+        int prefixes = 0, readyPosition = 0;
+        while (response != HandshakeStartResponse && response != HandshakeStart)
+        {
+            if (++prefixes > options.MaximumHandshakePrefix)
+            {
+                wire.Logger.Debug(Strings.HandshakePrefixLimit, prefixes, options.MaximumHandshakePrefix);
+                throw wire.Failure();
+            }
+            if (preloader)
+            {
+                readyPosition = response == ready[readyPosition] ? readyPosition + 1 : response == ready[0] ? 1 : 0;
+                if (readyPosition == ready.Length)
+                {
+                    readyPosition = 0;
+                    if (!reader.HasBufferedData && startWrites < MaximumPreloaderStartAttempts + 1)
+                    {
+                        reader.Check();
+                        wire.WriteByte(HandshakeStart);
+                        startWrites++;
+                        wire.Logger.Debug(Strings.PreloaderReadySync, startWrites - 1, MaximumPreloaderStartAttempts);
+                    }
+                }
+            }
+            response = reader.ReadByte();
+        }
+        if (prefixes != 0)
+            wire.Logger.Debug(Strings.HandshakePrefix, prefixes);
+        return response;
+    }
+
+    private byte ConsumeStartDuplicates(ref MtkHandshakeReader reader, byte response, byte duplicate, int allowance)
+    {
+        while (response == duplicate && allowance-- > 0)
+        {
+            wire.Logger.Debug(Strings.HandshakeWakeDuplicate);
+            response = reader.ReadByte();
+        }
+        return response;
     }
 }

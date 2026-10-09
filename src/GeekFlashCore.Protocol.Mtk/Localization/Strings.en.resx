@@ -82,7 +82,9 @@
 <data name="CdcSetup" xml:space="preserve"><value>MTK CDC: control interface {ControlInterfaceNumber}, baud rate {BaudRate}, control lines {ControlLineState}.</value></data>
 <data name="StartupPacketRead" xml:space="preserve"><value>MTK startup IN: buffer {RequestedLength} bytes, received {ReceivedLength} bytes, elapsed {ElapsedMilliseconds} ms, budget {TimeoutMilliseconds} ms.</value></data>
 <data name="HandshakePrefix" xml:space="preserve"><value>MTK skipped {HandshakePrefixCount} startup prefix bytes before the first handshake response.</value></data>
-<data name="HandshakeWakeDuplicate" xml:space="preserve"><value>MTK Preloader: consumed one duplicate wakeup response; no command was resent.</value></data>
+<data name="HandshakePrefixLimit" xml:space="preserve"><value>MTK startup prefix reached {HandshakePrefixCount} bytes, exceeding the limit of {HandshakePrefixLimit}; stopping the handshake.</value></data>
+<data name="PreloaderReadySync" xml:space="preserve"><value>MTK Preloader still reports READY; synchronizing initial A0 {HandshakeStartAttempt}/{HandshakeStartLimit}.</value></data>
+<data name="HandshakeWakeDuplicate" xml:space="preserve"><value>MTK Preloader: consumed a duplicate initial response without resending subsequent commands.</value></data>
 <data name="HandshakeResponse" xml:space="preserve"><value>MTK handshake step {HandshakeStep}: response 0x{HandshakeResponse:X2}, expected 0x{HandshakeExpected:X2}.</value></data>
 <data name="HandshakeIdentified" xml:space="preserve"><value>MTK handshake and complete FD identity validation succeeded, already-handshaken candidate {AlreadyHandshaken}; FE must still confirm the stage.</value></data>
 <data name="Da1ReplacementChecked" xml:space="preserve"><value>MTK {Dialect}: checked pre-upload DA1 replacement, non-signature bytes modified={Da1Modified}; this is not authentication evidence.</value></data>

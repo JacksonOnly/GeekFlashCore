@@ -106,4 +106,6 @@
 <data name="GptCrcChecked" xml:space="preserve"><value>MTK region {RegionId} {GptCopy} GPT: {ValidationStep} passed={ValidationPassed}.</value></data>
 <data name="GptCopyRejected" xml:space="preserve"><value>MTK region {RegionId} {GptCopy} GPT: copy rejected at {ValidationStep}.</value></data>
 <data name="GptUfsBoundarySelected" xml:space="preserve"><value>MTK UFS region {RegionId}: 4K GPT declares first usable LBA {DeclaredFirstUsableLba}, but its first partition starts at LBA {FirstPartitionLba}. Original CRCs passed; validating strictly from physical metadata end LBA {MetadataEndLba} and ending PGPT at the first partition. Host compatibility parsing only; device unchanged.</value></data>
+<data name="PreloaderDaSignatureRequired" xml:space="preserve"><value>DA1 signature required by secure Preloader</value></data>
+<data name="PreloaderDaVerification" xml:space="preserve"><value>MTK Preloader: DA1 has {SignatureLength} signature bytes for device verification; no BROM pre-authentication.</value></data>
 </root>

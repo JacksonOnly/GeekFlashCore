@@ -1,5 +1,6 @@
 using System.Text;
 using GeekFlashCore.Android.Sparse;
+using GeekFlashCore.Android.Sparse.Types;
 using GeekFlashCore.BlockDevice;
 using GeekFlashCore.BlockDevice.Abstractions;
 using GeekFlashCore.Protocol.Abstractions;
@@ -39,7 +40,7 @@ public sealed partial class MtkProtocol : IMtkNativeScatterAccess
                         {
                             using var block=new StreamBlockDevice(input,size,DeviceOwnership.Borrow);using var sparse=SparseImageParser.Open(block,DeviceOwnership.Borrow);
                             if(sparse.ExpandedLength<=0 || sparse.ExpandedLength>limit)throw new MtkResourceException("scatter sparse capacity");
-                            sparse.VerifyChecksum(cancellationToken:cancellationToken);
+                            if(sparse.ChecksumStatus==SparseChecksumStatus.NotVerified)sparse.VerifyChecksum(cancellationToken:cancellationToken);
                         }
                         else if(size>limit)throw new MtkResourceException("scatter image capacity");
                         input.Position=0;files.Add(name,(input,size));input=null!;

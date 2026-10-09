@@ -20,6 +20,7 @@
 <data name="ExploitStrategyStarting" xml:space="preserve"><value>宿主扩展阶段 {0} 正在调用策略 {1}/{2}。</value></data>
 <data name="RscProgress" xml:space="preserve"><value>写入 RSC 信息</value></data>
 <data name="ScatterProgress" xml:space="preserve"><value>刷写 Scatter 镜像</value></data>
+<data name="SparseWritePlan" xml:space="preserve"><value>MTK Sparse：展开 {ExpandedLength} 字节，实际传输 {TransferLength} 字节，{RegionCount} 个连续区域。</value></data>
 <data name="WireCommand" xml:space="preserve"><value>MTK {BootStage}：命令 {CommandName}（0x{Command:X8}）。</value></data>
 <data name="WireStatus" xml:space="preserve"><value>MTK {BootStage}：命令 0x{Command:X8}，状态 0x{Status:X8}，接受={StatusAccepted}。</value></data>
 <data name="WireWrite" xml:space="preserve"><value>MTK {BootStage}：命令 0x{Command:X8}，写入 {RequestedLength} 字节，耗时 {ElapsedMilliseconds} ms。</value></data>

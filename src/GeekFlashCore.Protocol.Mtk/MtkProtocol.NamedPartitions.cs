@@ -1,5 +1,6 @@
 using System.Text;
 using GeekFlashCore.Android.Sparse;
+using GeekFlashCore.Android.Sparse.Types;
 using GeekFlashCore.BlockDevice;
 using GeekFlashCore.BlockDevice.Abstractions;
 using GeekFlashCore.Protocol.Abstractions;
@@ -56,7 +57,9 @@ public sealed partial class MtkProtocol : IMtkNamedPartitionAccess
             if(SparseImageParser.IsSparse(input))
             {
                 using var block=new StreamBlockDevice(input,source.Length,DeviceOwnership.Borrow);using var sparse=SparseImageParser.Open(block,DeviceOwnership.Borrow);
-                if(sparse.ExpandedLength<=0 || sparse.ExpandedLength>maximumExpandedLength)throw new MtkResourceException("partition sparse capacity");sparse.VerifyChecksum(cancellationToken:cancellationToken);input.Position=0;
+                if(sparse.ExpandedLength<=0 || sparse.ExpandedLength>maximumExpandedLength)throw new MtkResourceException("partition sparse capacity");
+                if(sparse.ChecksumStatus==SparseChecksumStatus.NotVerified)sparse.VerifyChecksum(cancellationToken:cancellationToken);
+                input.Position=0;
             }
             else if(source.Length>maximumExpandedLength)throw new MtkResourceException("partition source capacity");
             var trace = StartTransfer(MtkTransferKind.NamedWrite, null, 0, source.Length, name);

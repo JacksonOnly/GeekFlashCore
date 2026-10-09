@@ -109,6 +109,31 @@ public sealed class SparseDocument : IDisposable
         return regions;
     }
 
+    /// <summary>Combines adjacent raw and fill chunks without crossing a don't-care range.</summary>
+    public IReadOnlyList<SparseRegion> CreateContiguousDataRegions()
+    {
+        ThrowIfDisposed();
+        var regions = new List<SparseRegion>();
+        var chunks = new List<SparseDataChunk>();
+        uint startBlock = 0;
+        long length = 0;
+        foreach (SparseChunk chunk in _chunks)
+        {
+            if (chunk.Type is SparseChunkType.Raw or SparseChunkType.Fill)
+            {
+                if (chunks.Count == 0)
+                    startBlock = checked((uint)(chunk.OutputOffset / Header.BlockSize));
+                chunks.Add(new SparseDataChunk(chunk.Type == SparseChunkType.Raw ? SparseDataChunkType.Raw : SparseDataChunkType.Fill,
+                    chunk.PayloadOffset, chunk.OutputLength, chunk.FillValue));
+                length = checked(length + chunk.OutputLength);
+            }
+            else if (chunk.Type == SparseChunkType.DontCare)
+                FlushRawRegion(regions, chunks, startBlock, ref length);
+        }
+        FlushRawRegion(regions, chunks, startBlock, ref length);
+        return regions;
+    }
+
     public uint VerifyChecksum(
         BudgetedArrayPool? buffers = null,
         IProgress<BlockCopyProgress>? progress = null,

@@ -20,6 +20,7 @@
 <data name="ExploitStrategyStarting" xml:space="preserve"><value>Host extension checkpoint {0} is invoking strategy {1}/{2}.</value></data>
 <data name="RscProgress" xml:space="preserve"><value>Writing RSC information</value></data>
 <data name="ScatterProgress" xml:space="preserve"><value>Flashing scatter images</value></data>
+<data name="SparseWritePlan" xml:space="preserve"><value>MTK Sparse: expanded {ExpandedLength} bytes, transferring {TransferLength} bytes in {RegionCount} contiguous regions.</value></data>
 <data name="WireCommand" xml:space="preserve"><value>MTK {BootStage}: command {CommandName} (0x{Command:X8}).</value></data>
 <data name="WireStatus" xml:space="preserve"><value>MTK {BootStage}: command 0x{Command:X8}, status 0x{Status:X8}, accepted={StatusAccepted}.</value></data>
 <data name="WireWrite" xml:space="preserve"><value>MTK {BootStage}: command 0x{Command:X8}, wrote {RequestedLength} bytes in {ElapsedMilliseconds} ms.</value></data>

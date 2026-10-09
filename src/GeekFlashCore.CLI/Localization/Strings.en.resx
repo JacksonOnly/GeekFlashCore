@@ -458,10 +458,10 @@ Keys go only to files.</value></data>
   <data name="Cli_MtkExtensionLoaded" xml:space="preserve"><value>MTK: DA extension loaded.</value></data>
   <data name="Cli_MtkExtensionNotPrepared" xml:space="preserve"><value>MTK: DA extension unavailable; verified loader or function addresses are missing.</value></data>
   <data name="Cli_MtkScatterConverted" xml:space="preserve"><value>MTK: partition table conversion completed.</value></data>
-  <data name="Cli_MtkScatterLayoutChanged" xml:space="preserve"><value>Scatter layout differs: {0}. Original GPT backed up; updating changes partition boundaries.</value></data>
-  <data name="Cli_MtkScatterConfirm" xml:space="preserve"><value>Update GPT and flash images? Type yes to continue; otherwise cancel:</value></data>
+  <data name="Cli_MtkScatterLayoutChanged" xml:space="preserve"><value>Scatter layout mismatches: {0}.</value></data>
+  <data name="Cli_MtkScatterConfirm" xml:space="preserve"><value>Back up the current primary/backup GPT, update the partition table, and continue flashing? Only the table is backed up; partition contents are not backed up or migrated. Layout changes may make original data inaccessible. Type yes to continue; otherwise cancel:</value></data>
   <data name="Cli_HelpMtkRepair" xml:space="preserve"><value>Interactive mode keeps its session. Use reconnect [auto|brom|da1|da2] [xflash|legacy|xml]. Startup evidence and the previous session are preferred; unknown stage/identity needs confirmation. Legacy DA2 requires previous storage geometry.
-Scatter flash/update compares layouts, backs up the current GPT, and asks before updating differing layouts.
+Scatter flash/update shows only mismatches; after approval, back up only the current GPT, update, and flash. No backup of all partitions.
   mtk-scatter to-gpt scatter-file output-prefix emmc|ufs block-size user-capacity
   mtk-scatter from-gpt gpt-file scatter-file emmc|ufs block-size user-capacity platform
 Conversions run offline. Capacity is in bytes; block size is 512 or 4096. to-gpt outputs .pgpt.bin/.sgpt.bin; from-gpt disables downloads and does not guess image filenames. GPT contains only the USER layout.</value></data>
@@ -506,14 +506,16 @@ Safety-sensitive writes require backup/confirmation. Unknown writes are not retr
   <data name="Cli_MtkScatterSummary" xml:space="preserve"><value>Scatter: using the device's {0} layout, {1} download entries selected; images default to the Scatter directory.</value></data>
   <data name="Cli_MtkScatterPreflight" xml:space="preserve"><value>Scatter: checking images and capacity; no writes yet.</value></data>
   <data name="Cli_MtkScatterBackupGpt" xml:space="preserve"><value>Scatter: backing up the current primary/backup GPT.</value></data>
-  <data name="Cli_MtkScatterFlashConfirm" xml:space="preserve"><value>Flash the listed images? Original contents will be backed up and readback verified; type yes to continue, otherwise cancel</value></data>
+  <data name="Cli_MtkScatterLayoutMatched" xml:space="preserve"><value>Scatter: partition layouts match.</value></data>
+  <data name="Cli_MtkScatterNativeConfirm" xml:space="preserve"><value>Update partitions and flash through the DA? No upfront backup of all partitions; only DA-requested migration files are saved. Type yes to continue; otherwise cancel:</value></data>
+  <data name="Cli_MtkScatterFlashConfirm" xml:space="preserve"><value>Continue flashing images? Partition contents are not backed up; readback verification is retained. Type yes to continue; otherwise cancel:</value></data>
   <data name="Cli_HelpMtkScatterWorkflow" xml:space="preserve"><value>Scatter flashing:
   mtk scatter                         Select a Scatter file and use its download entries
   mtk scatter file                    Images default to its directory; backups are automatic
   mtk scatter plan file               View the current medium's layout only
   mtk scatter flash file [image-directory] [--backup backup-directory]
     --partitions boot_a,super         Flash only named downloads; compare the full layout
-Images are listed for confirmation. A layout mismatch requires GPT backup and update confirmation.
-Backup, write, and readback have separate progress; safety checks are retained.
+Flashing shows only layout mismatches. After approval, back up only GPT, update, and flash; no backup of all partitions.
+Partition contents are not backed up or migrated. Readback is retained; GPT backups do not restore overwritten data.
   --mtk-operation-timeout ms          Startup option: MTK core operation budget, default 1800000; native USB timeouts unchanged.</value></data>
 </root>

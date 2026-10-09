@@ -458,10 +458,10 @@ Cache 命令阻止：{8}</value></data>
   <data name="Cli_MtkExtensionLoaded" xml:space="preserve"><value>MTK：DA 扩展已加载。</value></data>
   <data name="Cli_MtkExtensionNotPrepared" xml:space="preserve"><value>MTK：DA 扩展未加载，缺少已验证的加载器或函数地址。</value></data>
   <data name="Cli_MtkScatterConverted" xml:space="preserve"><value>MTK：分区表转换完成。</value></data>
-  <data name="Cli_MtkScatterLayoutChanged" xml:space="preserve"><value>Scatter 与设备布局不同：{0}。原 GPT 已备份；更新会改变分区边界。</value></data>
-  <data name="Cli_MtkScatterConfirm" xml:space="preserve"><value>确认更新 GPT 并刷写？输入 yes 继续，其余取消：</value></data>
+  <data name="Cli_MtkScatterLayoutChanged" xml:space="preserve"><value>Scatter 布局不匹配的分区：{0}。</value></data>
+  <data name="Cli_MtkScatterConfirm" xml:space="preserve"><value>是否备份当前主/备 GPT、更新分区表并继续刷写？仅备份分区表，不备份或迁移分区内容；布局变化可能使原数据不可用。输入 yes 继续，其余取消：</value></data>
   <data name="Cli_HelpMtkRepair" xml:space="preserve"><value>交互模式保持会话；reconnect [auto|brom|da1|da2] [xflash|legacy|xml] 重连。优先使用启动帧与原会话信息，未知阶段/身份需确认；Legacy DA2 需要原会话存储信息。
-Scatter flash/update 自动对比布局，不一致时备份原 GPT 并确认后更新。
+Scatter flash/update 只显示不匹配分区；确认后仅备份原 GPT、更新并刷写，不备份全部分区。
   mtk-scatter to-gpt scatter-file output-prefix emmc|ufs block-size user-capacity
   mtk-scatter from-gpt gpt-file scatter-file emmc|ufs block-size user-capacity platform
 转换离线执行；容量单位为字节，块大小为 512 或 4096。to-gpt 输出 .pgpt.bin/.sgpt.bin；from-gpt 不推测下载文件名，默认禁止下载。GPT 只保存 USER 布局。</value></data>
@@ -506,14 +506,16 @@ RPMB 块为 256 字节，默认区域 0、起始 0；读/擦默认剩余容量�
   <data name="Cli_MtkScatterSummary" xml:space="preserve"><value>Scatter：使用设备 {0} 布局，选中 {1} 个下载条目；镜像默认与 Scatter 同目录。</value></data>
   <data name="Cli_MtkScatterPreflight" xml:space="preserve"><value>Scatter：检查镜像与容量，尚未写入。</value></data>
   <data name="Cli_MtkScatterBackupGpt" xml:space="preserve"><value>Scatter：备份当前主/备 GPT。</value></data>
-  <data name="Cli_MtkScatterFlashConfirm" xml:space="preserve"><value>确认刷写上述镜像？原内容将备份并回读校验；输入 yes 继续，其余取消</value></data>
+  <data name="Cli_MtkScatterLayoutMatched" xml:space="preserve"><value>Scatter：分区布局一致。</value></data>
+  <data name="Cli_MtkScatterNativeConfirm" xml:space="preserve"><value>确认由 DA 更新分区并刷写？不预先备份全部分区，仅保存 DA 请求的迁移文件。输入 yes 继续，其余取消：</value></data>
+  <data name="Cli_MtkScatterFlashConfirm" xml:space="preserve"><value>确认继续刷写镜像？不备份分区内容，写后回读校验。输入 yes 继续，其余取消：</value></data>
   <data name="Cli_HelpMtkScatterWorkflow" xml:space="preserve"><value>Scatter 刷写：
   mtk scatter                         选择 Scatter 文件，按文件配置刷写
   mtk scatter 文件                    镜像默认同目录，备份自动生成
   mtk scatter plan 文件               只查看当前介质布局
   mtk scatter flash 文件 [镜像目录] [--backup 备份目录]
     --partitions boot_a,super         只刷指定下载项，仍比较完整布局
-刷写前列出镜像并确认；布局不符先备份 GPT 再确认更新。
-备份、写入和回读分别显示进度；安全校验不省略。
+刷写只显示布局不匹配的分区；同意后仅备份 GPT 再更新并刷写，不备份全部分区。
+分区内容不备份或迁移；写后回读保留，GPT 备份不能恢复被覆盖的数据。
   --mtk-operation-timeout 毫秒        启动选项：MTK 单次核心操作预算，默认 1800000；单次 USB 超时不变。</value></data>
 </root>

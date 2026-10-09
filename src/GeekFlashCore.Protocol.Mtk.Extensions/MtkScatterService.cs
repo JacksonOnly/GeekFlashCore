@@ -11,7 +11,7 @@ using GeekFlashCore.Protocol.Mtk.Abstractions;
 
 namespace GeekFlashCore.Protocol.Mtk.Extensions;
 
-/// <summary>Preflighted scatter flashing with streamed backups, protected-data preservation,
+/// <summary>Preflighted scatter flashing with configurable streamed backups and protected-data preservation,
 /// optional GPT rebuild, sparse expansion and readback. No DA patching or payload boot.</summary>
 public sealed class MtkScatterService
 {
@@ -57,24 +57,27 @@ public sealed class MtkScatterService
         }).ToArray();
     }, cancellationToken);
 
-    /// <summary>Persists the current primary/backup GPT ranges before host approval. Never overwrites backup files.</summary>
+    /// <summary>Persists the current primary/backup GPT ranges. Never overwrites backup files.</summary>
     public void BackupPartitionTable(MtkScatterPlan plan, IMtkScatterBackupStore backups, CancellationToken cancellationToken = default) => _access.UseSession(c =>
     {
         if (plan.Generation != c.Generation) throw new InvalidOperationException(Localization.Strings.ExtensionUnavailable);
-        var copies = (c as IMtkDaPartitionChannel ?? throw new MtkCapabilityException("partition snapshot")).GetPartitionRanges()
-            .Where(p => p.Range.RegionId == c.Storage.UserRegionId && MtkScatterGptConverter.IsMetadata(p.Name)).ToArray();
-        if (copies.Length != 2) throw new MtkResourceException("current GPT backup ranges");
-        foreach (var copy in copies) Backup(c, copy.Range, $"current-{copy.Name}.bin", backups);
+        BackupPartitionTableCore(c, backups);
         return 0;
     }, cancellationToken);
     /// <summary>All selected images are opened and validated before backups or writes. Backup files are never overwritten.
     /// GPT updates write the backup copy first; raw metadata and images are read back before success.
     /// DA-managed BOOTLOADERS use native header handling and final status; their transformed bytes are not host-compared.</summary>
     public void Apply(MtkScatterPlan plan, Func<string, IDataSource> images, IMtkScatterBackupStore backups, bool rebuildGpt = false, IProgress<ProgressRecord>? progress = null, CancellationToken cancellationToken = default)
+        => ApplyWithBackupPolicy(plan, images, backups, MtkScatterBackupPolicy.AllOverwriteRanges, rebuildGpt, progress, cancellationToken);
+
+    /// <summary>Applies an explicit backup policy. PartitionTableOnly does not preserve partition contents or migrate protected data.</summary>
+    public void ApplyWithBackupPolicy(MtkScatterPlan plan, Func<string, IDataSource> images, IMtkScatterBackupStore backups, MtkScatterBackupPolicy backupPolicy,
+        bool rebuildGpt = false, IProgress<ProgressRecord>? progress = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(plan);
         ArgumentNullException.ThrowIfNull(images);
         ArgumentNullException.ThrowIfNull(backups);
+        if (!Enum.IsDefined(backupPolicy)) throw new ArgumentOutOfRangeException(nameof(backupPolicy));
         _access.UseSession(c =>
         {
             if (plan.Generation != c.Generation)
@@ -111,13 +114,20 @@ public sealed class MtkScatterService
                 }
 
                 progress?.Report(new(total, 0, Localization.Strings.ScatterProgress) { Unit = ProgressUnit.Bytes, Phase = ProgressPhase.Started });
-                // Back up every range that will be overwritten, and any protected partition moved by the new layout.
-                foreach (var image in opened)
-                    Backup(c, image.Part.Range, $"original-{image.Part.Range.RegionId}-{image.Part.Name}.bin", backups, progress);
-                foreach (var item in metadata)
-                    Backup(c, item.Range, $"original-{item.Name}.bin", backups, progress);
+                if (backupPolicy == MtkScatterBackupPolicy.PartitionTableOnly)
+                {
+                    if (rebuildGpt || opened.Any(i => i.Part.Range.RegionId == c.Storage.UserRegionId && MtkScatterGptConverter.IsMetadata(i.Part.Name)))
+                        BackupPartitionTableCore(c, backups, progress);
+                }
+                else
+                {
+                    foreach (var image in opened)
+                        Backup(c, image.Part.Range, $"original-{image.Part.Range.RegionId}-{image.Part.Name}.bin", backups, progress);
+                    foreach (var item in metadata)
+                        Backup(c, item.Range, $"original-{item.Name}.bin", backups, progress);
+                }
                 var protectedParts = parts.Where(p => p.Operation is MtkScatterOperation.Protected or MtkScatterOperation.BinRegion).ToArray();
-                if (rebuildGpt && protectedParts.Length > 0)
+                if (backupPolicy == MtkScatterBackupPolicy.AllOverwriteRanges && rebuildGpt && protectedParts.Length > 0)
                 {
                     var existing = (c as IMtkDaPartitionChannel ?? throw new MtkCapabilityException("partition snapshot")).GetPartitionRanges();
                     foreach (var part in protectedParts)
@@ -236,6 +246,14 @@ public sealed class MtkScatterService
             if (sorted.Select(p => p.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != sorted.Length)
                 throw new MtkResourceException("scatter plan duplicate");
         }
+    }
+
+    private static void BackupPartitionTableCore(IMtkDaChannel c, IMtkScatterBackupStore backups, IProgress<ProgressRecord>? progress = null)
+    {
+        var copies = (c as IMtkDaPartitionChannel ?? throw new MtkCapabilityException("partition snapshot")).GetPartitionRanges()
+            .Where(p => p.Range.RegionId == c.Storage.UserRegionId && MtkScatterGptConverter.IsMetadata(p.Name)).ToArray();
+        if (copies.Length != 2) throw new MtkResourceException("current GPT backup ranges");
+        foreach (var copy in copies) Backup(c, copy.Range, $"current-{copy.Name}.bin", backups, progress);
     }
 
     private static void Backup(IMtkDaChannel c, MtkFlashRange range, string name, IMtkScatterBackupStore backups, IProgress<ProgressRecord>? progress = null)

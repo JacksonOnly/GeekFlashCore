@@ -31,6 +31,13 @@ field as the absolute file offset of the signature. GeekFlashCore retains relati
 additionally validates this exact absolute boundary for XML/v6 without rewriting metadata or changing
 authentication, addresses, upload bytes or device command order. No reference code was copied.
 
+The same day's XML optional-query compatibility fix additionally cross-checked Penumbra's
+`send_cmd`/`lifetime_ack` against a device capture with an exact `ERR!UNSUPPORTED` reply and
+`CMD:END` carrying `result=ERR!UNSUPPORTED` plus a human-readable message. Only this explicit
+optional refusal is accepted after a structurally valid END and its ACK; unknown errors,
+timeouts and required-command failures remain terminal. SLA query evidence remains
+`Unsupported`, not `Authenticated`, and DA2 authentication is still checked independently.
+
 ## EXP and PatchDA port (2026-10-07)
 
 Following explicit user authorization on 2026-10-07, the four Penumbra exploit strategies and

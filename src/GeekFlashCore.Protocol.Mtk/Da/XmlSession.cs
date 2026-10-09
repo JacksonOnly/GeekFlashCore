@@ -85,7 +85,13 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         if (results[0].Value != "OK")
         {
             var messages = end.Descendants("message").ToArray();
-            if (results[0].Value != "ERR" || messages.Length != 1 || messages[0].HasElements || messages[0].Value != "ERR!UNSUPPORTED")
+            // Some v6 DAs put the machine status in result and a human description
+            // in message. The description is not an authentication/status token.
+            bool unsupportedResult = results[0].Value == "ERR!UNSUPPORTED" &&
+                messages.Length <= 1 && messages.All(message => !message.HasElements);
+            bool unsupportedMessage = results[0].Value == "ERR" && messages.Length == 1 &&
+                !messages[0].HasElements && messages[0].Value == "ERR!UNSUPPORTED";
+            if (!unsupportedResult && !unsupportedMessage)
                 throw wire.Failure();
         }
 

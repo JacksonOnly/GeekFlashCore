@@ -32,7 +32,7 @@ catch (Exception exception)
     return 1;
 }
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Debug()
+    .MinimumLevel.Is(options.Verbose ? Serilog.Events.LogEventLevel.Debug : Serilog.Events.LogEventLevel.Information)
     .WriteTo.Sink(fileLog)
     .WriteTo.Sink(new ConsoleLogSink(ui, options.Verbose))
     .CreateLogger();

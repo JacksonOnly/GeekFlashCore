@@ -378,7 +378,7 @@ Cache 命令阻止：{8}</value></data>
 键名使用 MtkKeyDeriveId 枚举：
   Rpmb、Fde、Tee、AesImageEncryption、AesCustom、Motorola、RootOfTrust。
 输入最多各 32 字节，- 表示空输入。
-必须指定 --mtk-extension-abi penumbra2 及对应加密基址，并已合法加载兼容扩展。
+需要 Penumbra2 扩展（默认 ABI）及已确认的对应加密基址。
 密钥仅写入文件。</value></data>
   <data name="Cli_MtkRpmbLockState" xml:space="preserve"><value>RPMB 锁配置版本={0}，状态={1}。</value></data>
   <data name="Cli_HelpMtkWriteExtras" xml:space="preserve"><value>MTK 写入命令：
@@ -460,6 +460,22 @@ Cache 命令阻止：{8}</value></data>
 <data name="Cli_SprdChipUid" xml:space="preserve"><value>SPRD Chip UID：{0}</value></data>
   <data name="Cli_MtkInitialProbeRetry" xml:space="preserve"><value>MTK 初始接入未完成，已释放旧连接，继续等待设备；按 Ctrl+C 停止。</value></data>
   <data name="Cli_MtkUsbDiscoveryRetry" xml:space="preserve"><value>MTK USB 枚举或打开未完成，继续等待设备；按 Ctrl+C 停止，诊断原因见文件日志。</value></data>
-  <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>MTK 当前操作已停止，会话已失效。请重新连接设备；不会自动重试认证、DA 或读写命令。</value></data>
+  <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>MTK 会话已失效；使用 reconnect 重连，不自动重试当前命令。</value></data>
   <data name="Cli_MtkBromChunkInvalid" xml:space="preserve"><value>BROM 宿主上传块必须为 64～1048576 字节。</value></data>
+  <data name="Cli_MtkExtensionLoaded" xml:space="preserve"><value>MTK：DA 扩展已加载。</value></data>
+  <data name="Cli_MtkExtensionNotPrepared" xml:space="preserve"><value>MTK：DA 扩展未加载，缺少已验证的加载器或函数地址。</value></data>
+  <data name="Cli_MtkScatterConverted" xml:space="preserve"><value>MTK：分区表转换完成。</value></data>
+  <data name="Cli_MtkScatterLayoutChanged" xml:space="preserve"><value>Scatter 与设备布局不同：{0}。原 GPT 已备份；更新会改变分区边界。</value></data>
+  <data name="Cli_MtkScatterConfirm" xml:space="preserve"><value>确认更新 GPT 并刷写？输入 yes 继续，其余取消：</value></data>
+  <data name="Cli_HelpMtkRepair" xml:space="preserve"><value>交互模式保持会话；reconnect [auto|brom|da1|da2] [xflash|legacy|xml] 重连。优先使用启动帧与原会话信息，未知阶段/身份需确认；Legacy DA2 需要原会话存储信息。
+Scatter flash/update 自动对比布局，不一致时备份原 GPT 并确认后更新。
+  mtk-scatter to-gpt scatter-file output-prefix emmc|ufs block-size user-capacity
+  mtk-scatter from-gpt gpt-file scatter-file emmc|ufs block-size user-capacity platform
+转换离线执行；容量单位为字节，块大小为 512 或 4096。to-gpt 输出 .pgpt.bin/.sgpt.bin；from-gpt 不推测下载文件名，默认禁止下载。GPT 只保存 USER 布局。</value></data>
+  <data name="Cli_MtkReconnectIdentity" xml:space="preserve"><value>无法确认是原设备。确认当前连接使用原设备 DA 和存储信息？输入 yes 继续</value></data>
+  <data name="Cli_MtkReconnectStage" xml:space="preserve"><value>无法可靠区分当前阶段。请确认设备处于 brom、da1 或 da2；传输中断后请先重新接入到命令边界</value></data>
+  <data name="Cli_MtkReconnectDialect" xml:space="preserve"><value>请输入已加载 DA 的协议：xflash、legacy 或 xml</value></data>
+  <data name="Cli_MtkReconnectHardware" xml:space="preserve"><value>DA 无法查询完整硬件信息。请输入已确认的 hardware-code subcode hardware-version software-version BROM-version security-raw（支持 0x）</value></data>
+  <data name="Cli_MtkPreloaderPrompt" xml:space="preserve"><value>DA1 可能需要 EMI。请选择匹配的 Preloader 文件（若已完成 DRAM 初始化可留空）</value></data>
+  <data name="Cli_MtkReconnectBoundary" xml:space="preserve"><value>未确认上次传输已结束。请先物理复位/重新进入 DA，确认已处于空闲命令边界（不是等待镜像数据）；输入 yes 继续</value></data>
 </root>

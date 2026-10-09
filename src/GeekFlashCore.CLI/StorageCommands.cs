@@ -49,7 +49,7 @@ internal static class StorageCommands
                 ProgressDisplay.SingleLine(item.Name ?? string.Empty),
                 PartitionLun(item).ToString(System.Globalization.CultureInfo.InvariantCulture),
                 item.Address?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? Strings.Cli_UnknownValue,
-                FormatSize(item.Offset), FormatSize(item.Length)
+                item.Offset?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? Strings.Cli_UnknownValue, FormatSize(item.Length)
             }).ToArray();
             var widths = Enumerable.Range(0, 5).Select(column => rows.Select(row => ProgressDisplay.Cells(row[column])).DefaultIfEmpty(0).Max()).ToArray();
             widths[0] = Math.Max(32, widths[0]);
@@ -78,7 +78,8 @@ internal static class StorageCommands
             if (command == "read")
             {
                 // Resolve named partitions before creating the output, so an invalid name cannot truncate a file.
-                if (target is PartitionTarget named)
+                if (target is PartitionTarget named && !(protocol.Type == ProtocolType.Mtk &&
+                    IsPreloader(named.Name)))
                 {
                     var matches = (protocol is IQcomProtocol q && named.PhysicalPartitionNumber is { } selected
                         ? await q.GetPartitionsAsync(selected, progress, ct) : await protocol.GetPartitionsAsync(progress, ct))
@@ -112,7 +113,9 @@ internal static class StorageCommands
     {
         if (args[0].Equals("sector", StringComparison.OrdinalIgnoreCase))
         {
-            uint size = SectorSize(protocol);
+            uint size = protocol is GeekFlashCore.Protocol.Mtk.Abstractions.IMtkProtocol mtk
+                ? checked((uint)mtk.GetStorageInfo().Regions.Single(r => r.WireId == CommandSyntax.Lun(args[1])).BlockSize)
+                : SectorSize(protocol);
             long start = (long)CommandSyntax.Number(args[2]), count = (long)CommandSyntax.Number(args[3]);
             _ = checked((start + count) * size);
             return new SectorTarget { PhysicalPartitionNumber = CommandSyntax.Lun(args[1]),
@@ -124,6 +127,10 @@ internal static class StorageCommands
 
     private static string FormatSize(long? size) =>
         size.HasValue ? ConsoleUi.FormatBytes(size.Value) : Strings.Cli_UnknownValue;
+
+    private static bool IsPreloader(string name) => name.Replace("_", "").Replace(" ", "")
+        .Equals("preloader", StringComparison.OrdinalIgnoreCase) || name.Replace("_", "").Replace(" ", "")
+        .Equals("preloaderbackup", StringComparison.OrdinalIgnoreCase);
 
     internal static bool PartitionNameMatches(IProtocol protocol, PartitionInfo partition, string name)
     {

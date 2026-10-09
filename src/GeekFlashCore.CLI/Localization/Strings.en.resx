@@ -378,7 +378,7 @@ Backup files must not already exist.</value></data>
 Key names use MtkKeyDeriveId:
   Rpmb, Fde, Tee, AesImageEncryption, AesCustom, Motorola, RootOfTrust.
 Inputs are at most 32 bytes each; - means empty.
-Requires --mtk-extension-abi penumbra2, confirmed crypto addresses and an already legitimately loaded compatible extension.
+Requires a Penumbra2 extension (the default ABI) and confirmed crypto addresses.
 Keys go only to files.</value></data>
   <data name="Cli_MtkRpmbLockState" xml:space="preserve"><value>RPMB lock metadata version={0}, state={1}.</value></data>
   <data name="Cli_HelpMtkWriteExtras" xml:space="preserve"><value>MTK write commands:
@@ -460,6 +460,22 @@ Keys go only to files.</value></data>
 <data name="Cli_SprdChipUid" xml:space="preserve"><value>SPRD Chip UID: {0}</value></data>
   <data name="Cli_MtkInitialProbeRetry" xml:space="preserve"><value>MTK initial admission did not complete. Released the old connection; waiting for a device again. Press Ctrl+C to stop.</value></data>
   <data name="Cli_MtkUsbDiscoveryRetry" xml:space="preserve"><value>MTK USB enumeration or opening did not complete. Waiting for a device; press Ctrl+C to stop. See the file log for diagnostics.</value></data>
-  <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>The current MTK operation has stopped and the session is invalid. Reconnect the device; authentication, DA and read/write commands will not be retried automatically.</value></data>
+  <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>MTK session invalid; use reconnect. The interrupted command is not retried.</value></data>
   <data name="Cli_MtkBromChunkInvalid" xml:space="preserve"><value>BROM host upload chunk must be 64–1048576 bytes.</value></data>
+  <data name="Cli_MtkExtensionLoaded" xml:space="preserve"><value>MTK: DA extension loaded.</value></data>
+  <data name="Cli_MtkExtensionNotPrepared" xml:space="preserve"><value>MTK: DA extension unavailable; verified loader or function addresses are missing.</value></data>
+  <data name="Cli_MtkScatterConverted" xml:space="preserve"><value>MTK: partition table conversion completed.</value></data>
+  <data name="Cli_MtkScatterLayoutChanged" xml:space="preserve"><value>Scatter layout differs: {0}. Original GPT backed up; updating changes partition boundaries.</value></data>
+  <data name="Cli_MtkScatterConfirm" xml:space="preserve"><value>Update GPT and flash images? Type yes to continue; otherwise cancel:</value></data>
+  <data name="Cli_HelpMtkRepair" xml:space="preserve"><value>Interactive mode keeps its session. Use reconnect [auto|brom|da1|da2] [xflash|legacy|xml]. Startup evidence and the previous session are preferred; unknown stage/identity needs confirmation. Legacy DA2 requires previous storage geometry.
+Scatter flash/update compares layouts, backs up the current GPT, and asks before updating differing layouts.
+  mtk-scatter to-gpt scatter-file output-prefix emmc|ufs block-size user-capacity
+  mtk-scatter from-gpt gpt-file scatter-file emmc|ufs block-size user-capacity platform
+Conversions run offline. Capacity is in bytes; block size is 512 or 4096. to-gpt outputs .pgpt.bin/.sgpt.bin; from-gpt disables downloads and does not guess image filenames. GPT contains only the USER layout.</value></data>
+  <data name="Cli_MtkReconnectIdentity" xml:space="preserve"><value>Physical identity is unconfirmed. Use the previous device's DA and geometry? Type yes to continue</value></data>
+  <data name="Cli_MtkReconnectStage" xml:space="preserve"><value>Confirm the current stage: brom, da1 or da2. After an interrupted transfer, first reconnect at a known command boundary</value></data>
+  <data name="Cli_MtkReconnectDialect" xml:space="preserve"><value>Enter the running DA dialect: xflash, legacy or xml</value></data>
+  <data name="Cli_MtkReconnectHardware" xml:space="preserve"><value>DA cannot query complete hardware identity. Enter confirmed hardware-code subcode hardware-version software-version BROM-version security-raw (0x supported)</value></data>
+  <data name="Cli_MtkPreloaderPrompt" xml:space="preserve"><value>DA1 may need EMI. Select a matching Preloader file (leave blank if DRAM is already initialized)</value></data>
+  <data name="Cli_MtkReconnectBoundary" xml:space="preserve"><value>The previous transfer boundary is unconfirmed. Reset/re-enter DA first; confirm it is idle and not awaiting image data. Type yes to continue</value></data>
 </root>

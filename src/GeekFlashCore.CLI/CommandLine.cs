@@ -5,10 +5,12 @@ namespace GeekFlashCore.CLI;
 
 internal static class CommandLine
 {
-    public static CliOptions Parse(string[] args)
+    public static CliOptions Parse(string[] args) => ParseCore(args, new CliOptions());
+    internal static CliOptions ParseSession(string[] args, CliOptions defaults) => ParseCore(args, defaults);
+    private static CliOptions ParseCore(string[] args, CliOptions defaults)
     {
         var positional = new List<string>();
-        var builder = new CliOptions();
+        var builder = defaults;
         for (int i = 0; i < args.Length; i++)
         {
             string arg = args[i];
@@ -75,7 +77,7 @@ internal static class CommandLine
             if(name=="--mtk-extension-abi")
             {
                 value??=i+1<args.Length?args[++i]:throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
-                builder=builder with {MtkExtensionAbi=value.ToLowerInvariant() switch
+                builder=builder with {HasExplicitMtkExtensionAbi=true, MtkExtensionAbi=value.ToLowerInvariant() switch
                 {"legacy" or "1"=>GeekFlashCore.Protocol.Mtk.Abstractions.MtkExtensionAbi.Legacy,"penumbra2" or "2"=>GeekFlashCore.Protocol.Mtk.Abstractions.MtkExtensionAbi.Penumbra2,_=>throw new ArgumentException(Strings.Cli_MtkExtensionAbiInvalid)}};
                 continue;
             }
@@ -149,6 +151,8 @@ internal static class CommandLine
         string? requested = arguments.FirstOrDefault()?.ToLowerInvariant();
         if (requested == "lp") { LpCommands.PrintHelp(ui); return; }
         if (requested is "sprd" or "unisoc" or "spreadtrum") { ui.WriteLine(Strings.Cli_HelpSprd); return; }
+        if (requested is "mtk" or "mediatek") { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkParity); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
+        if (requested == "mtk-scatter") { ui.WriteLine(Strings.Cli_HelpMtkParity); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
         if (requested == "sprd-chip-uid") { PrintUsage("sprd-chip-uid", ui); return; }
         if (requested is not (null or "all" or "qcom"))
         {
@@ -160,9 +164,7 @@ internal static class CommandLine
         ui.WriteLine(Strings.Cli_Title);
         ui.WriteLine(Strings.Cli_HelpUsage);
         ui.WriteLine(Strings.Cli_HelpCommands);
-        foreach (string usage in CommandSyntax.Usages.Values.Where(x => x.Length > 0)) PrintUsage(usage, ui);
-        ui.WriteLine("  " + FirehoseCommands.Usages["rawprogram"]);
-        ui.WriteLine("  patch <xml-or-pattern> [...]");
+        foreach (var command in CommandSyntax.Usages.Where(x => x.Value.Length > 0 && x.Key != "reconnect")) PrintUsage(command.Value, ui);
         ui.WriteLine(Strings.Cli_InteractiveKeys);
         if (requested is null) { ui.WriteLine(Strings.Cli_HelpDetailsHint); return; }
         ui.WriteLine(Strings.Cli_HelpQcomCommands);
@@ -176,6 +178,7 @@ internal static class CommandLine
         ui.WriteLine(Strings.Cli_HelpMtk);
         ui.WriteLine(Strings.Cli_HelpMtkStandard);
         ui.WriteLine(Strings.Cli_HelpMtkParity);
+        ui.WriteLine(Strings.Cli_HelpMtkRepair);
         ui.WriteLine(Strings.Cli_HelpMtkKeys);
         ui.WriteLine(Strings.Cli_HelpMtkWriteExtras);
         ui.WriteLine(Strings.Cli_HelpSprd);

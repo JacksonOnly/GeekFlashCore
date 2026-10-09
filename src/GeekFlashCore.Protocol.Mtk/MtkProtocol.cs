@@ -452,6 +452,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     }
     private void Fault(Exception? exception = null)
     {
+        _wire.ClearStartup();
         var previousState = _state;
         _da = null;
         _storage = null;
@@ -535,6 +536,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     }
     private void DisconnectCore()
     {
+        _wire.ClearStartup();
         bool connected = _state is not (MtkSessionState.Disconnected or MtkSessionState.Faulted);
         _hasIdentifiedTarget = false;
         _da = null;

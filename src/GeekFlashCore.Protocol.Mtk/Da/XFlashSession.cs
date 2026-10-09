@@ -121,7 +121,7 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
             // A complete subcommand rejection has no result or trailing ACK. Do not consume
             // the next command's response. Parent, data, final status and I/O errors stay fatal.
             AuthenticationState = MtkDaAuthenticationState.Unsupported;
-            wire.Logger.ForContext("MtkSummary", true).Warning(Strings.SlaStatusUnsupported,
+            wire.Logger.Debug(Strings.SlaStatusUnsupported,
                 (uint)MtkXFlashCommand.SlaEnabledStatus, status);
             return null;
         }
@@ -168,7 +168,7 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
         wire.Logger.Debug(Strings.PacketLengthsOffered, wire.Stage, write, read, valid);
         if (!valid)
             throw wire.Failure();
-        wire.WritePacketLength = (int)Math.Min(write, (uint)options.BufferSize);
+        wire.WritePacketLength = (int)Math.Min(write, (uint)options.MaximumXFlashWritePacketLength);
         wire.ReadPacketLength = (int)Math.Min(read, (uint)options.MaximumXFlashDataFrameSize);
         wire.Logger.Debug(Strings.PacketLengths, wire.WritePacketLength, wire.ReadPacketLength, write, read);
     }
@@ -199,14 +199,15 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
     }
     private void ReceiveStream(Stream output, long length)
     {
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(options.BufferSize);
+        int window = Math.Max(options.BufferSize, Math.Min(wire.ReadPacketLength, 1048576));
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(window);
         try
         {
             long done = 0;
             while (done < length)
             {
                 int maximum = (int)Math.Min(wire.ReadPacketLength, length - done);
-                int n = wire.ReadStreamFrame(output, maximum, buffer.AsSpan(0, options.BufferSize));
+                int n = wire.ReadStreamFrame(output, maximum, buffer.AsSpan(0, window));
                 done += n;
                 wire.SendUInt32Frame(0);
                 wire.ReadStatus();

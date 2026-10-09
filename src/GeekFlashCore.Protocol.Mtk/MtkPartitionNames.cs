@@ -16,7 +16,7 @@ internal static class MtkPartitionNames
             return BackupGpt;
         if (name.Equals(Preloader, StringComparison.OrdinalIgnoreCase))
             return Preloader;
-        if (name.Equals("preloader_backup", StringComparison.OrdinalIgnoreCase) || name.Equals(PreloaderBackup, StringComparison.OrdinalIgnoreCase))
+        if (name.Equals("preloader_backup", StringComparison.OrdinalIgnoreCase) || name.Equals("PreloaderBackup", StringComparison.OrdinalIgnoreCase) || name.Equals(PreloaderBackup, StringComparison.OrdinalIgnoreCase))
             return PreloaderBackup;
         return name;
     }
@@ -32,4 +32,6 @@ internal static class MtkPartitionNames
 
     public static bool Matches(string left, string? right) =>
         right is not null && Display(left).Equals(Display(right), StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsPreloader(string name) => Display(name) is Preloader or PreloaderBackup;
 }

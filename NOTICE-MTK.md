@@ -23,6 +23,14 @@ Some inspected reference working trees already contained local changes. Revision
 
 The 2026-10-05 standard completion also references penumbra `core/src/core/bootctrl.rs` (Shomy, 2026, AGPL-3.0-or-later) for Android boot-control fields and CRC, and mtkclient `Library/DA/{legacy/dalegacy_flash_param,xflash/xflash_lib,xml/xml_cmd,xml/xml_lib}.py` for standard read-only queries, PMT/XML partition metadata, register commands and NAND/NOR/SDMMC geometry. DA `m_start_offset` metadata is preserved as a length/signature boundary, not added to `m_start_addr`. No exploitation algorithms or device-side payloads were added. The current local penumbra copy has no Git metadata; its prior inspected revision above is historical provenance, not a newly verified file revision.
 
+On 2026-10-09, the v6 region-boundary fix cross-checked `penumbra-main/core/src/da/xml/protocol.rs`
+and its locked `hacc` revision `e5a68124e7d795465804aaf2d11cef43cf8b7267`, `src/da.rs`:
+code length is derived from `length - sig_len`, file windows use `offset`, and execution uses
+`addr`, independently of the raw fourth region field. An offline vendor DA also stores that
+field as the absolute file offset of the signature. GeekFlashCore retains relative values and
+additionally validates this exact absolute boundary for XML/v6 without rewriting metadata or changing
+authentication, addresses, upload bytes or device command order. No reference code was copied.
+
 ## EXP and PatchDA port (2026-10-07)
 
 Following explicit user authorization on 2026-10-07, the four Penumbra exploit strategies and

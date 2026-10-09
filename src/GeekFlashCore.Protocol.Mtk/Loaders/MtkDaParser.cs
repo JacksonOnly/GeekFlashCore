@@ -53,6 +53,7 @@ public static class MtkDaParser
             ushort index = rawIndex == 0 && regions >= 3 ? (ushort)1 : rawIndex;
             if (regions is < 2 or > 10 || index >= regions - 1 || tableOffset + regions * 20 > stride)
                 throw new MtkResourceException("DA region count/index");
+            MtkDaKind dialect = v6 ? MtkDaKind.Xml : kind ?? (legacy ? MtkDaKind.Legacy : MtkDaKind.XFlash);
             var windows = new List<MtkDaRegion>(regions);
             for (int j = 0; j < regions; j++)
             {
@@ -65,11 +66,11 @@ public static class MtkDaParser
                     continue;
                 }
                 if (length == 0 || signature >= length || (long)offset > source.Length - length ||
-                    (ulong)address + length > (ulong)uint.MaxValue + 1 || entryOffset > length)
+                    (ulong)address + length > (ulong)uint.MaxValue + 1 ||
+                    !MtkDaRegionValidation.IsValidEntryOffset(dialect, offset, length, signature, entryOffset))
                     throw new MtkResourceException("DA region window");
                 windows.Add(new(offset, length, address, entryOffset, signature));
             }
-            MtkDaKind dialect = v6 ? MtkDaKind.Xml : kind ?? (legacy ? MtkDaKind.Legacy : MtkDaKind.XFlash);
             entries.Add(new(Read16(entry, 2), Read16(entry, 4), Read16(entry, 6),
                 legacy ? (ushort)0 : Read16(entry, 8), index, dialect, windows.AsReadOnly()) { RawEntryRegionIndex = rawIndex });
         }

@@ -369,7 +369,8 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             entry.Regions[entry.EntryRegionIndex+2].Length<0x1d4))throw new MtkResourceException("IoT DA3");
         foreach (var region in entry.Regions.Skip(entry.EntryRegionIndex).Take(_options.LegacyIoT?3:2))
         {
-            if (region.Length == 0 || region.SignatureLength >= region.Length || region.EntryOffset > region.Length ||
+            if (region.Length == 0 || region.SignatureLength >= region.Length ||
+                !MtkDaRegionValidation.IsValidEntryOffset(entry.Kind, region.FileOffset, region.Length, region.SignatureLength, region.EntryOffset) ||
                 region.FileOffset < 0 || region.FileOffset > image.Source.Length - region.Length ||
                 (ulong)region.Address + region.Length > (ulong)uint.MaxValue + 1)
                 throw new MtkResourceException("DA region");

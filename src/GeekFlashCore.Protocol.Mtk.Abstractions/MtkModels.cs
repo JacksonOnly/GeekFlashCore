@@ -133,7 +133,8 @@ public sealed record MtkNandGeometry(uint Type, int PageSize, int SpareSize, int
 /// <summary>A typed byte range. Offset and length must be aligned to the region's logical blocks.</summary>
 public readonly record struct MtkFlashRange(uint RegionId, long Offset, long Length);
 /// <summary>A region window in a reopenable DA container. EntryOffset retains m_start_offset metadata;
-/// it is a region length/signature boundary, never a displacement added to Address for execution.</summary>
+/// it may be region-relative or, for XML/v6, the absolute file offset of the trailing signature.
+/// Code length is Length - SignatureLength; EntryOffset is never added to Address for execution.</summary>
 public sealed record MtkDaRegion(long FileOffset, uint Length, uint Address, uint EntryOffset, uint SignatureLength);
 /// <summary>A DA metadata entry. Region index is a zero-based table index.</summary>
 public sealed record MtkDaEntry(ushort HardwareCode, ushort HardwareSubCode, ushort HardwareVersion,

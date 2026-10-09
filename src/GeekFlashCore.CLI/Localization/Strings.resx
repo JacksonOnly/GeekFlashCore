@@ -499,4 +499,6 @@ seccfg/slot 自动读取分区位置；存在歧义时用 --partition 名称明�
 RPMB 块为 256 字节，默认区域 0、起始 0；读/擦默认剩余容量，写默认文件块数。
 密钥省略时使用当前认证或 Penumbra2 派生，不打印/落盘；UFS 未报告的容量仍需确认。
 安全写入自动备份并确认，不自动重试未知写结果。地址、未知容量和厂商密钥不猜测。</value></data>
+  <data name="Cli_DeviceWaitStatus" xml:space="preserve"><value>{0} {1} {2}  Esc 取消</value></data>
+  <data name="Cli_MtkOffline" xml:space="preserve"><value>当前未连接。输入 reconnect 重新等待，help 查看命令，exit 退出；不会自动重试失败操作。</value></data>
 </root>

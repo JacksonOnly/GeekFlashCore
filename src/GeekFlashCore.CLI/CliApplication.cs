@@ -7,7 +7,7 @@ using GeekFlashCore.UsbWatcher.Abstractions;
 
 namespace GeekFlashCore.CLI;
 
-internal sealed class CliApplication
+internal sealed partial class CliApplication
 {
     private readonly ConsoleUi _ui;
     private readonly TransportResolver _transportResolver;
@@ -20,7 +20,7 @@ internal sealed class CliApplication
     public CliApplication(ConsoleUi? ui = null)
     {
         _ui = ui ?? new ConsoleUi();
-        _transportResolver = new(PrepareConnectionOptionsAsync);
+        _transportResolver = new(PrepareConnectionOptionsAsync, _ui.BeginDeviceWait, _ui.WriteLine);
         _progress = new ImmediateProgress<ProgressRecord>(_ui.Report);
     }
 
@@ -82,22 +82,50 @@ internal sealed class CliApplication
 
     private async Task<int> InteractiveAsync(CliOptions options, CancellationToken ct)
     {
-        var connection = await CreateConnectionAsync(options, null, ct).ConfigureAwait(false);
-        await using var active = new ActiveConnection(connection.Protocol, connection.Transport, connection.Registration);
-        try
+        bool recover = IsMtkConnection(options);
+        while (true)
         {
-            _ui.WriteLine(Strings.Cli_Connecting);
-            if (!active.Protocol.IsConnected)
+            ActiveConnection? active = null;
+            int failure;
+            try
             {
-                await active.Protocol.ConnectAsync(_progress, ct).ConfigureAwait(false);
-                MtkProtocolHostAdapter.InitializeExtension(active.Protocol, options, ct);
+                using (var search = recover ? _ui.BeginSearch(ct) : null)
+                {
+                    CancellationToken connecting = search?.Token ?? ct;
+                    var connection = await CreateConnectionAsync(options, null, connecting).ConfigureAwait(false);
+                    active = new(connection.Protocol, connection.Transport, connection.Registration);
+                    recover |= active.Protocol.Type == ProtocolType.Mtk;
+                    _ui.WriteLine(Strings.Cli_Connecting);
+                    if (!active.Protocol.IsConnected)
+                    {
+                        await active.Protocol.ConnectAsync(_progress, connecting).ConfigureAwait(false);
+                        MtkProtocolHostAdapter.InitializeExtension(active.Protocol, options, connecting);
+                    }
+                }
+                _ui.WriteLine(Strings.FormatCli_ConnectedHelp(active.Registration.DisplayName));
+                ShowQcomCommands(active.Protocol);
+                return await ReadCommandsAsync(active, ct).ConfigureAwait(false);
             }
-            _ui.WriteLine(Strings.FormatCli_ConnectedHelp(connection.Registration.DisplayName));
-            ShowQcomCommands(active.Protocol);
-            return await ReadCommandsAsync(active, ct).ConfigureAwait(false);
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            { _ui.ShowCancelled(); failure = 130; }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception exception) { _ui.LogException(exception); failure = 1; }
+            finally
+            {
+                if (active is not null)
+                {
+                    try { await active.DisposeAsync().ConfigureAwait(false); }
+                    catch (Exception cleanup) when (active.Protocol.Type == ProtocolType.Mtk)
+                    { Serilog.Log.Debug(cleanup, Strings.Cli_MtkOperationStopped); }
+                }
+            }
+            if (!recover || !_ui.CanPrompt) return failure;
+            var retry = await WaitForMtkRetryAsync(options, ct).ConfigureAwait(false);
+            if (retry is null) return 0;
+            options = retry; _reconnectArguments = retry.Arguments;
+            _cleanReconnectBoundary = false;
+            _sessionOptions = retry with { Command = "interactive", Arguments = [] };
         }
-        catch (OperationCanceledException) { _ui.ShowCancelled(); EndMtkOperation(active.Protocol); return 130; }
-        catch (Exception exception) { _ui.LogException(exception); EndMtkOperation(active.Protocol); return 1; }
     }
 
     private async Task<int> ReadCommandsAsync(ActiveConnection active, CancellationToken ct)
@@ -117,6 +145,8 @@ internal sealed class CliApplication
                 {
                     CommandSyntax.Validate(parsed);
                     if (active.Protocol.Type != ProtocolType.Mtk) throw new CommandUsageException("reconnect (MTK)");
+                    using var search = _ui.BeginSearch(ct);
+                    CancellationToken connecting = search.Token;
                     _reconnectSnapshot = MtkProtocolHostAdapter.Capture(active.Protocol) ?? _reconnectSnapshot;
                     _cleanReconnectBoundary = active.Protocol.IsConnected;
                     _reconnectArguments = parsed.Arguments;
@@ -124,12 +154,12 @@ internal sealed class CliApplication
                         parsed = parsed with { Protocol = "mtk", Usb = null,
                             UsbSerial = snapshot.Identity.SerialNumber, UsbBus = snapshot.Identity.BusNumber, UsbPortPath = snapshot.Identity.PortPath };
                     await active.ReleaseAsync();
-                    var next = await CreateConnectionAsync(parsed, active.Registration, ct).ConfigureAwait(false);
+                    var next = await CreateConnectionAsync(parsed, active.Registration, connecting).ConfigureAwait(false);
                     active.Replace(next.Protocol, next.Transport, next.Registration);
                     if (!active.Protocol.IsConnected)
                     {
-                        await active.Protocol.ConnectAsync(_progress, ct).ConfigureAwait(false);
-                        MtkProtocolHostAdapter.InitializeExtension(active.Protocol, parsed, ct);
+                        await active.Protocol.ConnectAsync(_progress, connecting).ConfigureAwait(false);
+                        MtkProtocolHostAdapter.InitializeExtension(active.Protocol, parsed, connecting);
                     }
                     _sessionOptions = parsed with { Command = "interactive", Arguments = [] };
                     _ui.WriteLine(Strings.FormatCli_ConnectedHelp(active.Registration.DisplayName));

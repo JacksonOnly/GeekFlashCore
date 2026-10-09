@@ -10,7 +10,7 @@ using LibUsbDotNet.LibUsb;
 
 namespace GeekFlashCore.CLI;
 
-internal sealed class ConsoleUi
+internal sealed partial class ConsoleUi
 {
     private readonly object _gate = new();
     private readonly object _searchGate = new();
@@ -73,6 +73,7 @@ internal sealed class ConsoleUi
     {
         lock (_gate)
         {
+            _lastStaticWaitMessage = null;
             ClearProgressUnsafe();
             Console.WriteLine(value);
         }
@@ -237,6 +238,7 @@ internal sealed class ConsoleUi
 
     private void ClearProgressUnsafe()
     {
+        ClearDeviceWaitUnsafe();
         if (_progressRows == 0) return;
         Console.Write("\r\u001b[2K");
         for (int row = 1; row < _progressRows; row++) Console.Write("\u001b[1A\r\u001b[2K");

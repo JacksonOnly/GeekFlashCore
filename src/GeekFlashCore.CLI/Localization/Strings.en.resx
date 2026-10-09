@@ -499,4 +499,6 @@ seccfg/slot resolve partition geometry automatically; use --partition for an amb
 RPMB blocks are 256 bytes; region/start default to zero. Read/erase use remaining confirmed capacity; writes use file block count.
 Without a key file, reuse current authentication or derive with Penumbra2. Keys are never logged or implicitly saved. Unknown UFS capacity still requires confirmation.
 Safety-sensitive writes require backup/confirmation. Unknown writes are not retried; addresses, unknown capacities and OEM keys are not guessed.</value></data>
+  <data name="Cli_DeviceWaitStatus" xml:space="preserve"><value>{0} {1} {2}  Esc to cancel</value></data>
+  <data name="Cli_MtkOffline" xml:space="preserve"><value>Disconnected. Enter reconnect to wait again, help for commands, or exit to quit. Failed operations are not retried automatically.</value></data>
 </root>

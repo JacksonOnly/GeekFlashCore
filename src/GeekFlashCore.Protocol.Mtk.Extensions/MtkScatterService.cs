@@ -5,8 +5,6 @@ using System.Security.Cryptography;
 using GeekFlashCore.Android.Sparse;
 using GeekFlashCore.BlockDevice;
 using GeekFlashCore.BlockDevice.Abstractions;
-using GeekFlashCore.Gpt;
-using GeekFlashCore.Gpt.Abstractions;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Mtk.Abstractions;
 
@@ -24,6 +22,32 @@ public sealed class MtkScatterService
     }
 
     public MtkScatterPlan Plan(MtkScatterManifest manifest, CancellationToken cancellationToken = default) => _access.UseSession(c => MtkScatterPlanner.Create(manifest, c.Storage, c.Generation), cancellationToken);
+    /// <summary>Compares USER names and byte geometry before selecting a GPT update. Performs no writes.</summary>
+    public IReadOnlyList<string> CompareLayout(MtkScatterPlan plan, CancellationToken cancellationToken = default) => _access.UseSession(c =>
+    {
+        if (plan.Generation != c.Generation) throw new InvalidOperationException(Localization.Strings.ExtensionUnavailable);
+        var existing = (c as IMtkDaPartitionChannel ?? throw new MtkCapabilityException("partition snapshot")).GetPartitionRanges()
+            .Where(p => p.Range.RegionId == c.Storage.UserRegionId && !MtkScatterGptConverter.IsMetadata(p.Name)).ToArray();
+        var desired = plan.Partitions.Where(p => p.Range.RegionId == c.Storage.UserRegionId && !MtkScatterGptConverter.IsMetadata(p.Name)).ToArray();
+        var names = existing.Select(p => p.Name).Concat(desired.Select(p => p.Name)).Distinct(StringComparer.OrdinalIgnoreCase);
+        return (IReadOnlyList<string>)names.Where(name =>
+        {
+            var a = existing.Where(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).ToArray();
+            var b = desired.Where(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).ToArray();
+            return a.Length != 1 || b.Length != 1 || a[0].Range != b[0].Range;
+        }).ToArray();
+    }, cancellationToken);
+
+    /// <summary>Persists the current primary/backup GPT ranges before host approval. Never overwrites backup files.</summary>
+    public void BackupPartitionTable(MtkScatterPlan plan, IMtkScatterBackupStore backups, CancellationToken cancellationToken = default) => _access.UseSession(c =>
+    {
+        if (plan.Generation != c.Generation) throw new InvalidOperationException(Localization.Strings.ExtensionUnavailable);
+        var copies = (c as IMtkDaPartitionChannel ?? throw new MtkCapabilityException("partition snapshot")).GetPartitionRanges()
+            .Where(p => p.Range.RegionId == c.Storage.UserRegionId && MtkScatterGptConverter.IsMetadata(p.Name)).ToArray();
+        if (copies.Length != 2) throw new MtkResourceException("current GPT backup ranges");
+        foreach (var copy in copies) Backup(c, copy.Range, $"current-{copy.Name}.bin", backups);
+        return 0;
+    }, cancellationToken);
     /// <summary>All selected images are opened and validated before backups or writes. Backup files are never overwritten.
     /// GPT updates write the backup copy first; raw metadata and images are read back before success.
     /// DA-managed BOOTLOADERS use native header handling and final status; their transformed bytes are not host-compared.</summary>
@@ -209,10 +233,8 @@ public sealed class MtkScatterService
         var region = storage.Regions.Single(r => r.WireId == storage.UserRegionId);
         if (region.Kind is not (MtkStorageKind.Emmc or MtkStorageKind.Ufs or MtkStorageKind.Sdmmc))
             throw new MtkCapabilityException("scatter GPT storage");
-        var data = parts.Where(p => p.Range.RegionId == region.WireId && !p.Name.Equals("pgpt", StringComparison.OrdinalIgnoreCase) && !p.Name.Equals("sgpt", StringComparison.OrdinalIgnoreCase)).ToArray();
-        var entries = data.Select((p, i) => new GptEntry(i + 1, i, Guid.Parse("0FC63DAF-8483-4772-8E79-3D69D8477DE4"), Guid.NewGuid(), (ulong)(p.Range.Offset / region.BlockSize), (ulong)((p.Range.Offset + p.Range.Length) / region.BlockSize - 1), 0, p.Name)).ToArray();
-        var gpt = new GptFactory().Create(entries, new() { SectorSize = region.BlockSize, TotalDiskSectors = (ulong)(region.Length / region.BlockSize), PartitionEntryCount = Math.Max(128, entries.Length) });
-        byte[] primary = gpt.ToArray(new() { ImageType = GptImageType.Main, PreserveFullDiskImage = false }), backup = gpt.ToArray(new() { ImageType = GptImageType.Backup, PreserveFullDiskImage = false });
+        var images = MtkScatterGptConverter.Build(parts, storage);
+        byte[] primary = images.Primary, backup = images.Backup;
         metadata.Add((new(region.WireId, region.Length - backup.Length, backup.Length), backup, "sgpt"));
         metadata.Add((new(region.WireId, 0, primary.Length), primary, "pgpt"));
     }

@@ -24,6 +24,19 @@ internal static class CommandLine
             if (arg == "--mtk-brom-zlp") { builder = builder with { MtkBromZeroLengthPacket = true }; continue; }
             string? value = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..] : null;
             string name = arg.Contains('=') ? arg[..arg.IndexOf('=')] : arg;
+            if (name == "--program-write-mode")
+            {
+                value ??= i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] :
+                    throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
+                builder = builder with { ProgramWriteMode = value.ToLowerInvariant() switch
+                {
+                    "program" => FirehoseProgramWriteMode.Program,
+                    "auto" => FirehoseProgramWriteMode.Auto,
+                    "patch" => FirehoseProgramWriteMode.Patch,
+                    _ => throw new ArgumentException(Strings.Cli_ProgramWriteModeInvalid)
+                }, HasExplicitProgramWriteMode = true };
+                continue;
+            }
             if (name == "--mtk-brom-chunk")
             {
                 value ??= i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] :

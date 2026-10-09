@@ -562,4 +562,11 @@ Current {0}, expected {1}</value>
   <data name="Qcom_SignedTableAnnouncementInvalid" xml:space="preserve"><value>The signed-table waiting response is not a complete, valid log XML document. Reconnect the target.</value></data>
   <data name="Qcom_SignedTableModeRequired" xml:space="preserve"><value>The target is waiting for a signed table. Explicitly select Oplus/OnePlus and DigestPt or Legacy, then provide Digest and Sign. Configure VIP signed tables for generic VIP targets.</value></data>
   <data name="Qcom_LogSignedTableAwaitingSelection" xml:space="preserve"><value>Firehose is waiting for a signed table; materials will be requested after vendor and authentication mode selection.</value></data>
+  <data name="Qcom_PatchProgramIoUnsupported" xml:space="preserve"><value>PATCH programming cannot represent special PROGRAM I/O options; use Program mode.</value></data>
+  <data name="Qcom_LogPatchProgramFallback" xml:space="preserve"><value>The device explicitly rejected PROGRAM as unsupported; subsequent writes in this session use PATCH (at most 8 bytes each).</value></data>
+  <data name="Qcom_LogPatchProgramStart" xml:space="preserve"><value>PATCH programming started: LUN {Lun}, start sector {StartSector}, {Bytes} bytes, approximately {Commands} commands.</value></data>
+  <data name="Qcom_LogPatchProgramCommand" xml:space="preserve"><value>PATCH send: LUN {Lun}, sector {Sector}, byte offset {ByteOffset}, length {Bytes}, command {CommandIndex}, {ConfirmedBytes} bytes confirmed.</value></data>
+  <data name="Qcom_LogPatchProgramAck" xml:space="preserve"><value>PATCH ACK: command {CommandIndex}, {ConfirmedBytes}/{TotalBytes} bytes confirmed.</value></data>
+  <data name="Qcom_LogPatchProgramCompleted" xml:space="preserve"><value>PATCH programming completed: {Bytes} bytes, {Commands} commands, elapsed {ElapsedMilliseconds:F0} ms.</value></data>
+  <data name="Qcom_LogPatchProgramFailed" xml:space="preserve"><value>PATCH programming stopped: LUN {Lun}, sector {Sector}, byte offset {ByteOffset}, {ConfirmedBytes}/{TotalBytes} bytes confirmed; uncertain writes are not retried.</value></data>
 </root>

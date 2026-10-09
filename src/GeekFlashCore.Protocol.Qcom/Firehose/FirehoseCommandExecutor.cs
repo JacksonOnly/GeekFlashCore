@@ -66,8 +66,16 @@ internal sealed class FirehoseCommandExecutor
             ? OplusConfigureCommand.BuildCaptured(configure) : command.Build();
         ValidateXml(xml);
         SendXml(ApplyXmlDeclarationAttribute(xml, xmlDeclarationAttribute, UsesLegacyBootstrap && command is ConfigureCommand), commandSent);
-        bool publishDeviceText = command is not (PeekCommand or PokeCommand or GetSha256DigestCommand);
-        return ValidateResponse(_receiver.Receive(publishDeviceText, cancellationToken), expectedRawMode, publishDeviceText);
+        bool publishDeviceText = command is not (PeekCommand or PokeCommand or PatchCommand or GetSha256DigestCommand);
+        FirehoseResponse response = _receiver.Receive(publishDeviceText, cancellationToken);
+        try { return ValidateResponse(response, expectedRawMode, publishDeviceText); }
+        catch (FirehoseNakException exception) when (command is ProgramCommand)
+        {
+            // Only this main command's completed response can authorize a backend switch.
+            // Exceptions from session preflight hooks never receive this marker.
+            FirehoseProgramRejection.MarkUnsupported(exception);
+            throw;
+        }
     }
 
     public FirehoseCommandResult ExecuteXml(

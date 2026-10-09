@@ -28,8 +28,13 @@ public sealed record QcomProtocolOptions
     /// <summary>Automatically run PBL Patch before Loader upload for Sahara-identified SDM845, SDM710 and SM6125 devices of any brand. Disabled by default.</summary>
     public bool EnablePblPatch { get; init; }
 
+    /// <summary>PROGRAM backend for this connection. Auto never retries an uncertain write.</summary>
+    public FirehoseProgramWriteMode ProgramWriteMode { get; init; } = FirehoseProgramWriteMode.Auto;
+
     public void Validate()
     {
+        if (!Enum.IsDefined(ProgramWriteMode))
+            throw new ArgumentOutOfRangeException(nameof(ProgramWriteMode));
         ValidateTimeout(ConnectTimeoutMilliseconds, nameof(ConnectTimeoutMilliseconds));
         ValidateTimeout(ReadTimeoutMilliseconds, nameof(ReadTimeoutMilliseconds));
         ValidateTimeout(WriteTimeoutMilliseconds, nameof(WriteTimeoutMilliseconds));

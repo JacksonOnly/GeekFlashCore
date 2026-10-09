@@ -104,6 +104,9 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
     public bool IsConnected => Volatile.Read(ref _disposed) == 0 && _connected && Transport.IsOpen && _firehose?.State == FirehoseSessionState.Configured;
     public QcomTargetInfo? TargetInfo => Snapshot(_targetInfo);
 
+    /// <summary>The configured PROGRAM backend; automatic fallback is scoped to the connected Firehose session.</summary>
+    public FirehoseProgramWriteMode ProgramWriteMode => _options.ProgramWriteMode;
+
     public async Task ConnectAsync(IProgress<ProgressRecord>? progress = null, CancellationToken ct = default)
     {
         using var operation = Enter();
@@ -687,7 +690,7 @@ public sealed partial class QcomProtocol : IQcomProtocol, IBlockDeviceProvider, 
 
     private void SetStorage(FirehoseConfigureResult result, IFirehoseStoragePolicy? policy = null)
     {
-        _storage = new FirehoseStorageService(_firehose!, result.Configuration, policy);
+        _storage = new FirehoseStorageService(_firehose!, result.Configuration, policy, _options.ProgramWriteMode);
         var info = _storage.GetStorageInfo(0);
         FirehoseBasicDevInfo? basic = _targetInfo?.Firehose?.BasicDevCharacteristics;
         if (basic is not null)

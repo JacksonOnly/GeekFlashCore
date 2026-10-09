@@ -12,13 +12,22 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
     private readonly Dictionary<BlockDeviceId, BlockDeviceDescriptor> _descriptors = [];
     private readonly FirehoseConfigureResponse _configuration;
     private readonly FirehoseProgramExecutor _programExecutor;
+    private readonly FirehoseProgramWriter _programWriter;
     private readonly FirehoseSession _session;
     private readonly IFirehoseStoragePolicy? _policy;
     private Func<(string PublicKey, string Token)>? _onePlusTokenFactory;
 
     public FirehoseStorageService(FirehoseSession session, FirehoseConfigureResponse configuration,
         IFirehoseStoragePolicy? policy = null)
+        : this(session, configuration, policy, FirehoseProgramWriteMode.Auto)
     {
+    }
+
+    /// <summary>Creates storage operations using the selected PROGRAM backend.</summary>
+    public FirehoseStorageService(FirehoseSession session, FirehoseConfigureResponse configuration,
+        IFirehoseStoragePolicy? policy, FirehoseProgramWriteMode programWriteMode)
+    {
+        if (!Enum.IsDefined(programWriteMode)) throw new ArgumentOutOfRangeException(nameof(programWriteMode));
         _policy = policy;
         _session = session ?? throw new ArgumentNullException(nameof(session));
         if (policy is Vendors.Oplus.OplusDigestLegacyPolicy legacy) legacy.Attach(session);
@@ -39,8 +48,10 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
             MemoryName = storage.ToWireString(),
             SectorSizeInBytes = sectorSize
         };
-        _programExecutor = new FirehoseProgramExecutor(_session, GetTransferBufferSize(), policy,
+        _programWriter = new FirehoseProgramWriter(_session, programWriteMode, policy,
             () => _onePlusTokenFactory?.Invoke());
+        _programExecutor = new FirehoseProgramExecutor(_session, GetTransferBufferSize(), policy,
+            writer: _programWriter);
     }
 
     public FirehoseConfigureResponse Configuration => _configuration;
@@ -149,23 +160,31 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
             sectorSize);
         IReadOnlyList<FirehoseStorageRange> ranges = Map(physicalPartitionNumber, startSector, sectors, true);
         int completed = 0;
-        foreach (FirehoseStorageRange range in ranges)
+        try
         {
-            ProgramCommand command = new()
+            foreach (FirehoseStorageRange range in ranges)
             {
-                PhysicalPartitionNumber = physicalPartitionNumber,
-                SectorSizeInBytes = sectorSize,
-                StartSector = Format(range.StartSector),
-                NumPartitionSectors = Format(range.SectorCount),
-                Label = range.Label,
-                FileName = range.FileName
-            };
-            ApplyOnePlusCredential(command);
-            ExecuteTransfer(command, cancellationToken);
-            int count = checked((int)(range.SectorCount * sectorSize));
-            _session.SendRaw(source.Slice(completed, count), GetTransferBufferSize(), cancellationToken);
-            completed = checked(completed + count);
-            _policy?.CommandCompleted();
+                ProgramCommand command = new()
+                {
+                    PhysicalPartitionNumber = physicalPartitionNumber,
+                    SectorSizeInBytes = sectorSize,
+                    StartSector = Format(range.StartSector),
+                    NumPartitionSectors = Format(range.SectorCount),
+                    Label = range.Label,
+                    FileName = range.FileName
+                };
+                int count = checked((int)(range.SectorCount * sectorSize));
+                bool patch = _programWriter.Begin(command, cancellationToken);
+                if (patch) _programWriter.WritePatch(command, source.Slice(completed, count), cancellationToken);
+                else _session.SendRaw(source.Slice(completed, count), GetTransferBufferSize(), cancellationToken);
+                completed = checked(completed + count);
+                if (!patch) _policy?.CommandCompleted();
+            }
+        }
+        catch
+        {
+            if (_programWriter.UsesPatch && completed > 0) _session.Invalidate();
+            throw;
         }
         return completed;
     }
@@ -514,14 +533,6 @@ public sealed class FirehoseStorageService : IBlockDeviceProvider
         GetSpare = ToByte(request.IoOptions.GetSpare),
         EccDisabled = ToByte(request.IoOptions.EccDisabled)
     };
-
-    private void ApplyOnePlusCredential(ProgramCommand command)
-    {
-        if (_onePlusTokenFactory?.Invoke() is not { } credential)
-            return;
-        command.PublicKey = credential.PublicKey;
-        command.Token = credential.Token;
-    }
 
     private void ApplyOnePlusCredential(PatchCommand command)
     {

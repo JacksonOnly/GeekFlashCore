@@ -14,6 +14,23 @@ geekflash --protocol qcom --device-wait-timeout 30000 --loader programmer.elf in
 
 ## rawprogram 与 patch XML
 
+### PROGRAM 经 PATCH 写入
+
+默认 `--program-write-mode auto`：先使用 PROGRAM，仅在发送镜像数据前收到完整、未进入 rawmode 的“不支持 PROGRAM”明确 NAK 时，当前及本会话后续 PROGRAM 写入改用 PATCH。普通 NAK、认证错误、超时、部分响应、Raw 传输中或最终 ACK 失败都不会自动回退；未知拒绝文本仍报错，可显式选择 Patch。当前识别日志或 reason 中的完整 `Unsupported command: program`、`Unknown command: program`、`program is not supported`、`program command is not supported`、`no handler for program`（忽略大小写、首尾空白和末尾句点），不对任意 `not supported` 文本做泛匹配。
+
+```powershell
+# 强制通过 PATCH 写入 misc（镜像为 8192 字节时，512/4096 扇区下发送 1024 条 8 字节 PATCH）
+geekflash --port COM7 --loader programmer.elf --program-write-mode patch write misc misc.img
+# 强制保留原 PROGRAM 线路，禁用自动回退
+geekflash --port COM7 --loader programmer.elf --program-write-mode program write misc misc.img
+```
+
+模式覆盖 `write/program`、rawprogram 中有镜像来源的 PROGRAM、Sparse Raw/Fill 和块设备写入；Sparse Don'tCare 仍跳过，尾部补齐和源文件偏移不变。PATCH 的 `filename="DISK"` 表示写入设备，不会改宿主文件或生成 patch.xml。每条最多 8 字节，按小端 value 写入、不跨扇区；必要时使用 4/2/1 字节。每条等待 ACK 后累计 Bytes 进度，全部确认后才完成。控制台显示阶段摘要和回退提示，原有日志文件包含逐 PATCH 的地址、长度、序号、累计 ACK 和耗时，不记录写入 value、文件内容、Token 或完整 XML。
+
+PATCH 需要逐命令往返，速度显著低于 PROGRAM，不宜无意用于大镜像。失败或中途取消停止、不重试，已确认写入不回滚；发生不确定结果必须重连。特殊 NAND/spare/ECC/skip-bad-block/last-sector 等不能等价表达的 PROGRAM 选项会拒绝转换。认证、Digest/VIP 和厂商会话钩子仍执行，签名表必须匹配转换后的 PATCH 帧；模式不解除 Loader 的认证、权限或命令支持限制。本功能目前只有模拟传输证据，没有实机验证。
+
+Core 使用 `new QcomProtocolOptions { ProgramWriteMode = FirehoseProgramWriteMode.Patch }`；`Program`、`Auto`、`Patch` 同步/异步入口共用实现。旧外部 `IQcomProtocol` 实现的默认属性为 Program；实际 QcomProtocol 和 FirehoseStorageService 默认 Auto。`IFirehoseStoragePolicy.ExecutePatchCommand` 默认仍经过现有 `ExecuteCommand`，不绕过自定义策略授权；自定义策略需正确处理非 Raw 的 PATCH，也可显式实现 `ExecutePatchCommand`，不得把 PATCH 当作 PROGRAM Raw 握手。
+
 联机后输入文件路径或通配符；也可以显式使用命令。以下示例假设当前目录是刷机包的 images：
 
 ```text

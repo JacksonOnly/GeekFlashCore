@@ -98,8 +98,24 @@ internal static class FirehoseCommands
         .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToArray();
 
     // Local implementations are candidates for explicit execution, not device capability evidence.
+    internal static bool CanProgram(IQcomProtocol protocol)
+    {
+        var reported = ReportedCommands(protocol);
+        if (reported.Count == 0) return true;
+        bool program = reported.Contains("program", StringComparer.OrdinalIgnoreCase);
+        bool patch = reported.Contains("patch", StringComparer.OrdinalIgnoreCase);
+        return protocol.ProgramWriteMode switch
+        {
+            FirehoseProgramWriteMode.Program => program,
+            FirehoseProgramWriteMode.Patch => patch,
+            _ => program || patch
+        };
+    }
+
     internal static IReadOnlyList<string> AvailableCommands(IQcomProtocol protocol) =>
-        ReportedCommands(protocol).Count == 0 ? ImplementedCommands : MappedCommands(protocol);
+        ReportedCommands(protocol).Count == 0 ? ImplementedCommands : MappedCommands(protocol)
+            .Where(x => x != "program" || CanProgram(protocol))
+            .Concat(CanProgram(protocol) ? new[] { "program" } : []).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
 
     public static void PrintMapping(IProtocol protocol, ConsoleUi ui)
     {
@@ -112,6 +128,8 @@ internal static class FirehoseCommands
             return;
         }
         else ui.WriteLine(Strings.FormatCli_CommandsMapped(mapped.Count));
+        if (qcom.ProgramWriteMode != FirehoseProgramWriteMode.Program && CanProgram(qcom))
+            ui.WriteLine(Strings.FormatCli_PatchProgramAvailable(qcom.ProgramWriteMode));
         int width = mapped.Count > 0 ? mapped.Max(x => x.Length) : 0;
         foreach (string command in mapped) ui.WriteLine("  " + command.PadRight(width) + " => " + HostCommand(command));
         if (mapped.Count == 0) ui.WriteLine(Strings.Cli_NoCommandEvidence);
@@ -148,7 +166,9 @@ internal static class FirehoseCommands
     {
         if (!protocol.IsConnected) throw new InvalidOperationException(Strings.Cli_ReconnectRequired);
         string wire = command switch { "write" => "program", "reboot" => "power", _ => command };
+        if (wire == "program" && CanProgram(protocol)) return;
         var reported = ReportedCommands(protocol);
+        if (wire == "program") throw new NotSupportedException(Strings.FormatCli_CommandNotSupported(wire));
         if (!(reported.Count == 0 ? ImplementedCommands : reported).Contains(wire, StringComparer.OrdinalIgnoreCase))
             throw new NotSupportedException(Strings.FormatCli_CommandNotSupported(wire));
     }

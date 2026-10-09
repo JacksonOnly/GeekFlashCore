@@ -15,7 +15,8 @@ internal static class CommandCompletion
             var reported = qcom.TargetInfo?.Firehose?.BasicDevCharacteristics?.SupportedFunctions;
             if (reported is { Count: > 0 })
             {
-                if (!reported.Contains("program", StringComparer.OrdinalIgnoreCase)) names.Remove("write");
+                if (!FirehoseCommands.CanProgram(qcom)) names.RemoveAll(x => x is "write" or "program");
+                else names.Add("program");
                 if (!reported.Contains("read", StringComparer.OrdinalIgnoreCase)) names.RemoveAll(x => x is "read" or "partitions" or "browse" or "ls" or "lp");
                 if (!reported.Contains("erase", StringComparer.OrdinalIgnoreCase)) names.Remove("erase");
                 if (!reported.Contains("power", StringComparer.OrdinalIgnoreCase)) names.Remove("reboot");

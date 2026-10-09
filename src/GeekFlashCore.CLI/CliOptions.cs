@@ -63,6 +63,8 @@ internal sealed record CliOptions
     public QcomVendorKind Vendor { get; init; } = QcomVendorKind.Auto;
     public QcomAuthenticationKind? AuthenticationKind { get; init; }
     public bool Verbose { get; init; }
+    public FirehoseProgramWriteMode ProgramWriteMode { get; init; } = FirehoseProgramWriteMode.Auto;
+    public bool HasExplicitProgramWriteMode { get; init; }
     public bool NonInteractive { get; init; }
     public int ConnectTimeout { get; init; } = QcomProtocolOptions.DefaultConnectTimeoutMilliseconds;
     public bool HasExplicitConnectTimeout { get; init; }
@@ -83,7 +85,7 @@ internal sealed record CliOptions
             throw new ArgumentException(Localization.Strings.Cli_TimeoutMustBePositive);
         if (OplusResume && EffectiveOplusMode == OplusDigestMode.None)
             throw new ArgumentException(Localization.Strings.Cli_OplusResumeNeedsMode);
-        if (!Enum.IsDefined(Vendor) || !Enum.IsDefined(OplusMode) ||
+        if (!Enum.IsDefined(Vendor) || !Enum.IsDefined(OplusMode) || !Enum.IsDefined(ProgramWriteMode) ||
             AuthenticationKind is { } auth && !Enum.IsDefined(auth))
             throw new ArgumentException(Localization.Strings.Cli_EnumInvalid);
         if (Port is not null && Usb is not null)
@@ -104,6 +106,7 @@ internal sealed record CliOptions
             sprdRegistration.Type == GeekFlashCore.Protocol.Abstractions.ProtocolType.Sprd;
         if (sprd)
         {
+            if (HasExplicitProgramWriteMode) throw new ArgumentException(Localization.Strings.Cli_ProgramWriteModeQcomOnly);
             if (MtkBromChunkSize is not null || MtkBromZeroLengthPacket)
                 throw new ArgumentException(Localization.Strings.Cli_MtkOptionConflict);
             SprdProtocolHostAdapter.ValidateOptions(this); return;
@@ -113,7 +116,11 @@ internal sealed record CliOptions
         bool mtk = Protocol is not null && ProtocolRegistry.TryResolve(Protocol, out var registration) && registration.Type == GeekFlashCore.Protocol.Abstractions.ProtocolType.Mtk ||
             Protocol is null && Usb is { } identity && TransportResolver.TryParseUsb(identity, out int vid, out int pid) && GeekFlashCore.Protocol.Mtk.MtkDeviceIdentify.IsSupported((ushort)vid, (ushort)pid) ||
             Protocol is null && Command.StartsWith("mtk-", StringComparison.OrdinalIgnoreCase);
-        if (mtk) MtkProtocolHostAdapter.ValidateOptions(this);
+        if (mtk)
+        {
+            if (HasExplicitProgramWriteMode) throw new ArgumentException(Localization.Strings.Cli_ProgramWriteModeQcomOnly);
+            MtkProtocolHostAdapter.ValidateOptions(this);
+        }
         else
         {
             if (MtkPreloader is not null || MtkDaMode is not null || MtkAuthenticationFile is not null || MtkCertificateFile is not null ||

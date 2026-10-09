@@ -41,7 +41,8 @@ public sealed partial class QcomProtocol
                     ? FirehoseScriptSkipReason.NonDiskPatch
                     : entry.Name == "program" && string.IsNullOrWhiteSpace(entry.Optional("filename"))
                         ? FirehoseScriptSkipReason.EmptyFileName
-                        : supported is { Count: > 0 } && !supported.Contains(entry.Name, StringComparer.OrdinalIgnoreCase)
+                        : supported is { Count: > 0 } && !(entry.Name == "program"
+                            ? ScriptProgramAvailable(supported) : supported.Contains(entry.Name))
                             ? FirehoseScriptSkipReason.DeviceCommandUnavailable : null;
             if (skip is { } reason) { skipped.Add(DescribeSkippedEntry(index, entry, reason)); continue; }
             if (actions.LastOrDefault().Name == "power") throw new ArgumentException(Strings.Qcom_ScriptPowerMustBeLast);
@@ -61,6 +62,13 @@ public sealed partial class QcomProtocol
         }
         return new(completed, bytes, skipped.AsReadOnly());
     }
+
+    private bool ScriptProgramAvailable(IReadOnlySet<string> supported) => ProgramWriteMode switch
+    {
+        FirehoseProgramWriteMode.Program => supported.Contains("program"),
+        FirehoseProgramWriteMode.Patch => supported.Contains("patch"),
+        _ => supported.Contains("program") || supported.Contains("patch")
+    };
 
     private FirehoseScriptSkippedEntry DescribeSkippedEntry(int index, FirehoseScriptElement entry, FirehoseScriptSkipReason reason)
     {

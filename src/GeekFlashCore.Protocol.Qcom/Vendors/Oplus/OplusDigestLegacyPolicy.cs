@@ -74,7 +74,7 @@ public sealed class OplusDigestLegacyPolicy : IFirehoseStoragePolicy
         cancellationToken.ThrowIfCancellationRequested();
         Attach(session);
         if (command is not ProgramCommand)
-            return session.Execute(command, expectedRawMode: true, cancellationToken: cancellationToken);
+            return session.Execute(command, expectedRawMode: command is not PatchCommand, cancellationToken: cancellationToken);
         try
         {
             FirehoseCommandResult result = session.Execute(

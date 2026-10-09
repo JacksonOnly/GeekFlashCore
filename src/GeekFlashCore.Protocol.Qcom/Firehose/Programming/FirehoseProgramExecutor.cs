@@ -9,18 +9,20 @@ internal sealed class FirehoseProgramExecutor
     private readonly FirehoseSession _session;
     private readonly int _transferBufferSize;
     private readonly IFirehoseStoragePolicy? _policy;
-    private readonly Func<(string PublicKey, string Token)?>? _onePlusTokenFactory;
+    private readonly FirehoseProgramWriter _writer;
 
     public FirehoseProgramExecutor(FirehoseSession session, int transferBufferSize,
         IFirehoseStoragePolicy? policy = null,
-        Func<(string PublicKey, string Token)?>? onePlusTokenFactory = null)
+        Func<(string PublicKey, string Token)?>? onePlusTokenFactory = null,
+        FirehoseProgramWriter? writer = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         if (transferBufferSize <= 0)
             throw new ArgumentOutOfRangeException(nameof(transferBufferSize));
         _transferBufferSize = transferBufferSize;
         _policy = policy;
-        _onePlusTokenFactory = onePlusTokenFactory;
+        _writer = writer ?? new FirehoseProgramWriter(session, FirehoseProgramWriteMode.Auto, policy,
+            () => onePlusTokenFactory?.Invoke());
     }
 
     public long Execute(
@@ -29,6 +31,7 @@ internal sealed class FirehoseProgramExecutor
         IProgress<long>? progress,
         CancellationToken cancellationToken)
     {
+        _writer.ValidateOptions(request.IoOptions);
         using FirehoseProgramPlan plan = FirehoseProgramPlanner.Create(request, source, cancellationToken);
         var mappedSegments = new IReadOnlyList<FirehoseStorageRange>[plan.Segments.Count];
         for (int index = 0; index < plan.Segments.Count; index++)
@@ -62,32 +65,38 @@ internal sealed class FirehoseProgramExecutor
             transfer.Start(total);
         }
         long completed = 0;
-        for (int index = 0; index < plan.Segments.Count; index++)
+        try
         {
-            FirehoseProgramSegment segment = plan.Segments[index];
-            using Stream segmentSource = segment.OpenRead(plan.Source);
-            long sourceRemaining = segment.SourceLength;
-            foreach (FirehoseStorageRange range in mappedSegments[index])
+            for (int index = 0; index < plan.Segments.Count; index++)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                ProgramCommand command = CreateCommand(request, range);
-                if (_onePlusTokenFactory?.Invoke() is { } credential)
+                FirehoseProgramSegment segment = plan.Segments[index];
+                using Stream segmentSource = segment.OpenRead(plan.Source);
+                long sourceRemaining = segment.SourceLength;
+                foreach (FirehoseStorageRange range in mappedSegments[index])
                 {
-                    command.PublicKey = credential.PublicKey;
-                    command.Token = credential.Token;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    ProgramCommand command = CreateCommand(request, range);
+                    long wireLength = checked(range.SectorCount * request.SectorSizeInBytes);
+                    long sourceLength = Math.Min(sourceRemaining, wireLength);
+                    var segmentProgress = progress is null ? null : new AggregateProgress(progress, completed);
+                    bool patch = _writer.Begin(command, cancellationToken);
+                    long written = patch
+                        ? _writer.WritePatch(command, segmentSource, sourceLength, wireLength,
+                            request.PaddingByte, segmentProgress, cancellationToken)
+                        : _session.SendRaw(segmentSource, sourceLength, wireLength,
+                            _transferBufferSize, request.PaddingByte, segmentProgress, cancellationToken).BytesTransferred;
+                    sourceRemaining -= sourceLength;
+                    completed = checked(completed + written);
+                    if (!patch) _policy?.CommandCompleted();
                 }
-                if (_policy is null)
-                    _session.Execute(command, expectedRawMode: true, cancellationToken: cancellationToken);
-                else _policy.ExecuteCommand(_session, command, cancellationToken);
-                long wireLength = checked(range.SectorCount * request.SectorSizeInBytes);
-                long sourceLength = Math.Min(sourceRemaining, wireLength);
-                var segmentProgress = progress is null ? null : new AggregateProgress(progress, completed);
-                FirehoseCommandResult result = _session.SendRaw(segmentSource, sourceLength, wireLength,
-                    _transferBufferSize, request.PaddingByte, segmentProgress, cancellationToken);
-                sourceRemaining -= sourceLength;
-                completed = checked(completed + result.BytesTransferred);
-                _policy?.CommandCompleted();
             }
+        }
+        catch
+        {
+            // Opening a later sparse region or entering the next mapped range can
+            // fail between PATCH transfers, after earlier bytes were acknowledged.
+            if (_writer.UsesPatch && completed > 0) _session.Invalidate();
+            throw;
         }
         (progress as ITransferProgress)?.Complete(completed);
         return completed;

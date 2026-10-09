@@ -7,6 +7,9 @@ public interface IQcomProtocol : IProtocol,IBlockDeviceProvider
 {
     QcomTargetInfo? TargetInfo { get; }
 
+    /// <summary>Configured PROGRAM backend. Existing external implementations retain PROGRAM-only behavior.</summary>
+    FirehoseProgramWriteMode ProgramWriteMode => FirehoseProgramWriteMode.Program;
+
     SaharaTargetInfo ProbeSahara(IProgress<ProgressRecord>? progress = null);
 
     void UploadSaharaImages(

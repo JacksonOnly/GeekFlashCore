@@ -14,8 +14,13 @@ public interface IFirehoseStoragePolicy
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return session.Execute(command, expectedRawMode: true, cancellationToken: cancellationToken);
+        return session.Execute(command, expectedRawMode: command is not PatchCommand, cancellationToken: cancellationToken);
     }
 
     void CommandCompleted() { }
+
+    /// <summary>Executes an acknowledged non-raw PATCH for a range already authorized by Map.</summary>
+    /// <remarks>Routes through ExecuteCommand so existing policy authorization is not bypassed. PATCH must not enter raw mode.</remarks>
+    FirehoseCommandResult ExecutePatchCommand(FirehoseSession session, PatchCommand command,
+        CancellationToken cancellationToken) => ExecuteCommand(session, command, cancellationToken);
 }

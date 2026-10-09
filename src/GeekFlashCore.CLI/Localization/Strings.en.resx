@@ -60,6 +60,7 @@
   --oneplus-projid ID[,ID]
   --vendor NAME
   --auth xiaomi (override built-in signature)
+  --program-write-mode &lt;program|auto|patch&gt;
   --verbose</value></data>
   <data name="Cli_UnknownOption" xml:space="preserve"><value>Unknown option {0}.</value></data>
   <data name="Cli_MissingOptionValue" xml:space="preserve"><value>Option {0} requires a value.</value></data>
@@ -462,4 +463,7 @@ Keys go only to files.</value></data>
   <data name="Cli_MtkUsbDiscoveryRetry" xml:space="preserve"><value>MTK USB enumeration or opening did not complete. Waiting for a device; press Ctrl+C to stop. See the file log for diagnostics.</value></data>
   <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>The current MTK operation has stopped and the session is invalid. Reconnect the device; authentication, DA and read/write commands will not be retried automatically.</value></data>
   <data name="Cli_MtkBromChunkInvalid" xml:space="preserve"><value>BROM host upload chunk must be 64–1048576 bytes.</value></data>
+  <data name="Cli_ProgramWriteModeQcomOnly" xml:space="preserve"><value>--program-write-mode is only available for Qualcomm.</value></data>
+  <data name="Cli_ProgramWriteModeInvalid" xml:space="preserve"><value>PROGRAM write mode must be program, auto, or patch.</value></data>
+  <data name="Cli_PatchProgramAvailable" xml:space="preserve"><value>Framework PROGRAM mode: {0}; the PATCH backend still requires device acceptance. Command lists retain device-reported values.</value></data>
 </root>

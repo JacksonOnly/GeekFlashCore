@@ -47,6 +47,7 @@ public sealed class FirehoseSession : IDisposable
     }
 
     public FirehoseSessionState State => (FirehoseSessionState)Volatile.Read(ref _state);
+    internal bool ProgramUsesPatch { get; set; }
     internal FirehoseStorage PreferredInitialStorage => _executor.UsesLegacyBootstrap ? FirehoseStorage.Ufs : FirehoseStorage.Emmc;
     internal int LegacyConfirmationTimeout => _defaultReadTimeoutMilliseconds;
 

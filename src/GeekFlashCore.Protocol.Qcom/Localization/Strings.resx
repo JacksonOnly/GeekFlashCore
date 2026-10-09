@@ -459,4 +459,11 @@
   <data name="Qcom_SignedTableAnnouncementInvalid" xml:space="preserve"><value>签名表等待响应不是完整有效的日志 XML，请重新连接。</value></data>
   <data name="Qcom_SignedTableModeRequired" xml:space="preserve"><value>设备正在等待签名表。请明确选择 Oplus/OnePlus 及 DigestPt 或 Legacy 并提供 Digest、Sign；通用 VIP 设备请配置 VIP 签名表。</value></data>
   <data name="Qcom_LogSignedTableAwaitingSelection" xml:space="preserve"><value>已识别正在等待签名表的 Firehose；将在选择品牌和认证模式后请求材料。</value></data>
+  <data name="Qcom_PatchProgramIoUnsupported" xml:space="preserve"><value>PATCH 写入不能表达特殊 PROGRAM I/O 选项，请使用 Program 模式。</value></data>
+  <data name="Qcom_LogPatchProgramFallback" xml:space="preserve"><value>设备明确拒绝 PROGRAM 命令，本会话后续写入改用 PATCH（每次最多 8 字节）。</value></data>
+  <data name="Qcom_LogPatchProgramStart" xml:space="preserve"><value>PATCH 写入开始：LUN {Lun}，起始扇区 {StartSector}，{Bytes} 字节，预计 {Commands} 条命令。</value></data>
+  <data name="Qcom_LogPatchProgramCommand" xml:space="preserve"><value>PATCH 发送：LUN {Lun}，扇区 {Sector}，字节偏移 {ByteOffset}，长度 {Bytes}，序号 {CommandIndex}，已确认 {ConfirmedBytes} 字节。</value></data>
+  <data name="Qcom_LogPatchProgramAck" xml:space="preserve"><value>PATCH ACK：命令 {CommandIndex}，已确认 {ConfirmedBytes}/{TotalBytes} 字节。</value></data>
+  <data name="Qcom_LogPatchProgramCompleted" xml:space="preserve"><value>PATCH 写入完成：{Bytes} 字节，{Commands} 条命令，耗时 {ElapsedMilliseconds:F0} ms。</value></data>
+  <data name="Qcom_LogPatchProgramFailed" xml:space="preserve"><value>PATCH 写入停止：LUN {Lun}，扇区 {Sector}，字节偏移 {ByteOffset}，已确认 {ConfirmedBytes}/{TotalBytes} 字节；不重试未知结果。</value></data>
 </root>

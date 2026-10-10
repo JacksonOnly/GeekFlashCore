@@ -31,6 +31,7 @@
 <data name="WireZlp" xml:space="preserve"><value>MTK {BootStage}: command 0x{Command:X8}, explicit compatibility ZLP sent.</value></data>
 <data name="SessionPhase" xml:space="preserve"><value>MTK: {Phase}.</value></data>
 <data name="SessionFailure" xml:space="preserve"><value>MTK session invalidated: state {SessionState}, stage {BootStage}, command {CommandName} (0x{Command:X8}), status {Status}, type {ExceptionType}. Reconnect required.</value></data>
+<data name="XmlSessionFailure" xml:space="preserve"><value>MTK XML session invalidated: stage {BootStage}, command {CommandName} (0x{Command:X8}), result {ResultCode}, message-code {MessageCode}. Reconnect required.</value></data>
 <data name="PhaseOpening" xml:space="preserve"><value>Opening USB</value></data>
 <data name="PhaseHandshaking" xml:space="preserve"><value>BROM/Preloader handshake</value></data>
 <data name="PhaseProbed" xml:space="preserve"><value>BROM/Preloader identified</value></data>

@@ -63,7 +63,8 @@ internal static class MtkXmlCodec
     }
     private static byte[] CreateValidated(string command,IReadOnlyDictionary<string,string> parameters,string[] allowed)
     {
-        if(parameters.Count!=allowed.Length || parameters.Any(p=>!allowed.Contains(p.Key,StringComparer.Ordinal) || p.Value is null || p.Value.Length>4096))throw new MtkCapabilityException("XML command/parameters");
+        int valueLimit = command == MtkXmlCommand.SecuritySetAllinoneSignature ? 8192 : 4096;
+        if(parameters.Count!=allowed.Length || parameters.Any(p=>!allowed.Contains(p.Key,StringComparer.Ordinal) || p.Value is null || p.Value.Length>valueLimit))throw new MtkCapabilityException("XML command/parameters");
         var text = new StringBuilder();
         using (var writer = XmlWriter.Create(text, new XmlWriterSettings { OmitXmlDeclaration = true }))
         {
@@ -105,6 +106,7 @@ internal static class MtkXmlCodec
                 e.Ancestors().Count() > 8 || e.Name.NamespaceName.Length != 0 || e.Attributes().Any(a =>
                     !(allowPropertyKey && e.Name == "item" && a.Name == "key" && a.Value.Length <= 128) &&
                     !(allowPropertyKey && e == root && e.Name == "sys_prop" && a.Name == "version" && a.Value == "1.0") &&
+                    !(allowPropertyKey && e == root && e.Name == "sys_property" && a.Name == "version" && a.Value == "1.0") &&
                     !(allowPartitionVersion && e == root && e.Name == "partition_table" && a.Name == "version" && a.Value == "1.0"))))
                 throw new MtkResourceException("XML structure");
             return root;

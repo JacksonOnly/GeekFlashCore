@@ -102,6 +102,7 @@ public interface IMtkDaChannel
     void BeginXmlCommand(string command, IReadOnlyDictionary<string, string> parameters);
     /// <summary>Requires END with a successful result and acknowledges it.</summary>
     void EndXmlCommand();
+    void EndXmlCommandIgnoringResult() => EndXmlCommand();
     /// <summary>Sends a plain XML acknowledgment.</summary>
     void AcknowledgeXml();
     /// <summary>Sends an XML acknowledgment carrying a decimal value (OK@value).</summary>
@@ -110,6 +111,11 @@ public interface IMtkDaChannel
     long ReceiveXmlFile(Stream destination, long? expectedLength, long maximumLength);
     /// <summary>Sends exactly the virtual file length; the borrowed source remains open.</summary>
     void SendXmlFile(Stream source, long length);
+    bool SupportsXmlOverflow => false;
+    void SendXmlOverflow(Stream source, long advertisedLength, ReadOnlySpan<byte> trailer)
+    {
+        throw new MtkCapabilityException("XML overflow");
+    }
     /// <summary>Reads ordinary aligned storage inside this gate.</summary>
     void ReadFlash(MtkFlashRange range, Stream destination);
     /// <summary>Writes ordinary aligned storage inside this gate and invalidates cached GPT metadata.</summary>

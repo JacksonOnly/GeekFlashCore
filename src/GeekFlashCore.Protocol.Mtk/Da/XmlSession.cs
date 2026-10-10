@@ -29,22 +29,42 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         if (!matches)
             throw wire.Failure();
         var result = root.Descendants("result").ToArray();
-        if (result.Length > 1 || command == MtkXmlCommand.End && result.Length != 1 || result.Length == 1 && (result[0].HasElements || result[0].Value != "OK"))
+        if (result.Length > 1 || command == MtkXmlCommand.End && result.Length != 1 || result.Length == 1 && result[0].HasElements)
             throw wire.Failure();
+        if (result.Length == 1 && result[0].Value != "OK")
+        {
+            var messages = root.Descendants("message").ToArray();
+            string? message = messages.Length == 1 && !messages[0].HasElements ? messages[0].Value : null;
+            throw wire.XmlFailure(result[0].Value, message);
+        }
     }
 
-    private void ReadAck()
+    private bool ReadAck(bool allowError = false)
     {
         string ack = ReceiveText(64);
-        wire.TraceStatus(ack is "OK" or "OK@0x0" ? 0u : 1u, ack is "OK" or "OK@0x0");
-        if (ack is not ("OK" or "OK@0x0"))
+        bool accepted = ack is "OK" or "OK@0x0";
+        bool ignoredError = allowError && ack == "ERR";
+        wire.TraceStatus(accepted ? 0u : 1u, accepted || ignoredError);
+        if (!accepted && !ignoredError)
             throw wire.Failure();
+        return ignoredError;
     }
 
     public void Lifetime(string name)
     {
         var root = ReceiveXml();
         Require(name, root);
+        Ack();
+    }
+
+    public void LifetimeIgnoringResult(string name)
+    {
+        var root = ReceiveXml();
+        bool matches = MtkXmlCodec.Value(root, "command") == MtkXmlCommand.Prefix + name;
+        wire.Logger.Debug(Strings.XmlLifecycle, wire.Stage, wire.CommandName, name, matches);
+        var result = root.Descendants("result").ToArray();
+        if (!matches || result.Length != 1 || result[0].HasElements || result[0].Value.Length == 0)
+            throw wire.Failure();
         Ack();
     }
 
@@ -92,7 +112,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
             bool unsupportedMessage = results[0].Value == "ERR" && messages.Length == 1 &&
                 !messages[0].HasElements && messages[0].Value == "ERR!UNSUPPORTED";
             if (!unsupportedResult && !unsupportedMessage)
-                throw wire.Failure();
+                throw wire.XmlFailure(results[0].Value, messages.Length == 1 && !messages[0].HasElements ? messages[0].Value : null);
         }
 
         Ack();
@@ -472,6 +492,43 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         {
             ArrayPool<byte>.Shared.Return(buffer, true);
         }
+    }
+
+    public void DownloadOverflow(Stream input, long advertisedLength, ReadOnlySpan<byte> trailer)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        if (advertisedLength <= 0 || advertisedLength > options.MaximumFrameSize || trailer.IsEmpty)
+            throw new MtkResourceException("XML overflow length");
+        if (!input.CanSeek || input.Length - input.Position <= 0 || input.Length - input.Position > options.MaximumFrameSize)
+            throw new MtkResourceException("XML overflow source");
+        int sourceLength = checked((int)(input.Length - input.Position));
+        int actualLength = checked(sourceLength + trailer.Length);
+        if (actualLength > options.MaximumFrameSize || advertisedLength >= actualLength)
+            throw new MtkResourceException("XML overflow length");
+        XElement request = ReceiveXml();
+        Require(MtkXmlCommand.DownloadFile, request);
+        _ = PacketSize(request);
+        Ack();
+        Ack(advertisedLength.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        ReadAck();
+        byte[] payload = ArrayPool<byte>.Shared.Rent(actualLength);
+        try
+        {
+            input.ReadExactly(payload.AsSpan(0, sourceLength));
+            trailer.CopyTo(payload.AsSpan(sourceLength));
+            Ack("0");
+            ReadAck();
+            wire.SendFrame(payload.AsSpan(0, actualLength));
+            ReadAck();
+            wire.SendFrame("GETBAITED\0"u8);
+            ReadAck(allowError: true);
+        }
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(payload.AsSpan(0, actualLength));
+            ArrayPool<byte>.Shared.Return(payload, true);
+        }
+        LifetimeIgnoringResult(MtkXmlCommand.End);
     }
 
     private int PacketSize(XElement request)

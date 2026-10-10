@@ -31,6 +31,7 @@
 <data name="WireZlp" xml:space="preserve"><value>MTK {BootStage}：命令 0x{Command:X8}，已发送显式兼容 ZLP。</value></data>
 <data name="SessionPhase" xml:space="preserve"><value>MTK：{Phase}。</value></data>
 <data name="SessionFailure" xml:space="preserve"><value>MTK 会话失效：状态 {SessionState}，阶段 {BootStage}，命令 {CommandName}（0x{Command:X8}），状态码 {Status}，类型 {ExceptionType}。需要重新连接。</value></data>
+<data name="XmlSessionFailure" xml:space="preserve"><value>MTK XML 会话失效：阶段 {BootStage}，命令 {CommandName}（0x{Command:X8}），result {ResultCode}，message-code {MessageCode}。需要重新连接。</value></data>
 <data name="PhaseOpening" xml:space="preserve"><value>打开 USB</value></data>
 <data name="PhaseHandshaking" xml:space="preserve"><value>BROM/Preloader 握手</value></data>
 <data name="PhaseProbed" xml:space="preserve"><value>已识别 BROM/Preloader</value></data>

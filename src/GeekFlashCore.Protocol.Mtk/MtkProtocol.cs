@@ -477,8 +477,12 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             _transport.Close();
         }
         catch { /* Primary wire failure remains the reported cause. */ }
-        _logger.Error(Strings.SessionFailure, previousState, _wire.Stage, _wire.CommandName, _wire.Command,
-            exception is MtkProtocolException protocol ? protocol.Status : (uint?)null, exception?.GetType().Name ?? "SessionInvalidation");
+        if (exception is MtkProtocolException { XmlResultCode: not null } xml)
+            _logger.Error(Strings.XmlSessionFailure, _wire.Stage, _wire.CommandName, _wire.Command,
+                xml.XmlResultCode, xml.XmlMessageCode ?? "[none]");
+        else
+            _logger.Error(Strings.SessionFailure, previousState, _wire.Stage, _wire.CommandName, _wire.Command,
+                exception is MtkProtocolException protocol ? protocol.Status : (uint?)null, exception?.GetType().Name ?? "SessionInvalidation");
     }
     public MtkStorageInfo GetStorageInfo() => Execute(() => { Ready(); return _storage!; });
     private MtkStorageRegion Range(MtkFlashRange range)
@@ -722,6 +726,13 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 throw new MtkCapabilityException("XML channel");
             xml.Lifetime("END");
         }
+        public void EndXmlCommandIgnoringResult()
+        {
+            Check();
+            if (owner._da is not XmlSession xml)
+                throw new MtkCapabilityException("XML channel");
+            xml.LifetimeIgnoringResult("END");
+        }
         public void AcknowledgeXml()
         {
             Check();
@@ -749,6 +760,14 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             if (owner._da is not XmlSession xml)
                 throw new MtkCapabilityException("XML channel");
             xml.Download(length, source);
+        }
+        public bool SupportsXmlOverflow => true;
+        public void SendXmlOverflow(Stream source, long advertisedLength, ReadOnlySpan<byte> trailer)
+        {
+            Check();
+            if (owner._da is not XmlSession xml)
+                throw new MtkCapabilityException("XML channel");
+            xml.DownloadOverflow(source, advertisedLength, trailer);
         }
         public void ReadFlash(MtkFlashRange range, Stream destination)
         {

@@ -51,12 +51,15 @@ internal sealed class ProgressDisplay(TimeProvider clock)
         string time = completed ? Strings.FormatCli_ProgressDuration(elapsed) : Strings.FormatCli_ProgressElapsed(elapsed);
         string details = $"{percent} {quantity}";
         string? rate = null;
-        // Source reads can lead device ACKs. Only Completed includes the final device
-        // confirmation, so an in-flight byte count is not an end-to-end transfer rate.
-        if (record.Unit == ProgressUnit.Bytes && completed)
-            rate = Strings.FormatCli_ProgressSpeed(Rate(current, seconds));
-        else if (record.Unit == ProgressUnit.Bytes && record.Total > 0 && current >= record.Total)
-            time += Environment.NewLine + "  " + Strings.Cli_ProgressWaiting;
+        if (record.Unit == ProgressUnit.Bytes)
+        {
+            // Running speed averages reported byte progress, which can lead device ACKs.
+            // Only Completed is the end-to-end average including final confirmation.
+            string speed = Rate(current, seconds);
+            rate = completed ? Strings.FormatCli_ProgressSpeed(speed) : Strings.FormatCli_ProgressTransferSpeed(speed);
+            if (!completed && record.Total > 0 && current >= record.Total)
+                time += Environment.NewLine + "  " + Strings.Cli_ProgressWaiting;
+        }
         string label = SingleLine(record.Label);
         int width = terminalWidth >= 60 ? Math.Min(24, terminalWidth - Cells(details) - 6) : 0;
         string bar = width >= 8 ? " [" + new string('#', (int)(ratio * width)) + new string('-', width - (int)(ratio * width)) + "]" : "";

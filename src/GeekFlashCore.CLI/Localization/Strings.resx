@@ -41,6 +41,7 @@
   <data name="Cli_FixGptDescription" xml:space="preserve"><value>修复指定 LUN 的 GPT；grow=1 扩展最后分区。</value></data>
   <data name="Cli_ReconnectRequired" xml:space="preserve"><value>设备未连接或会话已失效，请先执行 connect 重新连接。</value></data>
   <data name="Cli_ProgressSpeed" xml:space="preserve"><value>平均速度：{0}</value></data>
+  <data name="Cli_ProgressTransferSpeed" xml:space="preserve"><value>传输速度：{0}（过程均值）</value></data>
   <data name="Cli_ProgressWaiting" xml:space="preserve"><value>等待操作完成</value></data>
   <data name="Cli_ProgressElapsed" xml:space="preserve"><value>已用时间：{0}</value></data>
   <data name="Cli_ProgressDuration" xml:space="preserve"><value>总用时  ：{0}</value></data>

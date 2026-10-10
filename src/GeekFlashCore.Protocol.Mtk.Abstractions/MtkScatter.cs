@@ -14,6 +14,8 @@ public sealed record MtkScatterPlan(long Generation,IReadOnlyList<MtkScatterPlan
 public interface IMtkDaPartitionChannel
 {
     IReadOnlyList<MtkPartitionRange> GetPartitionRanges();
+    /// <summary>Native named read within the same gate. Destination is borrowed; the returned length is bounded by maximumLength.</summary>
+    long ReadNamedPartition(string name,Stream destination,long maximumLength)=>throw new MtkCapabilityException("native partition upload channel");
     /// <summary>Native bootloader/header-aware write within the same gate. Stream is borrowed and already preflighted.</summary>
     void WriteNamedPartition(string name,Stream source,long length)=>throw new MtkCapabilityException("native partition channel");
 }

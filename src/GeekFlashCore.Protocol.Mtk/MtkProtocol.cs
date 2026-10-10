@@ -639,10 +639,25 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         {
             Check();return Array.AsReadOnly(owner.LoadPartitionsCore().Select(p=>new MtkPartitionRange(p.Name,p.Range)).ToArray());
         }
+        public long ReadNamedPartition(string name,Stream destination,long maximumLength)
+        {
+            Check();name=PartitionName(name);ArgumentNullException.ThrowIfNull(destination);
+            if(!destination.CanWrite || maximumLength<=0)throw new ArgumentException(nameof(destination));
+            var boot=owner.PreloaderRegion(new PartitionTarget { Name=name });
+            if(boot is not null)maximumLength=Math.Min(maximumLength,boot.Length);
+            return owner._da switch
+            {
+                XFlashSession x=>x.ReadNamed(name,destination,maximumLength),
+                XmlSession xml=>xml.ReadNamed(name,destination,maximumLength),
+                _=>owner.ReadLegacyNamed(name,destination,maximumLength)
+            };
+        }
         public void WriteNamedPartition(string name,Stream source,long length)
         {
             Check();owner.NamedWritePolicy();name=PartitionName(name);ArgumentNullException.ThrowIfNull(source);
             if(length<=0 || !source.CanRead || source.CanSeek && source.Length-source.Position!=length)throw new MtkResourceException("native partition source");
+            var boot=owner.PreloaderRegion(new PartitionTarget { Name=name });
+            if(boot is not null && length>boot.Length)throw new MtkResourceException("Preloader image length");
             if(owner._da is XFlashSession x)x.WriteNamed(name,source,length);
             else if(owner._da is XmlSession xml)xml.WriteNamed(name,source,length);
             else throw new MtkCapabilityException("native partition dialect");

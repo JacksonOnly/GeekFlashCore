@@ -311,6 +311,7 @@ internal sealed class XFlashSession(MtkWire wire, MtkProtocolOptions options) : 
     }
     public void WriteNamed(string name, Stream source, long length)
     {
+        QueryPacketLength();
         DownloadInfo(MtkXFlashCommand.StartDlInfo);
         Command(MtkXFlashCommand.Download);
         byte[] size = new byte[8];

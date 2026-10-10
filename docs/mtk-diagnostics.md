@@ -88,7 +88,7 @@ bbb.txt 还原的 MT6895 ARM DA2 中已有完整加载器，但 `Bad %s` 引用�
 
 ## GPT 与 Boot 区域
 
-分区发现不读取eMMC BOOT1/2或UFS LU0/LU1的头尾GPT；列表的Preloader/backup容量仅是已报告的Boot区域上限。命名读写现走XFlash/XML原生接口处理启动头，读取实际镜像长度，不将整个Boot区当作Preloader。UFS User为wire3（LU2），eMMC User为wire8，不能使用通常的零基LUN号替换DA wire编号。原始sector入口仍显式访问1/2，eMMC GP独立GPT能力保留；User CRC/主备/坏表边界不降级。实机完整列表待确认。
+分区发现不读取eMMC BOOT1/2或UFS LU0/LU1的头尾GPT；列表直接使用preloader、preloader_backup、pgpt、sgpt，前两项容量仅是已报告的Boot区域上限，DA的GPT wire名仍PGPT/SGPT。磁盘GPT内的同名保留映射不再次加入快照；CRC/几何仍严格校验。普通和Scatter Preloader均走XFlash v5 UPLOAD/DOWNLOAD或XML v6 READ/WRITE-PARTITION处理启动头，SDK完整备份同样命名读取实际镜像长度，不将整个Boot区当作Preloader；不依赖Scatter的BOOTLOADERS标记，不回退READ/WRITE-FLASH。Scatter→GPT只保留普通USER条目，排除四种映射及旧别名，保留尾区/NEEDRESIZE计算。UFS User为wire3（LU2），eMMC User为wire8，不能使用通常的零基LUN号替换DA wire编号。原始sector入口仍显式访问1/2，eMMC GP独立GPT能力保留；User CRC/主备/坏表边界不降级。实机完整列表和命名Preloader写入待确认。
 
 已观察UFS 4K GPT可声明FirstUsable34，却有已通过原始CRC的分区从8开始。只对UFS User/128×128/明确物理数组布局，以元数据末端6严格验证；PGPT截止真实首分区（抓包32KiB），避免覆盖分区。其他布局不降级，CRC/重叠/越界/身份/名字校验继续。兼容说明移至Debug，不改写设备；主备几何、CRC布尔和失败阶段也仅Debug记录，不记录校验数值/GUID/载荷。
 

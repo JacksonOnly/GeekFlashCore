@@ -30,6 +30,8 @@ public sealed partial class MtkProtocol : IMtkNamedPartitionAccess
         return Execute(()=>
         {
             Ready();
+            var boot=PreloaderRegion(new PartitionTarget { Name=name });
+            if(boot is not null)maximumLength=Math.Min(maximumLength,boot.Length);
             var trace = StartTransfer(MtkTransferKind.NamedRead, null, 0, maximumLength, name);
             long length = _da switch
             {
@@ -42,6 +44,7 @@ public sealed partial class MtkProtocol : IMtkNamedPartitionAccess
     }
     private long ReadLegacyNamed(string name,Stream destination,long maximum)
     {
+        if(MtkPartitionNames.IsPreloader(name))throw new MtkCapabilityException("native Preloader upload/dialect");
         var part=LoadPartitionsCore().SingleOrDefault(p=>MtkPartitionNames.Matches(p.Name,name));
         if(part.Name is null || part.Range.Length>maximum)throw new MtkResourceException("partition name/limit");var region=Range(part.Range);_da!.Read(region,part.Range.Offset,part.Range.Length,destination);return part.Range.Length;
     }
@@ -52,10 +55,13 @@ public sealed partial class MtkProtocol : IMtkNamedPartitionAccess
         Execute(()=>
         {
             Ready();NamedWritePolicy();if(_da is not (XFlashSession or XmlSession))throw new MtkCapabilityException("native named download/dialect");
+            var boot=PreloaderRegion(new PartitionTarget { Name=name });
+            if(boot is not null)maximumExpandedLength=Math.Min(maximumExpandedLength,boot.Length);
             if(source.Length<=0)throw new MtkResourceException("partition source length");
             using Stream input=source.OpenStream();if(!input.CanRead || !input.CanSeek || input.Position!=0 || input.Length!=source.Length)throw new MtkResourceException("partition source");
             if(SparseImageParser.IsSparse(input))
             {
+                if(boot is not null)throw new MtkResourceException("Preloader image source");
                 using var block=new StreamBlockDevice(input,source.Length,DeviceOwnership.Borrow);using var sparse=SparseImageParser.Open(block,DeviceOwnership.Borrow);
                 if(sparse.ExpandedLength<=0 || sparse.ExpandedLength>maximumExpandedLength)throw new MtkResourceException("partition sparse capacity");
                 if(sparse.ChecksumStatus==SparseChecksumStatus.NotVerified)sparse.VerifyChecksum(cancellationToken:cancellationToken);

@@ -76,13 +76,15 @@ RPMB 与普通块设备分离，块固定为 256 字节；默认区域 0、起�
 Preloader 接入先发送一次 A0 唤醒。若首步尚未应答且仍收到完整 `READY`，仅在当前接收缓存耗尽时有界补发首步 A0，首步最多 5 次；不会重放后续握手、FD 查询或 DA 上传。启动前缀默认最多 1024 字节，并受同一握手截止时间约束；SDK 显式设置 `MaximumHandshakePrefix` 仍是严格总字节上限。BROM 不执行 READY 同步，保持原 USB 读写形态；该公共默认额度也适用于 BROM，显式设置 64 可保留旧额度。
 
 ```text
-read Preloader preloader.bin
-read PreloaderBackup preloader-backup.bin
-write Preloader preloader.bin
-write PreloaderBackup preloader.bin
+read preloader preloader.bin
+read preloader_backup preloader-backup.bin
+write preloader preloader.bin
+write preloader_backup preloader.bin
 ```
 
-XFlash/XML 使用 DA 原生命名接口处理启动头；读取以 BOOT 区容量为上限，实际输出为 DA 返回的镜像长度，不导出整个 BOOT1/2。写入不将 bin 原样写入原始 BOOT 区。Legacy 不猜测头布局，拒绝此命名入口；命名擦除也拒绝，原始 sector 操作仍是显式危险入口。
+分区列表直接显示 `preloader`、`preloader_backup`、`pgpt`、`sgpt`，它们是辅助映射，不是 USER GPT 条目；历史 `PreloaderBackup`、`Preloader Backup`、`PrimaryGPT`、`BackupGPT` 等仍作为输入别名接受。
+
+XFlash v5 使用 `UPLOAD`/`DOWNLOAD` 分区名，命名写入先查询包长，再按 `START_DL_INFO → DOWNLOAD(名称,原文件长度) → checksum/data/最终状态 → END_DL_INFO` 完成；XML v6 使用 `READ-PARTITION`/`WRITE-PARTITION` 和完整 END/ACK。启动头由 DA 处理，宿主不添加 header、补零或使用 `WRITE-FLASH` 写命名 Preloader。读取以已报告 BOOT 容量为上限，输出为 DA 返回的镜像实际长度，不按整个 BOOT1/2 裸读。命名拒绝或不支持时不回退裸区域；Legacy 不猜测头布局，拒绝此读写入口。Super 构建镜像不能以命名 Preloader 为写入目标。通用命名擦除仍拒绝，原始 sector 操作保持显式底层入口，不等同安全的 Preloader 写入（完整 `UFS_BOOT`/`EMMC_BOOT` 布局由调用者负责）。
 
 连接后离线确认 DA2 确实包含扩展加载器，再解析 Penumbra 函数地址、填充嵌入扩展指针表，通过 BOOT-TO 上传并验证 ACK/context。只有这些步骤都成功才输出“DA 扩展已加载”。缺少加载器、UART 或函数地址时不上传，保持标准存储能力；在途/坏帧/ACK失败仍失效，完整END之后的本地解析错误可保留标准DA但不发布扩展Ready。XFlash DA2 的 Thumb2 定位独立于 DA1 的 ARM 架构。
 
@@ -111,6 +113,8 @@ eMMC/UFS USER 的完整布局按名称、偏移和长度与设备比较。不一
 
 CLI 仅备份分区表，不再备份所有待刷分区，也不额外备份/恢复 Protected 或 BinRegion 内容。布局变化可能使原数据不可用，GPT 备份不能恢复被覆盖的分区内容；确认提示明确说明此风险。写后回读、Sparse 空洞、启动头处理、有限预算与未知写结果不重试仍保留。SDK 的既有 `MtkScatterService.Apply` 默认完整备份/保护数据迁移行为与签名不变；需要相同轻量流程的宿主使用新增 `ApplyWithBackupPolicy` 入口并显式指定 `MtkScatterBackupPolicy.PartitionTableOnly`。
 
+Scatter 的 Preloader 项按名称强制使用命名接口，即使 `operation_type` 是 `UPDATE` 或 `INVISIBLE` 也不裸写 BOOT；`BOOTLOADERS` 的原生命名行为保留。eMMC 显式双 BOOT Preloader 项规划为 `preloader`/`preloader_backup` 两个命名目标，同一文件分别下载；UFS 的既有 LU0 兼容映射不改变。SDK 全量备份时 Preloader 也以名字读取，保存设备实际返回长度（不冒充整 BOOT 区原始镜像）；映射项不作为 Protected/BinRegion 的普通 USER 数据迁移。原生命令未确认或失败不回退裸写、不重放。
+
 NAND 不套用 GPT，保留显式 `update` 的 XML 原生 Scatter 线路，不做宿主全分区预备份；DA 按需请求的上传/下载迁移文件仍须保存并响应，提示另行说明，不能跳过必需协议请求。此原生更新不支持 `--partitions`，避免过滤宿主计划却仍下发整份 Scatter。DA 管理的 BOOTLOADERS 沿用原生命名接口与最终状态，不将其转换后的启动头与宿主 bin 直接比较。
 
 离线转换无需 USB/Loader：
@@ -122,4 +126,4 @@ mtk-scatter from-gpt pgpt.bin scatter.txt ufs 4096 USER-CAPACITY-BYTES MT6893
 
 存储可选 `emmc`/`ufs`，逻辑块为 512/4096，容量必须是已确认的 USER 字节数。to-gpt 输出紧凑 `.pgpt.bin` 和 `.sgpt.bin`，不物化整盘。from-gpt 支持严格校验的紧凑主/备 GPT，校验 CRC、容量、边界、名称和重叠；不静默修复损坏表。对已观察的 UFS 4K/128×128/FirstUsable=34 特定布局，先验证原始 CRC 与物理数组，再仅在宿主副本中以元数据末端 LBA 6 验证，不更改输入文件或设备。
 
-GPT 只有 USER 分区几何，不包含 BOOT 区、平台、镜像文件名或 Scatter 特有下载策略。导出使用 `file_name: NONE`、`is_download: false`，使用前须按实际镜像补充，不能把转换结果当作可直接刷写的完整工厂包。
+GPT 只有 USER 普通分区几何。Scatter→GPT 永不序列化 `preloader`、`preloader_backup`、`pgpt`、`sgpt` 及历史别名，避免把辅助映射变成实际 GPT 条目；仍利用 GPT 保留尾区计算 NEEDRESIZE 边界。GPT 不包含 BOOT 区、平台、镜像文件名或 Scatter 特有下载策略。导出使用 `file_name: NONE`、`is_download: false`，使用前须按实际镜像补充，不能把转换结果当作可直接刷写的完整工厂包。

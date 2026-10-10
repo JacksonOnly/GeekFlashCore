@@ -6,6 +6,45 @@ namespace GeekFlashCore.CLI;
 
 internal sealed partial class CliApplication
 {
+    private async Task<ActiveConnection> WaitForInteractiveConnectionAsync(CliOptions options,
+        ProtocolRegistration? requested, CancellationToken ct)
+    {
+        bool retryMtk = IsMtkConnection(options) || requested?.Type == ProtocolType.Mtk;
+        async Task<ActiveConnection> Attempt(int? remaining, CancellationToken token)
+        {
+            ActiveConnection? active = null;
+            var attemptOptions = remaining is { } budget
+                ? options with { DeviceWaitTimeout = budget, HasExplicitDeviceWaitTimeout = true } : options;
+            try
+            {
+                var connection = await CreateConnectionAsync(attemptOptions, requested, token).ConfigureAwait(false);
+                active = new(connection.Protocol, connection.Transport, connection.Registration);
+                retryMtk |= active.Protocol.Type == ProtocolType.Mtk;
+                _ui.WriteLine(Strings.Cli_Connecting);
+                if (!active.Protocol.IsConnected)
+                {
+                    await active.Protocol.ConnectAsync(_progress, token).ConfigureAwait(false);
+                    MtkProtocolHostAdapter.InitializeExtension(active.Protocol, options, token);
+                }
+                return active;
+            }
+            catch
+            {
+                if (active is not null)
+                {
+                    try { await active.DisposeAsync().ConfigureAwait(false); }
+                    catch (Exception cleanup) when (active.Protocol.Type == ProtocolType.Mtk)
+                    { Serilog.Log.Debug(cleanup, Strings.Cli_MtkConnectionUsbRetry); }
+                }
+                throw;
+            }
+        }
+        return await MtkConnectionAdmission.WaitForConnectionAsync(Attempt,
+            retryMtk && options.HasExplicitDeviceWaitTimeout ? options.DeviceWaitTimeout : null,
+            () => { _cleanReconnectBoundary = false; _ui.StopMtkProgress(); _ui.WriteLine(Strings.Cli_MtkConnectionUsbRetry); }, ct,
+            () => retryMtk).ConfigureAwait(false);
+    }
+
     private static bool IsMtkConnection(CliOptions options) =>
         options.Protocol is not null && ProtocolRegistry.TryResolve(options.Protocol, out var registration) && registration.Type == ProtocolType.Mtk ||
         options.Protocol is null && options.Usb is { } usb && TransportResolver.TryParseUsb(usb, out int vid, out int pid) &&

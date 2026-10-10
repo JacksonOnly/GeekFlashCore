@@ -614,8 +614,10 @@ internal class LibUsbTransport : IUsbTransport
     {
         if (error == Error.Success)
             return;
+        // Keep the TimeoutException contract while retaining the native cause so
+        // hosts can distinguish USB reconnect waits from resource-provider timeouts.
         if (error == Error.Timeout)
-            throw new TimeoutException(Strings.FormatLibUsbTransport_TransferTimedOut(operation, timeout));
+            throw new TimeoutException(Strings.FormatLibUsbTransport_TransferTimedOut(operation, timeout), new UsbException(error));
         error.ThrowOnError();
     }
 }

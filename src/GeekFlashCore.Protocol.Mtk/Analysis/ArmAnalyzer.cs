@@ -87,8 +87,18 @@ public sealed class ArmAnalyzer : ArchAnalyzer
         uint? high = null;
         for (long offset = start; offset >= end; offset -= 4)
         {
-            if (reader.ReadUInt32(offset) is not { } word || word >> 28 != 14) return null;
+            if (reader.ReadUInt32(offset) is not { } word) return null;
             if ((word & 0x0E000000) == 0x0A000000 || (word & 0x0FFFFFF0) == 0x012FFF10) return null;
+            if (word >> 28 != 14)
+            {
+                // A decoded conditional MOVW/MOVT to another register cannot change
+                // this value. Do not assume other conditional/aliased encodings are
+                // harmless, or evaluate a conditional write to the tracked register.
+                bool otherMove = DecodeMovw(word) is { } conditionalLow && conditionalLow.Register != register ||
+                    DecodeMovt(word) is { } conditionalHigh && conditionalHigh.Register != register;
+                if (!otherMove) return null;
+                continue;
+            }
             if (DecodeMovt(word) is { } upper && upper.Register == register) { high ??= upper.Immediate << 16; continue; }
             if (DecodeMovw(word) is { } lower && lower.Register == register) return lower.Immediate | (high ?? 0);
             if (DecodeSubRegister(word) is { } sub && sub.Destination == register)

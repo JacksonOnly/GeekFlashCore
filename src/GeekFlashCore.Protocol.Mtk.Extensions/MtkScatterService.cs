@@ -32,6 +32,7 @@ public sealed class MtkScatterService
         {
             if (plan.Generation != c.Generation) throw new InvalidOperationException(Localization.Strings.ExtensionUnavailable);
             Validate(plan.Partitions, c.Storage);
+            ValidateNativeDownloads(plan.Partitions, c);
             foreach (var part in plan.Partitions.Where(p => p.Download))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -46,8 +47,8 @@ public sealed class MtkScatterService
     {
         if (plan.Generation != c.Generation) throw new InvalidOperationException(Localization.Strings.ExtensionUnavailable);
         var existing = (c as IMtkDaPartitionChannel ?? throw new MtkCapabilityException("partition snapshot")).GetPartitionRanges()
-            .Where(p => p.Range.RegionId == c.Storage.UserRegionId && !MtkScatterGptConverter.IsMetadata(p.Name)).ToArray();
-        var desired = plan.Partitions.Where(p => p.Range.RegionId == c.Storage.UserRegionId && !MtkScatterGptConverter.IsMetadata(p.Name)).ToArray();
+            .Where(p => p.Range.RegionId == c.Storage.UserRegionId && !MtkPartitionNames.IsMapped(p.Name)).ToArray();
+        var desired = plan.Partitions.Where(p => p.Range.RegionId == c.Storage.UserRegionId && !MtkPartitionNames.IsMapped(p.Name)).ToArray();
         var names = existing.Select(p => p.Name).Concat(desired.Select(p => p.Name)).Distinct(StringComparer.OrdinalIgnoreCase);
         return (IReadOnlyList<string>)names.Where(name =>
         {
@@ -86,6 +87,7 @@ public sealed class MtkScatterService
                 throw new MtkResourceException("scatter plan count");
             var parts = plan.Partitions.ToArray();
             Validate(parts, c.Storage);
+            ValidateNativeDownloads(parts, c);
             List<Image> opened = [];
             List<(MtkFlashRange Range, string Backup)> restores = [];
             List<(MtkFlashRange Range, byte[] Data, string Name)> metadata = [];
@@ -98,14 +100,12 @@ public sealed class MtkScatterService
                 {
                     var image = Open(images(part.FileName!), part, c.Storage, cancellationToken);
                     opened.Add(image);
-                    if (part.Operation != MtkScatterOperation.Bootloaders || c.Kind is not (MtkDaKind.XFlash or MtkDaKind.Xml) || nativePlanned.Add(part.Name))
+                    if (!UsesNativeDownload(part) || nativePlanned.Add(MtkPartitionNames.Wire(part.Name)))
                         total = checked(total + image.LengthFor(c.Kind));
                 }
 
                 if (opened.Count == 0 && !rebuildGpt)
                     throw new MtkResourceException("scatter no downloadable image");
-                if (c.Kind is MtkDaKind.XFlash or MtkDaKind.Xml && opened.Any(p => p.Part.Operation == MtkScatterOperation.Bootloaders) && c is not IMtkDaPartitionChannel)
-                    throw new MtkCapabilityException("native bootloader channel");
                 if (rebuildGpt)
                 {
                     if (opened.Any(i => i.Part.Range.RegionId == c.Storage.UserRegionId && MtkScatterGptConverter.IsMetadata(i.Part.Name)))
@@ -122,11 +122,13 @@ public sealed class MtkScatterService
                 else
                 {
                     foreach (var image in opened)
-                        Backup(c, image.Part.Range, $"original-{image.Part.Range.RegionId}-{image.Part.Name}.bin", backups, progress);
+                        Backup(c, image.Part.Range, $"original-{image.Part.Range.RegionId}-{image.Part.Name}.bin", backups, progress,
+                            MtkPartitionNames.IsPreloader(image.Part.Name) ? MtkPartitionNames.Wire(image.Part.Name) : null);
                     foreach (var item in metadata)
                         Backup(c, item.Range, $"original-{item.Name}.bin", backups, progress);
                 }
-                var protectedParts = parts.Where(p => p.Operation is MtkScatterOperation.Protected or MtkScatterOperation.BinRegion).ToArray();
+                var protectedParts = parts.Where(p => p.Operation is MtkScatterOperation.Protected or MtkScatterOperation.BinRegion &&
+                    !MtkPartitionNames.IsMapped(p.Name)).ToArray();
                 if (backupPolicy == MtkScatterBackupPolicy.AllOverwriteRanges && rebuildGpt && protectedParts.Length > 0)
                 {
                     var existing = (c as IMtkDaPartitionChannel ?? throw new MtkCapabilityException("partition snapshot")).GetPartitionRanges();
@@ -169,9 +171,9 @@ public sealed class MtkScatterService
                 HashSet<string> nativeWritten = new(StringComparer.Ordinal);
                 foreach (var image in opened)
                 {
-                    if (image.Part.Operation == MtkScatterOperation.Bootloaders && c.Kind is MtkDaKind.XFlash or MtkDaKind.Xml)
+                    if (UsesNativeDownload(image.Part))
                     {
-                        if (nativeWritten.Add(image.Part.Name))
+                        if (nativeWritten.Add(MtkPartitionNames.Wire(image.Part.Name)))
                         {
                             writing = true;
                             image.WriteNative((IMtkDaPartitionChannel)c, progress);
@@ -220,6 +222,16 @@ public sealed class MtkScatterService
         }, cancellationToken);
     }
 
+    private static bool UsesNativeDownload(MtkScatterPlannedPartition part) =>
+        MtkPartitionNames.IsPreloader(part.Name) || part.Operation == MtkScatterOperation.Bootloaders;
+
+    private static void ValidateNativeDownloads(IReadOnlyList<MtkScatterPlannedPartition> parts, IMtkDaChannel channel)
+    {
+        if (parts.Any(p => p.Download && UsesNativeDownload(p)) &&
+            (channel.Kind is not (MtkDaKind.XFlash or MtkDaKind.Xml) || channel is not IMtkDaPartitionChannel))
+            throw new MtkCapabilityException("native bootloader upload/download channel");
+    }
+
     private static void Validate(IReadOnlyList<MtkScatterPlannedPartition> parts, MtkStorageInfo storage)
     {
         if (parts is null || parts.Count is < 1 or > 4096)
@@ -233,6 +245,9 @@ public sealed class MtkScatterService
             if (p.Download && p.Operation == MtkScatterOperation.Logic)
                 throw new MtkCapabilityException("logical scatter download");
             var region = storage.Regions.SingleOrDefault(r => r.WireId == p.Range.RegionId) ?? throw new MtkResourceException("scatter region");
+            if (MtkPartitionNames.IsPreloader(p.Name) && (region.Kind is not (MtkStorageKind.Emmc or MtkStorageKind.Ufs) ||
+                p.Range.Offset != 0 || p.Range.RegionId != (MtkPartitionNames.Display(p.Name) == MtkPartitionNames.Preloader ? 1u : 2u)))
+                throw new MtkResourceException("scatter Preloader mapping");
             if (!region.CanWrite || p.Range.Offset < 0 || p.Range.Length <= 0 || p.Range.Offset > region.Length - p.Range.Length || p.Range.Offset % region.BlockSize != 0 || p.Range.Length % region.BlockSize != 0 || p.Name.Length is < 1 or > 128 || p.Name.Any(ch => !char.IsAsciiLetterOrDigit(ch) && ch is not ('_' or '-' or '.')) || !Enum.IsDefined(p.Operation))
                 throw new MtkResourceException("scatter plan range");
         }
@@ -256,19 +271,31 @@ public sealed class MtkScatterService
         foreach (var copy in copies) Backup(c, copy.Range, $"current-{copy.Name}.bin", backups, progress);
     }
 
-    private static void Backup(IMtkDaChannel c, MtkFlashRange range, string name, IMtkScatterBackupStore backups, IProgress<ProgressRecord>? progress = null)
+    private static void Backup(IMtkDaChannel c, MtkFlashRange range, string name, IMtkScatterBackupStore backups,
+        IProgress<ProgressRecord>? progress = null, string? nativePartition = null)
     {
         using Stream output = backups.Create(name);
         if (!output.CanWrite)
             throw new MtkResourceException("scatter backup stream");
-        var phase = new PhaseProgress(progress, range.Length, Localization.Strings.FormatScatterBackup(name));
+        // The native upload's file size is not the scatter's image-size declaration.
+        long maximum = nativePartition is null ? range.Length : c.Storage.Regions.Single(r => r.WireId == range.RegionId).Length;
+        var phase = new PhaseProgress(progress, maximum, Localization.Strings.FormatScatterBackup(name));
+        long length = maximum;
         using (var tracked = new CountStream(output, phase.Advance))
-            c.ReadFlash(range, tracked);
+        {
+            if (nativePartition is null) c.ReadFlash(range, tracked);
+            else
+            {
+                length = (c as IMtkDaPartitionChannel ?? throw new MtkCapabilityException("native partition upload channel"))
+                    .ReadNamedPartition(nativePartition, tracked, maximum);
+                if (length <= 0 || length > maximum) throw new MtkResourceException("scatter Preloader backup length");
+            }
+        }
         if (output is FileStream file)
             file.Flush(true);
         else
             output.Flush();
-        phase.Complete();
+        phase.Complete(length);
     }
 
     private static void BuildGpt(IReadOnlyList<MtkScatterPlannedPartition> parts, MtkStorageInfo storage, List<(MtkFlashRange, byte[], string)> metadata)
@@ -354,13 +381,14 @@ public sealed class MtkScatterService
         public MtkScatterPlannedPartition Part => part;
         public long ExpandedLength { get; private set; }
         public long TransferLength { get; private set; }
-        public long LengthFor(MtkDaKind kind) => part.Operation == MtkScatterOperation.Bootloaders &&
+        public long LengthFor(MtkDaKind kind) => UsesNativeDownload(part) &&
             kind is MtkDaKind.XFlash or MtkDaKind.Xml ? stream.Length : TransferLength;
 
         public void Initialize(CancellationToken token)
         {
             if (SparseImageParser.IsSparse(stream))
             {
+                if (MtkPartitionNames.IsPreloader(part.Name)) throw new MtkResourceException("Preloader image source");
                 _device = new(stream, stream.Length, DeviceOwnership.Borrow);
                 _sparse = SparseImageParser.Open(_device, DeviceOwnership.Borrow);
                 if (_sparse.Header.BlockSize % block != 0)
@@ -394,7 +422,7 @@ public sealed class MtkScatterService
             stream.Position = 0;
             var phase = new PhaseProgress(progress, stream.Length, Localization.Strings.FormatScatterWrite(part.Name));
             using var tracked = new CountStream(stream, phase.Advance);
-            channel.WriteNamedPartition(part.Name, tracked, stream.Length);
+            channel.WriteNamedPartition(MtkPartitionNames.Wire(part.Name), tracked, stream.Length);
             phase.Complete();
         }
 
@@ -492,10 +520,11 @@ public sealed class MtkScatterService
             _last = now;
             _progress?.Report(new(_total, _done, _label) { Unit = ProgressUnit.Bytes, Phase = ProgressPhase.Running });
         }
-        public void Complete()
+        public void Complete(long? actualLength = null)
         {
-            if (_done != _total) throw new MtkResourceException("scatter transfer length");
-            _progress?.Report(new(_total, _total, _label) { Unit = ProgressUnit.Bytes, Phase = ProgressPhase.Completed });
+            long total = actualLength ?? _total;
+            if (total < 0 || total > _total || _done != total) throw new MtkResourceException("scatter transfer length");
+            _progress?.Report(new(total, total, _label) { Unit = ProgressUnit.Bytes, Phase = ProgressPhase.Completed });
         }
     }
 

@@ -12,6 +12,9 @@ internal static class FirmwareSuperImageWriter
         IProgress<ProgressRecord> progress, CancellationToken ct)
     {
         if (protocol is not (IQcomProtocol or IMtkProtocol)) throw new NotSupportedException(Strings.Cli_FirmwareSuperProtocolUnsupported);
+        // A reconstructed super image uses raw windows, never the Preloader's named/header-aware path.
+        if (protocol is IMtkProtocol && target is PartitionTarget preloader && MtkPartitionNames.IsPreloader(preloader.Name))
+            throw new MtkResourceException("Preloader image source");
         uint block, physical; long? deviceCapacity; MtkStorageInfo? mtkStorage = null;
         if (protocol is IMtkProtocol mtk)
         {

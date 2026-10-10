@@ -36,7 +36,7 @@ Preloader候选（0E8D:2000/6000）现在先发一次A0唤醒，再进行四步�
 
 `--mtk-preloader` 的 XFlash 路径保留完整 `MTK_BLOADER_INFO` 窗口（含头部），不能只发 Legacy 的 `MTK_BIN+12` 数据。Ares v51 的正确窗口为448字节，而不是336；长度帧与FLOW载荷必须一致，最后等待一次组状态。SDK 的 `MtkEmiImage.Source` 保留Legacy语义，Parser 另提供借用 `BloaderInfoSource` 给XFlash；只提供Source的宿主材料保持原样。Debug记录格式/版本/长度，不记录原始EMI。抓包/离线对照证据及实机风险见 [Preloader/EMI记录](plans/2026-10-08-mtk-preloader-emi-implementation.md)。
 
-完整 FD 识别之前，瞬态 USB/初始握手失败释放候选并继续等；Ctrl+C 停止，显式等待超时仍有效。识别之后认证、DA、读写失败立即使旧会话失效，需要重新连接，不自动重试。超时只表示预算耗尽，不等于已确认拔出设备。
+完整 FD 识别之前，瞬态 USB/初始握手失败释放候选并继续等；Ctrl+C 停止，显式等待超时仍有效。识别之后认证、DA、在途读写失败且无法确认完整命令边界时，旧会话失效，需要重新连接，不自动重试。标准 XML 命令完整结束后的主机检查错误按下述边界保留连接。超时只表示预算耗尽，不等于已确认拔出设备。
 
 定位时核对：最后 `SessionState` / `BootStage` / `CommandName`、`Command`、`Status` / `ExceptionType`、读的 `ReceivedLength` / `ReadFragmentCount` / `ElapsedMilliseconds` / `TimeoutMilliseconds`、协商包长。Write 中断的预算是剩余操作预算，不是 native driver 的超时设置。同步 native call 的立即中断仍受 backend 限制。
 
@@ -54,9 +54,41 @@ DA2 摘要区分请求标准 BootTo（尚待命令确认）与参数组/执行�
 
 XFlash设备包上限可为2MiB，不能按旧1MiB宿主小帧限制拒绝能力查询。宿主写块按协商包长，上限默认2MiB，与BROM缓冲独立；大存储FLOW默认以64KiB USB请求接收，短包直接消费，以最多1MiB池化缓冲合并输出写入，完整帧落入输出流才ACK。SDK `MaximumXFlashDataFrameSize`/`MaximumXFlashWritePacketLength` 默认2MiB，可限制512～2MiB；小帧/消息/认证/scoped ReceiveData仍由 `MaximumFrameSize` 控制，默认1MiB。每个payload窗口共享读预算。Debug在拒绝前记录响应长度和设备包长，status0本地校验失败不等于设备返回NAK。用户20261009-103949日志证明1MiB原生请求在2MiB帧末尾超时，104320确认恢复64KiB后完整读取；104747确认短包优化后读取约39.8MiB/s。合并输出优化尚待实机复测。
 
+## XML 存储进度与会话边界
+
+2026-10-10 用户捕获的写入预擦除进度为 `OK!PROGRESS@100@\0`。尾部 `@` 是字段分隔符，不是百分比的一部分；现在同时接受有/无该尾分隔符的 0～100 十进制进度。仍必须收到 `OK!EOT`，100% 不等于写入完成。无效百分比、额外字段、坏帧、事件超限和在途取消/超时仍报错，不自动 ACK 后继续或重发写命令。
+
+以前在一次操作中尝试过 I/O 后，任何异常都会关闭会话。现在正常 XML 入口（含 scoped `UseSession`）在结构完整、结果明确的 `CMD:END` 后先发送 ACK；ACK 成功才记录命令边界，即使 END 报告失败也完成收尾并保留准确的失败结果。明确 `ERR` / `ERR!…` ACK 后只消费有界的已知进度/END事件并确认，直到设备回到命令边界，不重发命令或写入载荷。未知事件、半帧、坏 XML、收尾超时或 ACK 失败不当作恢复。
+
+边界之后的主机参数、资源、分区表或 seccfg 摘要校验失败保留 `StorageReady`、transport 和会话代数，并输出保留连接 Warning；例如用户 13:22:36 的 READ-FLASH 已完成 END/ACK 后，`seccfg algorithm/digest` 不再关闭连接。下一次 I/O 立即撤销该边界证据。错误仍返回调用方，不报告 Completed，不自动重试；扩展上下文验证失败仍不发布 Ready。`UseDaHardware`、主动 Invalidate、未知写结果和明确要求重连的异常仍遵守失效规则，不能对正在等待数据或真实断线的设备盲发 ACK。
+
+`MtkProtocolException.RequiresReconnect=false` 的可恢复命令错误使用独立中英文消息，不再显示固定的“需要重新连接”；默认失效错误的重连提示保持。错误代码/消息仍采用相同脱敏规则，省略重连提示不是成功或通道存活证明。
+
+XML file-data 接收使用独立 `MtkProtocolOptions.MaximumXmlReadPacketLength`，**默认 64 KiB**；范围 512～2 MiB，只有已经验证的设备/USB 后端组合才显式增大。池化窗口不超过设备 packet、实际文件大小及宿主上限，完整 FLOW 长度仍在写入输出前严格校验。短 IN 在同一帧预算内续读，不增加 ACK、不重发命令，也不放宽 `MaximumXmlDataFrameSize`、控制帧、XFlash 或 scoped extension 限制。写入仍独立使用 `MaximumXmlWritePacketLength`（默认 2 MiB）。
+
+2026-10-10 的 512 KiB 默认曾在无损模拟中将 64 MiB native payload read 调用数降至 128，但用户 12:29:53 日志和 bbb.txt 的首次 persist 读取证实回归：2 MiB FLOW 只有 2,070,528 字节返回，仍缺 26,624 字节，伴随被取消的 USB 子请求，最后超时。默认已恢复此前成功的 64 KiB 形态（64 MiB 无损模拟为 1024 次）；不 ACK 截断数据、不放宽超时、不在失败后自动降级重读。请求拆分/取消由实际驱动决定，Penumbra 的接收缓冲大小不能直接证明本后端的大请求安全。用户后续确认 persist 64 MiB read 1.770秒、write两次1.994/1.991秒成功；这不是逐字节回读一致性证明。
+
+### 官方传输对照与速度显示
+
+用户提供的 SP Flash Tool V6 `SP_FT_V6_Dump_10-10-2026-13-08-31` 中，DA2 DOWNLOAD-FILE 协商包为4 KiB，刷机数据包为2 MiB，和现有正常写入线路一致，不继续放大包长。官方使用COM传输；DA文件包长不能作为LibUsb native IN请求大小的证据。
+
+`20261010T130831/host_0.log` 单独 `boot_a [1/1]` 样本：32个2 MiB载荷，共64 MiB。数据传输阶段1.505357秒，随后至END最终ACK等待0.528034秒，总计2.033391秒；按日志推导分别为42.51与31.47 MiB/s。此为日志计算，不是官方UI直接报告的速度；分区和WRITE-PARTITIONS流程不同，不能宣称与persist同负载完全等价。
+
+CLI读写过程中显示“传输速度：…（过程均值）”，按已报告字节数/当前已用时间计算并随进度刷新；字节数可能来自源文件读取，领先设备ACK，因此不是已确认设备写入均速或瞬时速度，也不据此显示ETA。计数达到总量但尚未Completed时保留过程速度并显示“等待操作完成”。最终“平均速度”仅在显式Completed后以现有Started→Completed计时计算，包含结束确认，不包含此前联机或首次GPT发现；失败不会显示成功均速。过程速度高于最终平均可能来自结束确认等待，不做限幅、平滑或人为修改。刚开始尚无计时显示“--”；1024进制标签统一为KiB/MiB等。
+
+### DA 扩展准备与加载
+
+CLI 仅从当前上传 DA 镜像准备扩展，不猜函数地址；准备失败的 Warning 带 `Reason` 代码（例如 `LoaderNotFound`、`FreeNotFound`）。SDK 保留原 `Prepare` 入口，并增加输出 `MtkExtensionPreparationFailure` 的重载；取消和资源错误仍抛出，不当作“未准备”。
+
+bbb.txt 还原的 MT6895 ARM DA2 中已有完整加载器，但 `Bad %s` 引用的 MOVW/MOVT 之间存在条件 MOVT R3。此前寄存器回溯将任意条件指令都当作障碍，错误地阻止了 R0 中的 `free` 地址解析。现在仅跳过已解码且写其他寄存器的条件 MOVW/MOVT；条件写当前寄存器、跳转、其他未知编码仍停止解析。捕获 DA2 的离线准备和指针表检查通过，不代表已经在设备上启动扩展。实际加载仍要求 BOOT-TO 完成、EXT-ACK 状态 OK 和 EXT-DA-CTX 完成后才发布当前代数的扩展能力；断开或失效后不复用。
+
+用户13:18:04日志已确认该设备扩展加载成功。MT6895（0x1172）此前却未填默认SEJ基址，导致CLI仅尝试SHA/SW候选而不走硬件算法；现在采用参考芯片表明确的0x1c009000，MT6893沿用0x1000a000，显式`--mtk-sej-base`优先，未知芯片保持0。硬件候选仍须扩展ACK/context已通过、原始摘要严格匹配，修改仍须持久备份、最小对齐写与回读。模拟线路通过不等于真实SEJ算法已在该设备上确认，需新实机日志。
+
+发生在预擦除的解析错误不代表分区未变化；设备可能已完成擦除但尚未接收镜像。使用修复版重新连接、完整重刷并回读核对，不续接旧的未知写入。
+
 ## GPT 与 Boot 区域
 
-分区发现不读取eMMC BOOT1/2或UFS LU0/LU1的头尾GPT；列表的Preloader/backup容量仅是已报告的Boot区域上限。命名读写现走XFlash/XML原生接口处理启动头，读取实际镜像长度，不将整个Boot区当作Preloader。UFS User为wire3（LU2），eMMC User为wire8，不能使用通常的零基LUN号替换DA wire编号。原始sector入口仍显式访问1/2，eMMC GP独立GPT能力保留；User CRC/主备/坏表边界不降级。实机完整列表待确认。
+分区发现不读取eMMC BOOT1/2或UFS LU0/LU1的头尾GPT；列表直接使用preloader、preloader_backup、pgpt、sgpt，前两项容量仅是已报告的Boot区域上限，DA的GPT wire名仍PGPT/SGPT。磁盘GPT内的同名保留映射不再次加入快照；CRC/几何仍严格校验。普通和Scatter Preloader均走XFlash v5 UPLOAD/DOWNLOAD或XML v6 READ/WRITE-PARTITION处理启动头，SDK完整备份同样命名读取实际镜像长度，不将整个Boot区当作Preloader；不依赖Scatter的BOOTLOADERS标记，不回退READ/WRITE-FLASH。Scatter→GPT只保留普通USER条目，排除四种映射及旧别名，保留尾区/NEEDRESIZE计算。UFS User为wire3（LU2），eMMC User为wire8，不能使用通常的零基LUN号替换DA wire编号。原始sector入口仍显式访问1/2，eMMC GP独立GPT能力保留；User CRC/主备/坏表边界不降级。实机完整列表和命名Preloader写入待确认。
 
 已观察UFS 4K GPT可声明FirstUsable34，却有已通过原始CRC的分区从8开始。只对UFS User/128×128/明确物理数组布局，以元数据末端6严格验证；PGPT截止真实首分区（抓包32KiB），避免覆盖分区。其他布局不降级，CRC/重叠/越界/身份/名字校验继续。兼容说明移至Debug，不改写设备；主备几何、CRC布尔和失败阶段也仅Debug记录，不记录校验数值/GUID/载荷。
 

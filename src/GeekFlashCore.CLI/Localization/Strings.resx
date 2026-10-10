@@ -41,6 +41,8 @@
   <data name="Cli_FixGptDescription" xml:space="preserve"><value>修复指定 LUN 的 GPT；grow=1 扩展最后分区。</value></data>
   <data name="Cli_ReconnectRequired" xml:space="preserve"><value>设备未连接或会话已失效，请先执行 connect 重新连接。</value></data>
   <data name="Cli_ProgressSpeed" xml:space="preserve"><value>平均速度：{0}</value></data>
+  <data name="Cli_ProgressTransferSpeed" xml:space="preserve"><value>传输速度：{0}（过程均值）</value></data>
+  <data name="Cli_ProgressWaiting" xml:space="preserve"><value>等待操作完成</value></data>
   <data name="Cli_ProgressElapsed" xml:space="preserve"><value>已用时间：{0}</value></data>
   <data name="Cli_ProgressDuration" xml:space="preserve"><value>总用时  ：{0}</value></data>
   <data name="Cli_ProgressRemaining" xml:space="preserve"><value>预计剩余：{0}</value></data>
@@ -454,13 +456,14 @@ Cache 命令阻止：{8}</value></data>
 <data name="Cli_SprdChipUid" xml:space="preserve"><value>SPRD Chip UID：{0}</value></data>
   <data name="Cli_MtkInitialProbeRetry" xml:space="preserve"><value>MTK 初始接入未完成，已释放旧连接，继续等待设备；按 Ctrl+C 停止。</value></data>
   <data name="Cli_MtkUsbDiscoveryRetry" xml:space="preserve"><value>MTK USB 枚举或打开未完成，继续等待设备；按 Ctrl+C 停止，诊断原因见文件日志。</value></data>
+  <data name="Cli_MtkConnectionUsbRetry" xml:space="preserve"><value>MTK 联机时 USB 连接中断，已释放旧连接，自动重新等待端口；无需输入 reconnect，按 Ctrl+C 停止。</value></data>
   <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>MTK 会话已失效，不自动重试。若写入中断，目标内容可能不完整；先复位设备至空闲状态，再 reconnect 并从头重刷。</value></data>
   <data name="Cli_MtkBromChunkInvalid" xml:space="preserve"><value>BROM 宿主上传块必须为 64～1048576 字节。</value></data>
   <data name="Cli_ProgramWriteModeQcomOnly" xml:space="preserve"><value>--program-write-mode 仅适用于 Qualcomm 协议。</value></data>
   <data name="Cli_ProgramWriteModeInvalid" xml:space="preserve"><value>写入模式必须为 program、auto 或 patch。</value></data>
   <data name="Cli_PatchProgramAvailable" xml:space="preserve"><value>框架 PROGRAM 模式：{0}；PATCH 后端仍需设备接受 PATCH，命令清单保持设备报告值。</value></data>
   <data name="Cli_MtkExtensionLoaded" xml:space="preserve"><value>MTK：DA 扩展已加载。</value></data>
-  <data name="Cli_MtkExtensionNotPrepared" xml:space="preserve"><value>MTK：DA 扩展未加载，缺少已验证的加载器或函数地址。</value></data>
+  <data name="Cli_MtkExtensionNotPrepared" xml:space="preserve"><value>MTK：DA 扩展未加载，准备原因代码：{Reason}。</value></data>
   <data name="Cli_MtkScatterConverted" xml:space="preserve"><value>MTK：分区表转换完成。</value></data>
   <data name="Cli_MtkScatterLayoutChanged" xml:space="preserve"><value>Scatter 布局不匹配的分区：{0}。</value></data>
   <data name="Cli_MtkScatterConfirm" xml:space="preserve"><value>是否备份当前主/备 GPT、更新分区表并继续刷写？仅备份分区表，不备份或迁移分区内容；布局变化可能使原数据不可用。输入 yes 继续，其余取消：</value></data>

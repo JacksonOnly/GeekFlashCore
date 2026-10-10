@@ -136,10 +136,9 @@ internal sealed partial class XmlSession
                     Progress(request);
                     break;
                 case MtkXmlCommand.Prefix + MtkXmlCommand.End:
-                    Require(MtkXmlCommand.End, request);
+                    CompleteEnd(request);
                     if (images.Keys.Any(name => !downloaded.Contains(name)))
                         throw new MtkResourceException("scatter incomplete downloads");
-                    Ack();
                     progress?.Report(new(total, total, Strings.ScatterProgress) { Unit = ProgressUnit.Bytes, Phase = ProgressPhase.Completed });
                     return;
                 default:

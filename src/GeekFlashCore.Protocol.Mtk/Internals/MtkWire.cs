@@ -37,6 +37,15 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         get; private set;
     }
     private bool _hasRead;
+    private bool _atCommandBoundary;
+    /// <summary>Only a validated XML END and its successful ACK prove the DA is idle.
+    /// Any later I/O revokes this evidence; HasIoAttempted still describes the whole operation.</summary>
+    public bool HasPendingIo => HasIoAttempted && !_atCommandBoundary;
+    public void CompleteCommandBoundary()
+    {
+        Check();
+        _atCommandBoundary = true;
+    }
     private byte? _startupByte;
     public MtkEntrySignal InspectEntrySignal()
     {
@@ -45,6 +54,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         {
             Span<byte> one = stackalloc byte[1];
             _hasRead = true;
+            _atCommandBoundary = false;
             int count = transport.ReadAvailable(one);
             Check();
             if (count == 0) return MtkEntrySignal.None;
@@ -72,6 +82,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         _deadline = checked(Environment.TickCount64 + timeout);
         HasWritten = false;
         _hasRead = false;
+        _atCommandBoundary = false;
     }
     public void Check()
     {
@@ -91,6 +102,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
     {
         Check();
         HasWritten = true;
+        _atCommandBoundary = false;
         long started = Environment.TickCount64;
         try
         {
@@ -110,11 +122,13 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
     {
         Check();
         HasWritten = true;
+        _atCommandBoundary = false;
     }
     public void ConfigureCdc(int controlInterface)
     {
         Check();
         HasWritten = true;
+        _atCommandBoundary = false;
         Logger.Debug(Strings.CdcSetup, controlInterface, 115200, 3);
         ReadOnlySpan<byte> coding = [0, 0xc2, 1, 0, 0, 0, 8];
         transport.ControlOut(0x21, 0x20, 0, checked((ushort)controlInterface), coding);
@@ -125,7 +139,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
     public void ConfigureIoTCdc()
     {
         if(transport.ControlInterfaceNumber is not { } number)return;
-        Check();HasWritten=true;
+        Check();HasWritten=true;_atCommandBoundary=false;
         ReadOnlySpan<byte> coding=[0,0x10,0x0e,0,0,0,8]; // 921600 baud, 8N1.
         transport.ControlOut(0x21,0x20,0,checked((ushort)number),coding);Check();
     }
@@ -133,12 +147,14 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
     {
         Check();
         HasWritten = true;
+        _atCommandBoundary = false;
         transport.WriteZeroLengthPacket();
         Check();
         Logger.Debug(Strings.WireZlp, Stage, Command);
     }
     public void Read(Span<byte> data, int? maximumTimeoutMilliseconds = null)
     {
+        if (!data.IsEmpty) _atCommandBoundary = false;
         // Fragments share one logical read budget; slow trickles cannot extend it indefinitely.
         long started = Environment.TickCount64;
         int readTimeout = Math.Min(options.ReadTimeoutMilliseconds, maximumTimeoutMilliseconds ?? int.MaxValue);
@@ -191,6 +207,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
     {
         // One native packet, not an exact fill: READY and its response may share an IN transfer.
         Check();
+        _atCommandBoundary = false;
         if (!data.IsEmpty && _startupByte is { } pending)
         { data[0] = pending; _startupByte = null; _hasRead = true; return 1; }
         int timeout = Math.Min(maximumTimeout, Math.Min(options.ReadTimeoutMilliseconds, RemainingTimeoutMilliseconds));
@@ -272,8 +289,8 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
             throw Failure(status);
     }
     public MtkProtocolException Failure(uint status = 0) => new(Stage, Command, status);
-    public MtkProtocolException XmlFailure(string resultCode, string? message) =>
-        new(Stage, Command, 0, true, resultCode, message);
+    public MtkProtocolException XmlFailure(string resultCode, string? message, bool requiresReconnect = true) =>
+        new(Stage, Command, 0, requiresReconnect, resultCode, message);
     public void SendFrame(ReadOnlySpan<byte> data)
         => SendFrame(data, WritePacketLength);
     public void SendFrame(ReadOnlySpan<byte> data, int maximumWriteLength)
@@ -314,13 +331,13 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         return length;
     }
     public int ReadStreamFrame(Stream output, int maximumLength, Span<byte> buffer)
-        => ReadStreamFrame(output, maximumLength, buffer, options.MaximumXFlashDataFrameSize);
+        => ReadStreamFrame(output, maximumLength, buffer, options.MaximumXFlashDataFrameSize, options.BufferSize);
 
     public int ReadXmlStreamFrame(Stream output, int expectedLength, Span<byte> buffer)
         => ReadStreamFrame(output, Math.Min(expectedLength, options.MaximumXmlDataFrameSize), buffer,
-            options.MaximumXmlDataFrameSize, expectedLength);
+            options.MaximumXmlDataFrameSize, options.MaximumXmlReadPacketLength, expectedLength);
 
-    private int ReadStreamFrame(Stream output, int maximumLength, Span<byte> buffer, int maximumFrameSize, int? expectedLength = null)
+    private int ReadStreamFrame(Stream output, int maximumLength, Span<byte> buffer, int maximumFrameSize, int maximumReadLength, int? expectedLength = null)
     {
         if (buffer.IsEmpty || maximumLength <= 0 || maximumLength > maximumFrameSize)
             throw new ArgumentOutOfRangeException(nameof(maximumLength));
@@ -334,7 +351,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         for (int remaining = length; remaining > 0;)
         {
             Check();
-            int count = Math.Min(remaining, Math.Min(options.BufferSize, buffer.Length - buffered));
+            int count = Math.Min(remaining, Math.Min(maximumReadLength, buffer.Length - buffered));
             int received = ReadStreamWindow(buffer.Slice(buffered, count), deadline);
             buffered += received;
             remaining -= received;
@@ -350,6 +367,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
     }
     private int ReadStreamWindow(Span<byte> buffer, long deadline)
     {
+        _atCommandBoundary = false;
         long started = Environment.TickCount64;
         deadline = Math.Min(deadline, _deadline);
         int budget = (int)Math.Clamp(deadline - started, 0, int.MaxValue), fragments = 0;

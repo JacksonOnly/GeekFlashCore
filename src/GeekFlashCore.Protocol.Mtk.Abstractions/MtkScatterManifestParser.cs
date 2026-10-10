@@ -292,7 +292,10 @@ public static class MtkScatterPlanBuilder
                 if (sizes[i] == 0 || offsets[i] > (ulong)region.Length || sizes[i] > (ulong)region.Length - offsets[i] || offsets[i] % (uint)region.BlockSize != 0 || sizes[i] % (uint)region.BlockSize != 0)
                     throw new MtkResourceException("scatter range");
                 var range = new MtkFlashRange(region.WireId, (long)offsets[i], (long)sizes[i]);
-                resolved.Add(new(source[i].Name, source[i].FileName, source[i].Download, range, source[i].Operation));
+                string name = source[i].RegionId == 0 && MtkPartitionNames.IsPreloader(source[i].Name)
+                    ? region.WireId == 1 ? MtkPartitionNames.Preloader : MtkPartitionNames.PreloaderBackup
+                    : MtkPartitionNames.Display(source[i].Name);
+                resolved.Add(new(name, source[i].FileName, source[i].Download, range, source[i].Operation));
             }
         }
 

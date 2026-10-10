@@ -3,8 +3,9 @@ using GeekFlashCore.Protocol.Abstractions;
 namespace GeekFlashCore.Protocol.Mtk.Abstractions;
 
 /// <summary>Standard DA-native named partition operations, including DA-managed sparse/BROM header handling.</summary>
-/// <remarks>PGPT/PrimaryGPT, SGPT/BackupGPT, Preloader and preloader_backup/Preloader Backup
-/// are matched without case sensitivity and translated to the DA's partition names.</remarks>
+/// <remarks>Canonical auxiliary names are preloader, preloader_backup, pgpt and sgpt.
+/// Historical display aliases remain accepted without case sensitivity. Preloader uses native named
+/// upload/download with DA-managed headers; unsupported dialects do not fall back to raw boot-region I/O.</remarks>
 public interface IMtkNamedPartitionAccess
 {
     long ReadNamedPartition(string name,Stream destination,long maximumLength,CancellationToken cancellationToken=default);

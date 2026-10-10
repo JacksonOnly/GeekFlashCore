@@ -1,5 +1,6 @@
 using GeekFlashCore.CLI.Localization;
 using GeekFlashCore.Protocol.Abstractions;
+using GeekFlashCore.Protocol.Mtk.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
 
 namespace GeekFlashCore.CLI;
@@ -128,17 +129,15 @@ internal static class StorageCommands
     private static string FormatSize(long? size) =>
         size.HasValue ? ConsoleUi.FormatBytes(size.Value) : Strings.Cli_UnknownValue;
 
-    private static bool IsPreloader(string name) => name.Replace("_", "").Replace(" ", "")
-        .Equals("preloader", StringComparison.OrdinalIgnoreCase) || name.Replace("_", "").Replace(" ", "")
-        .Equals("preloaderbackup", StringComparison.OrdinalIgnoreCase);
+    private static bool IsPreloader(string name) => MtkPartitionNames.IsPreloader(name);
 
     internal static bool PartitionNameMatches(IProtocol protocol, PartitionInfo partition, string name)
     {
         if (protocol.Type != ProtocolType.Mtk)
             return partition.Name == name;
-        return string.Equals(partition.Name, name, StringComparison.OrdinalIgnoreCase) ||
+        return MtkPartitionNames.Matches(name, partition.Name) ||
             (partition.Metadata?.TryGetValue("NativePartitionName", out string? nativeName) == true &&
-                string.Equals(nativeName, name, StringComparison.OrdinalIgnoreCase));
+                MtkPartitionNames.Matches(name, nativeName));
     }
 
     internal static uint SectorSize(IProtocol protocol)

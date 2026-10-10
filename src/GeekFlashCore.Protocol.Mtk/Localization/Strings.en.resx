@@ -6,6 +6,7 @@
 <data name="Reentry" xml:space="preserve"><value>MTK session callbacks cannot reenter the protocol.</value></data>
 <data name="Phase" xml:space="preserve"><value>MTK stage: {0}.</value></data>
 <data name="Faulted" xml:space="preserve"><value>MTK session faulted. Reconnect required.</value></data>
+<data name="SessionPreserved" xml:space="preserve"><value>MTK {BootStage}: the END response and ACK for {CommandName} are confirmed; a subsequent host check failed ({ExceptionType}). Keeping the connection without automatic retry.</value></data>
 <data name="Ambiguous" xml:space="preserve"><value>MTK resource or device match is ambiguous.</value></data>
 <data name="Timeout" xml:space="preserve"><value>MTK stage timed out.</value></data>
 <data name="UsbRequired" xml:space="preserve"><value>MTK requires an identified USB transport.</value></data>

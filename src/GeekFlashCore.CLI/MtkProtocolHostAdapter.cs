@@ -149,11 +149,11 @@ internal static partial class MtkProtocolHostAdapter
     {
         if (protocol is not IMtkProtocol p || p.DownloadAgent is not { } image || image.Entry.Kind == MtkDaKind.Legacy) return;
         var chip = MtkChipCatalog.Find(p.TargetInfo!.HardwareCode);
-        byte[]? prepared = chip?.Uart0 is { } uart
-            ? MtkPenumbraExtensionPreparer.Prepare(image, uart, p.GetStorageInfo().Kind, ExploitDependencies.Resources, ct) : null;
+        byte[]? prepared = MtkPenumbraExtensionPreparer.Prepare(image, chip?.Uart0 ?? 0,
+            p.GetStorageInfo().Kind, ExploitDependencies.Resources, out var failure, ct);
         if (prepared is null)
         {
-            Serilog.Log.ForContext("MtkSummary", true).Warning(Strings.Cli_MtkExtensionNotPrepared);
+            Serilog.Log.ForContext("MtkSummary", true).Warning(Strings.Cli_MtkExtensionNotPrepared, failure);
             return;
         }
         try
@@ -175,7 +175,7 @@ internal static partial class MtkProtocolHostAdapter
     private static MtkExtensionContext ExtensionContext(IMtkProtocol p, CliOptions options, IReadOnlyList<MtkMemoryRange> ranges)
     {
         var da2 = p.DownloadAgent!.Entry.Regions[p.DownloadAgent.Entry.EntryRegionIndex + 1];
-        uint sej = options.MtkSejBase != 0 ? options.MtkSejBase : p.TargetInfo!.HardwareCode == 0x950 ? 0x1000a000u : 0;
+        uint sej = options.MtkSejBase != 0 ? options.MtkSejBase : MtkChipCatalog.Find(p.TargetInfo!.HardwareCode)?.Watchdog?.SejBase ?? 0;
         return new(p.TargetInfo!.HardwareCode, da2.Address, da2.Length - da2.SignatureLength, sej, options.MtkTzccBase, options.MtkSsrBase)
         { AllowedMemoryRanges = ranges, Abi = MtkExtensionAbi.Penumbra2, UfsRpmbDataBlocks = options.MtkUfsRpmbBlocks };
     }

@@ -132,7 +132,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             owner._gate.Release();
         }
     }
-    private T Execute<T>(Func<T> action, CancellationToken token = default)
+    private T Execute<T>(Func<T> action, CancellationToken token = default, bool preserveCompletedBoundary = true)
     {
         using var gate = Enter(token);
         _wire.Begin(token, _options.OperationTimeoutMilliseconds);
@@ -143,7 +143,19 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 _wire.Check();
             return result;
         }
-        catch (Exception ex) { if (_wire.HasIoAttempted && _state != MtkSessionState.Faulted) Fault(ex); throw; }
+        catch (Exception ex)
+        {
+            if (_wire.HasIoAttempted && _state != MtkSessionState.Faulted)
+            {
+                if (!preserveCompletedBoundary || _wire.HasPendingIo || _state != MtkSessionState.StorageReady ||
+                    ex is MtkProtocolException { RequiresReconnect: true } or MtkExploitException or MtkScatterWriteException)
+                    Fault(ex);
+                else
+                    _logger.ForContext("MtkSummary", true).Warning(Strings.SessionPreserved,
+                        _wire.Stage, _wire.CommandName, ex.GetType().Name);
+            }
+            throw;
+        }
     }
     private void Ready()
     {
@@ -604,7 +616,11 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     public T UseSession<T>(Func<IMtkDaChannel, T> action, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(action);
-        return Execute(() => { Ready(); var channel = new Channel(this); try { return action(channel); } finally { channel.Expire(); } }, cancellationToken);
+        // Completed device commands remain usable if subsequent host validation fails.
+        // Unknown wire state and explicit invalidation still expire the whole session;
+        // an idle DA does not imply that an extension/context or write result is valid.
+        return Execute(() => { Ready(); var channel = new Channel(this); try { return action(channel); } finally { channel.Expire(); } },
+            cancellationToken);
     }
     private sealed class Channel(MtkProtocol owner, Action? guard = null) : IMtkDaChannel, IMtkDaPartitionChannel
     {
@@ -623,10 +639,25 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
         {
             Check();return Array.AsReadOnly(owner.LoadPartitionsCore().Select(p=>new MtkPartitionRange(p.Name,p.Range)).ToArray());
         }
+        public long ReadNamedPartition(string name,Stream destination,long maximumLength)
+        {
+            Check();name=PartitionName(name);ArgumentNullException.ThrowIfNull(destination);
+            if(!destination.CanWrite || maximumLength<=0)throw new ArgumentException(nameof(destination));
+            var boot=owner.PreloaderRegion(new PartitionTarget { Name=name });
+            if(boot is not null)maximumLength=Math.Min(maximumLength,boot.Length);
+            return owner._da switch
+            {
+                XFlashSession x=>x.ReadNamed(name,destination,maximumLength),
+                XmlSession xml=>xml.ReadNamed(name,destination,maximumLength),
+                _=>owner.ReadLegacyNamed(name,destination,maximumLength)
+            };
+        }
         public void WriteNamedPartition(string name,Stream source,long length)
         {
             Check();owner.NamedWritePolicy();name=PartitionName(name);ArgumentNullException.ThrowIfNull(source);
             if(length<=0 || !source.CanRead || source.CanSeek && source.Length-source.Position!=length)throw new MtkResourceException("native partition source");
+            var boot=owner.PreloaderRegion(new PartitionTarget { Name=name });
+            if(boot is not null && length>boot.Length)throw new MtkResourceException("Preloader image length");
             if(owner._da is XFlashSession x)x.WriteNamed(name,source,length);
             else if(owner._da is XmlSession xml)xml.WriteNamed(name,source,length);
             else throw new MtkCapabilityException("native partition dialect");

@@ -110,4 +110,5 @@
 <data name="GptUfsBoundarySelected" xml:space="preserve"><value>MTK UFS region {RegionId}: 4K GPT declares first usable LBA {DeclaredFirstUsableLba}, but its first partition starts at LBA {FirstPartitionLba}. Original CRCs passed; validating strictly from physical metadata end LBA {MetadataEndLba} and ending PGPT at the first partition. Host compatibility parsing only; device unchanged.</value></data>
 <data name="PreloaderDaSignatureRequired" xml:space="preserve"><value>DA1 signature required by secure Preloader</value></data>
 <data name="PreloaderDaVerification" xml:space="preserve"><value>MTK Preloader: DA1 has {SignatureLength} signature bytes for device verification; no BROM pre-authentication.</value></data>
+<data name="EmiReplacementStage" xml:space="preserve"><value>Missing EMI resources may only be supplied at BeforeDa1</value></data>
 </root>

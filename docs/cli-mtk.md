@@ -132,3 +132,29 @@ mtk-scatter from-gpt pgpt.bin scatter.txt ufs 4096 USER-CAPACITY-BYTES MT6893
 存储可选 `emmc`/`ufs`，逻辑块为 512/4096，容量必须是已确认的 USER 字节数。to-gpt 输出紧凑 `.pgpt.bin` 和 `.sgpt.bin`，不物化整盘。from-gpt 支持严格校验的紧凑主/备 GPT，校验 CRC、容量、边界、名称和重叠；不静默修复损坏表。对已观察的 UFS 4K/128×128/FirstUsable=34 特定布局，先验证原始 CRC 与物理数组，再仅在宿主副本中以元数据末端 LBA 6 验证，不更改输入文件或设备。
 
 GPT 只有 USER 普通分区几何。Scatter→GPT 永不序列化 `preloader`、`preloader_backup`、`pgpt`、`sgpt` 及历史别名，避免把辅助映射变成实际 GPT 条目；仍利用 GPT 保留尾区计算 NEEDRESIZE 边界。GPT 不包含 BOOT 区、平台、镜像文件名或 Scatter 特有下载策略。导出使用 `file_name: NONE`、`is_download: false`，使用前须按实际镜像补充，不能把转换结果当作可直接刷写的完整工厂包。
+
+## SDK：BeforeDa1 补充缺失 EMI
+
+宿主显式注入的 `IMtkExploitStrategy.Execute` 可在 DA1 上传前返回 `ReplacementEmi`，同步 `Connect` 和异步 `ConnectAsync` 均支持：
+
+```csharp
+public MtkExploitResult Execute(MtkExploitContext context, CancellationToken cancellationToken)
+{
+    cancellationToken.ThrowIfCancellationRequested();
+    if (context.Stage != MtkExploitStage.BeforeDa1 || context.Emi is not null)
+        return new(MtkExploitOutcome.NotApplicable);
+
+    // preloaderSource 是宿主持有的稳定、可重开 IDataSource。
+    var emi = MtkEmiParser.Parse(preloaderSource);
+    cancellationToken.ThrowIfCancellationRequested();
+    return new(MtkExploitOutcome.Completed) { ReplacementEmi = emi };
+}
+```
+
+此代码放在已有宿主策略类内；`MtkEmiParser` 位于 `GeekFlashCore.Protocol.Mtk.Loaders`，策略契约位于 `GeekFlashCore.Protocol.Mtk.Abstractions`。Descriptor 必须包含 BeforeDa1 及目标启动模式/DA 方言。
+
+也可直接使用构造参数：`return new(MtkExploitOutcome.Completed, ReplacementEmi: emi);`。旧三参数 `(Outcome, ReplacementDownloadAgent, RefreshBootSecurityConfiguration)` 构造和三值解构仍兼容。
+
+核心只在 `BeforeDa1 + Completed` 且原 `MtkConnectionResources.Emi` 为 null 时校验并采纳；已有 EMI 优先，返回候选的长度和流均不访问。非法阶段或非 Completed 携带候选会拒绝并要求重连；null 不清除现有资源，损坏的原 EMI 不作为缺失回退。`context.Emi` 保持只读，回调返回后立即过期，后续检查点可读取采纳后的 EMI。
+
+`Completed` 仍结束本阶段策略尝试，不跳过标准认证。源仍属于宿主，不得在回调返回前释放；核心仅释放自己打开的流。Execute 同步运行在连接 gate 和总预算内，不能重入协议或阻塞等待异步 UI。此项不上传执行整个 Preloader，不增加 CLI 开关或 XML EMI 上传线路；XML 当前初始化不消费 EMI 参数。

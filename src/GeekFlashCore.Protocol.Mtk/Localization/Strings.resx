@@ -110,4 +110,5 @@
 <data name="GptUfsBoundarySelected" xml:space="preserve"><value>MTK UFS 区域 {RegionId}：4K GPT 声明起始 LBA {DeclaredFirstUsableLba}，实际首分区 LBA {FirstPartitionLba}；原始 CRC 已通过，按物理元数据末端 LBA {MetadataEndLba} 严格验证并以首分区界定 PGPT。仅宿主兼容解析，不改写设备。</value></data>
 <data name="PreloaderDaSignatureRequired" xml:space="preserve"><value>安全 Preloader 所需的 DA1 签名</value></data>
 <data name="PreloaderDaVerification" xml:space="preserve"><value>MTK Preloader：DA1 签名 {SignatureLength} 字节，由设备校验；不执行 BROM 前置认证。</value></data>
+<data name="EmiReplacementStage" xml:space="preserve"><value>仅允许在 BeforeDa1 阶段补充缺失的 EMI 资源</value></data>
 </root>

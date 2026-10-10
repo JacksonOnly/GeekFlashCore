@@ -668,7 +668,9 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
 
     public void WriteNamed(string name, Stream source, long length)
     {
-        Begin(MtkXmlCommand.WritePartition, Args(("partition", name), ("source_file", name + ".bin")));
+        string imagePath = name + ".bin";
+        string signaturePath = name + ".sig";
+        Begin(MtkXmlCommand.WritePartition, Args(("partition", name), ("source_file", imagePath)));
         bool downloaded = false;
         for (int i = 0; i < options.MaximumMessages; i++)
         {
@@ -680,12 +682,22 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
                     Progress(request);
                     break;
                 case MtkXmlCommand.Prefix + MtkXmlCommand.FileSysOperation:
+                {
                     Require(MtkXmlCommand.FileSysOperation, request);
-                    if (MtkXmlCodec.Value(request, "key") != "FILE-SIZE" || MtkXmlCodec.Value(request, "file_path") != name + ".bin")
-                        throw new MtkResourceException("named virtual file");
+                    string key = MtkXmlCodec.Value(request, "key"), path = MtkXmlCodec.Value(request, "file_path");
+                    // This command registers only the image stream, not a signature sidecar.
+                    // Answer the DA's optional signature probe without accessing host paths.
+                    string response = key switch
+                    {
+                        "FILE-SIZE" when path == imagePath => "0x" + length.ToString("X", System.Globalization.CultureInfo.InvariantCulture),
+                        "EXISTS" when path == imagePath => "EXISTS",
+                        "EXISTS" when path == signaturePath => "NOT-EXISTS",
+                        _ => throw new MtkResourceException("named virtual file")
+                    };
                     Ack();
-                    Ack("0x" + length.ToString("X", System.Globalization.CultureInfo.InvariantCulture));
+                    Ack(response);
                     break;
+                }
                 case MtkXmlCommand.Prefix + MtkXmlCommand.DownloadFile:
                     if (downloaded)
                         throw wire.Failure();

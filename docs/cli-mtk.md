@@ -84,6 +84,8 @@ write preloader_backup preloader.bin
 
 分区列表直接显示 `preloader`、`preloader_backup`、`pgpt`、`sgpt`，它们是辅助映射，不是 USER GPT 条目；历史 `PreloaderBackup`、`Preloader Backup`、`PrimaryGPT`、`BackupGPT` 等仍作为输入别名接受。
 
+XML 命名写入的文件查询只访问当前命令的虚拟资源：`<分区名>.bin` 的 `EXISTS` 返回存在，`FILE-SIZE` 返回输入文件长度；未提供的可选 `<分区名>.sig` 的 `EXISTS` 返回 `NOT-EXISTS`。不会按设备请求读取本机文件或自动加载同目录签名；设备若要求签名仍报告失败，不回退裸写、不自动重试。
+
 XFlash v5 使用 `UPLOAD`/`DOWNLOAD` 分区名，命名写入先查询包长，再按 `START_DL_INFO → DOWNLOAD(名称,原文件长度) → checksum/data/最终状态 → END_DL_INFO` 完成；XML v6 使用 `READ-PARTITION`/`WRITE-PARTITION` 和完整 END/ACK。启动头由 DA 处理，宿主不添加 header、补零或使用 `WRITE-FLASH` 写命名 Preloader。读取以已报告 BOOT 容量为上限，输出为 DA 返回的镜像实际长度，不按整个 BOOT1/2 裸读。命名拒绝或不支持时不回退裸区域；Legacy 不猜测头布局，拒绝此读写入口。Super 构建镜像不能以命名 Preloader 为写入目标。通用命名擦除仍拒绝，原始 sector 操作保持显式底层入口，不等同安全的 Preloader 写入（完整 `UFS_BOOT`/`EMMC_BOOT` 布局由调用者负责）。
 
 连接后离线确认 DA2 确实包含扩展加载器，再解析 Penumbra 函数地址、填充嵌入扩展指针表，通过 BOOT-TO 上传并验证 ACK/context。只有这些步骤都成功才输出“DA 扩展已加载”。缺少加载器、UART 或函数地址时不上传，保持标准存储能力；在途/坏帧/ACK失败仍失效，完整END之后的本地解析错误可保留标准DA但不发布扩展Ready。XFlash DA2 的 Thumb2 定位独立于 DA1 的 ARM 架构。

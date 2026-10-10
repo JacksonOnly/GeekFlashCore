@@ -10,7 +10,7 @@ geekflash --protocol mtk --loader DA.bin --mtk-preloader preloader.bin
 
 前置认证按完整握手确认的阶段选择，而非仅凭 USB PID 或安全位。BROM 保持 Auth/证书和宿主 SLA 要求；Preloader 不发送 BROM 前置认证命令，SBC/DAA 开启时要求带签名的 DA1，原签名和完整区域通过标准 SEND_DA 交给设备验证。签名存在不代表认证成功，设备拒绝或 checksum 错误仍停止连接，不降级或重试。如果 SEND_DA 明确请求 SLA，或后续 DA1/DA2 明确要求认证，仍须提供合法 signer。附带的 BROM Auth/证书在 Preloader 路径不发送，敏感资源所有权与清零规则不变。
 
-指定 MTK 的交互启动在等待接入时显示单行动态状态和已等待时间，可按 Esc 或 Ctrl+C 取消；首次接入取消/失败后保留 `geekflash[offline]>`，可输入 `reconnect` 重新等待、`help` 查看命令、`devices` 查看候选或 `exit` 退出，不自动重放失败操作。接入后的普通提示符中执行 reconnect，等待取消也返回提示符。重定向或非交互环境只输出静态等待行，不输出动画、不抢读后续 DA 文件输入。USB 候选仍约每 100 ms 枚举，驱动绑定在每轮首次检查，此后最多每秒复核，避免高频重复注册表扫描。
+MTK交互启动在等待接入时显示单行动态状态和已等待时间，可按 Esc 或 Ctrl+C 取消。枚举/打开以及联机初始化中的原生USB错误（含保留原生原因的USB超时）会释放失败连接，自动重新等待端口，无需手动输入reconnect；手动reconnect的等待同样适用。显式等待预算不会因USB失败重新计时，默认无限等待仍可取消。缺Loader/认证、资源超时、设备歧义或配置错误不采用这个重试政策。取消或其他失败后保留 `geekflash[offline]>`，可输入 `reconnect`、`help`、`devices` 或 `exit`。已进入交互的存储命令不自动重放。重定向环境只输出静态等待行，不抢读后续 DA 文件输入。USB候选约每100 ms枚举，驱动绑定最多每秒复核。
 
 等待动画在交给 Probe/Loader 之前完全停止；连接阶段沿用核心阶段提示。取消仍需等待当前有限 native USB 调用返回，不能保证瞬时中断。未显式选择协议的跨协议发现、单次命令与非交互失败退出语义不变；不后台自动重连已失效会话。
 
@@ -36,7 +36,7 @@ DA1 继续初始化/EMI 和 DA2 上传，不重发 BROM 上传；DA2 只验证�
 - 默认控制台和文件仅 Information 及以上；`--verbose` 才记录逐包 Debug。旧 DA 不支持 SLA 查询和已验证的旧 UFS GPT 边界仅为 Debug，验证逻辑不放宽。
 - 分区偏移显示原始字节数，起始扇区使用该区域真实逻辑块单位；`read/write sector` 的 MTK 区域编号为 DA wire ID（UFS USER=3、eMMC USER=8），不是零基 LUN。
 
-用户 MT6893/UFS 实机日志确认扩展加载、分区发现和 persist 读取成功；开启逐包 Debug 日志时读取 69,697,536 字节用时约 1.78 秒（37.28 MiB/s），短包优化后用户报告 1.670 秒（39.8 MiB/s）。输出合并版为 1.675 秒（39.67 MiB/s），没有明显提速，且该份日志仍包含逐包 DBG。不能据模拟传输承诺倍率。此前 1 MiB USB 请求曾出现帧尾接收超时，未证实底层原因，不自动放大窗口或在半包状态重试。界面沿用 MB 标签，数值按 1024 进制计算；目标项目的速度单位和同文件摘要尚未取得。
+用户 MT6893/UFS 实机日志确认扩展加载、分区发现和 persist 读取成功；开启逐包 Debug 日志时读取 69,697,536 字节用时约 1.78 秒（37.28 MiB/s），短包优化后用户报告 1.670 秒（39.8 MiB/s）。输出合并版为 1.675 秒（39.67 MiB/s），没有明显提速，且该份日志仍包含逐包 DBG。不能据模拟传输承诺倍率。此前 1 MiB USB 请求曾出现帧尾接收超时，未证实底层原因，不自动放大窗口或在半包状态重试。当前CLI使用正确的KiB/MiB二进制单位，过程中不显示未确认的写入速度/ETA，最终平均包含END确认；源计数达到100%时仍等待Completed。官方2 MiB包长及约0.53秒结束等待对照见[诊断说明](mtk-diagnostics.md)。
 
 用户此次 `super.img` 离线确认展开长度约 8.5 GiB、实际 Raw/Fill 约 2.48 GiB、没有 CRC。旧实现仍做展开全量校验，且产生 2690 次区域写入；连续区域计划仅需 7 次，不额外物化大镜像。新版离线元数据规划约 24 ms、分配低于 1 MiB；这是离线证据，不是设备写速，实机吞吐仍待复测。
 
@@ -63,6 +63,8 @@ mtk efuse read efuses.bin
 
 seccfg 从 USER 的唯一 `seccfg` 分区定位；slot 从 USER 的 `misc`/`para` 定位。缺失或歧义直接拒绝，可用 `--partition` 指定实际名称，不退回偏移 0。seccfg 先持久备份，再要求 `yes`，随后重新比对原数据、最小对齐写入和完整回读。slot 也要求确认，并在写入前持久保存原扇区。自动备份在当前目录的 `backups` 下，以时间和随机标识命名，显式备份也不覆盖已有文件。
 
+MT6895的已验证DA扩展现在采用芯片表SEJ基址0x1c009000，MT6893沿用0x1000a000，显式基址覆盖优先；未知芯片不猜。seccfg原摘要必须与SHA/SW/硬件候选之一准确匹配才允许生成修改。完整READ-FLASH END/ACK后发生algorithm/digest等本地错误，会保留标准会话，后续partitions/read可继续。设备明确ERR会按有效进度/END事件ACK收尾后返回失败，不冒充写入成功；半帧、真实断线或无法完成收尾仍不作为可用会话。
+
 RPMB 与普通块设备分离，块固定为 256 字节；默认区域 0、起始块 0。读取/擦除默认覆盖已确认容量的剩余范围，写入默认采用文件块数，输入必须精确对齐且与 `--count` 一致。eMMC 容量取设备上报值；UFS 未知容量必须交互提供该区域已确认的块数，或通过 `--mtk-ufs-rpmb-blocks` 指定，按区域和会话代数缓存。不沿用参考项目的固定 UFS 容量，也不用输入文件长度猜容量。
 
 省略 `--key-file` 时复用当前区域认证，或请求 Penumbra2 RPMB 派生服务；派生密钥仅在内存使用并及时清零，不隐式保存或打印。厂商密钥不匹配时应提供实际 32 字节密钥文件；不尝试多组密钥。RPMB 写/擦和 XML/UFS 的 rpmb-lock 写入先持久备份，再确认，未知写入结果不重试。备份不是 RPMB 计数器或安全状态的通用回滚保证。
@@ -82,7 +84,7 @@ write PreloaderBackup preloader.bin
 
 XFlash/XML 使用 DA 原生命名接口处理启动头；读取以 BOOT 区容量为上限，实际输出为 DA 返回的镜像长度，不导出整个 BOOT1/2。写入不将 bin 原样写入原始 BOOT 区。Legacy 不猜测头布局，拒绝此命名入口；命名擦除也拒绝，原始 sector 操作仍是显式危险入口。
 
-连接后离线确认 DA2 确实包含扩展加载器，再解析 Penumbra 函数地址、填充嵌入扩展指针表，通过 BOOT-TO 上传并验证 ACK/context。只有这些步骤都成功才输出“DA 扩展已加载”。缺少加载器、UART 或函数地址时不上传，保持标准存储能力；线上失败使会话失效。XFlash DA2 的 Thumb2 定位独立于 DA1 的 ARM 架构。
+连接后离线确认 DA2 确实包含扩展加载器，再解析 Penumbra 函数地址、填充嵌入扩展指针表，通过 BOOT-TO 上传并验证 ACK/context。只有这些步骤都成功才输出“DA 扩展已加载”。缺少加载器、UART 或函数地址时不上传，保持标准存储能力；在途/坏帧/ACK失败仍失效，完整END之后的本地解析错误可保留标准DA但不发布扩展Ready。XFlash DA2 的 Thumb2 定位独立于 DA1 的 ARM 架构。
 
 默认内置扩展 ABI 为 Penumbra2。另行接管宿主加载的旧扩展可显式指定 `--mtk-extension-abi legacy`。`IMtkProtocol.Capabilities` 的 RequiresExtension 表示核心需要可选扩展服务，不是加载结果；`mtk-capabilities` 使用已验证服务的 `MtkDaExtension.Capabilities`，仅当前代数有效。DA2 重连沿用此前已加载的扩展时重新验证 ACK/context，不再上传代码。加密基址及 UFS RPMB 容量仍需已确认的配置，不猜测容量；Supported 不表示 RPMB 已认证或写入无需密钥。
 

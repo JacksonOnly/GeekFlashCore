@@ -92,15 +92,8 @@ internal sealed partial class CliApplication
                 using (var search = recover ? _ui.BeginSearch(ct) : null)
                 {
                     CancellationToken connecting = search?.Token ?? ct;
-                    var connection = await CreateConnectionAsync(options, null, connecting).ConfigureAwait(false);
-                    active = new(connection.Protocol, connection.Transport, connection.Registration);
+                    active = await WaitForInteractiveConnectionAsync(options, null, connecting).ConfigureAwait(false);
                     recover |= active.Protocol.Type == ProtocolType.Mtk;
-                    _ui.WriteLine(Strings.Cli_Connecting);
-                    if (!active.Protocol.IsConnected)
-                    {
-                        await active.Protocol.ConnectAsync(_progress, connecting).ConfigureAwait(false);
-                        MtkProtocolHostAdapter.InitializeExtension(active.Protocol, options, connecting);
-                    }
                 }
                 _ui.WriteLine(Strings.FormatCli_ConnectedHelp(active.Registration.DisplayName));
                 ShowQcomCommands(active.Protocol);
@@ -154,13 +147,8 @@ internal sealed partial class CliApplication
                         parsed = parsed with { Protocol = "mtk", Usb = null,
                             UsbSerial = snapshot.Identity.SerialNumber, UsbBus = snapshot.Identity.BusNumber, UsbPortPath = snapshot.Identity.PortPath };
                     await active.ReleaseAsync();
-                    var next = await CreateConnectionAsync(parsed, active.Registration, connecting).ConfigureAwait(false);
-                    active.Replace(next.Protocol, next.Transport, next.Registration);
-                    if (!active.Protocol.IsConnected)
-                    {
-                        await active.Protocol.ConnectAsync(_progress, connecting).ConfigureAwait(false);
-                        MtkProtocolHostAdapter.InitializeExtension(active.Protocol, parsed, connecting);
-                    }
+                    var next = await WaitForInteractiveConnectionAsync(parsed, active.Registration, connecting).ConfigureAwait(false);
+                    active.Replace(next.Protocol, next.TakeTransport(), next.Registration);
                     _sessionOptions = parsed with { Command = "interactive", Arguments = [] };
                     _ui.WriteLine(Strings.FormatCli_ConnectedHelp(active.Registration.DisplayName));
                     continue;
@@ -458,6 +446,12 @@ internal sealed partial class CliApplication
         }
         public void Replace(IProtocol next, ITransport nextTransport, ProtocolRegistration nextRegistration)
         { Protocol = next; _transport = nextTransport; Registration = nextRegistration; }
+        public ITransport TakeTransport()
+        {
+            var owned = _transport ?? throw new InvalidOperationException();
+            _transport = null;
+            return owned;
+        }
         public ValueTask DisposeAsync() => ReleaseAsync();
     }
 }

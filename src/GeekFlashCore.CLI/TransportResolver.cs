@@ -140,7 +140,16 @@ internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, C
             // MTK explicit admission includes preparation; preserve other protocols' old discovery budget.
             if (registration.Type != ProtocolType.Mtk) elapsed.Stop();
             if (registration.Type == ProtocolType.Mtk)
-                await preparation.EnsureAsync(token => PrepareNativeUsbAsync(registration, options, token), ct).ConfigureAwait(false);
+            {
+                try { await preparation.EnsureAsync(token => PrepareNativeUsbAsync(registration, options, token), ct).ConfigureAwait(false); }
+                catch (Exception exception) when (MtkConnectionAdmission.IsUsbFailure(exception))
+                {
+                    ct.ThrowIfCancellationRequested();
+                    ReportRetry(exception);
+                    await Task.Delay(100, ct).ConfigureAwait(false);
+                    continue;
+                }
+            }
             else await PrepareNativeUsbAsync(registration, options, ct).ConfigureAwait(false);
             if (registration.Type != ProtocolType.Mtk) elapsed.Start();
             ct.ThrowIfCancellationRequested();

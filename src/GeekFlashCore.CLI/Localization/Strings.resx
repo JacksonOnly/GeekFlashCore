@@ -455,6 +455,7 @@ Cache 命令阻止：{8}</value></data>
 <data name="Cli_SprdChipUid" xml:space="preserve"><value>SPRD Chip UID：{0}</value></data>
   <data name="Cli_MtkInitialProbeRetry" xml:space="preserve"><value>MTK 初始接入未完成，已释放旧连接，继续等待设备；按 Ctrl+C 停止。</value></data>
   <data name="Cli_MtkUsbDiscoveryRetry" xml:space="preserve"><value>MTK USB 枚举或打开未完成，继续等待设备；按 Ctrl+C 停止，诊断原因见文件日志。</value></data>
+  <data name="Cli_MtkConnectionUsbRetry" xml:space="preserve"><value>MTK 联机时 USB 连接中断，已释放旧连接，自动重新等待端口；无需输入 reconnect，按 Ctrl+C 停止。</value></data>
   <data name="Cli_MtkOperationStopped" xml:space="preserve"><value>MTK 会话已失效，不自动重试。若写入中断，目标内容可能不完整；先复位设备至空闲状态，再 reconnect 并从头重刷。</value></data>
   <data name="Cli_MtkBromChunkInvalid" xml:space="preserve"><value>BROM 宿主上传块必须为 64～1048576 字节。</value></data>
   <data name="Cli_ProgramWriteModeQcomOnly" xml:space="preserve"><value>--program-write-mode 仅适用于 Qualcomm 协议。</value></data>

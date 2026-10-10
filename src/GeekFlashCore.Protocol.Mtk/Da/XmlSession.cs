@@ -410,17 +410,15 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
             throw wire.Failure();
         long size = checked((long)value);
         Ack();
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(packet);
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(options.BufferSize);
         try
         {
             for (long done = 0; done < size;)
             {
                 ReadAck();
                 Ack();
-                int want = (int)Math.Min(packet, size - done), n = wire.ReadFrame(buffer.AsSpan(0, want));
-                if (n != want)
-                    throw wire.Failure();
-                output.Write(buffer.AsSpan(0, n));
+                int want = (int)Math.Min(packet, size - done);
+                int n = wire.ReadXmlStreamFrame(output, want, buffer.AsSpan(0, options.BufferSize));
                 if (done + n == size)
                     beforeFinalAck?.Invoke();
                 Ack();
@@ -467,7 +465,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
     private int PacketSize(XElement request)
     {
         ulong size = MtkXmlCodec.Number(MtkXmlCodec.Value(request, "packet_length"));
-        if (size is 0 or > 1048576 || size > (ulong)options.MaximumFrameSize)
+        if (size is 0 or > MtkProtocolOptions.MaximumXmlPacketLength)
             throw wire.Failure();
         wire.Logger.Debug(Strings.XmlPacketLength, wire.Stage, wire.CommandName, size);
         return (int)size; // Must retain the negotiated XML packet boundary.
@@ -482,7 +480,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         if (MtkXmlCodec.Value(request, "file_path") != $"MEM:\\0x0:0x{length:X}")
             throw new MtkResourceException("XML virtual file");
         Ack();
-        Ack(length.ToString("X", System.Globalization.CultureInfo.InvariantCulture));
+        Ack("0x" + length.ToString("X", System.Globalization.CultureInfo.InvariantCulture));
     }
 
     private void Progress(XElement? request = null)
@@ -534,7 +532,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
                     if (MtkXmlCodec.Value(request, "key") != "FILE-SIZE" || MtkXmlCodec.Value(request, "file_path") != name + ".bin")
                         throw new MtkResourceException("named virtual file");
                     Ack();
-                    Ack(length.ToString("X", System.Globalization.CultureInfo.InvariantCulture));
+                    Ack("0x" + length.ToString("X", System.Globalization.CultureInfo.InvariantCulture));
                     break;
                 case MtkXmlCommand.Prefix + MtkXmlCommand.DownloadFile:
                     if (downloaded)

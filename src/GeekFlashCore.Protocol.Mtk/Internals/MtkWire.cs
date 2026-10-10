@@ -308,10 +308,20 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         return length;
     }
     public int ReadStreamFrame(Stream output, int maximumLength, Span<byte> buffer)
+        => ReadStreamFrame(output, maximumLength, buffer, options.MaximumXFlashDataFrameSize);
+
+    public int ReadXmlStreamFrame(Stream output, int expectedLength, Span<byte> buffer)
+        => ReadStreamFrame(output, Math.Min(expectedLength, options.MaximumXmlDataFrameSize), buffer,
+            options.MaximumXmlDataFrameSize, expectedLength);
+
+    private int ReadStreamFrame(Stream output, int maximumLength, Span<byte> buffer, int maximumFrameSize, int? expectedLength = null)
     {
-        if (buffer.IsEmpty || maximumLength <= 0 || maximumLength > options.MaximumXFlashDataFrameSize)
+        if (buffer.IsEmpty || maximumLength <= 0 || maximumLength > maximumFrameSize)
             throw new ArgumentOutOfRangeException(nameof(maximumLength));
         int length = ReadFlowHeader(maximumLength);
+        // XML file packets have an exact negotiated boundary. Validate before writing any payload.
+        if (expectedLength is { } exact && length != exact)
+            throw Failure();
         // All payload windows share a logical read deadline. A slow trickle cannot refresh it.
         long deadline = checked(Environment.TickCount64 + options.ReadTimeoutMilliseconds);
         int buffered = 0;

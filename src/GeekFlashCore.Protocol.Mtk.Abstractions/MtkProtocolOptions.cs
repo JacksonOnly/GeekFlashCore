@@ -7,6 +7,8 @@ public sealed record MtkProtocolOptions
     public const int DefaultConnectTimeoutMilliseconds = 1000 * 60 * 3;
     /// <summary>Finite XFlash advertised packet ceiling, including observed 2 MiB DA2 capabilities.</summary>
     public const int MaximumXFlashPacketLength = 2 * 1024 * 1024;
+    /// <summary>Finite XML advertised file-packet ceiling, including observed 2 MiB UFS uploads.</summary>
+    public const int MaximumXmlPacketLength = 2 * 1024 * 1024;
     public int ReadTimeoutMilliseconds { get; init; } = 3000;
     public int ConnectTimeoutMilliseconds { get; init; } = DefaultConnectTimeoutMilliseconds;
     public int OperationTimeoutMilliseconds { get; init; } = 120000;
@@ -25,6 +27,10 @@ public sealed record MtkProtocolOptions
     /// Independent of MaximumFrameSize for control, authentication, messages and scoped channel frames.
     /// Defaults to 2 MiB; an explicit smaller limit rejects larger data frames without retry.</summary>
     public int MaximumXFlashDataFrameSize { get; init; } = MaximumXFlashPacketLength;
+    /// <summary>Maximum received XML file-data FLOW length, streamed through BufferSize windows.
+    /// Independent of control/message MaximumFrameSize and XFlash data limits.
+    /// A smaller limit rejects a larger actual FLOW; it never changes the device's packet boundary.</summary>
+    public int MaximumXmlDataFrameSize { get; init; } = MaximumXmlPacketLength;
     public int MaximumXmlSize { get; init; } = 65536;
     public int MaximumMessages { get; init; } = 128;
     public int MaximumProgressEvents { get; init; } = 4096;
@@ -69,6 +75,7 @@ public sealed record MtkProtocolOptions
         if (BromUploadChunkSize != 0 && (BromUploadChunkSize is < 64 or > 1048576))
             throw new ArgumentOutOfRangeException(nameof(BromUploadChunkSize));
         if (MaximumXFlashDataFrameSize is < 512 or > MaximumXFlashPacketLength ||
+            MaximumXmlDataFrameSize is < 512 or > MaximumXmlPacketLength ||
             MaximumXFlashWritePacketLength is < 512 or > MaximumXFlashPacketLength ||
             BufferSize is < 512 or > 1048576 || MaximumFrameSize < BufferSize || MaximumFrameSize > 1048576 ||
             MaximumXmlSize is < 1024 or > 65536 || MaximumXmlSize > MaximumFrameSize || MaximumMessages is < 1 or > 1024 ||

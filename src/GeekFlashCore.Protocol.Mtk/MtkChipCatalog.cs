@@ -149,7 +149,9 @@ public static class MtkChipCatalog
         foreach (var (code, name, description, daCode) in Models)
             chips[code] = new(name, description, daCode == 0 ? code : daCode,
                 watchdogs.TryGetValue(code, out var watchdog)
-                    ? new(code, watchdog.Address, watchdog.Value, WatchdogWidth: watchdog.Width)
+                    ? new(code, watchdog.Address, watchdog.Value,
+                        SejBase: code switch { 0x1172 => 0x1c009000, 0x950 => 0x1000a000, _ => 0 },
+                        WatchdogWidth: watchdog.Width)
                     : null,
                 uarts.TryGetValue(code, out var uart) ? uart : null);
         return chips;

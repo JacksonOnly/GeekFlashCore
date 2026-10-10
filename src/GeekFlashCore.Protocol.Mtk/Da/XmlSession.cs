@@ -24,6 +24,13 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
     private XElement ReceiveXml() => MtkXmlCodec.Parse(wire.ReadSmallFrame(options.MaximumXmlSize), options.MaximumXmlSize);
     private void Require(string command, XElement root)
     {
+        // A DA may terminate a rejected command instead of requesting its file.
+        // Consume that real END, not a guessed ACK sequence, before reporting failure.
+        if (command != MtkXmlCommand.End && MtkXmlCodec.Value(root, "command") == MtkXmlCommand.Prefix + MtkXmlCommand.End)
+        {
+            CompleteEnd(root);
+            throw wire.XmlFailure("UNEXPECTED_END", null, requiresReconnect: false);
+        }
         bool matches = MtkXmlCodec.Value(root, "command") == MtkXmlCommand.Prefix + command;
         wire.Logger.Debug(Strings.XmlLifecycle, wire.Stage, wire.CommandName, command, matches);
         if (!matches)
@@ -46,17 +53,69 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         bool ignoredError = allowError && ack == "ERR";
         wire.TraceStatus(accepted ? 0u : 1u, accepted || ignoredError);
         if (!accepted && !ignoredError)
+        {
+            if (ack == "ERR" || ack.StartsWith("ERR!", StringComparison.Ordinal))
+            {
+                FinishRejectedCommand();
+                throw wire.XmlFailure(ack, null, requiresReconnect: false);
+            }
             throw wire.Failure();
+        }
         return ignoredError;
+    }
+
+    private void CompleteEnd(XElement root)
+    {
+        bool matches = MtkXmlCodec.Value(root, "command") == MtkXmlCommand.Prefix + MtkXmlCommand.End;
+        wire.Logger.Debug(Strings.XmlLifecycle, wire.Stage, wire.CommandName, MtkXmlCommand.End, matches);
+        var results = root.Descendants("result").ToArray();
+        var messages = root.Descendants("message").ToArray();
+        if (!matches || results.Length != 1 || results[0].HasElements || results[0].Value.Length == 0 ||
+            messages.Length > 1 || messages.Any(message => message.HasElements))
+            throw wire.Failure();
+        // A negative result still ends the command. ACK must succeed before the
+        // failure becomes recoverable, and the operation must never report success.
+        string result = results[0].Value;
+        string? message = messages.Length == 1 ? messages[0].Value : null;
+        Ack();
+        wire.CompleteCommandBoundary();
+        if (result != "OK")
+            throw wire.XmlFailure(result, message, requiresReconnect: false);
+    }
+
+    private void FinishRejectedCommand()
+    {
+        // Reject/END recovery stays within the existing operation and event budgets.
+        // Never consume START or send file bytes to make a failed write continue.
+        for (int i = 0; i < options.MaximumMessages; i++)
+        {
+            var root = ReceiveXml();
+            switch (MtkXmlCodec.Value(root, "command"))
+            {
+                case MtkXmlCommand.Prefix + MtkXmlCommand.ProgressReport:
+                    Progress(root);
+                    break;
+                case MtkXmlCommand.Prefix + MtkXmlCommand.End:
+                    try { CompleteEnd(root); }
+                    catch (MtkProtocolException ex) when (!ex.RequiresReconnect) { /* Preserve the original rejection. */ }
+                    return;
+                default:
+                    throw wire.Failure();
+            }
+        }
+        throw wire.Failure();
     }
 
     public void Lifetime(string name)
     {
         var root = ReceiveXml();
+        if (name == MtkXmlCommand.End)
+        {
+            CompleteEnd(root);
+            return;
+        }
         Require(name, root);
         Ack();
-        if (name == MtkXmlCommand.End)
-            wire.CompleteCommandBoundary();
     }
 
     public void LifetimeIgnoringResult(string name)
@@ -96,7 +155,14 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         if (ack is "OK" or "OK@0x0")
             return true;
         if (ack != "ERR!UNSUPPORTED")
+        {
+            if (ack == "ERR" || ack.StartsWith("ERR!", StringComparison.Ordinal))
+            {
+                FinishRejectedCommand();
+                throw wire.XmlFailure(ack, null, requiresReconnect: false);
+            }
             throw wire.Failure();
+        }
         // Unsupported is recoverable only after the complete command lifetime is confirmed.
         var end = ReceiveXml();
         if (MtkXmlCodec.Value(end, "command") != MtkXmlCommand.Prefix + MtkXmlCommand.End)
@@ -114,7 +180,11 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
             bool unsupportedMessage = results[0].Value == "ERR" && messages.Length == 1 &&
                 !messages[0].HasElements && messages[0].Value == "ERR!UNSUPPORTED";
             if (!unsupportedResult && !unsupportedMessage)
-                throw wire.XmlFailure(results[0].Value, messages.Length == 1 && !messages[0].HasElements ? messages[0].Value : null);
+            {
+                CompleteEnd(end); // ACK a real END even when its result contradicts the rejection.
+                throw wire.XmlFailure(results[0].Value, messages.Length == 1 && !messages[0].HasElements ? messages[0].Value : null,
+                    requiresReconnect: false);
+            }
         }
 
         Ack();
@@ -623,11 +693,9 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
                     downloaded = true;
                     break;
                 case MtkXmlCommand.Prefix + MtkXmlCommand.End:
-                    Require(MtkXmlCommand.End, request);
+                    CompleteEnd(request);
                     if (!downloaded)
                         throw wire.Failure();
-                    Ack();
-                    wire.CompleteCommandBoundary();
                     return;
                 default:
                     throw wire.Failure();

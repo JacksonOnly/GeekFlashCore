@@ -616,10 +616,11 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     public T UseSession<T>(Func<IMtkDaChannel, T> action, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(action);
-        // A scoped host/extension callback owns additional ACK/context and write-result
-        // semantics. A generic END alone cannot certify those prerequisites on its behalf.
+        // Completed device commands remain usable if subsequent host validation fails.
+        // Unknown wire state and explicit invalidation still expire the whole session;
+        // an idle DA does not imply that an extension/context or write result is valid.
         return Execute(() => { Ready(); var channel = new Channel(this); try { return action(channel); } finally { channel.Expire(); } },
-            cancellationToken, preserveCompletedBoundary: false);
+            cancellationToken);
     }
     private sealed class Channel(MtkProtocol owner, Action? guard = null) : IMtkDaChannel, IMtkDaPartitionChannel
     {

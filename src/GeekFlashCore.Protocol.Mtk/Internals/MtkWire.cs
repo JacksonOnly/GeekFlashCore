@@ -289,8 +289,8 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
             throw Failure(status);
     }
     public MtkProtocolException Failure(uint status = 0) => new(Stage, Command, status);
-    public MtkProtocolException XmlFailure(string resultCode, string? message) =>
-        new(Stage, Command, 0, true, resultCode, message);
+    public MtkProtocolException XmlFailure(string resultCode, string? message, bool requiresReconnect = true) =>
+        new(Stage, Command, 0, requiresReconnect, resultCode, message);
     public void SendFrame(ReadOnlySpan<byte> data)
         => SendFrame(data, WritePacketLength);
     public void SendFrame(ReadOnlySpan<byte> data, int maximumWriteLength)

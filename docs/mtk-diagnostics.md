@@ -62,6 +62,8 @@ XFlash设备包上限可为2MiB，不能按旧1MiB宿主小帧限制拒绝能力
 
 边界之后的主机参数、资源、分区表或 seccfg 摘要校验失败保留 `StorageReady`、transport 和会话代数，并输出保留连接 Warning；例如用户 13:22:36 的 READ-FLASH 已完成 END/ACK 后，`seccfg algorithm/digest` 不再关闭连接。下一次 I/O 立即撤销该边界证据。错误仍返回调用方，不报告 Completed，不自动重试；扩展上下文验证失败仍不发布 Ready。`UseDaHardware`、主动 Invalidate、未知写结果和明确要求重连的异常仍遵守失效规则，不能对正在等待数据或真实断线的设备盲发 ACK。
 
+`MtkProtocolException.RequiresReconnect=false` 的可恢复命令错误使用独立中英文消息，不再显示固定的“需要重新连接”；默认失效错误的重连提示保持。错误代码/消息仍采用相同脱敏规则，省略重连提示不是成功或通道存活证明。
+
 XML file-data 接收使用独立 `MtkProtocolOptions.MaximumXmlReadPacketLength`，**默认 64 KiB**；范围 512～2 MiB，只有已经验证的设备/USB 后端组合才显式增大。池化窗口不超过设备 packet、实际文件大小及宿主上限，完整 FLOW 长度仍在写入输出前严格校验。短 IN 在同一帧预算内续读，不增加 ACK、不重发命令，也不放宽 `MaximumXmlDataFrameSize`、控制帧、XFlash 或 scoped extension 限制。写入仍独立使用 `MaximumXmlWritePacketLength`（默认 2 MiB）。
 
 2026-10-10 的 512 KiB 默认曾在无损模拟中将 64 MiB native payload read 调用数降至 128，但用户 12:29:53 日志和 bbb.txt 的首次 persist 读取证实回归：2 MiB FLOW 只有 2,070,528 字节返回，仍缺 26,624 字节，伴随被取消的 USB 子请求，最后超时。默认已恢复此前成功的 64 KiB 形态（64 MiB 无损模拟为 1024 次）；不 ACK 截断数据、不放宽超时、不在失败后自动降级重读。请求拆分/取消由实际驱动决定，Penumbra 的接收缓冲大小不能直接证明本后端的大请求安全。用户后续确认 persist 64 MiB read 1.770秒、write两次1.994/1.991秒成功；这不是逐字节回读一致性证明。

@@ -3,6 +3,8 @@
 <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader>
 <data name="WireFailure" xml:space="preserve"><value>MTK protocol failure: stage {0}, command 0x{1}, status 0x{2}. Reconnect required.</value></data>
 <data name="XmlWireFailure" xml:space="preserve"><value>MTK XML response failure: stage {0}, command 0x{1}, status 0x{2}, result {3}, message {4}. Reconnect required.</value></data>
+<data name="CommandFailure" xml:space="preserve"><value>MTK command failure: stage {0}, command 0x{1}, status 0x{2}.</value></data>
+<data name="XmlCommandFailure" xml:space="preserve"><value>MTK XML command failure: stage {0}, command 0x{1}, status 0x{2}, result {3}, message {4}.</value></data>
 <data name="ResourceMissing" xml:space="preserve"><value>MTK resource is missing or invalid: {0}.</value></data>
 <data name="CapabilityUnavailable" xml:space="preserve"><value>MTK capability or prerequisite is unavailable: {0}.</value></data>
 <data name="SecurityWriteUnknown" xml:space="preserve"><value>seccfg may have been written. Reconnect and inspect lock state and backup.</value></data>

@@ -3,6 +3,8 @@
 <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader>
 <data name="WireFailure" xml:space="preserve"><value>MTK 协议错误：阶段 {0}，命令 0x{1}，状态 0x{2}。需要重新连接。</value></data>
 <data name="XmlWireFailure" xml:space="preserve"><value>MTK XML 应答错误：阶段 {0}，命令 0x{1}，状态 0x{2}，result {3}，message {4}。需要重新连接。</value></data>
+<data name="CommandFailure" xml:space="preserve"><value>MTK 命令失败：阶段 {0}，命令 0x{1}，状态 0x{2}。</value></data>
+<data name="XmlCommandFailure" xml:space="preserve"><value>MTK XML 命令失败：阶段 {0}，命令 0x{1}，状态 0x{2}，result {3}，message {4}。</value></data>
 <data name="ResourceMissing" xml:space="preserve"><value>MTK 资源缺失或无效：{0}。</value></data>
 <data name="CapabilityUnavailable" xml:space="preserve"><value>MTK 能力或前提不可用：{0}。</value></data>
 <data name="SecurityWriteUnknown" xml:space="preserve"><value>seccfg 可能已写入，请重新连接并检查锁状态与备份。</value></data>

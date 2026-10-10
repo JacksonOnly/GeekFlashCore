@@ -8,10 +8,7 @@ public class MtkProtocolException : ProtocolException
 {
     public MtkProtocolException(MtkBootStage stage, uint command, uint status = 0, bool requiresReconnect = true,
         string? xmlResultCode = null, string? xmlMessage = null)
-        : base(xmlResultCode is null
-            ? Strings.FormatWireFailure(stage, command.ToString("X"), status.ToString("X"))
-            : Strings.FormatXmlWireFailure(stage, command.ToString("X"), status.ToString("X"), SanitizeXmlCode(xmlResultCode),
-                ExtractXmlMessageCode(xmlMessage) ?? SanitizeXmlMessage(xmlMessage)))
+        : base(FailureMessage(stage, command, status, requiresReconnect, xmlResultCode, xmlMessage))
     {
         Stage = stage;
         Command = command;
@@ -38,6 +35,19 @@ public class MtkProtocolException : ProtocolException
     }
     public string? XmlResultCode { get; }
     public string? XmlMessageCode { get; }
+
+    private static string FailureMessage(MtkBootStage stage, uint command, uint status, bool requiresReconnect,
+        string? xmlResultCode, string? xmlMessage)
+    {
+        string commandText = command.ToString("X"), statusText = status.ToString("X");
+        if (xmlResultCode is null)
+            return requiresReconnect ? Strings.FormatWireFailure(stage, commandText, statusText)
+                : Strings.FormatCommandFailure(stage, commandText, statusText);
+        string result = SanitizeXmlCode(xmlResultCode);
+        string message = ExtractXmlMessageCode(xmlMessage) ?? SanitizeXmlMessage(xmlMessage);
+        return requiresReconnect ? Strings.FormatXmlWireFailure(stage, commandText, statusText, result, message)
+            : Strings.FormatXmlCommandFailure(stage, commandText, statusText, result, message);
+    }
 
     private static string SanitizeXmlCode(string value)
     {

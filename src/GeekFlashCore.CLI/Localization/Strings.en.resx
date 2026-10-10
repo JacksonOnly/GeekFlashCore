@@ -460,7 +460,7 @@ Keys go only to files.</value></data>
   <data name="Cli_ProgramWriteModeInvalid" xml:space="preserve"><value>PROGRAM write mode must be program, auto, or patch.</value></data>
   <data name="Cli_PatchProgramAvailable" xml:space="preserve"><value>Framework PROGRAM mode: {0}; the PATCH backend still requires device acceptance. Command lists retain device-reported values.</value></data>
   <data name="Cli_MtkExtensionLoaded" xml:space="preserve"><value>MTK: DA extension loaded.</value></data>
-  <data name="Cli_MtkExtensionNotPrepared" xml:space="preserve"><value>MTK: DA extension unavailable; verified loader or function addresses are missing.</value></data>
+  <data name="Cli_MtkExtensionNotPrepared" xml:space="preserve"><value>MTK: DA extension unavailable; preparation reason code: {Reason}.</value></data>
   <data name="Cli_MtkScatterConverted" xml:space="preserve"><value>MTK: partition table conversion completed.</value></data>
   <data name="Cli_MtkScatterLayoutChanged" xml:space="preserve"><value>Scatter layout mismatches: {0}.</value></data>
   <data name="Cli_MtkScatterConfirm" xml:space="preserve"><value>Back up the current primary/backup GPT, update the partition table, and continue flashing? Only the table is backed up; partition contents are not backed up or migrated. Layout changes may make original data inaccessible. Type yes to continue; otherwise cancel:</value></data>

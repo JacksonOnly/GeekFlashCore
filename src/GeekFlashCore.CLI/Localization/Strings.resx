@@ -460,7 +460,7 @@ Cache 命令阻止：{8}</value></data>
   <data name="Cli_ProgramWriteModeInvalid" xml:space="preserve"><value>写入模式必须为 program、auto 或 patch。</value></data>
   <data name="Cli_PatchProgramAvailable" xml:space="preserve"><value>框架 PROGRAM 模式：{0}；PATCH 后端仍需设备接受 PATCH，命令清单保持设备报告值。</value></data>
   <data name="Cli_MtkExtensionLoaded" xml:space="preserve"><value>MTK：DA 扩展已加载。</value></data>
-  <data name="Cli_MtkExtensionNotPrepared" xml:space="preserve"><value>MTK：DA 扩展未加载，缺少已验证的加载器或函数地址。</value></data>
+  <data name="Cli_MtkExtensionNotPrepared" xml:space="preserve"><value>MTK：DA 扩展未加载，准备原因代码：{Reason}。</value></data>
   <data name="Cli_MtkScatterConverted" xml:space="preserve"><value>MTK：分区表转换完成。</value></data>
   <data name="Cli_MtkScatterLayoutChanged" xml:space="preserve"><value>Scatter 布局不匹配的分区：{0}。</value></data>
   <data name="Cli_MtkScatterConfirm" xml:space="preserve"><value>是否备份当前主/备 GPT、更新分区表并继续刷写？仅备份分区表，不备份或迁移分区内容；布局变化可能使原数据不可用。输入 yes 继续，其余取消：</value></data>

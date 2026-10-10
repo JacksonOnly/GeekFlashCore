@@ -7,18 +7,53 @@ using GeekFlashCore.Protocol.Mtk.Exploits.Penumbra;
 
 namespace GeekFlashCore.Protocol.Mtk.Loaders;
 
+/// <summary>Stable offline preparation reason; no device response or authentication result is implied.</summary>
+public enum MtkExtensionPreparationFailure
+{
+    /// <summary>Preparation succeeded.</summary>
+    None,
+    /// <summary>The host has no verified UART base.</summary>
+    MissingUartBase,
+    /// <summary>The dialect or storage does not support this extension.</summary>
+    UnsupportedConfiguration,
+    /// <summary>The bundled loader was not found in the uploaded DA2 image.</summary>
+    LoaderNotFound,
+    /// <summary>The command-registration function could not be verified.</summary>
+    RegisterCommandNotFound,
+    /// <summary>The allocator could not be verified.</summary>
+    MallocNotFound,
+    /// <summary>The deallocator could not be verified.</summary>
+    FreeNotFound,
+    /// <summary>The required eMMC helper could not be verified.</summary>
+    MmcNotFound,
+    /// <summary>The XML error handlers could not be verified.</summary>
+    ErrorHandlersNotFound,
+    /// <summary>The extension resource has no valid pointer-table marker.</summary>
+    PointerTableInvalid
+}
+
 /// <summary>Offline preparation of the bundled Penumbra extension for an already loader-enabled DA.</summary>
 public static class MtkPenumbraExtensionPreparer
 {
     /// <summary>Returns owned prepared bytes, or null when loader/symbol evidence is incomplete. Performs no device I/O.</summary>
     public static byte[]? Prepare(MtkDaImage image, uint uartBase, MtkStorageKind storage,
         MtkExploitResourceStore resources, CancellationToken cancellationToken = default)
+        => Prepare(image, uartBase, storage, resources, out _, cancellationToken);
+
+    /// <summary>Returns owned prepared bytes and a specific failure reason for missing evidence.
+    /// Invalid resources still throw; cancellation is never converted into an unavailable extension.</summary>
+    public static byte[]? Prepare(MtkDaImage image, uint uartBase, MtkStorageKind storage,
+        MtkExploitResourceStore resources, out MtkExtensionPreparationFailure failure,
+        CancellationToken cancellationToken = default)
     {
+        failure = MtkExtensionPreparationFailure.None;
         ArgumentNullException.ThrowIfNull(image); ArgumentNullException.ThrowIfNull(resources);
         cancellationToken.ThrowIfCancellationRequested();
         if (image.Entry?.Regions is not { } regions || !Enum.IsDefined(image.Entry.Kind) || image.Source is null || image.Entry.EntryRegionIndex >= regions.Count - 1)
             throw new MtkResourceException("DA extension metadata");
-        if (uartBase == 0 || image.Entry.Kind == MtkDaKind.Legacy || storage is not (MtkStorageKind.Emmc or MtkStorageKind.Ufs)) return null;
+        if (uartBase == 0) { failure = MtkExtensionPreparationFailure.MissingUartBase; return null; }
+        if (image.Entry.Kind == MtkDaKind.Legacy || storage is not (MtkStorageKind.Emmc or MtkStorageKind.Ufs))
+        { failure = MtkExtensionPreparationFailure.UnsupportedConfiguration; return null; }
         var da1 = image.Entry.Regions[image.Entry.EntryRegionIndex];
         var da2 = image.Entry.Regions[image.Entry.EntryRegionIndex + 1];
         if (da1.Length < 4 || da2.SignatureLength >= da2.Length) throw new MtkResourceException("DA extension region");
@@ -32,7 +67,8 @@ public static class MtkPenumbraExtensionPreparer
         }
         byte[] loader = Read(resources, image.Entry.Kind == MtkDaKind.Xml ? MtkExploitResourceKind.XmlExtensionLoader : MtkExploitResourceKind.XFlashExtensionLoader);
         if (image.Entry.Kind == MtkDaKind.Xml) loader = PenumbraPayloadFormat.GetV6Payload(loader, arch == Arch.Aarch64).ToArray();
-        if (loader.Length > 4096 || MtkExploitBinaryTools.FindPattern(source, loader, cancellationToken) is null) return null;
+        if (loader.Length > 4096 || MtkExploitBinaryTools.FindPattern(source, loader, cancellationToken) is null)
+        { failure = MtkExtensionPreparationFailure.LoaderNotFound; return null; }
         var analyzer = new Analyzer(arch, source, da2.Address);
         long? Function(string text) => Unique(text) ? analyzer.FindFunctionFromString(text, cancellationToken) : null;
         long? Reference(string text) => Unique(text) ? analyzer.FindStringReference(text, cancellationToken) : null;
@@ -73,16 +109,22 @@ public static class MtkPenumbraExtensionPreparer
             set = Address(Next(unsupported));
             clear = Address(Next(unsupported is >= 16 ? unsupported - 16 : null));
         }
-        if (register is null || malloc is null || free is null ||
-            (image.Entry.Kind == MtkDaKind.XFlash || storage == MtkStorageKind.Emmc) && mmc is null ||
-            image.Entry.Kind == MtkDaKind.Xml && (clear is null || set is null)) return null;
+        if (register is null) failure = MtkExtensionPreparationFailure.RegisterCommandNotFound;
+        else if (malloc is null) failure = MtkExtensionPreparationFailure.MallocNotFound;
+        else if (free is null) failure = MtkExtensionPreparationFailure.FreeNotFound;
+        else if ((image.Entry.Kind == MtkDaKind.XFlash || storage == MtkStorageKind.Emmc) && mmc is null)
+            failure = MtkExtensionPreparationFailure.MmcNotFound;
+        else if (image.Entry.Kind == MtkDaKind.Xml && (clear is null || set is null))
+            failure = MtkExtensionPreparationFailure.ErrorHandlersNotFound;
+        if (failure != MtkExtensionPreparationFailure.None) return null;
         byte[] bytes = Read(resources, image.Entry.Kind == MtkDaKind.Xml ? MtkExploitResourceKind.XmlExtension : MtkExploitResourceKind.XFlashExtension);
         if (image.Entry.Kind == MtkDaKind.Xml) bytes = PenumbraPayloadFormat.GetV6Payload(bytes, arch == Arch.Aarch64).ToArray();
         uint[] fields = image.Entry.Kind == MtkDaKind.XFlash
-            ? [0x54525450, uartBase, register.Value, malloc.Value, free.Value, mmc!.Value]
-            : [0x54525450, uartBase, register.Value, clear!.Value, set!.Value, malloc.Value, free.Value, mmc ?? 0];
+            ? [0x54525450, uartBase, register!.Value, malloc!.Value, free!.Value, mmc!.Value]
+            : [0x54525450, uartBase, register!.Value, clear!.Value, set!.Value, malloc!.Value, free!.Value, mmc ?? 0];
         int table = checked(bytes.Length - fields.Length * 4);
-        if (table < 0 || BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(table)) != 0x54525450) return null;
+        if (table < 0 || BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(table)) != 0x54525450)
+        { failure = MtkExtensionPreparationFailure.PointerTableInvalid; return null; }
         for (int i = 0; i < fields.Length; i++) BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(table + i * 4), fields[i]);
         cancellationToken.ThrowIfCancellationRequested();
         return bytes;

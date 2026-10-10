@@ -149,11 +149,11 @@ internal static partial class MtkProtocolHostAdapter
     {
         if (protocol is not IMtkProtocol p || p.DownloadAgent is not { } image || image.Entry.Kind == MtkDaKind.Legacy) return;
         var chip = MtkChipCatalog.Find(p.TargetInfo!.HardwareCode);
-        byte[]? prepared = chip?.Uart0 is { } uart
-            ? MtkPenumbraExtensionPreparer.Prepare(image, uart, p.GetStorageInfo().Kind, ExploitDependencies.Resources, ct) : null;
+        byte[]? prepared = MtkPenumbraExtensionPreparer.Prepare(image, chip?.Uart0 ?? 0,
+            p.GetStorageInfo().Kind, ExploitDependencies.Resources, out var failure, ct);
         if (prepared is null)
         {
-            Serilog.Log.ForContext("MtkSummary", true).Warning(Strings.Cli_MtkExtensionNotPrepared);
+            Serilog.Log.ForContext("MtkSummary", true).Warning(Strings.Cli_MtkExtensionNotPrepared, failure);
             return;
         }
         try

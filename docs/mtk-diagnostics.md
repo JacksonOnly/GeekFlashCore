@@ -60,9 +60,15 @@ XFlash设备包上限可为2MiB，不能按旧1MiB宿主小帧限制拒绝能力
 
 以前在一次操作中尝试过 I/O 后，任何异常都会关闭会话。现在标准 XML 入口只有在完整成功 `CMD:END` 已验证且最终 ACK 成功后，才记录可用命令边界。此时后续的主机参数、资源或分区表校验失败保留 `StorageReady`、transport 和会话代数，并输出保留连接 Warning；错误仍返回调用方，错误数据不可使用，也不自动重试。下一次 I/O 立即撤销该边界证据。连接期失败、未知/错误 END、ACK 发送失败、在途错误及明确要求重连的异常仍失效。scoped `UseSession`/`UseDaHardware` 与扩展 ACK/context、未知写结果的失效规则不变。
 
-XML file-data 接收新增独立 `MtkProtocolOptions.MaximumXmlReadPacketLength`，默认 512 KiB，匹配 Penumbra libusb 的接收缓冲；范围 512～2 MiB，显式 65536 保留旧读取形态。池化窗口不超过设备 packet、实际文件大小及宿主上限，完整 FLOW 长度仍在写入输出前严格校验。短 IN 在同一帧预算内续读，不增加 ACK、不重发命令，也不放宽 `MaximumXmlDataFrameSize`、控制帧、XFlash 或 scoped extension 限制。写入仍独立使用 `MaximumXmlWritePacketLength`（默认 2 MiB）。
+XML file-data 接收使用独立 `MtkProtocolOptions.MaximumXmlReadPacketLength`，**默认 64 KiB**；范围 512～2 MiB，只有已经验证的设备/USB 后端组合才显式增大。池化窗口不超过设备 packet、实际文件大小及宿主上限，完整 FLOW 长度仍在写入输出前严格校验。短 IN 在同一帧预算内续读，不增加 ACK、不重发命令，也不放宽 `MaximumXmlDataFrameSize`、控制帧、XFlash 或 scoped extension 限制。写入仍独立使用 `MaximumXmlWritePacketLength`（默认 2 MiB）。
 
-64 MiB 模拟输入下，默认 native payload read 调用数由旧窗口的 1024 降至 128，数据摘要及每个 FLOW 的 ACK 数不变。这不是硬件吞吐证明；USB 后端、短包形态和设备存储决定实际 MB/s。历史 XFlash 大 native 请求有过超时，本项不改 XFlash，也不在 XML 失败后自动退回小包重读。
+2026-10-10 的 512 KiB 默认曾在无损模拟中将 64 MiB native payload read 调用数降至 128，但用户 12:29:53 日志和 bbb.txt 的首次 persist 读取证实回归：2 MiB FLOW 只有 2,070,528 字节返回，仍缺 26,624 字节，伴随被取消的 USB 子请求，最后超时。默认已恢复此前成功的 64 KiB 形态（64 MiB 无损模拟为 1024 次）；不 ACK 截断数据、不放宽超时、不在失败后自动降级重读。请求拆分/取消由实际驱动决定，Penumbra 的接收缓冲大小不能直接证明本后端的大请求安全。恢复后的实机读取及 MB/s 仍需新日志确认。
+
+### DA 扩展准备与加载
+
+CLI 仅从当前上传 DA 镜像准备扩展，不猜函数地址；准备失败的 Warning 带 `Reason` 代码（例如 `LoaderNotFound`、`FreeNotFound`）。SDK 保留原 `Prepare` 入口，并增加输出 `MtkExtensionPreparationFailure` 的重载；取消和资源错误仍抛出，不当作“未准备”。
+
+bbb.txt 还原的 MT6895 ARM DA2 中已有完整加载器，但 `Bad %s` 引用的 MOVW/MOVT 之间存在条件 MOVT R3。此前寄存器回溯将任意条件指令都当作障碍，错误地阻止了 R0 中的 `free` 地址解析。现在仅跳过已解码且写其他寄存器的条件 MOVW/MOVT；条件写当前寄存器、跳转、其他未知编码仍停止解析。捕获 DA2 的离线准备和指针表检查通过，不代表已经在设备上启动扩展。实际加载仍要求 BOOT-TO 完成、EXT-ACK 状态 OK 和 EXT-DA-CTX 完成后才发布当前代数的扩展能力；断开或失效后不复用。
 
 发生在预擦除的解析错误不代表分区未变化；设备可能已完成擦除但尚未接收镜像。使用修复版重新连接、完整重刷并回读核对，不续接旧的未知写入。
 

@@ -438,7 +438,8 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
             throw wire.Failure();
         long size = checked((long)value);
         Ack();
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(options.BufferSize);
+        int window = (int)Math.Min(size, Math.Min(packet, options.MaximumXmlReadPacketLength));
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(window);
         try
         {
             for (long done = 0; done < size;)
@@ -446,7 +447,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
                 ReadAck();
                 Ack();
                 int want = (int)Math.Min(packet, size - done);
-                int n = wire.ReadXmlStreamFrame(output, want, buffer.AsSpan(0, options.BufferSize));
+                int n = wire.ReadXmlStreamFrame(output, want, buffer.AsSpan(0, window));
                 if (done + n == size)
                     beforeFinalAck?.Invoke();
                 Ack();

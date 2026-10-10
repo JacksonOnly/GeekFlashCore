@@ -331,13 +331,13 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         return length;
     }
     public int ReadStreamFrame(Stream output, int maximumLength, Span<byte> buffer)
-        => ReadStreamFrame(output, maximumLength, buffer, options.MaximumXFlashDataFrameSize);
+        => ReadStreamFrame(output, maximumLength, buffer, options.MaximumXFlashDataFrameSize, options.BufferSize);
 
     public int ReadXmlStreamFrame(Stream output, int expectedLength, Span<byte> buffer)
         => ReadStreamFrame(output, Math.Min(expectedLength, options.MaximumXmlDataFrameSize), buffer,
-            options.MaximumXmlDataFrameSize, expectedLength);
+            options.MaximumXmlDataFrameSize, options.MaximumXmlReadPacketLength, expectedLength);
 
-    private int ReadStreamFrame(Stream output, int maximumLength, Span<byte> buffer, int maximumFrameSize, int? expectedLength = null)
+    private int ReadStreamFrame(Stream output, int maximumLength, Span<byte> buffer, int maximumFrameSize, int maximumReadLength, int? expectedLength = null)
     {
         if (buffer.IsEmpty || maximumLength <= 0 || maximumLength > maximumFrameSize)
             throw new ArgumentOutOfRangeException(nameof(maximumLength));
@@ -351,7 +351,7 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
         for (int remaining = length; remaining > 0;)
         {
             Check();
-            int count = Math.Min(remaining, Math.Min(options.BufferSize, buffer.Length - buffered));
+            int count = Math.Min(remaining, Math.Min(maximumReadLength, buffer.Length - buffered));
             int received = ReadStreamWindow(buffer.Slice(buffered, count), deadline);
             buffered += received;
             remaining -= received;

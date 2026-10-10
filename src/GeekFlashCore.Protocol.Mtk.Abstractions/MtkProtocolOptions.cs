@@ -21,6 +21,11 @@ public sealed record MtkProtocolOptions
     /// Set 65536 explicitly for the older host write shape; failures never trigger a resend.
     /// Independent of BufferSize, received XML frames and XFlash/control limits.</summary>
     public int MaximumXmlWritePacketLength { get; init; } = MaximumXmlPacketLength;
+    /// <summary>Maximum native USB read window within a validated XML file-data FLOW.
+    /// Defaults to 512 KiB, matching Penumbra's libusb receive buffer without moving ACK boundaries.
+    /// Set 65536 for the older host read shape. Short reads retain the same packet deadline.
+    /// Independent of BufferSize, control/message frames, XFlash and scoped extension reads.</summary>
+    public int MaximumXmlReadPacketLength { get; init; } = 512 * 1024;
     /// <summary>BROM upload host chunk size, not USB max packet size. Zero uses BufferSize.
     /// Set 64 together with BromUploadZeroLengthPacket to recover the legacy host write shape.</summary>
     public int BromUploadChunkSize { get; init; }
@@ -32,7 +37,7 @@ public sealed record MtkProtocolOptions
     /// Independent of MaximumFrameSize for control, authentication, messages and scoped channel frames.
     /// Defaults to 2 MiB; an explicit smaller limit rejects larger data frames without retry.</summary>
     public int MaximumXFlashDataFrameSize { get; init; } = MaximumXFlashPacketLength;
-    /// <summary>Maximum received XML file-data FLOW length, streamed through BufferSize windows.
+    /// <summary>Maximum received XML file-data FLOW length, streamed through MaximumXmlReadPacketLength windows.
     /// Independent of control/message MaximumFrameSize and XFlash data limits.
     /// A smaller limit rejects a larger actual FLOW; it never changes the device's packet boundary.</summary>
     public int MaximumXmlDataFrameSize { get; init; } = MaximumXmlPacketLength;
@@ -82,6 +87,7 @@ public sealed record MtkProtocolOptions
         if (MaximumXFlashDataFrameSize is < 512 or > MaximumXFlashPacketLength ||
             MaximumXmlDataFrameSize is < 512 or > MaximumXmlPacketLength ||
             MaximumXmlWritePacketLength is < 512 or > MaximumXmlPacketLength ||
+            MaximumXmlReadPacketLength is < 512 or > MaximumXmlPacketLength ||
             MaximumXFlashWritePacketLength is < 512 or > MaximumXFlashPacketLength ||
             BufferSize is < 512 or > 1048576 || MaximumFrameSize < BufferSize || MaximumFrameSize > 1048576 ||
             MaximumXmlSize is < 1024 or > 65536 || MaximumXmlSize > MaximumFrameSize || MaximumMessages is < 1 or > 1024 ||

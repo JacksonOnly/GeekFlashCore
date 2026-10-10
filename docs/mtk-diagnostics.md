@@ -36,7 +36,7 @@ Preloader候选（0E8D:2000/6000）现在先发一次A0唤醒，再进行四步�
 
 `--mtk-preloader` 的 XFlash 路径保留完整 `MTK_BLOADER_INFO` 窗口（含头部），不能只发 Legacy 的 `MTK_BIN+12` 数据。Ares v51 的正确窗口为448字节，而不是336；长度帧与FLOW载荷必须一致，最后等待一次组状态。SDK 的 `MtkEmiImage.Source` 保留Legacy语义，Parser 另提供借用 `BloaderInfoSource` 给XFlash；只提供Source的宿主材料保持原样。Debug记录格式/版本/长度，不记录原始EMI。抓包/离线对照证据及实机风险见 [Preloader/EMI记录](plans/2026-10-08-mtk-preloader-emi-implementation.md)。
 
-完整 FD 识别之前，瞬态 USB/初始握手失败释放候选并继续等；Ctrl+C 停止，显式等待超时仍有效。识别之后认证、DA、读写失败立即使旧会话失效，需要重新连接，不自动重试。超时只表示预算耗尽，不等于已确认拔出设备。
+完整 FD 识别之前，瞬态 USB/初始握手失败释放候选并继续等；Ctrl+C 停止，显式等待超时仍有效。识别之后认证、DA、在途读写失败且无法确认完整命令边界时，旧会话失效，需要重新连接，不自动重试。标准 XML 命令完整结束后的主机检查错误按下述边界保留连接。超时只表示预算耗尽，不等于已确认拔出设备。
 
 定位时核对：最后 `SessionState` / `BootStage` / `CommandName`、`Command`、`Status` / `ExceptionType`、读的 `ReceivedLength` / `ReadFragmentCount` / `ElapsedMilliseconds` / `TimeoutMilliseconds`、协商包长。Write 中断的预算是剩余操作预算，不是 native driver 的超时设置。同步 native call 的立即中断仍受 backend 限制。
 
@@ -53,6 +53,18 @@ DA2 摘要区分请求标准 BootTo（尚待命令确认）与参数组/执行�
 旧DA在SlaEnabledStatus子命令初始ACK完整返回0xC0010004时，仅以Debug记录认证证据Unsupported，继续包长/存储查询；不是认证成功或SLA禁用证明。父命令、结果帧/尾ACK、已启用后挑战/签名错误、未知状态、取消/超时不会降级。用户232837日志已确认此路径，见 [SLA兼容记录](plans/2026-10-08-mtk-xflash-sla-compatibility-implementation.md)。
 
 XFlash设备包上限可为2MiB，不能按旧1MiB宿主小帧限制拒绝能力查询。宿主写块按协商包长，上限默认2MiB，与BROM缓冲独立；大存储FLOW默认以64KiB USB请求接收，短包直接消费，以最多1MiB池化缓冲合并输出写入，完整帧落入输出流才ACK。SDK `MaximumXFlashDataFrameSize`/`MaximumXFlashWritePacketLength` 默认2MiB，可限制512～2MiB；小帧/消息/认证/scoped ReceiveData仍由 `MaximumFrameSize` 控制，默认1MiB。每个payload窗口共享读预算。Debug在拒绝前记录响应长度和设备包长，status0本地校验失败不等于设备返回NAK。用户20261009-103949日志证明1MiB原生请求在2MiB帧末尾超时，104320确认恢复64KiB后完整读取；104747确认短包优化后读取约39.8MiB/s。合并输出优化尚待实机复测。
+
+## XML 存储进度与会话边界
+
+2026-10-10 用户捕获的写入预擦除进度为 `OK!PROGRESS@100@\0`。尾部 `@` 是字段分隔符，不是百分比的一部分；现在同时接受有/无该尾分隔符的 0～100 十进制进度。仍必须收到 `OK!EOT`，100% 不等于写入完成。无效百分比、额外字段、坏帧、事件超限和在途取消/超时仍报错，不自动 ACK 后继续或重发写命令。
+
+以前在一次操作中尝试过 I/O 后，任何异常都会关闭会话。现在标准 XML 入口只有在完整成功 `CMD:END` 已验证且最终 ACK 成功后，才记录可用命令边界。此时后续的主机参数、资源或分区表校验失败保留 `StorageReady`、transport 和会话代数，并输出保留连接 Warning；错误仍返回调用方，错误数据不可使用，也不自动重试。下一次 I/O 立即撤销该边界证据。连接期失败、未知/错误 END、ACK 发送失败、在途错误及明确要求重连的异常仍失效。scoped `UseSession`/`UseDaHardware` 与扩展 ACK/context、未知写结果的失效规则不变。
+
+XML file-data 接收新增独立 `MtkProtocolOptions.MaximumXmlReadPacketLength`，默认 512 KiB，匹配 Penumbra libusb 的接收缓冲；范围 512～2 MiB，显式 65536 保留旧读取形态。池化窗口不超过设备 packet、实际文件大小及宿主上限，完整 FLOW 长度仍在写入输出前严格校验。短 IN 在同一帧预算内续读，不增加 ACK、不重发命令，也不放宽 `MaximumXmlDataFrameSize`、控制帧、XFlash 或 scoped extension 限制。写入仍独立使用 `MaximumXmlWritePacketLength`（默认 2 MiB）。
+
+64 MiB 模拟输入下，默认 native payload read 调用数由旧窗口的 1024 降至 128，数据摘要及每个 FLOW 的 ACK 数不变。这不是硬件吞吐证明；USB 后端、短包形态和设备存储决定实际 MB/s。历史 XFlash 大 native 请求有过超时，本项不改 XFlash，也不在 XML 失败后自动退回小包重读。
+
+发生在预擦除的解析错误不代表分区未变化；设备可能已完成擦除但尚未接收镜像。使用修复版重新连接、完整重刷并回读核对，不续接旧的未知写入。
 
 ## GPT 与 Boot 区域
 

@@ -139,6 +139,7 @@ internal sealed partial class CliApplication
             {
                 var defaults = _sessionOptions ?? new CliOptions();
                 if (active.Protocol.Type == ProtocolType.Mtk) defaults = defaults with { Protocol = "mtk" };
+                if (active.Protocol.Type == ProtocolType.Sprd) defaults = defaults with { Protocol = "sprd" };
                 var parsed = CommandLine.ParseSession(Tokenize(line), defaults);
                 if (parsed.Command.Equals("interactive", StringComparison.OrdinalIgnoreCase)) continue;
                 if (parsed.Command == "reconnect" || parsed.Command == "connect" && !active.Protocol.IsConnected && active.Protocol.Type == ProtocolType.Mtk)

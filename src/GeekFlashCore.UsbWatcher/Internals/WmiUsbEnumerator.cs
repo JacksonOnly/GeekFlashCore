@@ -5,7 +5,8 @@ namespace GeekFlashCore.UsbWatcher.Internals;
 
 internal class WmiUsbEnumerator : IUsbDeviceEnumerator
 {
-    private const string QueryString = "SELECT * FROM Win32_PnPEntity WHERE DeviceID LIKE '%USB%'";
+    // Win32_PnPEntity also retains disconnected devices and their old COM names.
+    private const string QueryString = "SELECT * FROM Win32_PnPEntity WHERE DeviceID LIKE '%USB%' AND Present = TRUE";
 
     public IEnumerable<UsbDeviceInfo> GetDevices()
     {

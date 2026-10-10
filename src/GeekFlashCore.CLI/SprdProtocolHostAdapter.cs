@@ -11,7 +11,7 @@ internal static class SprdProtocolHostAdapter
     public static ProtocolRegistration Registration { get; } = new(
         ProtocolType.Sprd,
         new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "sprd", "spreadtrum", "unisoc" },
-        "Sprd", Strings.Cli_SprdWaiting, null, Create, [],
+        "Sprd", Strings.Cli_SprdWaiting, new SprdDeviceIdentify(), Create, [],
         static (protocol, ui) => ui.WriteLine(Strings.FormatCli_SprdInfo(((ISprdProtocol)protocol).SessionState,
             ((ISprdProtocol)protocol).TargetInfo?.EntryStage, ((ISprdProtocol)protocol).TargetInfo?.PartitionTableSource?.ToString() ?? "-")), new CommandSet());
 
@@ -41,8 +41,6 @@ internal static class SprdProtocolHostAdapter
             throw new ArgumentException(Strings.Cli_SprdRawPacketRequired);
         if (options.Command == "sprd-chip-uid" && options.Arguments.Length != 0)
             throw new CommandUsageException("sprd-chip-uid");
-        if (options.Command is not ("help" or "devices" or "firmware" or "browse-image") && options.Port is null && options.Usb is null)
-            throw new ArgumentException(Strings.Cli_SprdWaiting);
         string? first = options.Arguments.FirstOrDefault();
         if (options.Command is "browse" or "ls" or "lp" || options.Command == "reboot" && first == "download" ||
             options.Command is "read" or "write" or "erase" && (first?.Equals("sector", StringComparison.OrdinalIgnoreCase) == true || first?.Contains('/') == true) ||
@@ -68,8 +66,13 @@ internal static class SprdProtocolHostAdapter
                 throw new ArgumentException(Strings.Cli_SprdLoadersRequired);
         }
     }
-    private static IProtocol Create(ProtocolHostContext context, ITransport transport) =>
-        new SprdProtocol(transport, Options(context.Options), new LoaderProvider(context.Ui, context.Options), leaveTransportOpen: true);
+    private static IProtocol Create(ProtocolHostContext context, ITransport transport)
+    {
+        // Automatic discovery must validate against the selected protocol, not the initial default.
+        var options = context.Options with { Protocol = "sprd" };
+        options.Validate();
+        return new SprdProtocol(transport, Options(options), new LoaderProvider(context.Ui, options), leaveTransportOpen: true);
+    }
 
     private sealed class LoaderProvider(ConsoleUi ui, CliOptions options) : ISprdLoaderProvider
     {

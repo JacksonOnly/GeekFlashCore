@@ -128,6 +128,8 @@ SPRD-11 最新容量来源默认 Auto，优先校验固定 GPT 前缀，只有�
 
 SPRD-12 并入本地 main 的范围、工作区保留、回归结果及合并前 MTK 失败对照见 `docs/plans/2026-10-08-sprd-merge-implementation.md`。
 
+SPRD-13 补齐 CLI 自动串口发现：仅已确认 `1782:4D00` 标识为 SPRD 候选，`--protocol sprd` 可无手动端口扫描/等待，已有 `--port`/`--usb` 覆盖保留；阶段仍由 BSL 握手决定，不自动切 DIAG 或替换驱动。发现后按实际协议重新校验选项，交互会话保留 SPRD 协议；热插拔先订阅再启动并复查库存，取消后不返回传输。Windows 仅枚举 Present 设备，并监听既有实例 Present 变化；本机历史 COM84 已断开，不能当作当前设备。恢复见 `docs/plans/2026-10-10-sprd-cli-discovery-design.md` 和对应 implementation。无 SPRD 实机握手证据。
+
 开始 Qualcomm 相关工作前，依次阅读：
 
 1. 本文件。

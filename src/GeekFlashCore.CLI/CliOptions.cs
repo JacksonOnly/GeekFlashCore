@@ -105,7 +105,9 @@ internal sealed record CliOptions
             (string.IsNullOrWhiteSpace(OplusDigest) || string.IsNullOrWhiteSpace(OplusSign)))
             throw new ArgumentException(Localization.Strings.Cli_OplusResourcesRequired);
         bool sprd = Protocol is not null && ProtocolRegistry.TryResolve(Protocol, out var sprdRegistration) &&
-            sprdRegistration.Type == GeekFlashCore.Protocol.Abstractions.ProtocolType.Sprd;
+            sprdRegistration.Type == GeekFlashCore.Protocol.Abstractions.ProtocolType.Sprd ||
+            Protocol is null && Usb is { } sprdUsb && TransportResolver.TryParseUsb(sprdUsb, out int sprdVid, out int sprdPid) &&
+            GeekFlashCore.Protocol.Sprd.SprdDeviceIdentify.IsSupported(sprdVid, sprdPid);
         if (sprd)
         {
             if (HasExplicitProgramWriteMode) throw new ArgumentException(Localization.Strings.Cli_ProgramWriteModeQcomOnly);

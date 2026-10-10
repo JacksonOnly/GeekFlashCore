@@ -15,7 +15,8 @@ namespace GeekFlashCore.CLI;
 internal sealed record TransportResolution(ITransport Transport, ProtocolRegistration Registration, CliOptions? PreparedOptions = null);
 
 internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, CancellationToken, Task<CliOptions>>? prepareOptions = null,
-    Func<string, Action, IAsyncDisposable>? beginDeviceWait = null, Action<string>? reportMessage = null)
+    Func<string, Action, IAsyncDisposable>? beginDeviceWait = null, Action<string>? reportMessage = null,
+    Func<IUsbDeviceEnumerator>? createEnumerator = null, Func<IUsbDeviceMonitor>? createMonitor = null)
 {
     private int _reportedMtkWaiting;
     private int _reportedMtkRetry;
@@ -67,9 +68,10 @@ internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, C
             ProtocolRegistry.TryResolve("mtk", out var mtk);
             return await ResolveNativeUsbAsync(mtk, options, ct).ConfigureAwait(false);
         }
-        var enumerator = UsbEnumeratorFactory.Create();
+        var enumerator = createEnumerator?.Invoke() ?? UsbEnumeratorFactory.Create();
         foreach (var device in enumerator.GetDevices())
         {
+            ct.ThrowIfCancellationRequested();
             if (ProtocolRegistry.TryIdentify(device, out var identified))
             {
                 if (selected is not null && selected.Type != identified.Type) continue;
@@ -83,13 +85,14 @@ internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, C
         if (OperatingSystem.IsWindows())
         {
             Console.WriteLine(selected?.WaitingMessage ?? Strings.Cli_WaitingForDevice);
-            var monitor = UsbDeviceMonitorFactory.Create();
+            var monitor = createMonitor?.Invoke() ?? UsbDeviceMonitorFactory.Create();
             using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
             wait.CancelAfter(DeviceWaitTimeout(selected, options));
             UsbDeviceInfo? device;
             try
             {
-                device = await monitor.WaitForDeviceAsync(d => MatchesDevice(d, selected), wait.Token).ConfigureAwait(false);
+                device = await monitor.WaitForDeviceAsync(d => MatchesDevice(d, selected), wait.Token,
+                    autoStart: true, enumerateDevices: enumerator.GetDevices).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
@@ -97,6 +100,7 @@ internal sealed class TransportResolver(Func<ProtocolRegistration, CliOptions, C
             }
             finally { if (monitor.IsMonitoring) monitor.StopMonitoring(); }
             // The monitor's timeout translates only its own wait, not later host input cancellation.
+            ct.ThrowIfCancellationRequested();
             if (device is null) throw new InvalidOperationException(Strings.Cli_DeviceNotFound);
             ProtocolRegistry.TryIdentify(device, out var identifiedRegistration);
             var registration = selected ?? identifiedRegistration;

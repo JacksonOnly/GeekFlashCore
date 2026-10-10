@@ -26,23 +26,23 @@ public static class UsbDeviceMonitorExtensions
         Func<UsbDeviceInfo, bool> predicate,
         CancellationToken cancellationToken = default,
         bool autoStart = true)
+        => await WaitForDeviceAsync(monitor, predicate, cancellationToken, autoStart, null).ConfigureAwait(false);
+
+    /// <summary>Subscribes before monitoring starts and rechecks inventory to close the initial scan/hot-plug gap.</summary>
+    public static async Task<UsbDeviceInfo?> WaitForDeviceAsync(
+        this IUsbDeviceMonitor monitor,
+        Func<UsbDeviceInfo, bool> predicate,
+        CancellationToken cancellationToken,
+        bool autoStart,
+        Func<IEnumerable<UsbDeviceInfo>>? enumerateDevices)
     {
         ArgumentNullException.ThrowIfNull(monitor);
         ArgumentNullException.ThrowIfNull(predicate);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var tcs = new TaskCompletionSource<UsbDeviceInfo?>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         bool startedByUs = false;
-        if (autoStart && !monitor.IsMonitoring)
-        {
-            monitor.StartMonitoring();
-            startedByUs = true;
-        }
-        else if (!monitor.IsMonitoring)
-        {
-            throw new InvalidOperationException(nameof(monitor.IsMonitoring));
-        }
-
         EventHandler<UsbDeviceEventArgs> handler = (sender, e) =>
         {
             if (predicate(e.Device))
@@ -54,9 +54,25 @@ public static class UsbDeviceMonitorExtensions
         try
         {
             monitor.DeviceAdded += handler;
-
             using (cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken)))
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (autoStart && !monitor.IsMonitoring)
+                {
+                    startedByUs = true;
+                    monitor.StartMonitoring();
+                }
+                else if (!monitor.IsMonitoring)
+                    throw new InvalidOperationException(nameof(monitor.IsMonitoring));
+
+                if (!tcs.Task.IsCompleted && enumerateDevices is not null)
+                {
+                    foreach (var device in enumerateDevices())
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        if (predicate(device)) { tcs.TrySetResult(device); break; }
+                    }
+                }
                 return await tcs.Task.ConfigureAwait(false);
             }
         }

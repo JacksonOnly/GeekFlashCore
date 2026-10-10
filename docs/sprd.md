@@ -6,10 +6,14 @@
 
 ## CLI
 
-协议名为 `sprd`、`unisoc` 或 `spreadtrum`。必须显式指定下载模式的 `--port COMx` 或 `--usb VID:PID`；不根据未经确认的 VID/PID 清单自动识别。SerialPort 与 LibUsb 沿用现有传输实现和读写超时。
+协议名为 `sprd`、`unisoc` 或 `spreadtrum`。Windows 下，无参数 CLI 会从已注册候选自动发现 `SPRD U2S Diag` 下载串口；`--protocol sprd` 将自动扫描/等待限定为 SPRD。当前只确认并注册 `VID_1782&PID_4D00`（`1782:4D00`），不把其他 `1782` 产品或仅名称相似的设备自动归为 BSL。发现依赖实际 COM 端口元数据；VID/PID 仅选协议候选，BootROM/FDL1/FDL2 仍由校验后的握手判断，不自动发送 DIAG 切换包。
+
+可用 `--protocol sprd --port COMx` 手动指定官方驱动串口；显式 `--port` 没有协议时仍沿用 Qualcomm 默认。`--usb 1782:4D00` 可推断为 SPRD 并使用 LibUsb（需对应驱动），其他 USB ID 需显式协议；无 COM 元数据的设备不会被串口自动接管。不会自动安装或替换 SPRD 驱动。显式 SPRD 的设备等待默认 30 秒，可用 `--device-wait-timeout MS` 覆盖，Ctrl+C 取消；无协议的通用自动发现仍沿用持续等待。SerialPort 与 LibUsb 沿用现有传输实现和读写超时；多设备时请用显式端口区分。
 
 ```text
 geekflash help sprd
+geekflash --protocol sprd
+geekflash --protocol sprd --device-wait-timeout 60000 connect
 geekflash --protocol sprd --port COM7 --loader FDL1.bin --sprd-fdl1-address FDL1_ADDRESS --sprd-fdl2 FDL2.bin --sprd-fdl2-address FDL2_ADDRESS connect
 geekflash --protocol sprd --port COM7 partitions all
 geekflash --protocol sprd --port COM7 --sprd-entry fdl2 --sprd-partition-source native --sprd-partition-unit UNIT_BYTES read boot boot.img
@@ -35,6 +39,10 @@ geekflash --protocol sprd --port COM7 --sprd-entry fdl2 sprd-chip-uid
 `--sprd-pad-odd` 选择 C++ 工具的偶数字节 profile。为保证声明和实际写入范围一致，该模式拒绝奇数长度 Loader/Raw，而不是补写分区末尾之外的字节；分片大小必须为偶数。默认 profile 保留 C# 参考的原始长度。
 
 ## 宿主 API
+
+### 设备发现
+
+`SprdDeviceIdentify` 实现 `IDeviceIdentify`，只匹配完整 `1782:4D00` 元数据，不执行 I/O，也不接受仅名称匹配或整数截断后的 ID。Windows 的公共 UsbWatcher 清单仅返回 `Present = TRUE` 设备，避免已断开的历史 COM 名称；热插拔同时监视实例创建/删除与已有实例 Present 变化。CLI 先订阅再启动监控并复查库存，取消后不返回传输。手动端口打开或随后握手失败仍直接报错，不自动重发设备命令。
 
 `SprdProtocolOptions.EntryStage` 默认 `SprdBootStage.Auto`，既有 BootRom/Fdl1/Fdl2 枚举数值保持。同步 `Connect(resources)` 借用提供的资源，自动识别前验证已提供的 Loader，之后验证实际需要的 Loader；异步 `ConnectAsync` 在识别后将具体阶段交给 Provider。识别后资源失效、超时或取消会关闭传输，必须断开再连接。`TargetInfo.EntryStage` 保存初始阶段，`TargetInfo.Stage` 在成功连接后仍为 Fdl2；断开/失败清空元数据。
 
@@ -88,7 +96,7 @@ int count = boot.ReadAt(0, bytes);
 
 `OpenPartition` 为只读 `IReadableBlockDevice`，支持字节范围和不对齐读取。它借用会话，不拥有协议/传输；Disconnect、重启、失效和新连接推进 Generation，旧视图在任何 I/O 前失败。它不是可写块设备，也不实现整盘 `IBlockDeviceProvider`，CLI browser/LP 尚未接入该命名模型。
 
-同步 Connect 借用资源容器。默认容器借用 IDataSource，核心只释放自己打开的流。`ownsSources: true` 明确转移可释放源的所有权；共享同一源只释放一次。`ISprdLoaderProvider.GetLoadersAsync` 必须迅速返回 ValueTask，遵守取消，并返回由核心拥有的容器。成功、失败、取消以及超时后的迟到结果均按容器所有权释放；核心不会等待不合作的 Provider 无限返回。异步连接前先获取并验证两个 Loader，再打开传输、发送握手，缺少资源不会留下部分加载状态。输出流始终借用；`ReadDestination.OwnsStream` 由调用方 Dispose 处理。
+同步 Connect 借用资源容器。默认容器借用 IDataSource，核心只释放自己打开的流。`ownsSources: true` 明确转移可释放源的所有权；共享同一源只释放一次。`ISprdLoaderProvider.GetLoadersAsync` 必须迅速返回 ValueTask，遵守取消，并返回由核心拥有的容器。成功、失败、取消以及超时后的迟到结果均按容器所有权释放；核心不会等待不合作的 Provider 无限返回。显式入口在打开前获取并验证实际需要的 Loader；Auto 先打开并识别阶段，再请求对应资源，FDL2 不调用 Provider。Auto 在握手后缺资源或等待失败会关闭传输并失效，必须断开重连。输出流始终借用；`ReadDestination.OwnsStream` 由调用方 Dispose 处理。
 
 Raw 支持可定位及不可定位的可读源，前四字节识别后仍完整保留。Sparse 要求稳定可定位源，使用现有 Sparse parser（最多 262144 chunks）预检结构和 CRC，再通过 expanded stream 分片；DONT_CARE 显式写零，不能理解为保留设备旧数据。Sparse 元数据内存受 chunk 上限约束，数据缓存不随镜像大小增长。预检、校验及每个分片均检查取消和总预算。
 

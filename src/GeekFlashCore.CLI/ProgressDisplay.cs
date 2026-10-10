@@ -9,7 +9,7 @@ internal sealed record ProgressFrame(string Line, bool Completed);
 
 internal sealed class ProgressDisplay(TimeProvider clock)
 {
-    private static readonly string[] Units = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB"];
+    private static readonly string[] Units = ["Bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"];
     private ProgressRecord? _last;
     private long _started;
     private long _rendered;
@@ -51,16 +51,12 @@ internal sealed class ProgressDisplay(TimeProvider clock)
         string time = completed ? Strings.FormatCli_ProgressDuration(elapsed) : Strings.FormatCli_ProgressElapsed(elapsed);
         string details = $"{percent} {quantity}";
         string? rate = null;
-        if (record.Unit == ProgressUnit.Bytes)
-        {
-            double speed = seconds > 0 ? current / seconds : 0;
+        // Source reads can lead device ACKs. Only Completed includes the final device
+        // confirmation, so an in-flight byte count is not an end-to-end transfer rate.
+        if (record.Unit == ProgressUnit.Bytes && completed)
             rate = Strings.FormatCli_ProgressSpeed(Rate(current, seconds));
-            if (!completed)
-            {
-                string eta = knownTotal && speed > 0 ? Duration((record.Total - current) / speed) : "--:--:--";
-                time += Environment.NewLine + "  " + Strings.FormatCli_ProgressRemaining(eta);
-            }
-        }
+        else if (record.Unit == ProgressUnit.Bytes && record.Total > 0 && current >= record.Total)
+            time += Environment.NewLine + "  " + Strings.Cli_ProgressWaiting;
         string label = SingleLine(record.Label);
         int width = terminalWidth >= 60 ? Math.Min(24, terminalWidth - Cells(details) - 6) : 0;
         string bar = width >= 8 ? " [" + new string('#', (int)(ratio * width)) + new string('-', width - (int)(ratio * width)) + "]" : "";

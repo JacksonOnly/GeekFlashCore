@@ -41,6 +41,7 @@
   <data name="Cli_FixGptDescription" xml:space="preserve"><value>Fix GPT on a LUN; grow=1 expands the last partition.</value></data>
   <data name="Cli_ReconnectRequired" xml:space="preserve"><value>The device is disconnected or the session is invalid. Run connect before retrying.</value></data>
   <data name="Cli_ProgressSpeed" xml:space="preserve"><value>Average speed : {0}</value></data>
+  <data name="Cli_ProgressWaiting" xml:space="preserve"><value>Waiting for operation completion</value></data>
   <data name="Cli_ProgressElapsed" xml:space="preserve"><value>Elapsed       : {0}</value></data>
   <data name="Cli_ProgressDuration" xml:space="preserve"><value>Total duration: {0}</value></data>
   <data name="Cli_ProgressRemaining" xml:space="preserve"><value>Remaining     : {0}</value></data>

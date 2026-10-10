@@ -515,15 +515,17 @@ Safety-sensitive writes require backup/confirmation. Unknown writes are not retr
   <data name="Cli_MtkScatterBackupGpt" xml:space="preserve"><value>Scatter: backing up the current primary/backup GPT.</value></data>
   <data name="Cli_MtkScatterLayoutMatched" xml:space="preserve"><value>Scatter: partition layouts match.</value></data>
   <data name="Cli_MtkScatterNativeConfirm" xml:space="preserve"><value>Update partitions and flash through the DA? No upfront backup of all partitions; only DA-requested migration files are saved. Type yes to continue; otherwise cancel:</value></data>
-  <data name="Cli_MtkScatterFlashConfirm" xml:space="preserve"><value>Continue flashing images? Partition contents are not backed up; readback verification is retained. Type yes to continue; otherwise cancel:</value></data>
+  <data name="Cli_MtkScatterFlashConfirm" xml:space="preserve"><value>Continue flashing images? Partition contents are not backed up. Type yes to continue; otherwise cancel:</value></data>
+  <data name="Cli_MtkScatterNativeVerifyUnsupported" xml:space="preserve"><value>Native XML Scatter updates do not support host write-readback verification; remove --verify true.</value></data>
   <data name="Cli_HelpMtkScatterWorkflow" xml:space="preserve"><value>Scatter flashing:
   mtk scatter                         Select a Scatter file and use its download entries
   mtk scatter file                    Images default to its directory; backups are automatic
   mtk scatter plan file               View the current medium's layout only
   mtk scatter flash file [image-directory] [--backup backup-directory]
     --partitions boot_a,super         Flash only named downloads; compare the full layout
+    --verify true                    Explicitly enable host write-readback verification (default off); not supported for native XML updates
 Flashing shows only layout mismatches. After approval, back up only GPT, update, and flash; no backup of all partitions.
-Partition contents are not backed up or migrated. Readback is retained; GPT backups do not restore overwritten data.
+Partition contents are not backed up or migrated. Readback verification defaults to off; GPT backups do not restore overwritten data.
   --mtk-operation-timeout ms          Startup option: MTK core operation budget, default 1800000; native USB timeouts unchanged.</value></data>
   <data name="Cli_SprdPacInvalid" xml:space="preserve"><value>The PAC does not contain unique valid FDL1, FDL2 and BMAConfig load addresses, or its resource lengths/addresses are out of range.</value></data>
   <data name="Cli_SprdPacConflict" xml:space="preserve"><value>--pac cannot be combined with manual --loader, --sprd-fdl2 or FDL load addresses.</value></data>

@@ -99,6 +99,7 @@ mtk scatter
 mtk scatter MT6893_scatter.txt
 mtk scatter plan MT6893_scatter.txt
 mtk scatter flash MT6893_scatter.txt --partitions boot_a,super
+mtk scatter flash MT6893_scatter.txt --verify true
 mtk scatter flash MT6893_scatter.txt image-directory --backup backup-directory
 mtk scatter update MT6893_scatter.txt
 ```
@@ -109,11 +110,13 @@ YAML 支持平铺和 `description` 序列中的标量分区映射，字段顺序
 
 刷写只显示布局不匹配的分区名，不再枚举所有匹配分区的文件和字节范围；全部所选镜像预检通过后比较布局，再明确要求 `yes`。`--partitions` 仅选择文件内可下载的名称，不修改完整布局；未知或不可下载名称拒绝。非交互模式无法确认时不刷写。
 
-eMMC/UFS USER 的完整布局按名称、偏移和长度与设备比较。不一致时先显示差异分区，再询问是否备份当前主/备 GPT、更新布局并继续刷写。输入 `yes` 后才持久保存两份当前 GPT，全部备份成功才写新备 GPT、主 GPT 和镜像；拒绝则不备份、不写入。相同布局不重建 GPT，保留 GUID/属性，确认后直接刷镜像并回读。选中原始 GPT 镜像时也会先备份当前分区表。备份文件不覆盖，重试需另选目录。
+eMMC/UFS USER 的完整布局按名称、偏移和长度与设备比较。不一致时先显示差异分区，再询问是否备份当前主/备 GPT、更新布局并继续刷写。输入 `yes` 后才持久保存两份当前 GPT，全部备份成功才写新备 GPT、主 GPT 和镜像；拒绝则不备份、不写入。相同布局不重建 GPT，保留 GUID/属性，确认后直接刷镜像，默认不做写后回读校验。选中原始 GPT 镜像时也会先备份当前分区表。备份文件不覆盖，重试需另选目录。
 
 重建 GPT 不能同时下载 USER 区的 `pgpt`、`sgpt`、`PrimaryGPT` 或 `BackupGPT` 镜像（大小写无关）；这种冲突在任何备份或写入前拒绝，避免原始镜像覆盖刚生成的新表。
 
-CLI 仅备份分区表，不再备份所有待刷分区，也不额外备份/恢复 Protected 或 BinRegion 内容。布局变化可能使原数据不可用，GPT 备份不能恢复被覆盖的分区内容；确认提示明确说明此风险。写后回读、Sparse 空洞、启动头处理、有限预算与未知写结果不重试仍保留。SDK 的既有 `MtkScatterService.Apply` 默认完整备份/保护数据迁移行为与签名不变；需要相同轻量流程的宿主使用新增 `ApplyWithBackupPolicy` 入口并显式指定 `MtkScatterBackupPolicy.PartitionTableOnly`。
+CLI 仅备份分区表，不再备份所有待刷分区，也不额外备份/恢复 Protected 或 BinRegion 内容。布局变化可能使原数据不可用，GPT 备份不能恢复被覆盖的分区内容；确认提示明确说明此风险。Scatter 的宿主写后回读校验默认关闭；需逐范围流式 SHA-256 比较时显式指定 `--verify true`，`--verify false` 与缺省相同。此选项仅用于在线刷写，不用于 `plan` 或离线转换；XML 原生 `FLASH-UPDATE` 不支持宿主比较，显式启用时在备份/写入前报错。DA 管理的启动头仍不做宿主字节比较。协议 ACK/最终状态、写前 Sparse CRC、空洞、有限预算与未知写结果不重试保持不变；成功完成不等于内容已回读验证。
+
+SDK 的既有 `MtkScatterService.Apply` 默认完整备份/保护数据迁移行为与方法签名不变，但宿主写后回读也默认关闭；显式使用 `new MtkScatterService(protocol, verifyAfterWrite: true)` 可恢复校验，包括 GPT、保护数据恢复及普通镜像窗口。需要 CLI 相同轻量备份策略的宿主使用 `ApplyWithBackupPolicy` 并显式指定 `MtkScatterBackupPolicy.PartitionTableOnly`。写前备份和 DA 请求的迁移上传仍会读取设备，不属于写后回读校验。
 
 Scatter 的 Preloader 项按名称强制使用命名接口，即使 `operation_type` 是 `UPDATE` 或 `INVISIBLE` 也不裸写 BOOT；`BOOTLOADERS` 的原生命名行为保留。eMMC 显式双 BOOT Preloader 项规划为 `preloader`/`preloader_backup` 两个命名目标，同一文件分别下载；UFS 的既有 LU0 兼容映射不改变。SDK 全量备份时 Preloader 也以名字读取，保存设备实际返回长度（不冒充整 BOOT 区原始镜像）；映射项不作为 Protected/BinRegion 的普通 USER 数据迁移。原生命令未确认或失败不回退裸写、不重放。
 

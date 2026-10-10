@@ -6,7 +6,7 @@ namespace GeekFlashCore.CLI;
 
 internal static class MtkScatterCommands
 {
-    internal const string OnlineUsage = "mtk scatter [file] | plan file | flash|update file [image-directory] [--backup directory] [--partitions name,...]";
+    internal const string OnlineUsage = "mtk scatter [file] | plan file | flash|update file [image-directory] [--backup directory] [--partitions name,...] [--verify true|false]";
     internal static (string Action, string? Path, string? Images, string? Backup) OnlineArguments(MtkCommandRequest request)
     {
         string[] a = request.Arguments;
@@ -32,10 +32,21 @@ internal static class MtkScatterCommands
     }
     internal static void ValidateOnline(MtkCommandRequest request)
     {
-        request.Allow("--backup", "--partitions");
-        _ = OnlineArguments(request);
+        request.Allow("--backup", "--partitions", "--verify");
+        var command = OnlineArguments(request);
         _ = SelectedNames(request);
+        _ = VerifyAfterWrite(request);
+        if (command.Action == "plan" && request.Value("--verify") is not null) throw new CommandUsageException(OnlineUsage);
         if (request.Arguments.Any(string.IsNullOrWhiteSpace)) throw new CommandUsageException(OnlineUsage);
+    }
+    internal static bool VerifyAfterWrite(MtkCommandRequest request)
+    {
+        if (request.Value("--verify") is not { } value) return false;
+        return bool.TryParse(value, out bool verify) ? verify : throw new CommandUsageException(OnlineUsage);
+    }
+    internal static void ValidateVerificationSupport(bool verifyAfterWrite, bool nativeUpdate)
+    {
+        if (verifyAfterWrite && nativeUpdate) throw new InvalidOperationException(Strings.Cli_MtkScatterNativeVerifyUnsupported);
     }
     internal static MtkScatterPlan SelectDownloads(MtkScatterPlan plan, string[]? names)
     {

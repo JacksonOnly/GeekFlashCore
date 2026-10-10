@@ -4,7 +4,7 @@ namespace GeekFlashCore.CLI;
 
 internal sealed record MtkCommandRequest(string[] Arguments, IReadOnlyDictionary<string, string> Options)
 {
-    internal static readonly string[] LocalOptions = ["--region", "--start", "--count", "--key-file", "--backup", "--maximum", "--partition", "--partitions"];
+    internal static readonly string[] LocalOptions = ["--region", "--start", "--count", "--key-file", "--backup", "--maximum", "--partition", "--partitions", "--verify"];
     internal static readonly string[] Commands = ["probe", "capabilities", "seccfg", "slot", "rpmb", "rpmb-lock", "key", "memory", "register", "partition", "scatter", "efuse", "query", "property", "pmt", "fill", "rsc"];
     internal static CliOptions Normalize(CliOptions options)
     {

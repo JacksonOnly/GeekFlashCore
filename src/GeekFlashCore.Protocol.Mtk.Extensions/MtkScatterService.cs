@@ -16,10 +16,17 @@ namespace GeekFlashCore.Protocol.Mtk.Extensions;
 public sealed class MtkScatterService
 {
     private readonly IMtkSessionAccess _access;
-    public MtkScatterService(IMtkProtocol protocol)
+    private readonly bool _verifyAfterWrite;
+    /// <summary>Creates a service with host write-readback verification disabled. Backup policy is unchanged.</summary>
+    public MtkScatterService(IMtkProtocol protocol) : this(protocol, verifyAfterWrite: false) { }
+
+    /// <summary>Creates a service with explicit host write-readback verification policy.
+    /// Verification compares streamed raw writes; DA-managed bootloader transformations are not host-compared.</summary>
+    public MtkScatterService(IMtkProtocol protocol, bool verifyAfterWrite)
     {
         ArgumentNullException.ThrowIfNull(protocol);
         _access = protocol as IMtkSessionAccess ?? throw new MtkCapabilityException("scoped DA channel");
+        _verifyAfterWrite = verifyAfterWrite;
     }
 
     public MtkScatterPlan Plan(MtkScatterManifest manifest, CancellationToken cancellationToken = default) => _access.UseSession(c => MtkScatterPlanner.Create(manifest, c.Storage, c.Generation), cancellationToken);
@@ -66,7 +73,7 @@ public sealed class MtkScatterService
         return 0;
     }, cancellationToken);
     /// <summary>All selected images are opened and validated before backups or writes. Backup files are never overwritten.
-    /// GPT updates write the backup copy first; raw metadata and images are read back before success.
+    /// GPT updates write the backup copy first; host readback is disabled unless explicitly enabled at construction.
     /// DA-managed BOOTLOADERS use native header handling and final status; their transformed bytes are not host-compared.</summary>
     public void Apply(MtkScatterPlan plan, Func<string, IDataSource> images, IMtkScatterBackupStore backups, bool rebuildGpt = false, IProgress<ProgressRecord>? progress = null, CancellationToken cancellationToken = default)
         => ApplyWithBackupPolicy(plan, images, backups, MtkScatterBackupPolicy.AllOverwriteRanges, rebuildGpt, progress, cancellationToken);
@@ -158,14 +165,14 @@ public sealed class MtkScatterService
                 {
                     using var source = new MemoryStream(item.Data, false);
                     writing = true;
-                    WriteVerified(c, item.Range, source, cancellationToken, progress, item.Name);
+                    WriteRange(c, item.Range, source, _verifyAfterWrite, cancellationToken, progress, item.Name);
                 }
 
                 foreach (var restore in restores)
                 {
                     using Stream source = backups.OpenRead(restore.Backup).OpenStream();
                     writing = true;
-                    WriteVerified(c, restore.Range, source, cancellationToken, progress, restore.Backup);
+                    WriteRange(c, restore.Range, source, _verifyAfterWrite, cancellationToken, progress, restore.Backup);
                 }
 
                 HashSet<string> nativeWritten = new(StringComparer.Ordinal);
@@ -187,7 +194,7 @@ public sealed class MtkScatterService
                             {
                                 cancellationToken.ThrowIfCancellationRequested();
                                 writing = true;
-                                WriteVerified(c, range, source, cancellationToken, progress, image.Part.Name);
+                                WriteRange(c, range, source, _verifyAfterWrite, cancellationToken, progress, image.Part.Name);
                             }
                         }
 
@@ -340,14 +347,16 @@ public sealed class MtkScatterService
         }
     }
 
-    private static void WriteVerified(IMtkDaChannel c, MtkFlashRange range, Stream input, CancellationToken token,
+    private static void WriteRange(IMtkDaChannel c, MtkFlashRange range, Stream input, bool verifyAfterWrite, CancellationToken token,
         IProgress<ProgressRecord>? progress = null, string name = "")
     {
         var write = new PhaseProgress(progress, range.Length, Localization.Strings.FormatScatterWrite(name));
-        using var expected = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        using var expected = verifyAfterWrite ? IncrementalHash.CreateHash(HashAlgorithmName.SHA256) : null;
         using (var source = new HashStream(input, expected, token, write.Advance))
             c.WriteFlash(range, source);
         write.Complete();
+        if (expected is null)
+            return;
         byte[] a = expected.GetHashAndReset();
         using var actual = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         try
@@ -466,13 +475,13 @@ public sealed class MtkScatterService
         public override void Write(byte[] b, int o, int n) => throw new NotSupportedException();
     }
 
-    private sealed class HashStream(Stream? source, IncrementalHash hash, CancellationToken token, Action<int>? advance = null) : Stream
+    private sealed class HashStream(Stream? source, IncrementalHash? hash, CancellationToken token, Action<int>? advance = null) : Stream
     {
         public override int Read(Span<byte> data)
         {
             token.ThrowIfCancellationRequested();
             int n = source!.Read(data);
-            hash.AppendData(data[..n]);
+            hash?.AppendData(data[..n]);
             advance?.Invoke(n);
             return n;
         }
@@ -480,7 +489,7 @@ public sealed class MtkScatterService
         public override void Write(ReadOnlySpan<byte> data)
         {
             token.ThrowIfCancellationRequested();
-            hash.AppendData(data);
+            hash?.AppendData(data);
             advance?.Invoke(data.Length);
         }
 

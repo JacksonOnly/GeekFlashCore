@@ -11,14 +11,18 @@ internal static partial class MtkCommandWorkflows
         ConsoleUi ui, IProgress<ProgressRecord> progress, CancellationToken ct)
     {
         var command = MtkScatterCommands.OnlineArguments(request);
+        bool verifyAfterWrite = MtkScatterCommands.VerifyAfterWrite(request);
         string path = (await ui.SelectFileAsync(Strings.Cli_MtkScatterFilePrompt, command.Path,
             Strings.Cli_MtkScatterFileInvalid, ct).ConfigureAwait(false))!;
         path = Path.GetFullPath(path);
         string text = MtkScatterCommands.ReadText(path, ct);
-        var service = new MtkScatterService(protocol);
+        var service = new MtkScatterService(protocol, verifyAfterWrite);
         var plan = MtkScatterCommands.SelectDownloads(service.Plan(MtkScatterParser.Parse(text), ct), MtkScatterCommands.SelectedNames(request));
         var selected = plan.Partitions.Where(p => p.Download).ToArray();
         var storage = protocol.GetStorageInfo();
+        bool nativeUpdate = command.Action == "update" && storage.Kind is not (MtkStorageKind.Emmc or MtkStorageKind.Ufs) &&
+            protocol.DownloadAgent?.Entry.Kind == MtkDaKind.Xml;
+        MtkScatterCommands.ValidateVerificationSupport(verifyAfterWrite, nativeUpdate);
         ui.WriteLine(Strings.FormatCli_MtkScatterSummary(storage.Kind, selected.Length));
         if (command.Action == "plan")
         {
@@ -45,8 +49,6 @@ internal static partial class MtkCommandWorkflows
                 ui.WriteLine(Strings.FormatCli_MtkScatterLayoutChanged(string.Join(", ", differences)));
             else ui.WriteLine(Strings.Cli_MtkScatterLayoutMatched);
         }
-        bool nativeUpdate = command.Action == "update" && storage.Kind is not (MtkStorageKind.Emmc or MtkStorageKind.Ufs) &&
-            protocol.DownloadAgent?.Entry.Kind == MtkDaKind.Xml;
         bool backupGpt = !nativeUpdate && (rebuild || selected.Any(p => p.Range.RegionId == storage.UserRegionId &&
             MtkPartitionNames.IsGpt(p.Name)));
         string prompt = nativeUpdate ? Strings.Cli_MtkScatterNativeConfirm : backupGpt ? Strings.Cli_MtkScatterConfirm : Strings.Cli_MtkScatterFlashConfirm;

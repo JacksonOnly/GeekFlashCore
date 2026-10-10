@@ -515,15 +515,17 @@ RPMB 块为 256 字节，默认区域 0、起始 0；读/擦默认剩余容量�
   <data name="Cli_MtkScatterBackupGpt" xml:space="preserve"><value>Scatter：备份当前主/备 GPT。</value></data>
   <data name="Cli_MtkScatterLayoutMatched" xml:space="preserve"><value>Scatter：分区布局一致。</value></data>
   <data name="Cli_MtkScatterNativeConfirm" xml:space="preserve"><value>确认由 DA 更新分区并刷写？不预先备份全部分区，仅保存 DA 请求的迁移文件。输入 yes 继续，其余取消：</value></data>
-  <data name="Cli_MtkScatterFlashConfirm" xml:space="preserve"><value>确认继续刷写镜像？不备份分区内容，写后回读校验。输入 yes 继续，其余取消：</value></data>
+  <data name="Cli_MtkScatterFlashConfirm" xml:space="preserve"><value>确认继续刷写镜像？不备份分区内容。输入 yes 继续，其余取消：</value></data>
+  <data name="Cli_MtkScatterNativeVerifyUnsupported" xml:space="preserve"><value>XML 原生 Scatter 更新不支持宿主写后回读校验，请移除 --verify true。</value></data>
   <data name="Cli_HelpMtkScatterWorkflow" xml:space="preserve"><value>Scatter 刷写：
   mtk scatter                         选择 Scatter 文件，按文件配置刷写
   mtk scatter 文件                    镜像默认同目录，备份自动生成
   mtk scatter plan 文件               只查看当前介质布局
   mtk scatter flash 文件 [镜像目录] [--backup 备份目录]
     --partitions boot_a,super         只刷指定下载项，仍比较完整布局
+    --verify true                    显式启用宿主写后回读校验，默认关闭；不适用于 XML 原生更新
 刷写只显示布局不匹配的分区；同意后仅备份 GPT 再更新并刷写，不备份全部分区。
-分区内容不备份或迁移；写后回读保留，GPT 备份不能恢复被覆盖的数据。
+分区内容不备份或迁移；默认不回读校验，GPT 备份不能恢复被覆盖的数据。
   --mtk-operation-timeout 毫秒        启动选项：MTK 单次核心操作预算，默认 1800000；单次 USB 超时不变。</value></data>
   <data name="Cli_SprdPacInvalid" xml:space="preserve"><value>PAC 中缺少唯一有效的 FDL1、FDL2 或 BMAConfig 加载地址配置，或资源长度/地址超出范围。</value></data>
   <data name="Cli_SprdPacConflict" xml:space="preserve"><value>--pac 不能与手动 --loader、--sprd-fdl2 或 FDL 加载地址同时使用。</value></data>

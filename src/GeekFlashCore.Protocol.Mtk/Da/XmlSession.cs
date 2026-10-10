@@ -338,9 +338,14 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
 
         if (kind != "UFS")
             throw new MtkCapabilityException("storage kind");
+        // Wire XML uses lua*; retain the accepted lu* layout without combining schemas.
+        bool usesLuaSizes = section.DescendantsAndSelf().Any(e => e.Name == "lua0_size" || e.Name == "lua1_size" || e.Name == "lua2_size");
+        if (usesLuaSizes && section.DescendantsAndSelf().Any(e => e.Name == "lu0_size" || e.Name == "lu1_size" || e.Name == "lu2_size"))
+            throw new MtkResourceException("XML UFS geometry");
+        string sizePrefix = usesLuaSizes ? "lua" : "lu";
         for (uint i = 0; i < 3; i++)
         {
-            ulong size = Number($"lu{i}_size");
+            ulong size = Number($"{sizePrefix}{i}_size");
             if (size > 0)
                 regions.Add(new(MtkStorageKind.Ufs, i + 1, $"UFS-LUA{i}", size, block));
         }

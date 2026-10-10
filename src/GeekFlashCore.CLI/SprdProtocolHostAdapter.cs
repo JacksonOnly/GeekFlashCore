@@ -18,6 +18,7 @@ internal static class SprdProtocolHostAdapter
     internal static SprdProtocolOptions Options(CliOptions options) => new()
     {
         EntryStage = options.SprdEntry ?? SprdBootStage.Auto,
+        TransferBlockSize = options.SprdBlockSize ?? 4096,
         PartitionTableSizeUnitBytes = options.SprdPartitionUnit,
         PartitionLengthEncoding = options.SprdLengthEncoding ?? SprdPartitionLengthEncoding.UInt32,
         PadOddPayloads = options.SprdPadOdd,
@@ -44,10 +45,15 @@ internal static class SprdProtocolHostAdapter
             throw new ArgumentException(Strings.Cli_SprdRawPacketRequired);
         if (options.Command == "sprd-chip-uid" && options.Arguments.Length != 0)
             throw new CommandUsageException("sprd-chip-uid");
-        string? first = options.Arguments.FirstOrDefault();
-        if (options.Command is "browse" or "ls" or "lp" || options.Command == "reboot" && first == "download" ||
-            options.Command is "read" or "write" or "erase" && (first?.Equals("sector", StringComparison.OrdinalIgnoreCase) == true || first?.Contains('/') == true) ||
+        string? first = options.Arguments.FirstOrDefault()?.ToLowerInvariant();
+        if (options.Command == "lp" && first is not ("info" or "help") || options.Command == "reboot" && first == "download" ||
+            options.Command is "read" or "write" or "erase" && first?.Equals("sector", StringComparison.OrdinalIgnoreCase) == true ||
+            options.Command is "write" or "erase" && first?.Contains('/') == true ||
             options.Command == "partitions" && first is not (null or "all" or "0"))
+            throw new NotSupportedException(Strings.Cli_SprdCommandUnsupported);
+        int lunIndex = options.Command is "browse" or "ls" ? 1 : options.Command == "read" && first?.Contains('/') == true ? 2 :
+            options.Command == "lp" && first == "info" ? 2 : -1;
+        if (lunIndex >= 0 && options.Arguments.Length > lunIndex && CommandSyntax.Lun(options.Arguments[lunIndex]) != 0)
             throw new NotSupportedException(Strings.Cli_SprdCommandUnsupported);
         if (options.Command is "partitions" or "read" or "write" or "erase" && options.SprdPartitionUnit is null &&
             options.SprdPartitionSource == SprdPartitionTableSource.Native)
@@ -118,11 +124,10 @@ internal static class SprdProtocolHostAdapter
         public bool RequiresConnection(string command) => true;
         public void ValidateAvailability(IProtocol protocol, string command)
         {
-            if (command is "browse" or "ls" or "lp") throw new NotSupportedException(Strings.Cli_SprdCommandUnsupported);
             if (!protocol.IsConnected && command is not ("connect" or "help" or "devices")) throw new InvalidOperationException(Strings.Cli_ReconnectRequired);
         }
         public void PrintHelp(IProtocol protocol, ConsoleUi ui)
-        { ui.WriteLine(Strings.Cli_HelpSprd); ui.WriteLine(Strings.Cli_HelpSprdPac); }
+        { ui.WriteLine(Strings.Cli_HelpSprd); ui.WriteLine(Strings.Cli_HelpSprdPac); ui.WriteLine(Strings.Cli_HelpSprdBrowser); }
         public Task<int> ExecuteAsync(IProtocol protocol, CliOptions options, ConsoleUi ui, IProgress<ProgressRecord> progress, CancellationToken ct)
         {
             if (!Handles(options.Command) || options.Arguments.Length != 0) throw new CommandUsageException("sprd-chip-uid");

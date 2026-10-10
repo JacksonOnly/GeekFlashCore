@@ -107,7 +107,33 @@ int count = boot.ReadAt(0, bytes);
 
 名称为 UTF-16LE NUL 终止字段，最多 35 个 code unit，不接受控制字符、未配对代理项或重复名称。`SprdPartition.Length` 是字节容量，模型不声称已知整盘偏移。通用 `PartitionTarget` 仅接受默认区域（null 或 0）；`SectorTarget`/`OffsetTarget` 未实现。`GetPartitionsAsync` 返回的 Offset/Address 为 null。
 
-`OpenPartition` 为只读 `IReadableBlockDevice`，支持字节范围和不对齐读取。它借用会话，不拥有协议/传输；Disconnect、重启、失效和新连接推进 Generation，旧视图在任何 I/O 前失败。它不是可写块设备，也不实现整盘 `IBlockDeviceProvider`，CLI browser/LP 尚未接入该命名模型。
+`OpenPartition` 为只读 `IReadableBlockDevice`，支持字节范围和不对齐读取。它借用会话，不拥有协议/传输；Disconnect、重启、失效和新连接推进 Generation，旧视图在任何 I/O 前失败。它不是可写块设备，也不实现整盘 `IBlockDeviceProvider`。CLI 使用专用命名分区 resolver 接入 browser/LP，不虚构整盘偏移、LUN 或可写能力。
+
+### 分区浏览与分片大小
+
+在设备交互会话中可执行以下命令；`browse` 打开设备上的容器，`browse-image` 只打开本地文件。`cd`/`up` 是进入浏览器后的命令，不是根 CLI 命令。
+
+```text
+geekflash --pac firmware.pac --sprd-block-size 32768
+browse super
+ls super/vendor
+lp info super
+read super/vendor/build.prop vendor-build.prop
+```
+
+退出浏览器后再执行根 CLI 命令。支持 `browse/ls <partition/path> [0] [lp-slot]`、嵌套 `read` 和 `lp info`；SPRD resolver 只按唯一名称打开默认区域，校验容量并转移视图租约所有权。LP 多设备引用同样解析命名分区，不把 GPT 的偏移当作设备访问地址。设备浏览器不提供 LP 编辑或嵌套 `write`；普通命名分区写入仍保留原功能。文件系统缓存、工作预算和挂载上限保持有界，释放浏览器不释放协议会话。
+
+启动参数 `--sprd-block-size BYTES` 映射核心 `TransferBlockSize`，范围1～65534，默认仍为4096；设备确认支持后可显式使用32768，减少读写命令往返。两级 Loader 仍使用独立528字节分片。不会自动增大分片、启用 Raw、流水发送命令，或在失败后降低分片重发。范围超过4 GiB仍要求已确认的 `--sprd-length 64|64-reserved` 布局，不能根据分区容量自动推断；浏览容器前部不意味着能以默认32位布局访问其全部内容。
+
+接收解码在输入缓冲补充前后、每256个缓冲字节及校验/帧完成时检查原命令预算、总预算与取消，避免逐字节两次时钟查询；传输 Read 超时和会话失效策略不变。2026-10-10 在 iPlay40/ums512 上已浏览 `super` 的 system/vendor/product 及 vendor 文件系统；大分片实机数据见[实施记录](plans/2026-10-10-sprd-browser-performance-implementation.md)。写入分片的字节/顺序由模拟测试覆盖，尚无实机写入速度证据。
+
+SerialPort 通知回调使用非阻塞 `TryEnter`，不在 .NET stream 锁内等待 reader 锁；繁忙时跳过的只是唤醒提示，不丢弃数据。等待方复查 `BytesToRead`，有限与无限等待均以最多100ms轮询兜底，仍保留原截止时间。此修复作用于共享串口传输，不增加接收线程或后台缓存。
+
+iPlay40 实测固定32KiB、显式 BootROM、`--sprd-disable-transcode`：完整 boot 35MiB用时13.374秒（约2.62MiB/s），SHA-256与用户原备份一致；同一会话misc对比32KiB为2.807MiB/s、4KiB为0.291MiB/s且数据一致。该设备可使用下面的已验证配置；其他设备不默认套用禁转义或大分片。旧日志boot 110.633秒与此次13.374秒是整体配置/接收修复前后对比，不是单因素基准。
+
+```text
+geekflash --pac firmware.pac --sprd-entry brom --sprd-disable-transcode --sprd-block-size 32768
+```
 
 同步 Connect 借用资源容器。默认容器借用 IDataSource，核心只释放自己打开的流。`ownsSources: true` 明确转移可释放源的所有权；共享同一源只释放一次。`ISprdLoaderProvider.GetLoadersAsync` 必须迅速返回 ValueTask，遵守取消，并返回由核心拥有的容器。成功、失败、取消以及超时后的迟到结果均按容器所有权释放；核心不会等待不合作的 Provider 无限返回。显式入口在打开前获取并验证实际需要的 Loader；Auto 先打开并识别阶段，再请求对应资源，FDL2 不调用 Provider。Auto 在握手后缺资源或等待失败会关闭传输并失效，必须断开重连。输出流始终借用；`ReadDestination.OwnsStream` 由调用方 Dispose 处理。
 
@@ -119,6 +145,6 @@ NAK、坏帧、校验错误、响应长度错误、传输超时或传输开始�
 
 正常 `leaveTransportOpen: true` 断开/释放保留传输供宿主管理；wire 失败仍关闭。自定义 ITransport 必须提供有界同步 Write，因通用接口没有取消 Write，取消最多需要等当前写超时。只读块设备契约没有取消参数，使用有限 OperationTimeout；需要逐次取消时使用 ReadPartition。
 
-NV（名称含 nv）写入与擦除、NV 格式修复、镜像签名处理、诊断模式切换、重分区及直接偏移写未实现。正常复位仅支持 `ProtocolRebootMode.System` / `PowerOff`。FDL 签名、DRAM 和板级初始化由合法匹配 Loader 完成，本模块不提供绕过。硬件兼容、GPT 前缀、Raw flush/USB ZLP、USB 重枚举、特殊首包与实际吞吐待设备验证。
+NV（名称含 nv）写入与擦除、NV 格式修复、镜像签名处理、诊断模式切换、重分区及直接偏移写未实现。正常复位仅支持 `ProtocolRebootMode.System` / `PowerOff`。FDL 签名、DRAM 和板级初始化由合法匹配 Loader 完成，本模块不提供绕过。iPlay40/ums512 已有 GPT512、分区读取及 super/vendor 浏览证据；其他设备、写入吞吐、Raw flush/USB ZLP、USB 重枚举和特殊首包仍待验证。该设备二次握手或关闭再打开串口时曾不响应，测试失败后按失效策略停止，不自动重发 Loader/存储写入。
 
 初版见 [设计](plans/2026-10-07-sprd-protocol-design.md) 与 [实施记录](plans/2026-10-07-sprd-protocol-implementation.md)；最新能力与恢复来源见 [上游补全设计](plans/2026-10-08-sprd-upstream-completion-design.md) 和 [实施记录](plans/2026-10-08-sprd-upstream-completion-implementation.md)。

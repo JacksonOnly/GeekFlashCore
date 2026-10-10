@@ -270,7 +270,7 @@ internal sealed partial class ConsoleUi
             UsbException { ErrorCode: Error.NoDevice } => Strings.Cli_UsbDisconnected,
             UsbException { ErrorCode: Error.Pipe } => Strings.Cli_UsbEndpointStalled,
             MtkResourceException or MtkProtocolException or MtkCapabilityException or MtkExploitException or SprdProtocolException or
-            ArgumentException or FileNotFoundException or InvalidOperationException or QcomResourceException =>
+            ArgumentException or FileNotFoundException or InvalidOperationException or NotSupportedException or QcomResourceException =>
                 exception.Message.Replace('\r', ' ').Replace('\n', ' '),
             _ => Strings.Cli_OperationFailed
         };

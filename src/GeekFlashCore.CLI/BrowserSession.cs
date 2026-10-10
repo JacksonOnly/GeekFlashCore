@@ -244,6 +244,7 @@ internal sealed class BrowserSession(int slot = 0, ILpBlockDeviceResolver? resol
 
     internal async Task WritePartitionAsync(string path, string input, ConsoleUi ui, CancellationToken ct)
     {
+        if (sourcePath is null && writableResolver is null) throw new NotSupportedException(Strings.Cli_LpNotWritable);
         var node = Resolve(path, ct);
         if (node is not BrowserMount || node.Parent is not BrowserLpNode)
             throw new IOException(Strings.Cli_LpPartitionRequired);

@@ -4,6 +4,7 @@ using GeekFlashCore.BlockDevice.Abstractions;
 using GeekFlashCore.CLI.Localization;
 using GeekFlashCore.Protocol.Abstractions;
 using GeekFlashCore.Protocol.Qcom.Abstractions;
+using GeekFlashCore.Protocol.Sprd.Abstractions;
 
 namespace GeekFlashCore.CLI;
 
@@ -36,15 +37,23 @@ internal static class BrowserCommands
         string path = BrowserPath.Normalize("/", args[0]);
         string name = path.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ??
             throw new ArgumentException(Strings.Cli_BrowserInvalidPath);
-        if (protocol is not IBlockDeviceProvider provider) throw new NotSupportedException(Strings.Cli_BrowserBlockDeviceRequired);
+        if (protocol is not IBlockDeviceProvider && protocol is not ISprdProtocol) throw new NotSupportedException(Strings.Cli_BrowserBlockDeviceRequired);
         if (protocol is IQcomProtocol qcom) FirehoseCommands.Require(qcom, "read");
         IReadOnlyList<PartitionInfo> partitions = await protocol.GetPartitionsAsync(progress, ct).ConfigureAwait(false);
         uint? lun = args.Length > 1 ? CommandSyntax.Lun(args[1]) : null;
         var matches = partitions.Where(x => StorageCommands.PartitionNameMatches(protocol, x, name) && (lun is null || StorageCommands.PartitionLun(x) == lun)).ToArray();
         if (matches.Length != 1) throw new ArgumentException(Strings.FormatCli_PartitionNotUnique(name));
-        var resolver = new PartitionDeviceResolver(provider, partitions, matches[0],
-            protocol is IQcomProtocol device ? () => FirehoseCommands.Require(device, "program") : null);
         int slot = args.Length > 2 ? checked((int)CommandSyntax.Number(args[2])) : 0;
+        if (protocol is ISprdProtocol sprd)
+        {
+            if (lun is not (null or 0)) throw new NotSupportedException(Strings.Cli_SprdCommandUnsupported);
+            var named = new SprdPartitionDeviceResolver(sprd, partitions);
+            var readSession = new BrowserSession(slot, named);
+            try { readSession.AddMount(name, () => named.Open(matches[0], ct)); return readSession; }
+            catch { readSession.Dispose(); throw; }
+        }
+        var resolver = new PartitionDeviceResolver((IBlockDeviceProvider)protocol, partitions, matches[0],
+            protocol is IQcomProtocol device ? () => FirehoseCommands.Require(device, "program") : null);
         var session = new BrowserSession(slot, resolver, writableResolver: resolver);
         try { session.AddMount(name, () => resolver.Open(matches[0])); return session; }
         catch { session.Dispose(); throw; }

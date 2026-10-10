@@ -111,4 +111,7 @@
 <data name="PreloaderDaSignatureRequired" xml:space="preserve"><value>DA1 signature required by secure Preloader</value></data>
 <data name="PreloaderDaVerification" xml:space="preserve"><value>MTK Preloader: DA1 has {SignatureLength} signature bytes for device verification; no BROM pre-authentication.</value></data>
 <data name="EmiReplacementStage" xml:space="preserve"><value>Missing EMI resources may only be supplied at BeforeDa1</value></data>
+<data name="DumpPreloader" xml:space="preserve"><value>Dump Preloader</value></data>
+<data name="DumpPreloaderStarted" xml:space="preserve"><value>{DumpLabel}</value></data>
+<data name="DumpPreloaderProgress" xml:space="preserve"><value>{DumpLabel}: {ProgressPercent}% ({CurrentBytes}/{TotalBytes} bytes)</value></data>
 </root>

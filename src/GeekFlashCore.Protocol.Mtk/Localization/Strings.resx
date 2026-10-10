@@ -111,4 +111,7 @@
 <data name="PreloaderDaSignatureRequired" xml:space="preserve"><value>安全 Preloader 所需的 DA1 签名</value></data>
 <data name="PreloaderDaVerification" xml:space="preserve"><value>MTK Preloader：DA1 签名 {SignatureLength} 字节，由设备校验；不执行 BROM 前置认证。</value></data>
 <data name="EmiReplacementStage" xml:space="preserve"><value>仅允许在 BeforeDa1 阶段补充缺失的 EMI 资源</value></data>
+<data name="DumpPreloader" xml:space="preserve"><value>Dump Preloader</value></data>
+<data name="DumpPreloaderStarted" xml:space="preserve"><value>{DumpLabel}</value></data>
+<data name="DumpPreloaderProgress" xml:space="preserve"><value>{DumpLabel}: {ProgressPercent}% ({CurrentBytes}/{TotalBytes} bytes)</value></data>
 </root>

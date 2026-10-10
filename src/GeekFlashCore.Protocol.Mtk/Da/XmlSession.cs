@@ -461,7 +461,9 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
                 input.ReadExactly(buffer.AsSpan(0, n));
                 Ack("0");
                 ReadAck();
-                wire.SendFrame(buffer.AsSpan(0, n));
+                // Only this file packet uses its negotiated native write limit. Keep the
+                // single FLOW/ACK boundary and do not leak it into control/extension frames.
+                wire.SendFrame(buffer.AsSpan(0, n), Math.Min(packet, options.MaximumXmlWritePacketLength));
                 ReadAck();
                 done += n;
             }

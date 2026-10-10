@@ -273,11 +273,15 @@ internal sealed class MtkWire(IUsbTransport transport, MtkProtocolOptions option
     }
     public MtkProtocolException Failure(uint status = 0) => new(Stage, Command, status);
     public void SendFrame(ReadOnlySpan<byte> data)
+        => SendFrame(data, WritePacketLength);
+    public void SendFrame(ReadOnlySpan<byte> data, int maximumWriteLength)
     {
+        if (maximumWriteLength <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maximumWriteLength));
         SendFrameHeader(data.Length);
         for (int offset = 0; offset < data.Length;)
         {
-            int count = Math.Min(WritePacketLength, data.Length - offset);
+            int count = Math.Min(maximumWriteLength, data.Length - offset);
             Write(data.Slice(offset, count));
             offset += count;
         }

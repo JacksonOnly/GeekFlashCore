@@ -16,6 +16,11 @@ public sealed record MtkProtocolOptions
     public int BufferSize { get; init; } = 65536;
     /// <summary>Host ceiling for negotiated XFlash write packets, independent of BROM upload chunks.</summary>
     public int MaximumXFlashWritePacketLength { get; init; } = MaximumXFlashPacketLength;
+    /// <summary>Maximum native USB write length within a negotiated XML file packet.
+    /// Defaults to 2 MiB, matching the device packet without changing FLOW or ACK boundaries.
+    /// Set 65536 explicitly for the older host write shape; failures never trigger a resend.
+    /// Independent of BufferSize, received XML frames and XFlash/control limits.</summary>
+    public int MaximumXmlWritePacketLength { get; init; } = MaximumXmlPacketLength;
     /// <summary>BROM upload host chunk size, not USB max packet size. Zero uses BufferSize.
     /// Set 64 together with BromUploadZeroLengthPacket to recover the legacy host write shape.</summary>
     public int BromUploadChunkSize { get; init; }
@@ -76,6 +81,7 @@ public sealed record MtkProtocolOptions
             throw new ArgumentOutOfRangeException(nameof(BromUploadChunkSize));
         if (MaximumXFlashDataFrameSize is < 512 or > MaximumXFlashPacketLength ||
             MaximumXmlDataFrameSize is < 512 or > MaximumXmlPacketLength ||
+            MaximumXmlWritePacketLength is < 512 or > MaximumXmlPacketLength ||
             MaximumXFlashWritePacketLength is < 512 or > MaximumXFlashPacketLength ||
             BufferSize is < 512 or > 1048576 || MaximumFrameSize < BufferSize || MaximumFrameSize > 1048576 ||
             MaximumXmlSize is < 1024 or > 65536 || MaximumXmlSize > MaximumFrameSize || MaximumMessages is < 1 or > 1024 ||

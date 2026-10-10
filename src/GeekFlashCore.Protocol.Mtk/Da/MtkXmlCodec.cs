@@ -104,6 +104,7 @@ internal static class MtkXmlCodec
             if (root.DescendantsAndSelf().Count() > 1024 || root.DescendantsAndSelf().Any(e =>
                 e.Ancestors().Count() > 8 || e.Name.NamespaceName.Length != 0 || e.Attributes().Any(a =>
                     !(allowPropertyKey && e.Name == "item" && a.Name == "key" && a.Value.Length <= 128) &&
+                    !(allowPropertyKey && e == root && e.Name == "sys_prop" && a.Name == "version" && a.Value == "1.0") &&
                     !(allowPartitionVersion && e == root && e.Name == "partition_table" && a.Name == "version" && a.Value == "1.0"))))
                 throw new MtkResourceException("XML structure");
             return root;

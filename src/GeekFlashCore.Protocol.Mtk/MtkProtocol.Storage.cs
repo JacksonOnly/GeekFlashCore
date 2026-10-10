@@ -219,6 +219,8 @@ public sealed partial class MtkProtocol
                 result.Add((MtkPartitionNames.PrimaryGpt, entries.Primary));
             foreach (var entry in entries.Entries)
             {
+                // Reserved DA mappings are already synthesized above/below, not real USER partitions.
+                if (MtkPartitionNames.IsMapped(entry.Name)) continue;
                 var range = new MtkFlashRange(region.WireId, checked((long)entry.FirstLba * region.BlockSize), checked((long)entry.SectorCount * region.BlockSize));
                 _ = Range(range);
                 result.Add((MtkPartitionNames.Display(entry.Name), range));

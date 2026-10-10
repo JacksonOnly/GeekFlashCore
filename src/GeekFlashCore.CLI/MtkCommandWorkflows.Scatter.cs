@@ -48,8 +48,7 @@ internal static partial class MtkCommandWorkflows
         bool nativeUpdate = command.Action == "update" && storage.Kind is not (MtkStorageKind.Emmc or MtkStorageKind.Ufs) &&
             protocol.DownloadAgent?.Entry.Kind == MtkDaKind.Xml;
         bool backupGpt = !nativeUpdate && (rebuild || selected.Any(p => p.Range.RegionId == storage.UserRegionId &&
-            (p.Name.Equals("pgpt", StringComparison.OrdinalIgnoreCase) || p.Name.Equals("sgpt", StringComparison.OrdinalIgnoreCase) ||
-             p.Name.Equals("PrimaryGPT", StringComparison.OrdinalIgnoreCase) || p.Name.Equals("BackupGPT", StringComparison.OrdinalIgnoreCase))));
+            MtkPartitionNames.IsGpt(p.Name)));
         string prompt = nativeUpdate ? Strings.Cli_MtkScatterNativeConfirm : backupGpt ? Strings.Cli_MtkScatterConfirm : Strings.Cli_MtkScatterFlashConfirm;
         string answer = await ui.AskAsync(prompt, ct, "no").ConfigureAwait(false);
         if (!answer.Equals("yes", StringComparison.OrdinalIgnoreCase)) return;

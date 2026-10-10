@@ -18,13 +18,15 @@ public static class MtkScatterGptConverter
     {
         ArgumentNullException.ThrowIfNull(manifest); ArgumentNullException.ThrowIfNull(storage);
         if (storage.Kind is not (MtkStorageKind.Emmc or MtkStorageKind.Ufs)) throw new MtkCapabilityException("scatter GPT storage");
-        var userManifest = new MtkScatterManifest(manifest.Partitions.Where(p => p.Storage == storage.Kind && p.RegionId == storage.UserRegionId).ToArray());
+        // Preloader names are DA-managed mappings, even if a manifest places a placeholder in USER.
+        // Keep GPT ranges for RESERVED/NEEDRESIZE planning, but never serialize them as entries.
+        var userManifest = new MtkScatterManifest(manifest.Partitions.Where(p => p.Storage == storage.Kind && p.RegionId == storage.UserRegionId && !MtkPartitionNames.IsPreloader(p.Name)).ToArray());
         return Build(MtkScatterPlanBuilder.Create(userManifest, storage, 0).Partitions, storage);
     }
     internal static MtkScatterGptImages Build(IReadOnlyList<MtkScatterPlannedPartition> parts, MtkStorageInfo storage)
     {
         var user = User(storage);
-        var data = parts.Where(p => p.Range.RegionId == user.WireId && !IsMetadata(p.Name)).ToArray();
+        var data = parts.Where(p => p.Range.RegionId == user.WireId && !MtkPartitionNames.IsMapped(p.Name)).ToArray();
         if (data.Length == 0 || data.Length > 4096 || data.Select(p => p.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != data.Length)
             throw new MtkResourceException("scatter GPT partitions");
         foreach (var p in data)
@@ -37,8 +39,7 @@ public static class MtkScatterGptConverter
         return new(table.ToArray(new() { ImageType = GptImageType.Main, PreserveFullDiskImage = false }),
             table.ToArray(new() { ImageType = GptImageType.Backup, PreserveFullDiskImage = false }));
     }
-    internal static bool IsMetadata(string name) => name.Equals("pgpt", StringComparison.OrdinalIgnoreCase) || name.Equals("sgpt", StringComparison.OrdinalIgnoreCase) ||
-        name.Equals("PrimaryGPT", StringComparison.OrdinalIgnoreCase) || name.Equals("BackupGPT", StringComparison.OrdinalIgnoreCase);
+    internal static bool IsMetadata(string name) => MtkPartitionNames.IsGpt(name);
     private static MtkStorageRegion User(MtkStorageInfo storage)
     {
         if (storage.Kind is not (MtkStorageKind.Emmc or MtkStorageKind.Ufs or MtkStorageKind.Sdmmc)) throw new MtkCapabilityException("scatter GPT storage");

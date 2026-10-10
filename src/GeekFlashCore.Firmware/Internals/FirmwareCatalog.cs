@@ -13,15 +13,15 @@ internal class FirmwareCatalog(FirmwarePackage package, CancellationToken cancel
     internal void Check() => Package.Check();
     internal void Limit(long count, long maximum)
     { Check(); if (count < 0 || count > maximum) throw new InvalidDataException(Strings.InvalidMetadata); }
-    internal void Add(string name, long length, Func<CancellationToken, Stream> open)
-        => AddCore(name, length, open, null);
+    internal void Add(string name, long length, Func<CancellationToken, Stream> open, string? resourceId = null)
+        => AddCore(name, length, open, null, resourceId);
     internal void Deferred(string name, Func<CancellationToken, long> length, Func<CancellationToken, Stream> open)
         => AddCore(name, -1, open, length);
-    private void AddCore(string name, long length, Func<CancellationToken, Stream> open, Func<CancellationToken, long>? resolve)
+    private void AddCore(string name, long length, Func<CancellationToken, Stream> open, Func<CancellationToken, long>? resolve, string? resourceId = null)
     {
         Limit(Entries.Count + 1, Options.MaximumEntries); if (length < 0 && resolve is null) throw new InvalidDataException(Strings.InvalidRange);
-        name = FirmwarePath.Normalize(name); _nameBytes = checked(_nameBytes + name.Length * 2L); Limit(_nameBytes, Options.MaximumMetadataBytes);
-        Entries.Add(new FirmwareEntry(Package, Entries.Count, name, length, open, resolve));
+        name = FirmwarePath.Normalize(name); _nameBytes = checked(_nameBytes + (name.Length + (resourceId?.Length ?? 0)) * 2L); Limit(_nameBytes, Options.MaximumMetadataBytes);
+        Entries.Add(new FirmwareEntry(Package, Entries.Count, name, length, open, resolve, resourceId));
     }
     internal void Virtual(string name, byte[] bytes) => Add(name, bytes.Length, _ => new MemoryStream(bytes, false));
 }

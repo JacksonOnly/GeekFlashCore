@@ -13,12 +13,14 @@ public sealed class FirmwareEntry : IDataSource
     private readonly Func<CancellationToken, long>? _resolveLength;
     private long _length;
     internal FirmwareEntry(FirmwarePackage package, int index, string name, long length, Func<CancellationToken, Stream> factory,
-        Func<CancellationToken, long>? resolveLength = null)
-    { _package = package; Index = index; Name = name; _length = length; _factory = factory; _resolveLength = resolveLength; }
+        Func<CancellationToken, long>? resolveLength = null, string? resourceId = null)
+    { _package = package; Index = index; Name = name; _length = length; _factory = factory; _resolveLength = resolveLength; ResourceId = resourceId; }
     /// <summary>Zero-based index in container order.</summary>
     public int Index { get; }
     /// <summary>Normalized relative file path using forward slashes.</summary>
     public string Name { get; }
+    /// <summary>Container-declared resource role (PAC File-ID), or null for formats without one. Not a device identity or execution proof.</summary>
+    public string? ResourceId { get; }
     /// <summary>Exact plaintext length in bytes; a deferred virtual image is parsed on first access.</summary>
     public long Length => _resolveLength is null ? _length : GetLength();
     /// <summary>Known exact length without I/O, or null until a deferred virtual image has been parsed.</summary>

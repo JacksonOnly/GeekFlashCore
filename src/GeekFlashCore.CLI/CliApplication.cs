@@ -53,6 +53,11 @@ internal sealed partial class CliApplication
             catch (Exception exception) { _ui.LogException(exception); return 1; }
         }
         if (options.Command.Equals("devices", StringComparison.OrdinalIgnoreCase)) return ListDevices(options, requestedRegistration);
+        if (options.SprdPac is { } pac)
+        {
+            options = SprdPacConfiguration.Prepare(options, pac, ct);
+            _sessionOptions = options;
+        }
         if (options.Command.Equals("interactive", StringComparison.OrdinalIgnoreCase))
             return await InteractiveAsync(options, ct).ConfigureAwait(false);
 

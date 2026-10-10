@@ -13,6 +13,8 @@ geekflash firmware extract "D:\ROM\firmware.ofp" "boot.img" "D:\Output\boot.img"
 
 `extract` 只导出指定条目到显式指定的新文件，已有目标文件不会被覆盖。目录保留大小写与完整相对路径；同名条目可按 `Entries[index]` 读取，按名称获取则拒绝歧义。
 
+SPRD 连接可用 `geekflash --pac "firmware.pac" --non-interactive connect`，按 PAC 角色和 BMAConfig XML 自动获取两级 FDL 与加载地址，直接流式读取、不先提取文件；详细边界见 [SPRD PAC 配置](sprd.md#pac-自动-loader-配置)。固件模块本身不执行设备命令。
+
 `list` 不解析虚拟分片 Super 的 payload，其大小显示“按需解析”。SDK 使用 `FirmwareEntry.KnownLength` 查看已知长度而不触发 I/O；需要精确编码长度时调用 `GetLength(ct)` 或 `Length`，首次会建立并校验映射，成功结果在包内复用。打开虚拟条目也会完成该预检，分片缺失、NV 歧义和目录范围错误仍在打开包时报告。
 
 对已经连接的 Qcom 会话，交互式 CLI 可以运行：
@@ -54,6 +56,8 @@ FirehoseScriptResult patched = qcom.ExecutePatchFile(
 ```
 
 也可使用 `FirmwareUnpacker.Open(IDataSource, options, ct)` 接入宿主的稳定、可定位、可重复打开的数据源。没有 HTTP 下载、异步 Provider 等待或设备连接隐藏在 Firmware 模块中。
+
+`FirmwareEntry.ResourceId` 保留 PAC 目录声明的 File-ID，例如 `FDL`、`FDL2`、`XML`；其他格式为 null。它与文件路径 `Name` 独立，是可用于角色选择的不可变容器元数据，不代表设备身份、认证或可执行地址证明。保存该字段仍受 catalog 元数据预算约束。
 
 ```csharp
 using Stream image = package.GetEntry("boot.img").OpenStream(cancellationToken);

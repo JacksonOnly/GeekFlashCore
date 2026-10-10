@@ -15,24 +15,23 @@ internal sealed class PortBuffer : IDisposable
         _port.ErrorReceived += OnError;
     }
 
-    private void OnDataReceived(object? sender, System.IO.Ports.SerialDataReceivedEventArgs e)
-    {
-        lock (_lock)
-        {
-            if (!_disposed)
-                Monitor.PulseAll(_lock);
-        }
-    }
+    private void OnDataReceived(object? sender, System.IO.Ports.SerialDataReceivedEventArgs e) => NotifyReader();
 
-    private void OnError(object? sender, System.IO.Ports.SerialErrorReceivedEventArgs e)
+    private void OnError(object? sender, System.IO.Ports.SerialErrorReceivedEventArgs e) => NotifyReader();
+
+    private void NotifyReader()
     {
-        lock (_lock)
+        // SerialPort invokes notifications while holding its stream lock. A reader
+        // may hold our lock while accessing that stream: never reverse their order.
+        // Notifications are hints; WaitForData rechecks inventory on a bounded poll.
+        if (!Monitor.TryEnter(_lock))
+            return;
+        try
         {
             if (!_disposed)
-            {
                 Monitor.PulseAll(_lock);
-            }
         }
+        finally { Monitor.Exit(_lock); }
     }
 
     public bool WaitForData(int timeoutMs)
@@ -49,7 +48,7 @@ internal sealed class PortBuffer : IDisposable
             {
                 while (!_disposed && !HasData())
                 {
-                    Monitor.Wait(_lock);
+                    Monitor.Wait(_lock, 100);
                 }
 
                 return !_disposed && HasData();

@@ -121,16 +121,24 @@ internal sealed class SprdWire : IDisposable
     }
     private byte Next(long commandStart, int commandTimeout)
     {
-        int timeout = Math.Min(Remaining, commandTimeout - checked((int)Math.Min(int.MaxValue, Stopwatch.GetElapsedTime(commandStart).TotalMilliseconds)));
-        if (timeout <= 0) throw new TimeoutException(Strings.Timeout);
         if (_position == _available)
         {
+            int timeout = ResponseBudget(commandStart, commandTimeout);
             _available = _transport.Read(_input, 0, _input.Length, timeout); _position = 0;
             if (_available <= 0 || _available > _input.Length) throw new TimeoutException(Strings.Timeout);
-            Check();
+            ResponseBudget(commandStart, commandTimeout);
         }
+        // Buffered decoding is CPU work, not a new I/O wait. Keep checks bounded without
+        // two clock reads for every payload byte; each refill and frame completion also checks.
+        else if ((_position & 255) == 0) ResponseBudget(commandStart, commandTimeout);
         _receivedBytes = true;
         return _input[_position++];
+    }
+    private int ResponseBudget(long commandStart, int commandTimeout)
+    {
+        int timeout = Math.Min(Remaining, commandTimeout - checked((int)Math.Min(int.MaxValue, Stopwatch.GetElapsedTime(commandStart).TotalMilliseconds)));
+        if (timeout <= 0) throw new TimeoutException(Strings.Timeout);
+        return timeout;
     }
     private SprdResponse Receive(ushort command, long commandStart, bool detectChecksum, int commandTimeout)
     {
@@ -183,6 +191,7 @@ internal sealed class SprdWire : IDisposable
             useCrc = crcMatches;
         }
         else if (Checksum(checkedBytes, useCrc) != checksum) throw new SprdProtocolException(command);
+        ResponseBudget(commandStart, commandTimeout);
         return new(BinaryPrimitives.ReadUInt16BigEndian(_body), _body.AsMemory(4, count - 6), useCrc);
     }
     private static ushort Checksum(ReadOnlySpan<byte> bytes, bool crc)

@@ -14,6 +14,7 @@
 geekflash help sprd
 geekflash --protocol sprd
 geekflash --protocol sprd --device-wait-timeout 60000 connect
+geekflash --pac "firmware.pac" --non-interactive connect
 geekflash --protocol sprd --port COM7 --loader FDL1.bin --sprd-fdl1-address FDL1_ADDRESS --sprd-fdl2 FDL2.bin --sprd-fdl2-address FDL2_ADDRESS connect
 geekflash --protocol sprd --port COM7 partitions all
 geekflash --protocol sprd --port COM7 --sprd-entry fdl2 --sprd-partition-source native --sprd-partition-unit UNIT_BYTES read boot boot.img
@@ -26,7 +27,15 @@ geekflash --protocol sprd --port COM7 --sprd-entry fdl2 sprd-chip-uid
 
 `FDL1_ADDRESS` / `FDL2_ADDRESS` 和 `UNIT_BYTES` 必须换成设备已确认的数值，支持 `0x` 地址。不要照搬其他平台的 Loader 或地址。省略入口或 `--sprd-entry auto` 默认自动识别；显式 `brom/fdl1/fdl2` 保持原线路。识别为 BootROM 才需要两个 Loader，FDL1 只需要 FDL2，FDL2 不上传，也不调用 Loader Provider。交互模式识别后会询问缺失文件/地址；非交互自动入口在识别后拒绝缺失的必要资源，显式入口仍在打开传输前预检。Provider 等待默认 30 秒；连接总预算默认 120 秒，包含自动识别和资源等待。`--resource-timeout` 与 `--connect-timeout` 可显式调整且必须为正数。
 
-自动识别先发送单字节 CHECK_BAUD：完整 VERSION 帧必须唯一匹配 CRC16/XMODEM（BootROM）或 FDL checksum（FDL1），随后 CONNECT ACK 确认。FDL checksum 的空 UNSUPPORTED_COMMAND(0xfe) 响应指向已加载 FDL2，随后 DISABLE_TRANSCODE ACK 确认并切换无转义。若首个查询完全无响应且单命令超时，剩余预算内允许一次 FDL checksum CONNECT 查询，仅接受上述 FDL2 特征；未知 ACK/VERSION 不继续猜测或重发。部分帧、坏/歧义校验、日志后超时、取消或总预算耗尽均停止。首包等待受单命令超时限制（核心默认 10 秒，CLI --read-timeout）；特殊 Loader 无明确响应时用手动入口。版本文字和 VID/PID 不决定阶段。
+### PAC 自动 Loader 配置
+
+启动选项 `--pac PATH` 复用现有 `GeekFlashCore.Firmware.FirmwareUnpacker` 的 PAC 能力；未指定协议时自动选择 SPRD，显式其他协议拒绝。按包内 File-ID `FDL`/`FDL1` 和 `FDL2` 唯一选择两级 Loader，不依赖文件名。配置优先选 File-ID `XML` 的条目，没有该角色时才选 `.xml` 条目；在 `BMAConfig/SchemeList/Scheme/File` 中按对应 `ID` 获取唯一的 `Block/Base` 加载地址，支持 uint 十进制与 `0x` 十六进制。多个匹配 Scheme、重复角色/路径、坏 XML、DTD、缺失或溢出地址、空/超大 Loader 都在发现设备或发送命令前拒绝。最多16份候选 XML，每份不超过2 MiB；Loader 不超过32 MiB，地址加长度不越过32位 RAM 范围。
+
+Loader 通过 `PAC::entry` 切片直接流式读取，不解压整包、不落地临时 Loader；资源容器拥有包目录及 Source，成功/失败/取消或迟到结果会释放，部分选择失败也清理已选资源。PAC 及其条目在预检至加载结束期间应保持不变。`--pac` 不能与手动 `--loader`、`--sprd-fdl2` 或两个加载地址混用；无 PAC 时保留手动路径线路，也可显式使用现有包条目引用。帮助、设备清单和离线固件命令不读取启动选项的 PAC。
+
+这里只自动读取 Loader 角色、资源及明确加载地址，不执行 XML 的分区刷写/擦除、NV 或 Reset 项；不以 FlashTypeID 或注释推断容量单位、存储类型、Raw、禁转义或64位 selector。其他显式 SPRD profile 原样保留。2026-10-10 已用4.5 GB `T1020S-ALLDOCUBEOS-20220424.pac` 验证 FDL1地址 `0x5500`、FDL2地址 `0x9EFFFE00`，未指定端口和 Loader 地址的 Auto 连接完成 BootROM→FDL1→FDL2→StorageReady；不证明其他 PAC 布局或存储线路兼容。
+
+自动识别先发送单字节 CHECK_BAUD：完整 VERSION 帧必须唯一匹配 CRC16/XMODEM（BootROM）或 FDL checksum（FDL1），随后 CONNECT ACK 确认。FDL checksum 的空 UNSUPPORTED_COMMAND(0xfe) 响应指向已加载 FDL2，随后 DISABLE_TRANSCODE ACK 确认并切换无转义。若首个查询完全无响应且500ms探测预算超时，剩余预算内允许一次 FDL checksum CONNECT 查询；完整空 CRC16 VERIFY_ERROR 则按下文精确线路修正 CONNECT 并确认 BootROM。未知 ACK/VERSION 不继续猜测或重发。部分帧、坏/歧义校验、日志后超时、取消或总预算耗尽均停止。首次探测还受单命令及总预算封顶，后续命令仍使用原超时（核心默认10秒，CLI --read-timeout）；特殊 Loader 无明确响应时用手动入口。版本文字和 VID/PID 不决定阶段。
 
 容量来源省略或 `--sprd-partition-source auto` 默认自动选择：优先严格验证一次 GPT 前缀，确认不可用且读会话已结束后才请求原生清单。可显式选择 `gpt` 或 `native`；选择 native 会跳过 GPT 查询。自动选择的是容量来源，不把原生清单声明为 MBR、NAND 或 PMT。
 
@@ -98,7 +107,33 @@ int count = boot.ReadAt(0, bytes);
 
 名称为 UTF-16LE NUL 终止字段，最多 35 个 code unit，不接受控制字符、未配对代理项或重复名称。`SprdPartition.Length` 是字节容量，模型不声称已知整盘偏移。通用 `PartitionTarget` 仅接受默认区域（null 或 0）；`SectorTarget`/`OffsetTarget` 未实现。`GetPartitionsAsync` 返回的 Offset/Address 为 null。
 
-`OpenPartition` 为只读 `IReadableBlockDevice`，支持字节范围和不对齐读取。它借用会话，不拥有协议/传输；Disconnect、重启、失效和新连接推进 Generation，旧视图在任何 I/O 前失败。它不是可写块设备，也不实现整盘 `IBlockDeviceProvider`，CLI browser/LP 尚未接入该命名模型。
+`OpenPartition` 为只读 `IReadableBlockDevice`，支持字节范围和不对齐读取。它借用会话，不拥有协议/传输；Disconnect、重启、失效和新连接推进 Generation，旧视图在任何 I/O 前失败。它不是可写块设备，也不实现整盘 `IBlockDeviceProvider`。CLI 使用专用命名分区 resolver 接入 browser/LP，不虚构整盘偏移、LUN 或可写能力。
+
+### 分区浏览与分片大小
+
+在设备交互会话中可执行以下命令；`browse` 打开设备上的容器，`browse-image` 只打开本地文件。`cd`/`up` 是进入浏览器后的命令，不是根 CLI 命令。
+
+```text
+geekflash --pac firmware.pac --sprd-block-size 32768
+browse super
+ls super/vendor
+lp info super
+read super/vendor/build.prop vendor-build.prop
+```
+
+退出浏览器后再执行根 CLI 命令。支持 `browse/ls <partition/path> [0] [lp-slot]`、嵌套 `read` 和 `lp info`；SPRD resolver 只按唯一名称打开默认区域，校验容量并转移视图租约所有权。LP 多设备引用同样解析命名分区，不把 GPT 的偏移当作设备访问地址。设备浏览器不提供 LP 编辑或嵌套 `write`；普通命名分区写入仍保留原功能。文件系统缓存、工作预算和挂载上限保持有界，释放浏览器不释放协议会话。
+
+启动参数 `--sprd-block-size BYTES` 映射核心 `TransferBlockSize`，范围1～65534，默认仍为4096；设备确认支持后可显式使用32768，减少读写命令往返。两级 Loader 仍使用独立528字节分片。不会自动增大分片、启用 Raw、流水发送命令，或在失败后降低分片重发。范围超过4 GiB仍要求已确认的 `--sprd-length 64|64-reserved` 布局，不能根据分区容量自动推断；浏览容器前部不意味着能以默认32位布局访问其全部内容。
+
+接收解码在输入缓冲补充前后、每256个缓冲字节及校验/帧完成时检查原命令预算、总预算与取消，避免逐字节两次时钟查询；传输 Read 超时和会话失效策略不变。2026-10-10 在 iPlay40/ums512 上已浏览 `super` 的 system/vendor/product 及 vendor 文件系统；大分片实机数据见[实施记录](plans/2026-10-10-sprd-browser-performance-implementation.md)。写入分片的字节/顺序由模拟测试覆盖，尚无实机写入速度证据。
+
+SerialPort 通知回调使用非阻塞 `TryEnter`，不在 .NET stream 锁内等待 reader 锁；繁忙时跳过的只是唤醒提示，不丢弃数据。等待方复查 `BytesToRead`，有限与无限等待均以最多100ms轮询兜底，仍保留原截止时间。此修复作用于共享串口传输，不增加接收线程或后台缓存。
+
+iPlay40 实测固定32KiB、显式 BootROM、`--sprd-disable-transcode`：完整 boot 35MiB用时13.374秒（约2.62MiB/s），SHA-256与用户原备份一致；同一会话misc对比32KiB为2.807MiB/s、4KiB为0.291MiB/s且数据一致。该设备可使用下面的已验证配置；其他设备不默认套用禁转义或大分片。旧日志boot 110.633秒与此次13.374秒是整体配置/接收修复前后对比，不是单因素基准。
+
+```text
+geekflash --pac firmware.pac --sprd-entry brom --sprd-disable-transcode --sprd-block-size 32768
+```
 
 同步 Connect 借用资源容器。默认容器借用 IDataSource，核心只释放自己打开的流。`ownsSources: true` 明确转移可释放源的所有权；共享同一源只释放一次。`ISprdLoaderProvider.GetLoadersAsync` 必须迅速返回 ValueTask，遵守取消，并返回由核心拥有的容器。成功、失败、取消以及超时后的迟到结果均按容器所有权释放；核心不会等待不合作的 Provider 无限返回。显式入口在打开前获取并验证实际需要的 Loader；Auto 先打开并识别阶段，再请求对应资源，FDL2 不调用 Provider。Auto 在握手后缺资源或等待失败会关闭传输并失效，必须断开重连。输出流始终借用；`ReadDestination.OwnsStream` 由调用方 Dispose 处理。
 
@@ -110,6 +145,6 @@ NAK、坏帧、校验错误、响应长度错误、传输超时或传输开始�
 
 正常 `leaveTransportOpen: true` 断开/释放保留传输供宿主管理；wire 失败仍关闭。自定义 ITransport 必须提供有界同步 Write，因通用接口没有取消 Write，取消最多需要等当前写超时。只读块设备契约没有取消参数，使用有限 OperationTimeout；需要逐次取消时使用 ReadPartition。
 
-NV（名称含 nv）写入与擦除、NV 格式修复、镜像签名处理、诊断模式切换、重分区及直接偏移写未实现。正常复位仅支持 `ProtocolRebootMode.System` / `PowerOff`。FDL 签名、DRAM 和板级初始化由合法匹配 Loader 完成，本模块不提供绕过。硬件兼容、GPT 前缀、Raw flush/USB ZLP、USB 重枚举、特殊首包与实际吞吐待设备验证。
+NV（名称含 nv）写入与擦除、NV 格式修复、镜像签名处理、诊断模式切换、重分区及直接偏移写未实现。正常复位仅支持 `ProtocolRebootMode.System` / `PowerOff`。FDL 签名、DRAM 和板级初始化由合法匹配 Loader 完成，本模块不提供绕过。iPlay40/ums512 已有 GPT512、分区读取及 super/vendor 浏览证据；其他设备、写入吞吐、Raw flush/USB ZLP、USB 重枚举和特殊首包仍待验证。该设备二次握手或关闭再打开串口时曾不响应，测试失败后按失效策略停止，不自动重发 Loader/存储写入。
 
 初版见 [设计](plans/2026-10-07-sprd-protocol-design.md) 与 [实施记录](plans/2026-10-07-sprd-protocol-implementation.md)；最新能力与恢复来源见 [上游补全设计](plans/2026-10-08-sprd-upstream-completion-design.md) 和 [实施记录](plans/2026-10-08-sprd-upstream-completion-implementation.md)。

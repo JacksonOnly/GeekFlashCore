@@ -451,7 +451,7 @@ Cache 命令阻止：{8}</value></data>
 <data name="Cli_SprdLoadersRequired" xml:space="preserve"><value>SPRD BootROM 需要 --loader、--sprd-fdl1-address、--sprd-fdl2 和 --sprd-fdl2-address；FDL1 入口仅需要 FDL2。</value></data>
 <data name="Cli_SprdLoaderPrompt" xml:space="preserve"><value>请选择适配设备的 {0} 文件</value></data>
 <data name="Cli_SprdAddressPrompt" xml:space="preserve"><value>请输入设备已确认的 {0} 加载地址（可用 0x 前缀）</value></data>
-<data name="Cli_HelpSprd" xml:space="preserve"><value>SPRD：Windows 可自动发现 SPRD U2S Diag（1782:4D00）串口；--protocol sprd 限定发现协议，--port COMx 或 --usb VID:PID 手动指定。显式 SPRD 等待默认 30000 ms，可用 --device-wait-timeout MS 覆盖；USB 标识仅选择协议候选，不判断阶段。入口默认自动识别，可选 --sprd-entry auto|brom|fdl1|fdl2。识别为 BootROM 时需要 --loader FDL1.bin --sprd-fdl1-address ADDRESS --sprd-fdl2 FDL2.bin --sprd-fdl2-address ADDRESS；FDL1 仅需要 FDL2，FDL2 不上传 Loader。自动 FDL2 入口会协商关闭转义，未知阶段要求手动入口。容量来源默认 auto，优先校验 GPT，不可用且读会话已确认结束后查询原生清单；可选 --sprd-partition-source auto|native|gpt。损坏或歧义 GPT 不降级；原生清单仍需 --sprd-partition-unit BYTES（每个 size 单位对应的字节数），不猜单位或物理格式。GPT 扇区默认自动校验识别，可选 --sprd-sector-size auto|512|4096；窗口 --sprd-gpt-bytes BYTES 默认 32768、最大 4 MiB。64 位布局：--sprd-length 32|64|64-reserved。Raw 下载默认关闭；确认后使用 --sprd-raw-mode v1|v2 --sprd-raw-flush BYTES（最大 4 MiB），USB 另需 --sprd-raw-usb-packet BYTES。兼容选项：--sprd-pad-odd、--sprd-disable-transcode、--sprd-entry-transcode-disabled。资源等待默认 30 秒且必须有限。命令：connect、info、sprd-chip-uid、partitions all、read boot boot.img、write boot boot.img、erase boot、reboot system|poweroff。NV 写入/擦除、整盘 sector、DIAG、重分区及 browser/LP 尚未提供。</value></data>
+<data name="Cli_HelpSprd" xml:space="preserve"><value>SPRD：Windows 可自动发现 SPRD U2S Diag（1782:4D00）串口；--protocol sprd 限定发现协议，--port COMx 或 --usb VID:PID 手动指定。显式 SPRD 等待默认 30000 ms，可用 --device-wait-timeout MS 覆盖；USB 标识仅选择协议候选，不判断阶段。入口默认自动识别，可选 --sprd-entry auto|brom|fdl1|fdl2。识别为 BootROM 时需要 --loader FDL1.bin --sprd-fdl1-address ADDRESS --sprd-fdl2 FDL2.bin --sprd-fdl2-address ADDRESS；FDL1 仅需要 FDL2，FDL2 不上传 Loader。自动 FDL2 入口会协商关闭转义，未知阶段要求手动入口。容量来源默认 auto，优先校验 GPT，不可用且读会话已确认结束后查询原生清单；可选 --sprd-partition-source auto|native|gpt。损坏或歧义 GPT 不降级；原生清单仍需 --sprd-partition-unit BYTES（每个 size 单位对应的字节数），不猜单位或物理格式。GPT 扇区默认自动校验识别，可选 --sprd-sector-size auto|512|4096；窗口 --sprd-gpt-bytes BYTES 默认 32768、最大 4 MiB。64 位布局：--sprd-length 32|64|64-reserved。Raw 下载默认关闭；确认后使用 --sprd-raw-mode v1|v2 --sprd-raw-flush BYTES（最大 4 MiB），USB 另需 --sprd-raw-usb-packet BYTES。兼容选项：--sprd-pad-odd、--sprd-disable-transcode、--sprd-entry-transcode-disabled。资源等待默认 30 秒且必须有限。命令：connect、info、sprd-chip-uid、partitions all、read boot boot.img、write boot boot.img、erase boot、reboot system|poweroff。NV 写入/擦除、整盘 sector、DIAG、重分区及 LP 编辑尚未提供；支持 browse/ls、嵌套 read 和 lp info。</value></data>
 <data name="Cli_SprdRawPacketRequired" xml:space="preserve"><value>SPRD Raw USB 下载需要 --sprd-raw-usb-packet BYTES，包大小必须按设备确认。</value></data>
 <data name="Cli_SprdChipUid" xml:space="preserve"><value>SPRD Chip UID：{0}</value></data>
   <data name="Cli_MtkInitialProbeRetry" xml:space="preserve"><value>MTK 初始接入未完成，已释放旧连接，继续等待设备；按 Ctrl+C 停止。</value></data>
@@ -525,4 +525,17 @@ RPMB 块为 256 字节，默认区域 0、起始 0；读/擦默认剩余容量�
 刷写只显示布局不匹配的分区；同意后仅备份 GPT 再更新并刷写，不备份全部分区。
 分区内容不备份或迁移；写后回读保留，GPT 备份不能恢复被覆盖的数据。
   --mtk-operation-timeout 毫秒        启动选项：MTK 单次核心操作预算，默认 1800000；单次 USB 超时不变。</value></data>
+  <data name="Cli_SprdPacInvalid" xml:space="preserve"><value>PAC 中缺少唯一有效的 FDL1、FDL2 或 BMAConfig 加载地址配置，或资源长度/地址超出范围。</value></data>
+  <data name="Cli_SprdPacConflict" xml:space="preserve"><value>--pac 不能与手动 --loader、--sprd-fdl2 或 FDL 加载地址同时使用。</value></data>
+  <data name="Cli_SprdPacPrepared" xml:space="preserve"><value>PAC Loader 配置就绪：FDL1 地址 0x{Fdl1Address:X8}，FDL2 地址 0x{Fdl2Address:X8}。</value></data>
+  <data name="Cli_HelpSprdPac" xml:space="preserve"><value>  --pac 文件.pac                    自动选择 SPRD，并从 PAC 的 FDL/FDL1、FDL2 角色及 BMAConfig XML 获取 Loader 和加载地址。
+    示例：geekflash --pac 固件.pac --non-interactive connect
+    Loader 直接流式读取包条目，不解压整包；缺失、歧义或无效配置在连接前报错。
+    不与手动 Loader/地址混用，不执行 XML 的刷写/擦除项；容量单位、Raw、禁转义和长度布局仍由显式 profile 决定。
+    --pac 是启动选项；help/devices/离线固件命令不会读取该 PAC。</value></data>
+  <data name="Cli_SprdLoaderSourceInvalid" xml:space="preserve"><value>FDL Loader 必须是可直接读取的二进制文件或包内二进制条目，不能使用合成镜像定义。</value></data>
+  <data name="Cli_HelpSprdBrowser" xml:space="preserve"><value>SPRD 浏览：browse super 打开设备 LP 容器，ls super 或 ls super/system 列表；进入浏览器后可 cd/up/ls/read/print。browse-image 仅用于本地镜像文件。
+  lp info super                      查看设备 LP 元数据；只读浏览，不提供 LP 编辑或嵌套 write。
+  --sprd-block-size BYTES             启动选项：存储分片1～65534，默认4096；设备确认支持后可选32768以减少往返。FDL仍528，不自动Raw，不在失败后回退或重发。
+  --sprd-length 32|64|64-reserved     4GiB以上访问需已确认的64位布局，不能仅按容量自动选择。</value></data>
 </root>

@@ -132,6 +132,12 @@ SPRD-13 补齐 CLI 自动串口发现：仅已确认 `1782:4D00` 标识为 SPRD 
 
 SPRD-14 补齐实机连接：Auto 首次 CHECK_BAUD 默认500ms；完整空 CRC16 VERIFY_ERROR 后只允许一次 CRC16 CONNECT 并要求同校验空 ACK，FDL 拒绝/坏帧/部分帧不降级。BootROM EXEC 后默认有界可取消等待500ms；FDL2 上传独立528-byte profile，存储仍4096；legacy v4只接受精确256-byte元数据，不自动Raw/禁转义。iPlay40/ums512 实机已验证自动发现→BootROM→FDL1→FDL2→StorageReady以及已有FDL2接入；容量/存储/其他型号未验证。恢复见 `docs/plans/2026-10-10-sprd-live-connection-design.md` 和对应 implementation；历史无实机/严格不接受任何VERIFY_ERROR的说明被上述精确范围替代。
 
+SPRD-15 支持 CLI `--pac`：复用 FirmwareUnpacker，FirmwareEntry.ResourceId 保留 PAC File-ID（其他格式null）；按唯一FDL/FDL1、FDL2角色及唯一BMAConfig File/ID/Block/Base读取Loader和uint地址，在设备发现/I/O前有界预检，直接流式读取包条目，不解压整包。XML≤16份且每份≤2MiB、禁DTD/外部解析，坏/歧义配置不猜；资源容器明确拥有包Source并清理部分失败/迟到结果。无协议时选sprd，不能混用手动Loader/地址；其他显式profile保持，不执行XML刷写/Erase/NV/Reset，不自动容量单位/Raw/禁转义/64位。实机已用T1020S PAC验证Auto BootROM→FDL1→FDL2→StorageReady；其他PAC/型号和存储待验证。恢复见 `docs/plans/2026-10-10-sprd-pac-cli-design.md` 和对应 implementation。
+
+SPRD-16 接入 CLI 命名分区只读 resolver：支持 browse/ls、嵌套 read 和 lp info，不虚构整盘偏移/LUN，不提供 LP 编辑/嵌套 write，普通分区 write 保留。启动 --sprd-block-size 范围1..65534、默认4096，FDL仍独立528；不自动Raw/64位/失败回退或重发。接收热路径在补充缓冲前后、每256字节及帧完成检查命令/总预算和取消。SerialPort通知TryEnter避免stream/reader锁反转，库存及最多100ms轮询兜底，不添后台接收或改变原预算。iPlay40/ums512已实测GPT512容量、super内system/vendor/product及vendor文件系统浏览；固定32KiB+显式brom+禁转义完整boot35MiB为13.374秒约2.62MiB/s，与原备份校验一致，misc同会话32KiB/4KiB数据一致。写入只有模拟分片线路证据。读取速度、失败记录、二次握手不稳定及最新提交/部署结果见 `docs/plans/2026-10-10-sprd-browser-performance-design.md` 和对应 implementation；此前CLI未接入browser及所有存储未实测的描述由本记录精确替代。
+
+SPRD-17 并入main保留已合并的MTK恢复/命名传输和清晰速率显示修改。PAC、SPRD浏览/分片、串口通知修复的合并范围、共享CLI审查、隔离测试与main旧夹具失败对照以 `docs/plans/2026-10-10-sprd-main-integration-implementation.md` 为最新恢复来源；历史SPRD-16记录中的“main未合并”只描述当时状态。
+
 开始 Qualcomm 相关工作前，依次阅读：
 
 1. 本文件。

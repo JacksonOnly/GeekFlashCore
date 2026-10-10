@@ -22,10 +22,10 @@ public sealed record MtkProtocolOptions
     /// Independent of BufferSize, received XML frames and XFlash/control limits.</summary>
     public int MaximumXmlWritePacketLength { get; init; } = MaximumXmlPacketLength;
     /// <summary>Maximum native USB read window within a validated XML file-data FLOW.
-    /// Defaults to 512 KiB, matching Penumbra's libusb receive buffer without moving ACK boundaries.
-    /// Set 65536 for the older host read shape. Short reads retain the same packet deadline.
+    /// Defaults to 64 KiB: larger Windows USB requests can cancel subtransfers on short INs.
+    /// Increase only for a verified device/backend combination. Short reads retain the same packet deadline.
     /// Independent of BufferSize, control/message frames, XFlash and scoped extension reads.</summary>
-    public int MaximumXmlReadPacketLength { get; init; } = 512 * 1024;
+    public int MaximumXmlReadPacketLength { get; init; } = 65536;
     /// <summary>BROM upload host chunk size, not USB max packet size. Zero uses BufferSize.
     /// Set 64 together with BromUploadZeroLengthPacket to recover the legacy host write shape.</summary>
     public int BromUploadChunkSize { get; init; }

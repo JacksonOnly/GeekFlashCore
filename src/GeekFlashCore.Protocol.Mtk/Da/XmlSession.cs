@@ -55,6 +55,8 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
         var root = ReceiveXml();
         Require(name, root);
         Ack();
+        if (name == MtkXmlCommand.End)
+            wire.CompleteCommandBoundary();
     }
 
     public void LifetimeIgnoringResult(string name)
@@ -117,6 +119,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
 
         Ack();
         wire.Check();
+        wire.CompleteCommandBoundary();
         wire.Logger.ForContext("MtkSummary", true).ForContext("BootStage", wire.Stage).Warning(Strings.OptionalCommandUnsupported, name);
         return false;
     }
@@ -565,8 +568,17 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
                 return;
             }
 
-            if (!text.StartsWith("OK!PROGRESS@", StringComparison.Ordinal) || !uint.TryParse(text[12..], out uint percent) || percent > 100)
-                throw wire.Failure();
+            // DAs may terminate the percentage field with '@' (captured: 100@).
+            // Consume only that optional delimiter, never arbitrary fields or whitespace.
+            const string prefix = "OK!PROGRESS@";
+            if (!text.StartsWith(prefix, StringComparison.Ordinal))
+                throw wire.XmlFailure("INVALID_PROGRESS", null);
+            ReadOnlySpan<char> value = text.AsSpan(prefix.Length);
+            if (value.EndsWith("@", StringComparison.Ordinal))
+                value = value[..^1];
+            if (!uint.TryParse(value, System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out uint percent) || percent > 100)
+                throw wire.XmlFailure("INVALID_PROGRESS", null);
             Ack();
             wire.Logger.Debug(Strings.WireProgress, wire.Stage, wire.Command, percent);
             wire.ProgressPercent?.Invoke((int)percent);
@@ -614,6 +626,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
                     if (!downloaded)
                         throw wire.Failure();
                     Ack();
+                    wire.CompleteCommandBoundary();
                     return;
                 default:
                     throw wire.Failure();

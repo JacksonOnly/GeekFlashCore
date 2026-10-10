@@ -6,6 +6,7 @@
 <data name="Reentry" xml:space="preserve"><value>MTK 会话回调不允许重入协议。</value></data>
 <data name="Phase" xml:space="preserve"><value>MTK 阶段：{0}。</value></data>
 <data name="Faulted" xml:space="preserve"><value>MTK 会话失效，需重新连接。</value></data>
+<data name="SessionPreserved" xml:space="preserve"><value>MTK {BootStage}：命令 {CommandName} 的结束应答与 ACK 已确认；后续主机检查失败（{ExceptionType}），保留连接，不自动重试。</value></data>
 <data name="Ambiguous" xml:space="preserve"><value>MTK 资源或设备匹配不唯一。</value></data>
 <data name="Timeout" xml:space="preserve"><value>MTK 阶段超时。</value></data>
 <data name="UsbRequired" xml:space="preserve"><value>MTK 需要带身份信息的 USB 传输。</value></data>

@@ -132,7 +132,7 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
             owner._gate.Release();
         }
     }
-    private T Execute<T>(Func<T> action, CancellationToken token = default)
+    private T Execute<T>(Func<T> action, CancellationToken token = default, bool preserveCompletedBoundary = true)
     {
         using var gate = Enter(token);
         _wire.Begin(token, _options.OperationTimeoutMilliseconds);
@@ -143,7 +143,19 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
                 _wire.Check();
             return result;
         }
-        catch (Exception ex) { if (_wire.HasIoAttempted && _state != MtkSessionState.Faulted) Fault(ex); throw; }
+        catch (Exception ex)
+        {
+            if (_wire.HasIoAttempted && _state != MtkSessionState.Faulted)
+            {
+                if (!preserveCompletedBoundary || _wire.HasPendingIo || _state != MtkSessionState.StorageReady ||
+                    ex is MtkProtocolException { RequiresReconnect: true } or MtkExploitException or MtkScatterWriteException)
+                    Fault(ex);
+                else
+                    _logger.ForContext("MtkSummary", true).Warning(Strings.SessionPreserved,
+                        _wire.Stage, _wire.CommandName, ex.GetType().Name);
+            }
+            throw;
+        }
     }
     private void Ready()
     {
@@ -604,7 +616,10 @@ public sealed partial class MtkProtocol : IMtkProtocol, IMtkSessionAccess, IDisp
     public T UseSession<T>(Func<IMtkDaChannel, T> action, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(action);
-        return Execute(() => { Ready(); var channel = new Channel(this); try { return action(channel); } finally { channel.Expire(); } }, cancellationToken);
+        // A scoped host/extension callback owns additional ACK/context and write-result
+        // semantics. A generic END alone cannot certify those prerequisites on its behalf.
+        return Execute(() => { Ready(); var channel = new Channel(this); try { return action(channel); } finally { channel.Expire(); } },
+            cancellationToken, preserveCompletedBoundary: false);
     }
     private sealed class Channel(MtkProtocol owner, Action? guard = null) : IMtkDaChannel, IMtkDaPartitionChannel
     {

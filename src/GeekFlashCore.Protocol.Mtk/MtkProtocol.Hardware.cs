@@ -29,7 +29,7 @@ public sealed partial class MtkProtocol : IMtkDaHardwareSessionAccess
             {
                 access.Expire();
             }
-        }, cancellationToken);
+        }, cancellationToken, preserveCompletedBoundary: false);
     }
 
     private sealed class DaHardwareChannel(MtkProtocol owner, MtkMemoryRange[] ranges) : IMtkHardwareAccess

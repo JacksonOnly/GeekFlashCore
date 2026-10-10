@@ -41,29 +41,30 @@
   <data name="Cli_FixGptDescription" xml:space="preserve"><value>修复指定 LUN 的 GPT；grow=1 扩展最后分区。</value></data>
   <data name="Cli_ReconnectRequired" xml:space="preserve"><value>设备未连接或会话已失效，请先执行 connect 重新连接。</value></data>
   <data name="Cli_ProgressSpeed" xml:space="preserve"><value>平均速度：{0}</value></data>
-  <data name="Cli_ProgressTransferSpeed" xml:space="preserve"><value>传输速度：{0}（过程均值）</value></data>
-  <data name="Cli_ProgressWaiting" xml:space="preserve"><value>等待操作完成</value></data>
-  <data name="Cli_ProgressElapsed" xml:space="preserve"><value>已用时间：{0}</value></data>
-  <data name="Cli_ProgressDuration" xml:space="preserve"><value>总用时  ：{0}</value></data>
+  <data name="Cli_ProgressTransferSpeed" xml:space="preserve"><value>传输均速：{0}</value></data>
+  <data name="Cli_ProgressWaiting" xml:space="preserve"><value>等待设备确认</value></data>
+  <data name="Cli_ProgressElapsed" xml:space="preserve"><value>已用：{0}</value></data>
+  <data name="Cli_ProgressDuration" xml:space="preserve"><value>总用时：{0}</value></data>
   <data name="Cli_ProgressRemaining" xml:space="preserve"><value>预计剩余：{0}</value></data>
   <data name="Cli_ProgressWriteFile" xml:space="preserve"><value>{0} | 文件 {1}</value></data>
   <data name="Cli_Title" xml:space="preserve"><value>GeekFlashCore CLI</value></data>
   <data name="Cli_Banner" xml:space="preserve"><value>GeekFlashCore CLI 0.1</value></data>
   <data name="Cli_HelpUsage" xml:space="preserve"><value>用法: geekflash [选项] &lt;命令&gt; [参数]</value></data>
   <data name="Cli_HelpCommands" xml:space="preserve"><value>通用命令：</value></data>
-  <data name="Cli_HelpOptionsPrimary" xml:space="preserve"><value>连接选项：
-  --port COM3
-  --usb VID:PID
-  --protocol QualcommEdl
-  --loader FILE
-  --digest FILE
-  --oplus-digest FILE</value></data>
-  <data name="Cli_HelpOptionsSecondary" xml:space="preserve"><value>  --oplus-mode OplusDigestPt|OplusDigestLegacy
-  --oneplus-projid ID[,ID]
-  --vendor NAME
-  --auth xiaomi（覆盖内置签名）
-  --program-write-mode &lt;program|auto|patch&gt;
-  --verbose</value></data>
+  <data name="Cli_HelpOptionsPrimary" xml:space="preserve"><value>通用连接：
+  --protocol qcom|mtk|sprd	选择协议
+  --port COMx	串口（与 --usb 互斥）
+  --usb VID:PID	USB（需匹配驱动）
+  --loader FILE	Loader / DA 文件
+  --non-interactive	禁用交互提示
+  --verbose	显示详细诊断
+  --log-file FILE	日志路径（默认程序目录 logs）</value></data>
+  <data name="Cli_HelpOptionsSecondary" xml:space="preserve"><value>Qualcomm 参数：
+  --digest FILE	普通 Digest
+  --vendor NAME	厂商策略
+  --auth xiaomi	覆盖内置认证签名
+  --oneplus-projid ID[,ID]	OnePlus 项目 ID
+  --program-write-mode program|auto|patch	写入模式</value></data>
   <data name="Cli_UnknownOption" xml:space="preserve"><value>未知选项 {0}。</value></data>
   <data name="Cli_MissingOptionValue" xml:space="preserve"><value>缺少 {0} 的值。</value></data>
   <data name="Cli_UnknownCommand" xml:space="preserve"><value>未知命令“{0}”。</value></data>
@@ -140,19 +141,25 @@ lun=      {1}
   <data name="Cli_DeviceWaitTimedOut" xml:space="preserve"><value>等待设备超过 {0} ms，请检查连接或显式指定 --port / --usb。</value></data>
   <data name="Cli_InputUnavailable" xml:space="preserve"><value>此操作需要终端交互输入，请提前通过命令行指定所需资源。</value></data>
   <data name="Cli_InputTooLong" xml:space="preserve"><value>输入长度超过允许范围。</value></data>
-  <data name="Cli_HelpOptionsTimeouts" xml:space="preserve"><value>  --non-interactive  禁止资源提示；用于脚本
-  --connect-timeout MS  初始探测预算（默认 1500；非整个连接时限）
-  --resource-timeout MS  每次资源请求预算（交互默认不限时；非交互默认 15000；-1 不限时）
-  --device-wait-timeout MS  发现/初始握手预算（MTK/自动识别默认持续等待；其他协议 30000）
-  --read-timeout MS / --write-timeout MS  单次 I/O 预算（默认 10000；read 也用于 Loader 启动等待）</value></data>
-  <data name="Cli_HelpOptionsLegacy" xml:space="preserve"><value>  --oplus-mode OplusDigestLegacy --oplus-digest FILE
-  --oplus-sign FILE  二进制 Sign；Pt 和 Legacy 均必须，缺失/验证失败时手动选择
-  --oplus-resume  续接已运行且等待第一张 Digest 的 Loader，跳过 Sahara 和启动日志
-  Legacy 固定：容量 53，初始计数 0，分段 256 扇区，Digest 窗口 1000 ms，XML 上限 4096，内置 NOP
-  --log-file FILE  指定详细日志路径；默认程序目录 logs 下自动生成</value></data>
-  <data name="Cli_HelpQcomCommands" xml:space="preserve"><value>交互: interactive（默认）；Qualcomm 专用命令（设备需支持对应能力）：</value></data>
-  <data name="Cli_HelpVipOptions" xml:space="preserve"><value>  --vip-signed FILE
-  --vip-chained FILE（需配合 signed；与 Digest/Oplus 互斥）</value></data>
+  <data name="Cli_HelpOptionsTimeouts" xml:space="preserve"><value>超时（毫秒）：
+  --connect-timeout MS	Qcom 探测 1500；MTK 整体连接 180000；SPRD 整体连接 120000
+  --resource-timeout MS	Qcom 交互不限时 / 脚本 15000；MTK/SPRD 30000
+  --device-wait-timeout MS	MTK/自动发现默认持续等待；其他协议 30000
+  --read-timeout MS	单次读取，默认 10000（也用于 Loader 启动等待）
+  --write-timeout MS	单次写入，默认 10000
+仅 Qcom 资源等待支持 -1；MTK/SPRD 时限必须为正数。</value></data>
+  <data name="Cli_HelpOptionsLegacy" xml:space="preserve"><value>Oplus：
+  --oplus-mode OplusDigestPt|OplusDigestLegacy	Digest 模式
+  --oplus-digest FILE	Digest 表
+  --oplus-sign FILE	二进制 Sign（Pt/Legacy 均需）
+  --oplus-resume	续接等待首张 Digest 的 Loader，跳过 Sahara 和启动日志
+Legacy：容量 53，计数 0，分段 256 扇区，窗口 1000 ms，XML 上限 4096，内置 NOP。
+缺失或无效 Sign 在交互模式提示重新选择。</value></data>
+  <data name="Cli_HelpQcomCommands" xml:space="preserve"><value>Qualcomm / Firehose 命令（需设备支持）：</value></data>
+  <data name="Cli_HelpVipOptions" xml:space="preserve"><value>VIP：
+  --vip-signed FILE	Signed table
+  --vip-chained FILE	Chained table（需要 signed）
+与普通 Digest / Oplus 互斥。</value></data>
   <data name="Cli_OplusSignPrompt" xml:space="preserve"><value>Oplus Sign 文件路径（留空取消）</value></data>
   <data name="Cli_OplusSignRejected" xml:space="preserve"><value>Sign 未通过验证，请手动选择替换 Sign 文件。</value></data>
   <data name="Cli_OplusSignNeedsMode" xml:space="preserve"><value>--oplus-sign 需要 --oplus-mode 或 --oplus-digest。</value></data>
@@ -269,21 +276,21 @@ group-remove 仅允许空分组；默认分组受保护。示例：lp rename . s
   RPMB    ：{3}
   安全配置：{4}</value></data>
   <data name="Cli_HelpMtk" xml:space="preserve"><value>MTK 连接：
-  --protocol mtk --loader DA.bin
-  --mtk-preloader preloader.bin
-  --mtk-brom-chunk bytes  BROM 宿主上传块（64～1048576，默认 65536）
-  --mtk-brom-zlp          显式发送兼容尾部 ZLP（默认不发送）
-  恢复旧上传形态：--mtk-brom-chunk 64 --mtk-brom-zlp
-  MTK 默认显示阶段/传输摘要，--verbose 追加详细诊断；--log-file 指定完整诊断文件。
-  --mtk-da-mode auto|legacy|xflash|xml
-  --mtk-auth-file auth.bin
-  --mtk-cert cert.bin
-  --usb-serial value | --usb-bus N --usb-port-path N.N
-  --usb-interface N --usb-control-interface N --usb-alt N
-  --mtk-ufs-rpmb-blocks N,N
-  --mtk-sej-base ADDR --mtk-tzcc-base ADDR --mtk-ssr-base ADDR
-MTK 默认连接预算 180000 ms，资源预算 30000 ms，均为有限时限。
---connect-timeout 覆盖整个 MTK 连接；--resource-timeout 覆盖每次资源请求预算。</value></data>
+  geekflash --protocol mtk --loader DA.bin
+
+  --mtk-preloader FILE	EMI / Preloader
+  --mtk-da-mode auto|legacy|xflash|xml	DA 模式
+  --mtk-auth-file FILE / --mtk-cert FILE	认证 / 证书
+  --mtk-brom-chunk BYTES	上传块 64..1048576，默认 65536
+  --mtk-brom-zlp	兼容尾部 ZLP（默认关闭）
+  --usb-serial VALUE	序列号选择
+  --usb-bus N --usb-port-path N.N	拓扑选择
+  --usb-interface N --usb-control-interface N --usb-alt N	显式 USB 接口
+  --mtk-ufs-rpmb-blocks N,N	已确认 RPMB 容量
+  --mtk-sej-base ADDR --mtk-tzcc-base ADDR --mtk-ssr-base ADDR	已确认基址
+连接 / 资源预算：180000 / 30000 ms；用 --connect-timeout / --resource-timeout 覆盖。
+旧上传形态：--mtk-brom-chunk 64 --mtk-brom-zlp。
+通用读写见 help read / help write；日志参数见 help all。</value></data>
   <data name="Cli_UsbTopology" xml:space="preserve"><value>{0}:{1} bus={2} port={3}</value></data>
   <data name="Cli_UsbAmbiguous" xml:space="preserve"><value>匹配到多台 USB 设备，请通过序列号或总线/端口路径明确选择。</value></data>
   <data name="Cli_UsbNativeMissing" xml:space="preserve"><value>无法加载 USB 原生库 {0}（{1}）。请检查 runtimes 目录、DLL 架构和依赖；libusb-win32 还需要 libusb0.dll 与 libusbK.dll 桥接库。</value></data>
@@ -409,7 +416,9 @@ Cache 命令阻止：{8}</value></data>
   <data name="Cli_ScriptSkipEmpty" xml:space="preserve"><value>program 的 filename 为空</value></data>
   <data name="Cli_ScriptSkipNonDisk" xml:space="preserve"><value>patch 的 filename 不是 DISK</value></data>
   <data name="Cli_CommandDetailsHint" xml:space="preserve"><value>详情：help &lt;命令&gt;；help qcom 查看设备已报告的映射语法；help all 查看 Host 全部语法。</value></data>
-  <data name="Cli_HelpDetailsHint" xml:space="preserve"><value>help &lt;命令&gt; 查看用法；help all 查看连接选项及 Host 全部命令（如 configure / peek）。</value></data>
+  <data name="Cli_HelpDetailsHint" xml:space="preserve"><value>详细用法：help read / help write / help lp / help firmware
+协议参数：help qcom / help mtk / help sprd；全部：help all
+交互：Tab 补全，Ctrl+C 取消，exit 退出。</value></data>
   <data name="Cli_InteractiveKeys" xml:space="preserve"><value>交互：↑/↓ 浏览历史，Tab/Shift+Tab 补全命令，←/→、Home/End 编辑，exit 退出。</value></data>
   <data name="Cli_CommonCommandsSummary" xml:space="preserve"><value>通用命令：
   info
@@ -451,7 +460,6 @@ Cache 命令阻止：{8}</value></data>
 <data name="Cli_SprdLoadersRequired" xml:space="preserve"><value>SPRD BootROM 需要 --loader、--sprd-fdl1-address、--sprd-fdl2 和 --sprd-fdl2-address；FDL1 入口仅需要 FDL2。</value></data>
 <data name="Cli_SprdLoaderPrompt" xml:space="preserve"><value>请选择适配设备的 {0} 文件</value></data>
 <data name="Cli_SprdAddressPrompt" xml:space="preserve"><value>请输入设备已确认的 {0} 加载地址（可用 0x 前缀）</value></data>
-<data name="Cli_HelpSprd" xml:space="preserve"><value>SPRD：Windows 可自动发现 SPRD U2S Diag（1782:4D00）串口；--protocol sprd 限定发现协议，--port COMx 或 --usb VID:PID 手动指定。显式 SPRD 等待默认 30000 ms，可用 --device-wait-timeout MS 覆盖；USB 标识仅选择协议候选，不判断阶段。入口默认自动识别，可选 --sprd-entry auto|brom|fdl1|fdl2。识别为 BootROM 时需要 --loader FDL1.bin --sprd-fdl1-address ADDRESS --sprd-fdl2 FDL2.bin --sprd-fdl2-address ADDRESS；FDL1 仅需要 FDL2，FDL2 不上传 Loader。自动 FDL2 入口会协商关闭转义，未知阶段要求手动入口。容量来源默认 auto，优先校验 GPT，不可用且读会话已确认结束后查询原生清单；可选 --sprd-partition-source auto|native|gpt。损坏或歧义 GPT 不降级；原生清单仍需 --sprd-partition-unit BYTES（每个 size 单位对应的字节数），不猜单位或物理格式。GPT 扇区默认自动校验识别，可选 --sprd-sector-size auto|512|4096；窗口 --sprd-gpt-bytes BYTES 默认 32768、最大 4 MiB。64 位布局：--sprd-length 32|64|64-reserved。Raw 下载默认关闭；确认后使用 --sprd-raw-mode v1|v2 --sprd-raw-flush BYTES（最大 4 MiB），USB 另需 --sprd-raw-usb-packet BYTES。兼容选项：--sprd-pad-odd、--sprd-disable-transcode、--sprd-entry-transcode-disabled。资源等待默认 30 秒且必须有限。命令：connect、info、sprd-chip-uid、partitions all、read boot boot.img、write boot boot.img、erase boot、reboot system|poweroff。NV 写入/擦除、整盘 sector、DIAG、重分区及 LP 编辑尚未提供；支持 browse/ls、嵌套 read 和 lp info。</value></data>
 <data name="Cli_SprdRawPacketRequired" xml:space="preserve"><value>SPRD Raw USB 下载需要 --sprd-raw-usb-packet BYTES，包大小必须按设备确认。</value></data>
 <data name="Cli_SprdChipUid" xml:space="preserve"><value>SPRD Chip UID：{0}</value></data>
   <data name="Cli_MtkInitialProbeRetry" xml:space="preserve"><value>MTK 初始接入未完成，已释放旧连接，继续等待设备；按 Ctrl+C 停止。</value></data>
@@ -467,11 +475,15 @@ Cache 命令阻止：{8}</value></data>
   <data name="Cli_MtkScatterConverted" xml:space="preserve"><value>MTK：分区表转换完成。</value></data>
   <data name="Cli_MtkScatterLayoutChanged" xml:space="preserve"><value>Scatter 布局不匹配的分区：{0}。</value></data>
   <data name="Cli_MtkScatterConfirm" xml:space="preserve"><value>是否备份当前主/备 GPT、更新分区表并继续刷写？仅备份分区表，不备份或迁移分区内容；布局变化可能使原数据不可用。输入 yes 继续，其余取消：</value></data>
-  <data name="Cli_HelpMtkRepair" xml:space="preserve"><value>交互模式保持会话；reconnect [auto|brom|da1|da2] [xflash|legacy|xml] 重连。优先使用启动帧与原会话信息，未知阶段/身份需确认；Legacy DA2 需要原会话存储信息。
-Scatter flash/update 只显示不匹配分区；确认后仅备份原 GPT、更新并刷写，不备份全部分区。
-  mtk-scatter to-gpt scatter-file output-prefix emmc|ufs block-size user-capacity
-  mtk-scatter from-gpt gpt-file scatter-file emmc|ufs block-size user-capacity platform
-转换离线执行；容量单位为字节，块大小为 512 或 4096。to-gpt 输出 .pgpt.bin/.sgpt.bin；from-gpt 不推测下载文件名，默认禁止下载。GPT 只保存 USER 布局。</value></data>
+  <data name="Cli_HelpMtkRepair" xml:space="preserve"><value>重连：
+  reconnect [auto|brom|da1|da2] [xflash|legacy|xml]
+未知阶段/身份需确认；Legacy DA2 需原会话存储信息。
+
+离线 Scatter / GPT 转换：
+  mtk-scatter to-gpt &lt;scatter&gt; &lt;output-prefix&gt; emmc|ufs &lt;block-size&gt; &lt;user-capacity&gt;
+  mtk-scatter from-gpt &lt;gpt&gt; &lt;scatter&gt; emmc|ufs &lt;block-size&gt; &lt;user-capacity&gt; &lt;platform&gt;
+容量为字节，块大小 512/4096；GPT 只含 USER 布局。
+to-gpt 输出 .pgpt.bin/.sgpt.bin；from-gpt 不推测文件名，默认禁止下载。</value></data>
   <data name="Cli_MtkReconnectIdentity" xml:space="preserve"><value>无法确认是原设备。确认当前连接使用原设备 DA 和存储信息？输入 yes 继续</value></data>
   <data name="Cli_MtkReconnectStage" xml:space="preserve"><value>无法可靠区分当前阶段。请确认设备处于 brom、da1 或 da2；传输中断后请先重新接入到命令边界</value></data>
   <data name="Cli_MtkReconnectDialect" xml:space="preserve"><value>请输入已加载 DA 的协议：xflash、legacy 或 xml</value></data>
@@ -518,26 +530,83 @@ RPMB 块为 256 字节，默认区域 0、起始 0；读/擦默认剩余容量�
   <data name="Cli_MtkScatterFlashConfirm" xml:space="preserve"><value>确认继续刷写镜像？不备份分区内容。输入 yes 继续，其余取消：</value></data>
   <data name="Cli_MtkScatterNativeVerifyUnsupported" xml:space="preserve"><value>XML 原生 Scatter 更新不支持宿主写后回读校验，请移除 --verify true。</value></data>
   <data name="Cli_HelpMtkScatterWorkflow" xml:space="preserve"><value>Scatter 刷写：
-  mtk scatter                         选择 Scatter 文件，按文件配置刷写
-  mtk scatter 文件                    镜像默认同目录，备份自动生成
-  mtk scatter plan 文件               只查看当前介质布局
-  mtk scatter flash 文件 [镜像目录] [--backup 备份目录]
-    --partitions boot_a,super         只刷指定下载项，仍比较完整布局
-    --verify true                    显式启用宿主写后回读校验，默认关闭；不适用于 XML 原生更新
-刷写只显示布局不匹配的分区；同意后仅备份 GPT 再更新并刷写，不备份全部分区。
-分区内容不备份或迁移；默认不回读校验，GPT 备份不能恢复被覆盖的数据。
-  --mtk-operation-timeout 毫秒        启动选项：MTK 单次核心操作预算，默认 1800000；单次 USB 超时不变。</value></data>
+  mtk scatter [FILE]	选择配置；镜像默认同目录
+  mtk scatter plan &lt;FILE&gt;	查看布局
+  mtk scatter flash|update &lt;FILE&gt; [image-directory]	刷写 / 更新
+  --backup DIR	备份目录（默认自动生成）
+  --partitions boot_a,super	仅刷指定下载项；仍比较完整布局
+  --verify true	启用回读校验（默认关闭；XML 原生更新不支持）
+  --mtk-operation-timeout MS	启动参数；单次核心操作预算，默认 1800000
+仅显示布局差异；确认后备份 GPT、更新并刷写。不备份/迁移分区数据。
+GPT 备份不能恢复被覆盖的数据；单次 USB 超时不变。</value></data>
   <data name="Cli_SprdPacInvalid" xml:space="preserve"><value>PAC 中缺少唯一有效的 FDL1、FDL2 或 BMAConfig 加载地址配置，或资源长度/地址超出范围。</value></data>
   <data name="Cli_SprdPacConflict" xml:space="preserve"><value>--pac 不能与手动 --loader、--sprd-fdl2 或 FDL 加载地址同时使用。</value></data>
   <data name="Cli_SprdPacPrepared" xml:space="preserve"><value>PAC Loader 配置就绪：FDL1 地址 0x{Fdl1Address:X8}，FDL2 地址 0x{Fdl2Address:X8}。</value></data>
-  <data name="Cli_HelpSprdPac" xml:space="preserve"><value>  --pac 文件.pac                    自动选择 SPRD，并从 PAC 的 FDL/FDL1、FDL2 角色及 BMAConfig XML 获取 Loader 和加载地址。
-    示例：geekflash --pac 固件.pac --non-interactive connect
-    Loader 直接流式读取包条目，不解压整包；缺失、歧义或无效配置在连接前报错。
-    不与手动 Loader/地址混用，不执行 XML 的刷写/擦除项；容量单位、Raw、禁转义和长度布局仍由显式 profile 决定。
-    --pac 是启动选项；help/devices/离线固件命令不会读取该 PAC。</value></data>
+  <data name="Cli_HelpSprdPac" xml:space="preserve"><value>PAC Loader 配置：
+  --pac FILE	按 FDL/FDL1、FDL2 角色和 BMAConfig 加载地址配置
+  geekflash --pac firmware.pac --non-interactive connect
+直接流式读取，无整包解压；配置异常在连接前报错。
+不与手动 Loader/地址混用；不执行 XML 刷写/擦除项或推断 profile。</value></data>
   <data name="Cli_SprdLoaderSourceInvalid" xml:space="preserve"><value>FDL Loader 必须是可直接读取的二进制文件或包内二进制条目，不能使用合成镜像定义。</value></data>
-  <data name="Cli_HelpSprdBrowser" xml:space="preserve"><value>SPRD 浏览：browse super 打开设备 LP 容器，ls super 或 ls super/system 列表；进入浏览器后可 cd/up/ls/read/print。browse-image 仅用于本地镜像文件。
-  lp info super                      查看设备 LP 元数据；只读浏览，不提供 LP 编辑或嵌套 write。
-  --sprd-block-size BYTES             启动选项：存储分片1～65534，默认4096；设备确认支持后可选32768以减少往返。FDL仍528，不自动Raw，不在失败后回退或重发。
-  --sprd-length 32|64|64-reserved     4GiB以上访问需已确认的64位布局，不能仅按容量自动选择。</value></data>
+  <data name="Cli_HelpSprdBrowser" xml:space="preserve"><value>浏览与存储分片：
+  browse super	浏览设备 LP 容器
+  ls super/system	列出目录
+  read super/system &lt;file&gt;	导出嵌套分区 / 文件
+  lp info super	查看 LP 元数据（只读）
+  --sprd-block-size BYTES	启动参数；1..65534，默认 4096，FDL 独立 528
+浏览器：cd / up / ls / read / print；不支持 LP 编辑和嵌套 write。
+确认设备支持后可选 32768 分片；不自动 Raw / 回退 / 重发。
+browse-image 仅用于本地镜像。</value></data>
+  <data name="Cli_HelpOverview" xml:space="preserve"><value>常用命令：
+  devices	列出设备
+  connect / info	连接 / 设备信息
+  partitions all	列出分区
+  read &lt;partition&gt; &lt;file&gt;	备份分区
+  write &lt;partition&gt; &lt;file&gt;	写入镜像
+  erase &lt;partition&gt;	擦除分区
+  browse &lt;partition&gt;	浏览设备文件
+  browse-image &lt;image&gt;	浏览本地镜像
+  lp info &lt;container&gt;	查看 LP 元数据
+  firmware list &lt;package&gt;	查看固件包
+  reboot system|poweroff	重启 / 关机
+  interactive	交互模式（默认）
+
+连接：--protocol qcom|mtk|sprd；--port COMx 或 --usb VID:PID。
+省略端口时自动发现；SPRD 可用 --pac &lt;file&gt; 自动配置 Loader。</value></data>
+  <data name="Cli_HelpSprd" xml:space="preserve"><value>SPRD / Unisoc
+  geekflash --pac firmware.pac connect
+  geekflash --protocol sprd --port COMx connect
+
+连接与 Loader：
+  --protocol sprd	限定自动发现（已确认 USB ID 1782:4D00）
+  --port COMx / --usb VID:PID	手动选择传输
+  --sprd-entry auto|brom|fdl1|fdl2	入口，默认 auto
+  --loader FILE --sprd-fdl1-address ADDR	FDL1 文件 / 加载地址
+  --sprd-fdl2 FILE --sprd-fdl2-address ADDR	FDL2 文件 / 加载地址
+BootROM 需两级 Loader；FDL1 仅需 FDL2；FDL2 不上传。地址需匹配设备。
+自动 FDL2 入口协商无转义；USB ID 不代表启动阶段。
+连接 / 资源 / 设备等待预算：120000 / 30000 / 30000 ms。
+分别用 --connect-timeout / --resource-timeout / --device-wait-timeout 覆盖。
+
+分区与容量：
+  --sprd-partition-source auto|native|gpt	默认 auto，先 GPT 后原生清单
+  --sprd-partition-unit BYTES	原生 size 单位（必须明确；GPT 无需）
+  --sprd-sector-size auto|512|4096	GPT 扇区，默认 auto
+  --sprd-gpt-bytes BYTES	GPT 前缀，默认 32768，上限 4 MiB
+  --sprd-length 32|64|64-reserved	长度布局，默认 32
+损坏 / 歧义 GPT 不降级；不猜容量单位，64 位布局需设备确认。
+
+高级传输（按设备确认）：
+  --sprd-raw-mode off|v1|v2	Raw，默认 off
+  --sprd-raw-flush BYTES	Raw flush 上限 4 MiB
+  --sprd-raw-usb-packet BYTES	USB Raw 必须指定包大小
+  --sprd-pad-odd	奇数补零
+  --sprd-disable-transcode	协商后禁转义
+  --sprd-entry-transcode-disabled	入口已禁转义
+
+命令：
+  connect / info / sprd-chip-uid / partitions all
+  read boot boot.img / write boot boot.img / erase cache
+  reboot system|poweroff
+不支持 NV 写入/擦除、整盘 sector、DIAG、重分区；浏览能力见下。</value></data>
 </root>

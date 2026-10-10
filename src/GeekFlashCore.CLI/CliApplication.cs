@@ -30,7 +30,7 @@ internal sealed partial class CliApplication
         _sessionOptions = options;
         if (options.Command == "reconnect") _reconnectArguments = options.Arguments;
         _ui.AllowPrompts = !options.NonInteractive;
-        _ui.WriteBanner();
+        if (options.Command != "help") _ui.WriteBanner();
         if (options.Command != "help" && _ui.LogFilePath is not null)
             _ui.WriteLine(Strings.FormatCli_LogLocation(_ui.LogFilePath));
         ProtocolRegistration? requestedRegistration = null;
@@ -247,7 +247,6 @@ internal sealed partial class CliApplication
                 else
                 {
                     CommandLine.PrintRequestedHelp(options.Arguments, _ui);
-                    if (options.Arguments.Length == 0) registration.CommandSet?.PrintHelp(protocol, _ui);
                 }
                 return 0;
             default: throw new ArgumentException(Strings.FormatCli_UnknownCommand(options.Command));

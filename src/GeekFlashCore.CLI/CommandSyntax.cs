@@ -21,7 +21,7 @@ internal static class CommandSyntax
         ["reboot"] = "reboot <system|download|poweroff>",
         ["info"] = "info", ["connect"] = "connect", ["devices"] = "devices",
         ["reconnect"] = "reconnect [auto|brom|da1|da2] [xflash|legacy|xml]",
-        ["help"] = "help [command|qcom|all]", ["interactive"] = ""
+        ["help"] = "help [command|qcom|mtk|sprd|all]", ["interactive"] = ""
     };
 
     public static CliOptions Normalize(CliOptions options)

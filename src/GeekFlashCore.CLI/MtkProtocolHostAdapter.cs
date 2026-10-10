@@ -296,7 +296,7 @@ internal static partial class MtkProtocolHostAdapter
             if (RequiresConnection(command) && !protocol.IsConnected)
                 throw new InvalidOperationException(Strings.Cli_ReconnectRequired);
         }
-        public void PrintHelp(IProtocol protocol, ConsoleUi ui) { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkCommands); ui.WriteLine(Strings.Cli_HelpMtkScatterWorkflow); ui.WriteLine(Strings.Cli_HelpMtkRepair); }
+        public void PrintHelp(IProtocol protocol, ConsoleUi ui) { CommandLine.PrintSections(ui, Strings.Cli_HelpMtk, Strings.Cli_HelpMtkCommands, Strings.Cli_HelpMtkScatterWorkflow, Strings.Cli_HelpMtkRepair); }
         public void Validate(CliOptions options)
         {
             if (MtkCommandRequest.TryValidate(options.Command, options.Arguments)) return;

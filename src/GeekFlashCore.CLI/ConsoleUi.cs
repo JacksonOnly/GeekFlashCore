@@ -17,6 +17,8 @@ internal sealed partial class ConsoleUi
     private readonly object _searchGate = new();
     private SearchCancellation? _searchCancellation;
     private int _progressRows;
+    private string? _progressText;
+    private int _progressWidth;
     private volatile bool _suppressDiagnosticLogs;
     private readonly ProgressDisplay _progress = new(TimeProvider.System);
     private readonly ConsoleInputReader _input;
@@ -69,6 +71,15 @@ internal sealed partial class ConsoleUi
     }
 
     public void WriteBanner() => WriteLine(Strings.Cli_Banner);
+
+    internal void WriteHelp(string value) => WriteLine(HelpDisplay.Format(value, TerminalWidth()));
+
+    private static int TerminalWidth()
+    {
+        if (Console.IsOutputRedirected) return 100;
+        try { return Console.WindowWidth > 0 ? Console.WindowWidth : 100; }
+        catch (IOException) { return 100; }
+    }
 
     public void WriteLine(string value)
     {
@@ -156,17 +167,13 @@ internal sealed partial class ConsoleUi
         lock (_gate)
         {
             bool redirected = Console.IsOutputRedirected;
-            int terminalWidth;
-            try { terminalWidth = Console.WindowWidth; if (terminalWidth <= 0) terminalWidth = 100; }
-            catch (IOException) { terminalWidth = 100; }
+            int terminalWidth = TerminalWidth();
             ProgressFrame? frame = _progress.TryRender(record, redirected, redirected ? 120 : terminalWidth);
             if (frame is null) return;
             if (redirected) { Console.WriteLine(frame.Line); return; }
             ClearProgressUnsafe();
-            var (text, rows) = ProgressDisplay.Wrap(frame.Line, terminalWidth);
-            Console.Write(text);
-            _progressRows = rows;
-            if (frame.Completed) { Console.WriteLine(); _progressRows = 0; }
+            DrawProgressUnsafe(frame.Line, terminalWidth);
+            if (frame.Completed) { Console.WriteLine(); _progressRows = 0; _progressText = null; }
         }
     }
 
@@ -240,10 +247,20 @@ internal sealed partial class ConsoleUi
     private void ClearProgressUnsafe()
     {
         ClearDeviceWaitUnsafe();
+        _progressText = null;
         if (_progressRows == 0) return;
         Console.Write("\r\u001b[2K");
         for (int row = 1; row < _progressRows; row++) Console.Write("\u001b[1A\r\u001b[2K");
         _progressRows = 0;
+    }
+
+    private void DrawProgressUnsafe(string line, int width)
+    {
+        var (text, rows) = ProgressDisplay.Wrap(line, width);
+        Console.Write(text);
+        _progressRows = rows;
+        _progressText = line;
+        _progressWidth = width;
     }
 
     internal void StopMtkProgress()
@@ -293,9 +310,18 @@ internal sealed partial class ConsoleUi
     {
         lock (_gate)
         {
+            string? progress = _progressText;
+            int width = _progressWidth;
             ClearProgressUnsafe();
-            string line = $"[{logEvent.Timestamp.LocalDateTime:HH:mm:ss} {FormatLevel(logEvent.Level)}] {RenderMessage(logEvent)}";
+            string message = ProgressDisplay.SingleLine(RenderMessage(logEvent));
+            if (message.Length > 512)
+            {
+                int end = char.IsHighSurrogate(message[510]) ? 510 : 511;
+                message = message[..end] + "…";
+            }
+            string line = $"[{logEvent.Timestamp.LocalDateTime:HH:mm:ss} {FormatLevel(logEvent.Level)}] {message}";
             Console.Error.WriteLine(line);
+            if (progress is not null && !Console.IsOutputRedirected) DrawProgressUnsafe(progress, width);
         }
     }
 

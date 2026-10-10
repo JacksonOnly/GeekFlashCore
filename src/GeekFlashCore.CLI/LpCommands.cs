@@ -117,8 +117,9 @@ internal static class LpCommands
 
     internal static void PrintHelp(ConsoleUi ui)
     {
-        ui.WriteLine(Strings.Cli_LpHelp);
-        foreach (var usage in Usages.Values) ui.WriteLine("  " + usage);
-        ui.WriteLine(Strings.Cli_LpHelpOptions);
+        ui.WriteHelp(Strings.Cli_LpHelp);
+        foreach (var usage in Usages.Values) CommandLine.PrintUsage(usage, ui);
+        ui.WriteLine("");
+        ui.WriteHelp(Strings.Cli_LpHelpOptions);
     }
 }

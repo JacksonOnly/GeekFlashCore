@@ -127,7 +127,7 @@ internal static class SprdProtocolHostAdapter
             if (!protocol.IsConnected && command is not ("connect" or "help" or "devices")) throw new InvalidOperationException(Strings.Cli_ReconnectRequired);
         }
         public void PrintHelp(IProtocol protocol, ConsoleUi ui)
-        { ui.WriteLine(Strings.Cli_HelpSprd); ui.WriteLine(Strings.Cli_HelpSprdPac); ui.WriteLine(Strings.Cli_HelpSprdBrowser); }
+        { CommandLine.PrintSections(ui, Strings.Cli_HelpSprd, Strings.Cli_HelpSprdPac, Strings.Cli_HelpSprdBrowser); }
         public Task<int> ExecuteAsync(IProtocol protocol, CliOptions options, ConsoleUi ui, IProgress<ProgressRecord> progress, CancellationToken ct)
         {
             if (!Handles(options.Command) || options.Arguments.Length != 0) throw new CommandUsageException("sprd-chip-uid");

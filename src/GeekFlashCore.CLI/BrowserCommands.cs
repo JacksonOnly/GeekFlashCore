@@ -77,7 +77,7 @@ internal static class BrowserCommands
     internal static bool ShowHelp(string[] args, ConsoleUi ui)
     {
         if (args.Length != 1 || !args[0].Equals("help", StringComparison.OrdinalIgnoreCase)) return false;
-        ui.WriteLine(Strings.Cli_BrowserHelp);
+        ui.WriteHelp(Strings.Cli_BrowserHelp);
         return true;
     }
 
@@ -237,7 +237,7 @@ internal static class BrowserCommands
 
     private static void PrintHelp(string? command, ConsoleUi ui)
     {
-        if (command is null) { ui.WriteLine(Strings.Cli_BrowserHelp); return; }
+        if (command is null) { ui.WriteHelp(Strings.Cli_BrowserHelp); return; }
         if (command == "lp") { LpCommands.PrintHelp(ui); return; }
         string usage = command switch
         {
@@ -248,7 +248,7 @@ internal static class BrowserCommands
             "cd" => "cd <path> | cd ..", "up" => "up", "pwd" => "pwd", "print" => "print <path>\n" + Strings.Cli_BrowserPrintTooLarge,
             "exit" or "quit" => "exit", _ => throw new ArgumentException(Strings.FormatCli_UnknownCommand(command))
         };
-        ui.WriteLine(usage);
+        ui.WriteHelp(usage);
     }
 
     private static void Require(string[] tokens, int count, string? usage = null)

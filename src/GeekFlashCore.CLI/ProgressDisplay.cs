@@ -12,13 +12,14 @@ internal sealed class ProgressDisplay(TimeProvider clock)
     private static readonly string[] Units = ["Bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"];
     private ProgressRecord? _last;
     private long _started;
+    private long _initialCurrent;
     private long _rendered;
     private bool _completed;
 
     internal void Reset()
     {
         _last = null;
-        _started = _rendered = 0;
+        _started = _rendered = _initialCurrent = 0;
         _completed = false;
     }
 
@@ -29,7 +30,7 @@ internal sealed class ProgressDisplay(TimeProvider clock)
         bool reset = _last is null || _completed || record.Phase == ProgressPhase.Started ||
             record.Unit != _last.Unit || record.Current < _last.Current ||
             record.Unit == ProgressUnit.Steps && record.Label != _last.Label;
-        if (reset) _started = now;
+        if (reset) { _started = now; _initialCurrent = Math.Max(0, record.Current); }
         bool completed = record.Phase == ProgressPhase.Completed ||
             record.Unit == ProgressUnit.Steps && record.Total > 0 && record.Current >= record.Total;
         _last = record;
@@ -44,7 +45,7 @@ internal sealed class ProgressDisplay(TimeProvider clock)
         double ratio = completed ? 1 : record.Total > 0 ? Math.Clamp((double)current / record.Total, 0, 1) : 0;
         string percent = knownTotal ? (ratio * 100).ToString("F1", CultureInfo.InvariantCulture) + "%" : "--%";
         double seconds = Math.Max(0, clock.GetElapsedTime(_started, now).TotalSeconds);
-        string elapsed = Duration(seconds);
+        string elapsed = completed ? Duration(seconds) : EstimateDuration(seconds, roundUp: false);
         string quantity = record.Unit == ProgressUnit.Bytes
             ? completed ? Size(current) : $"{Size(current)} / {(knownTotal ? Size(record.Total) : "?")}"
             : $"{current} / {(knownTotal ? record.Total.ToString(CultureInfo.InvariantCulture) : "?")}";
@@ -55,18 +56,36 @@ internal sealed class ProgressDisplay(TimeProvider clock)
         {
             // Running speed averages reported byte progress, which can lead device ACKs.
             // Only Completed is the end-to-end average including final confirmation.
-            string speed = Rate(current, seconds);
+            long transferred = Math.Max(0, current - _initialCurrent);
+            string speed = Rate(transferred, seconds);
             rate = completed ? Strings.FormatCli_ProgressSpeed(speed) : Strings.FormatCli_ProgressTransferSpeed(speed);
             if (!completed && record.Total > 0 && current >= record.Total)
-                time += Environment.NewLine + "  " + Strings.Cli_ProgressWaiting;
+                time += " | " + Strings.Cli_ProgressWaiting;
+            else if (!completed)
+            {
+                // This estimates remaining reported bytes, not final device ACK/commit time.
+                double remaining = transferred > 0 && record.Total > 0 && seconds >= 0.25
+                    ? (double)(record.Total - current) / transferred * seconds : double.NaN;
+                time += " | " + Strings.FormatCli_ProgressRemaining(double.IsFinite(remaining)
+                    ? EstimateDuration(remaining, roundUp: true) : "--");
+            }
         }
         string label = SingleLine(record.Label);
         int width = terminalWidth >= 60 ? Math.Min(24, terminalWidth - Cells(details) - 6) : 0;
-        string bar = width >= 8 ? " [" + new string('#', (int)(ratio * width)) + new string('-', width - (int)(ratio * width)) + "]" : "";
+        string bar = !redirected && width >= 8 ? " [" + new string('#', (int)(ratio * width)) + new string('-', width - (int)(ratio * width)) + "]" : "";
+        if (redirected)
+            return new ProgressFrame(string.Join(" | ", new[] { label, details, rate, time }.Where(value => value is not null)), completed);
         string line = label + Environment.NewLine + "  " + details + bar;
         if (rate is not null) line += Environment.NewLine + "  " + rate;
         line += Environment.NewLine + "  " + time;
         return new ProgressFrame(line, completed);
+    }
+
+    private static string EstimateDuration(double seconds, bool roundUp)
+    {
+        string value = Duration(roundUp ? Math.Ceiling(seconds) : Math.Floor(seconds));
+        int fraction = value.IndexOf('.');
+        return fraction < 0 ? value : value[..fraction];
     }
 
     internal static string Size(decimal bytes)

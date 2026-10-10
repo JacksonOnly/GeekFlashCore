@@ -187,9 +187,9 @@ internal static class CommandLine
     {
         string? requested = arguments.FirstOrDefault()?.ToLowerInvariant();
         if (requested == "lp") { LpCommands.PrintHelp(ui); return; }
-        if (requested is "sprd" or "unisoc" or "spreadtrum") { ui.WriteLine(Strings.Cli_HelpSprd); ui.WriteLine(Strings.Cli_HelpSprdPac); ui.WriteLine(Strings.Cli_HelpSprdBrowser); return; }
-        if (requested == "mtk-scatter") { ui.WriteLine(Strings.Cli_HelpMtkScatterWorkflow); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
-        if (requested is "mtk" or "mediatek" || requested?.StartsWith("mtk-", StringComparison.OrdinalIgnoreCase) == true) { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkCommands); ui.WriteLine(Strings.Cli_HelpMtkScatterWorkflow); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
+        if (requested is "sprd" or "unisoc" or "spreadtrum") { PrintSections(ui, Strings.Cli_HelpSprd, Strings.Cli_HelpSprdPac, Strings.Cli_HelpSprdBrowser); return; }
+        if (requested == "mtk-scatter") { PrintSections(ui, Strings.Cli_HelpMtkScatterWorkflow, Strings.Cli_HelpMtkRepair); return; }
+        if (requested is "mtk" or "mediatek" || requested?.StartsWith("mtk-", StringComparison.OrdinalIgnoreCase) == true) { PrintMtkHelp(ui); return; }
         if (requested == "sprd-chip-uid") { PrintUsage("sprd-chip-uid", ui); return; }
         if (requested is not (null or "all" or "qcom"))
         {
@@ -198,31 +198,47 @@ internal static class CommandLine
             else throw new ArgumentException(Strings.FormatCli_UnknownCommand(requested));
             return;
         }
-        ui.WriteLine(Strings.Cli_Title);
-        ui.WriteLine(Strings.Cli_HelpUsage);
-        ui.WriteLine(Strings.Cli_HelpCommands);
-        foreach (var command in CommandSyntax.Usages.Where(x => x.Value.Length > 0 && x.Key != "reconnect")) PrintUsage(command.Value, ui);
-        ui.WriteLine(Strings.Cli_InteractiveKeys);
-        if (requested is null) { ui.WriteLine(Strings.Cli_HelpDetailsHint); return; }
-        ui.WriteLine(Strings.Cli_HelpQcomCommands);
+        if (requested is null)
+        {
+            PrintSections(ui, Strings.Cli_Title + Environment.NewLine + Strings.Cli_HelpUsage,
+                Strings.Cli_HelpOverview, Strings.Cli_HelpDetailsHint);
+            return;
+        }
+        if (requested == "all")
+        {
+            PrintSections(ui, Strings.Cli_Title + Environment.NewLine + Strings.Cli_HelpUsage,
+                Strings.Cli_HelpCommands);
+            foreach (var command in CommandSyntax.Usages.Where(x => x.Value.Length > 0)) PrintUsage(command.Value, ui);
+            PrintSections(ui, "", Strings.Cli_HelpOptionsPrimary, Strings.Cli_HelpOptionsTimeouts);
+        }
+        if (requested == "all") ui.WriteLine("");
+        ui.WriteHelp(Strings.Cli_HelpQcomCommands);
         foreach (string usage in FirehoseCommands.Usages.Values) PrintUsage(usage, ui);
-        if (requested == "qcom") return;
-        ui.WriteLine(Strings.Cli_HelpOptionsPrimary);
-        ui.WriteLine(Strings.Cli_HelpOptionsSecondary);
-        ui.WriteLine(Strings.Cli_HelpVipOptions);
-        ui.WriteLine(Strings.Cli_HelpOptionsTimeouts);
-        ui.WriteLine(Strings.Cli_HelpOptionsLegacy);
-        ui.WriteLine(Strings.Cli_HelpMtk);
-        ui.WriteLine(Strings.Cli_HelpMtkCommands);
-        ui.WriteLine(Strings.Cli_HelpMtkScatterWorkflow);
-        ui.WriteLine(Strings.Cli_HelpMtkRepair);
-        ui.WriteLine(Strings.Cli_HelpSprd);
-        ui.WriteLine(Strings.Cli_HelpSprdPac);
-        ui.WriteLine(Strings.Cli_HelpSprdBrowser);
+        PrintSections(ui, "", Strings.Cli_HelpOptionsSecondary, Strings.Cli_HelpVipOptions, Strings.Cli_HelpOptionsLegacy);
+        if (requested == "qcom")
+        {
+            PrintSections(ui, "", Strings.Cli_HelpOptionsPrimary, Strings.Cli_HelpOptionsTimeouts);
+            return;
+        }
+        ui.WriteLine("");
+        PrintMtkHelp(ui);
+        PrintSections(ui, "", Strings.Cli_HelpSprd, Strings.Cli_HelpSprdPac, Strings.Cli_HelpSprdBrowser);
+    }
+
+    private static void PrintMtkHelp(ConsoleUi ui) => PrintSections(ui, Strings.Cli_HelpMtk,
+        Strings.Cli_HelpMtkCommands, Strings.Cli_HelpMtkScatterWorkflow, Strings.Cli_HelpMtkRepair);
+
+    internal static void PrintSections(ConsoleUi ui, params string[] sections)
+    {
+        for (int index = 0; index < sections.Length; index++)
+        {
+            if (index > 0 && sections[index - 1].Length > 0) ui.WriteLine("");
+            ui.WriteHelp(sections[index]);
+        }
     }
 
     internal static void PrintUsage(string usage, ConsoleUi ui)
     {
-        foreach (string form in usage.Split(" | ", StringSplitOptions.RemoveEmptyEntries)) ui.WriteLine("  " + form);
+        foreach (string form in usage.Split(" | ", StringSplitOptions.RemoveEmptyEntries)) ui.WriteHelp("  " + form);
     }
 }

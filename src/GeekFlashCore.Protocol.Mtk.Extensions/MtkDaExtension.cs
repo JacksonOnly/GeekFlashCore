@@ -60,6 +60,12 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
     private void Initialize(MtkExtensionContext context, byte[]? payload, uint address, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
+        // Capture borrowed mutable lists before entering the gate or touching the wire.
+        context = context with
+        {
+            UfsRpmbDataBlocks = Capture(context.UfsRpmbDataBlocks, 4),
+            AllowedMemoryRanges = Capture(context.AllowedMemoryRanges, 256)
+        };
         if (context.Da2Base == 0 || context.Da2Size == 0 || (ulong)context.Da2Base + context.Da2Size > (ulong)uint.MaxValue + 1 ||
             context.UfsRpmbDataBlocks is null || context.UfsRpmbDataBlocks.Count > 4 || !Enum.IsDefined(context.Abi) ||
             context.AllowedMemoryRanges is null || context.AllowedMemoryRanges.Count > 256 ||
@@ -122,14 +128,22 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
                     ("storage", c.Storage.Kind == MtkStorageKind.Emmc ? "EMMC" : "UFS"), ("usb_log", "no")));
                 c.EndXmlCommand();
             }
-            _context = context with
-            {
-                UfsRpmbDataBlocks = context.UfsRpmbDataBlocks.ToArray(),
-                AllowedMemoryRanges = context.AllowedMemoryRanges.ToArray()
-            };
+            _context = context;
             _generation = c.Generation;
             return 0;
         }, cancellationToken);
+    }
+    private static T[] Capture<T>(IReadOnlyList<T>? values, int maximum)
+    {
+        if (values is null || values.Count < 0 || values.Count > maximum)
+            throw new ArgumentOutOfRangeException(nameof(values));
+        int count = values.Count;
+        if (count < 0 || count > maximum)
+            throw new ArgumentOutOfRangeException(nameof(values));
+        var result = new T[count];
+        for (int i = 0; i < count; i++)
+            result[i] = values[i];
+        return result;
     }
     private void Ready(IMtkDaChannel channel)
     {
@@ -394,11 +408,12 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
                 {
                     c.BeginXmlCommand(MtkXmlCommand.ExtKeyDerive, Args(("key_type", "RPMB")));
                     using var output = new MemoryStream();
-                    c.ReceiveXmlFile(output, null, 4096);
-                    c.EndXmlCommand();
-                    byte[] xml = output.ToArray();
+                    byte[]? xml = null;
                     try
                     {
+                        c.ReceiveXmlFile(output, null, 4096);
+                        c.EndXmlCommand();
+                        xml = output.ToArray();
                         string value = XmlValue(xml, "result");
                         if (value.Length != 64)
                             throw new MtkResourceException("RPMB derived key");
@@ -409,7 +424,11 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
                         }
                         finally { CryptographicOperations.ZeroMemory(decoded); }
                     }
-                    finally { CryptographicOperations.ZeroMemory(xml); CryptographicOperations.ZeroMemory(output.GetBuffer()); }
+                    finally
+                    {
+                        if (xml is not null) CryptographicOperations.ZeroMemory(xml);
+                        CryptographicOperations.ZeroMemory(output.GetBuffer());
+                    }
                 }
                 return new MtkSensitiveBuffer(key);
             }
@@ -524,12 +543,26 @@ public sealed partial class MtkDaExtension : IMtkRpmbService, IMtkRpmbEraseServi
     }
     private static string XmlValue(byte[] bytes, string field)
     {
-        using var reader = XmlReader.Create(new StringReader(System.Text.Encoding.UTF8.GetString(bytes).TrimEnd('\0')),
-            new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = 4096 });
-        XElement root = XElement.Load(reader);
-        var items = root.DescendantsAndSelf(field).ToArray();
-        if (items.Length != 1 || items[0].HasElements)
+        if (bytes.Length is < 1 or > 4096)
             throw new MtkResourceException("extension XML");
-        return items[0].Value;
+        try
+        {
+            using var reader = XmlReader.Create(new StringReader(new System.Text.UTF8Encoding(false, true).GetString(bytes).TrimEnd('\0')),
+                new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null,
+                    MaxCharactersInDocument = 4096, MaxCharactersFromEntities = 0 });
+            XElement root = XElement.Load(reader);
+            var nodes = root.DescendantsAndSelf().ToArray();
+            if (nodes.Length > 1024 || nodes.Any(n => n.Name.NamespaceName.Length != 0 || n.Ancestors().Count() > 8 ||
+                n.Attributes().Any(a => a.IsNamespaceDeclaration || a.Name.NamespaceName.Length != 0)))
+                throw new MtkResourceException("extension XML");
+            var items = nodes.Where(n => n.Name.LocalName == field).ToArray();
+            if (items.Length != 1 || items[0].HasElements)
+                throw new MtkResourceException("extension XML");
+            return items[0].Value;
+        }
+        catch (Exception ex) when (ex is XmlException or System.Text.DecoderFallbackException)
+        {
+            throw new MtkResourceException("extension XML");
+        }
     }
 }

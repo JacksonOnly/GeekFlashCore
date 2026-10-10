@@ -244,7 +244,7 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
     {
         Begin(MtkXmlCommand.ReadRegister, Args(("bit_width", "32"), ("base_address", $"0x{address:X}"), ("target_file", "MEM://0x0:0x4")));
         string size = ReceiveText(64);
-        if (size != "OK@0x4")
+        if (!size.StartsWith("OK@0x", StringComparison.Ordinal) || MtkXmlCodec.Number(size[3..]) != 4)
             throw wire.Failure();
         Ack();
         ReadAck();
@@ -398,6 +398,11 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
 
     public long Upload(Stream output, long? expected, long maximum, XElement? request = null, Action? beforeFinalAck = null)
     {
+        ArgumentNullException.ThrowIfNull(output);
+        if (!output.CanWrite)
+            throw new ArgumentException(nameof(output));
+        if (maximum <= 0 || expected is <= 0 || expected > maximum)
+            throw new ArgumentOutOfRangeException(nameof(maximum));
         request ??= ReceiveXml();
         Require(MtkXmlCommand.UploadFile, request);
         int packet = PacketSize(request);
@@ -435,6 +440,11 @@ internal sealed partial class XmlSession(MtkWire wire, MtkProtocolOptions option
 
     public void Download(long length, Stream input, XElement? request = null)
     {
+        ArgumentNullException.ThrowIfNull(input);
+        if (!input.CanRead)
+            throw new ArgumentException(nameof(input));
+        if (length <= 0)
+            throw new ArgumentOutOfRangeException(nameof(length));
         request ??= ReceiveXml();
         Require(MtkXmlCommand.DownloadFile, request);
         int packet = PacketSize(request);

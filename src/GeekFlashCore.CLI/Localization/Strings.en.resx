@@ -522,4 +522,13 @@ Safety-sensitive writes require backup/confirmation. Unknown writes are not retr
 Flashing shows only layout mismatches. After approval, back up only GPT, update, and flash; no backup of all partitions.
 Partition contents are not backed up or migrated. Readback is retained; GPT backups do not restore overwritten data.
   --mtk-operation-timeout ms          Startup option: MTK core operation budget, default 1800000; native USB timeouts unchanged.</value></data>
+  <data name="Cli_SprdPacInvalid" xml:space="preserve"><value>The PAC does not contain unique valid FDL1, FDL2 and BMAConfig load addresses, or its resource lengths/addresses are out of range.</value></data>
+  <data name="Cli_SprdPacConflict" xml:space="preserve"><value>--pac cannot be combined with manual --loader, --sprd-fdl2 or FDL load addresses.</value></data>
+  <data name="Cli_SprdPacPrepared" xml:space="preserve"><value>PAC loaders prepared: FDL1 address 0x{Fdl1Address:X8}, FDL2 address 0x{Fdl2Address:X8}.</value></data>
+  <data name="Cli_HelpSprdPac" xml:space="preserve"><value>  --pac firmware.pac                Select SPRD and load images/addresses from PAC FDL/FDL1, FDL2 roles and BMAConfig XML.
+    Example: geekflash --pac firmware.pac --non-interactive connect
+    Loaders stream directly from package entries without extracting the package; missing, ambiguous or invalid configuration fails before connecting.
+    Do not combine with manual loaders/addresses. XML flash/erase records are not executed; capacity units, Raw, transcoding and length layout remain explicit profiles.
+    --pac is a startup option; help/devices/offline firmware commands do not read that PAC.</value></data>
+  <data name="Cli_SprdLoaderSourceInvalid" xml:space="preserve"><value>An FDL loader must be a readable binary file or package binary entry, not a synthetic image definition.</value></data>
 </root>

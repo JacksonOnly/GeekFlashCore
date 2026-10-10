@@ -14,6 +14,7 @@
 geekflash help sprd
 geekflash --protocol sprd
 geekflash --protocol sprd --device-wait-timeout 60000 connect
+geekflash --pac "firmware.pac" --non-interactive connect
 geekflash --protocol sprd --port COM7 --loader FDL1.bin --sprd-fdl1-address FDL1_ADDRESS --sprd-fdl2 FDL2.bin --sprd-fdl2-address FDL2_ADDRESS connect
 geekflash --protocol sprd --port COM7 partitions all
 geekflash --protocol sprd --port COM7 --sprd-entry fdl2 --sprd-partition-source native --sprd-partition-unit UNIT_BYTES read boot boot.img
@@ -26,7 +27,15 @@ geekflash --protocol sprd --port COM7 --sprd-entry fdl2 sprd-chip-uid
 
 `FDL1_ADDRESS` / `FDL2_ADDRESS` 和 `UNIT_BYTES` 必须换成设备已确认的数值，支持 `0x` 地址。不要照搬其他平台的 Loader 或地址。省略入口或 `--sprd-entry auto` 默认自动识别；显式 `brom/fdl1/fdl2` 保持原线路。识别为 BootROM 才需要两个 Loader，FDL1 只需要 FDL2，FDL2 不上传，也不调用 Loader Provider。交互模式识别后会询问缺失文件/地址；非交互自动入口在识别后拒绝缺失的必要资源，显式入口仍在打开传输前预检。Provider 等待默认 30 秒；连接总预算默认 120 秒，包含自动识别和资源等待。`--resource-timeout` 与 `--connect-timeout` 可显式调整且必须为正数。
 
-自动识别先发送单字节 CHECK_BAUD：完整 VERSION 帧必须唯一匹配 CRC16/XMODEM（BootROM）或 FDL checksum（FDL1），随后 CONNECT ACK 确认。FDL checksum 的空 UNSUPPORTED_COMMAND(0xfe) 响应指向已加载 FDL2，随后 DISABLE_TRANSCODE ACK 确认并切换无转义。若首个查询完全无响应且单命令超时，剩余预算内允许一次 FDL checksum CONNECT 查询，仅接受上述 FDL2 特征；未知 ACK/VERSION 不继续猜测或重发。部分帧、坏/歧义校验、日志后超时、取消或总预算耗尽均停止。首包等待受单命令超时限制（核心默认 10 秒，CLI --read-timeout）；特殊 Loader 无明确响应时用手动入口。版本文字和 VID/PID 不决定阶段。
+### PAC 自动 Loader 配置
+
+启动选项 `--pac PATH` 复用现有 `GeekFlashCore.Firmware.FirmwareUnpacker` 的 PAC 能力；未指定协议时自动选择 SPRD，显式其他协议拒绝。按包内 File-ID `FDL`/`FDL1` 和 `FDL2` 唯一选择两级 Loader，不依赖文件名。配置优先选 File-ID `XML` 的条目，没有该角色时才选 `.xml` 条目；在 `BMAConfig/SchemeList/Scheme/File` 中按对应 `ID` 获取唯一的 `Block/Base` 加载地址，支持 uint 十进制与 `0x` 十六进制。多个匹配 Scheme、重复角色/路径、坏 XML、DTD、缺失或溢出地址、空/超大 Loader 都在发现设备或发送命令前拒绝。最多16份候选 XML，每份不超过2 MiB；Loader 不超过32 MiB，地址加长度不越过32位 RAM 范围。
+
+Loader 通过 `PAC::entry` 切片直接流式读取，不解压整包、不落地临时 Loader；资源容器拥有包目录及 Source，成功/失败/取消或迟到结果会释放，部分选择失败也清理已选资源。PAC 及其条目在预检至加载结束期间应保持不变。`--pac` 不能与手动 `--loader`、`--sprd-fdl2` 或两个加载地址混用；无 PAC 时保留手动路径线路，也可显式使用现有包条目引用。帮助、设备清单和离线固件命令不读取启动选项的 PAC。
+
+这里只自动读取 Loader 角色、资源及明确加载地址，不执行 XML 的分区刷写/擦除、NV 或 Reset 项；不以 FlashTypeID 或注释推断容量单位、存储类型、Raw、禁转义或64位 selector。其他显式 SPRD profile 原样保留。2026-10-10 已用4.5 GB `T1020S-ALLDOCUBEOS-20220424.pac` 验证 FDL1地址 `0x5500`、FDL2地址 `0x9EFFFE00`，未指定端口和 Loader 地址的 Auto 连接完成 BootROM→FDL1→FDL2→StorageReady；不证明其他 PAC 布局或存储线路兼容。
+
+自动识别先发送单字节 CHECK_BAUD：完整 VERSION 帧必须唯一匹配 CRC16/XMODEM（BootROM）或 FDL checksum（FDL1），随后 CONNECT ACK 确认。FDL checksum 的空 UNSUPPORTED_COMMAND(0xfe) 响应指向已加载 FDL2，随后 DISABLE_TRANSCODE ACK 确认并切换无转义。若首个查询完全无响应且500ms探测预算超时，剩余预算内允许一次 FDL checksum CONNECT 查询；完整空 CRC16 VERIFY_ERROR 则按下文精确线路修正 CONNECT 并确认 BootROM。未知 ACK/VERSION 不继续猜测或重发。部分帧、坏/歧义校验、日志后超时、取消或总预算耗尽均停止。首次探测还受单命令及总预算封顶，后续命令仍使用原超时（核心默认10秒，CLI --read-timeout）；特殊 Loader 无明确响应时用手动入口。版本文字和 VID/PID 不决定阶段。
 
 容量来源省略或 `--sprd-partition-source auto` 默认自动选择：优先严格验证一次 GPT 前缀，确认不可用且读会话已结束后才请求原生清单。可显式选择 `gpt` 或 `native`；选择 native 会跳过 GPT 查询。自动选择的是容量来源，不把原生清单声明为 MBR、NAND 或 PMT。
 

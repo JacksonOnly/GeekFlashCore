@@ -12,8 +12,8 @@ internal sealed class ParseContext(IDataSource source, Stream input, FirmwarePac
     internal Stream Input { get; } = input;
     internal byte[] Read(long offset, int size)
     { Limit(size, Options.MaximumMetadataBytes); SourceStream.Range(Source.Length, offset, size); byte[] data = new byte[size]; Input.Position = offset; Input.ReadExactly(data); return data; }
-    internal void Slice(string name, long offset, long length)
-    { SourceStream.Range(Source.Length, offset, length); Add(name, length, ct => SourceStream.Slice(Source, offset, length, ct)); }
+    internal void Slice(string name, long offset, long length, string? resourceId = null)
+    { SourceStream.Range(Source.Length, offset, length); Add(name, length, ct => SourceStream.Slice(Source, offset, length, ct), resourceId); }
     internal void Encrypted(string name, long offset, long length, long encryptedLength, byte[] key, byte[] iv)
     {
         SourceStream.Range(Source.Length, offset, length); SourceStream.Range(length, 0, encryptedLength);

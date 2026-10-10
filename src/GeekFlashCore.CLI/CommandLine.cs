@@ -14,7 +14,8 @@ internal static class CommandLine
         for (int i = 0; i < args.Length; i++)
         {
             string arg = args[i];
-            if (arg is "-h" or "--help") return builder with { Command = "help" };
+            if (arg is "-h" or "--help") return builder with { Command = "help",
+                Protocol = builder.Protocol ?? (builder.SprdPac is not null ? "sprd" : null) };
             if (arg is "-v" or "--verbose") { builder = builder with { Verbose = true }; continue; }
             if (arg == "--non-interactive") { builder = builder with { NonInteractive = true }; continue; }
             if (arg == "--sprd-pad-odd") { builder = builder with { SprdPadOdd = true }; continue; }
@@ -54,7 +55,7 @@ internal static class CommandLine
                 builder = builder with { MtkBromChunkSize = checked((int)CommandSyntax.Number(value)) };
                 continue;
             }
-            if (name is "--sprd-fdl2" or "--sprd-fdl1-address" or "--sprd-fdl2-address" or "--sprd-entry" or "--sprd-partition-unit" or "--sprd-length" or
+            if (name is "--pac" or "--sprd-fdl2" or "--sprd-fdl1-address" or "--sprd-fdl2-address" or "--sprd-entry" or "--sprd-partition-unit" or "--sprd-length" or
                 "--sprd-partition-source" or "--sprd-sector-size" or "--sprd-gpt-bytes" or "--sprd-raw-mode" or "--sprd-raw-flush" or "--sprd-raw-usb-packet")
             {
                 value ??= i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] :
@@ -62,9 +63,10 @@ internal static class CommandLine
                 if (string.IsNullOrWhiteSpace(value)) throw new ArgumentException(Strings.FormatCli_MissingOptionValue(name));
                 builder = name switch
                 {
-                    "--sprd-fdl2" => builder with { SprdFdl2 = value },
-                    "--sprd-fdl1-address" => builder with { SprdFdl1Address = checked((uint)CommandSyntax.Number(value)) },
-                    "--sprd-fdl2-address" => builder with { SprdFdl2Address = checked((uint)CommandSyntax.Number(value)) },
+                    "--pac" => builder with { SprdPac = value, SprdPacPrepared = false },
+                    "--sprd-fdl2" => builder with { SprdFdl2 = value, SprdPacPrepared = false },
+                    "--sprd-fdl1-address" => builder with { SprdFdl1Address = checked((uint)CommandSyntax.Number(value)), SprdPacPrepared = false },
+                    "--sprd-fdl2-address" => builder with { SprdFdl2Address = checked((uint)CommandSyntax.Number(value)), SprdPacPrepared = false },
                     "--sprd-partition-unit" => builder with { SprdPartitionUnit = checked((long)CommandSyntax.Number(value)) },
                     "--sprd-sector-size" => builder with { SprdSectorSize = value.Equals("auto", StringComparison.OrdinalIgnoreCase) ? 0 : ParseSprdSectorSize(value) },
                     "--sprd-gpt-bytes" => builder with { SprdGptBytes = checked((int)CommandSyntax.Number(value)) },
@@ -118,7 +120,7 @@ internal static class CommandLine
                 builder = name switch
                 {
                     "--port" => builder with { Port = value }, "--usb" => builder with { Usb = value }, "--protocol" => builder with { Protocol = value },
-                    "--loader" => builder with { Loader = value }, "--digest" => builder with { Digest = value }, "--vip-signed" => builder with { VipSigned = value },
+                    "--loader" => builder with { Loader = value, SprdPacPrepared = false }, "--digest" => builder with { Digest = value }, "--vip-signed" => builder with { VipSigned = value },
                     "--mtk-preloader" => builder with { MtkPreloader = value },
                     "--mtk-da-mode" => builder with { MtkDaMode = value },
                     "--mtk-auth-file" => builder with { MtkAuthenticationFile = value },
@@ -151,7 +153,8 @@ internal static class CommandLine
             }
             positional.Add(arg);
         }
-        builder = builder with { Command = positional.FirstOrDefault() ?? "interactive", Arguments = positional.Skip(1).ToArray() };
+        builder = builder with { Command = positional.FirstOrDefault() ?? "interactive", Arguments = positional.Skip(1).ToArray(),
+            Protocol = builder.Protocol ?? (builder.SprdPac is not null ? "sprd" : null) };
         builder = MtkCommandRequest.Normalize(builder);
         builder.Validate();
         if (builder.NonInteractive && builder.Command == "interactive")
@@ -177,7 +180,7 @@ internal static class CommandLine
     {
         string? requested = arguments.FirstOrDefault()?.ToLowerInvariant();
         if (requested == "lp") { LpCommands.PrintHelp(ui); return; }
-        if (requested is "sprd" or "unisoc" or "spreadtrum") { ui.WriteLine(Strings.Cli_HelpSprd); return; }
+        if (requested is "sprd" or "unisoc" or "spreadtrum") { ui.WriteLine(Strings.Cli_HelpSprd); ui.WriteLine(Strings.Cli_HelpSprdPac); return; }
         if (requested == "mtk-scatter") { ui.WriteLine(Strings.Cli_HelpMtkScatterWorkflow); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
         if (requested is "mtk" or "mediatek" || requested?.StartsWith("mtk-", StringComparison.OrdinalIgnoreCase) == true) { ui.WriteLine(Strings.Cli_HelpMtk); ui.WriteLine(Strings.Cli_HelpMtkCommands); ui.WriteLine(Strings.Cli_HelpMtkScatterWorkflow); ui.WriteLine(Strings.Cli_HelpMtkRepair); return; }
         if (requested == "sprd-chip-uid") { PrintUsage("sprd-chip-uid", ui); return; }
@@ -207,6 +210,7 @@ internal static class CommandLine
         ui.WriteLine(Strings.Cli_HelpMtkScatterWorkflow);
         ui.WriteLine(Strings.Cli_HelpMtkRepair);
         ui.WriteLine(Strings.Cli_HelpSprd);
+        ui.WriteLine(Strings.Cli_HelpSprdPac);
     }
 
     internal static void PrintUsage(string usage, ConsoleUi ui)

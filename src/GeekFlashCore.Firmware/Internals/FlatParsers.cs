@@ -16,8 +16,9 @@ internal static class FlatParsers
             byte[] e = c.Read(checked(table + i * 2580L), 2580);
             long size = ParseContext.Long(((ulong)ParseContext.U32(e, 1532) << 32) | ParseContext.U32(e, 1540));
             long start = ParseContext.Long(((ulong)ParseContext.U32(e, 1536) << 32) | ParseContext.U32(e, 1552));
-            string name = ParseContext.Unicode(e.AsSpan(516, 512)); if (name.Length == 0) name = ParseContext.Unicode(e.AsSpan(4, 512));
-            c.Slice(name, start, size);
+            string id = ParseContext.Unicode(e.AsSpan(4, 512));
+            string name = ParseContext.Unicode(e.AsSpan(516, 512)); if (name.Length == 0) name = id;
+            c.Slice(name, start, size, id.Length == 0 ? null : id);
         }
     }
     internal static void Kdz(ParseContext c)

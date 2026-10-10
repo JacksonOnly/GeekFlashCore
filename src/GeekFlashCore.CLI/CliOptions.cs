@@ -8,6 +8,8 @@ internal sealed record CliOptions
     public string? Usb { get; init; }
     public string? Protocol { get; init; }
     public string? Loader { get; init; }
+    public string? SprdPac { get; init; }
+    internal bool SprdPacPrepared { get; init; }
     public string? SprdFdl2 { get; init; }
     public uint? SprdFdl1Address { get; init; }
     public uint? SprdFdl2Address { get; init; }
@@ -23,7 +25,7 @@ internal sealed record CliOptions
     public GeekFlashCore.Protocol.Sprd.Abstractions.SprdRawDataMode? SprdRawMode { get; init; }
     public int? SprdRawFlush { get; init; }
     public int? SprdRawUsbPacket { get; init; }
-    internal bool HasSprdOptions => SprdFdl2 is not null || SprdFdl1Address is not null || SprdFdl2Address is not null ||
+    internal bool HasSprdOptions => SprdPac is not null || SprdFdl2 is not null || SprdFdl1Address is not null || SprdFdl2Address is not null ||
         SprdEntry is not null || SprdPartitionUnit is not null || SprdLengthEncoding is not null || SprdPadOdd || SprdDisableTranscode || SprdEntryTranscodeDisabled ||
         SprdPartitionSource is not null || SprdSectorSize is not null || SprdGptBytes is not null || SprdRawMode is not null || SprdRawFlush is not null || SprdRawUsbPacket is not null;
     public string? MtkPreloader { get; init; }

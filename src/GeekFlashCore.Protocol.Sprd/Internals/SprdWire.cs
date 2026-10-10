@@ -26,7 +26,8 @@ internal sealed class SprdWire : IDisposable
     internal SprdWire(ITransport transport, SprdProtocolOptions options)
     {
         _transport = transport; _options = options;
-        int capacity = Math.Max(options.MaximumResponseBytes, Math.Max(options.BootRomBlockSize, options.TransferBlockSize) + 1) + 6;
+        int capacity = Math.Max(options.MaximumResponseBytes,
+            Math.Max(options.Fdl2BlockSize, Math.Max(options.BootRomBlockSize, options.TransferBlockSize)) + 1) + 6;
         _body = ArrayPool<byte>.Shared.Rent(capacity);
         try { _encoded = ArrayPool<byte>.Shared.Rent(checked(capacity * 2 + 2)); }
         catch { ArrayPool<byte>.Shared.Return(_body, clearArray: true); throw; }
@@ -46,7 +47,16 @@ internal sealed class SprdWire : IDisposable
         }
     }
     internal void Check() => _ = Remaining;
-    internal SprdResponse Command(ushort command, ReadOnlySpan<byte> payload = default, bool detectChecksum = false)
+    internal void Delay(int milliseconds)
+    {
+        int wait = Math.Min(milliseconds, Remaining);
+        if (_token.CanBeCanceled) _token.WaitHandle.WaitOne(wait);
+        else if (wait > 0) Thread.Sleep(wait);
+        Check();
+        if (wait < milliseconds) throw new TimeoutException(Strings.Timeout);
+    }
+    internal SprdResponse Command(ushort command, ReadOnlySpan<byte> payload = default, bool detectChecksum = false,
+        int? responseTimeoutMilliseconds = null)
     {
         _awaitingResponse = _receivedBytes = false;
         Check(); long commandStart = Stopwatch.GetTimestamp();
@@ -74,7 +84,7 @@ internal sealed class SprdWire : IDisposable
         HasWritten = true; // Even a partial Write failure invalidates this stream.
         _transport.Write(_encoded.AsSpan(0, written));
         _awaitingResponse = true;
-        var response = ReceiveResponse(command, commandStart, detectChecksum);
+        var response = ReceiveResponse(command, commandStart, detectChecksum, responseTimeoutMilliseconds);
         _awaitingResponse = false;
         return response;
     }
@@ -92,11 +102,13 @@ internal sealed class SprdWire : IDisposable
         var response = ReceiveResponse(SprdCommand.Midst, commandStart);
         if (response.Type != SprdCommand.Ack) throw new SprdProtocolException(SprdCommand.Midst, response.Type);
     }
-    private SprdResponse ReceiveResponse(ushort command, long commandStart, bool detectChecksum = false)
+    private SprdResponse ReceiveResponse(ushort command, long commandStart, bool detectChecksum = false,
+        int? responseTimeoutMilliseconds = null)
     {
+        int commandTimeout = Math.Min(_options.CommandTimeoutMilliseconds, responseTimeoutMilliseconds ?? int.MaxValue);
         for (int logFrames = 0; ; logFrames++)
         {
-            var response = Receive(command, commandStart, detectChecksum);
+            var response = Receive(command, commandStart, detectChecksum, commandTimeout);
             if (response.Type != SprdCommand.Log) return response;
             if (logFrames >= _options.MaximumLogFrames) throw new SprdProtocolException(command);
         }
@@ -107,9 +119,9 @@ internal sealed class SprdWire : IDisposable
         if (response.Type != expected) throw new SprdProtocolException(command, response.Type);
         return response;
     }
-    private byte Next(long commandStart)
+    private byte Next(long commandStart, int commandTimeout)
     {
-        int timeout = Math.Min(Remaining, _options.CommandTimeoutMilliseconds - checked((int)Math.Min(int.MaxValue, Stopwatch.GetElapsedTime(commandStart).TotalMilliseconds)));
+        int timeout = Math.Min(Remaining, commandTimeout - checked((int)Math.Min(int.MaxValue, Stopwatch.GetElapsedTime(commandStart).TotalMilliseconds)));
         if (timeout <= 0) throw new TimeoutException(Strings.Timeout);
         if (_position == _available)
         {
@@ -120,15 +132,15 @@ internal sealed class SprdWire : IDisposable
         _receivedBytes = true;
         return _input[_position++];
     }
-    private SprdResponse Receive(ushort command, long commandStart, bool detectChecksum)
+    private SprdResponse Receive(ushort command, long commandStart, bool detectChecksum, int commandTimeout)
     {
         int skipped = 0;
-        while (Next(commandStart) != 0x7e) if (++skipped > 64) throw new SprdProtocolException(command);
+        while (Next(commandStart, commandTimeout) != 0x7e) if (++skipped > 64) throw new SprdProtocolException(command);
         int count = 0, expectedLength = -1, wireBytes = 0; bool escaping = false;
         while (true)
         {
             if (++wireBytes > checked((_options.MaximumResponseBytes + 6) * 2 + 66)) throw new SprdProtocolException(command);
-            byte b = Next(commandStart);
+            byte b = Next(commandStart, commandTimeout);
             if (Escaped)
             {
                 if (escaping)

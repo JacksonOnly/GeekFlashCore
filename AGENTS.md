@@ -128,7 +128,9 @@ SPRD-11 最新容量来源默认 Auto，优先校验固定 GPT 前缀，只有�
 
 SPRD-12 并入本地 main 的范围、工作区保留、回归结果及合并前 MTK 失败对照见 `docs/plans/2026-10-08-sprd-merge-implementation.md`。
 
-SPRD-13 补齐 CLI 自动串口发现：仅已确认 `1782:4D00` 标识为 SPRD 候选，`--protocol sprd` 可无手动端口扫描/等待，已有 `--port`/`--usb` 覆盖保留；阶段仍由 BSL 握手决定，不自动切 DIAG 或替换驱动。发现后按实际协议重新校验选项，交互会话保留 SPRD 协议；热插拔先订阅再启动并复查库存，取消后不返回传输。Windows 仅枚举 Present 设备，并监听既有实例 Present 变化；本机历史 COM84 已断开，不能当作当前设备。恢复见 `docs/plans/2026-10-10-sprd-cli-discovery-design.md` 和对应 implementation。无 SPRD 实机握手证据。
+SPRD-13 补齐 CLI 自动串口发现：仅已确认 `1782:4D00` 标识为 SPRD 候选，`--protocol sprd` 可无手动端口扫描/等待，已有 `--port`/`--usb` 覆盖保留；阶段仍由 BSL 握手决定，不自动切 DIAG 或替换驱动。发现后按实际协议重新校验选项，交互会话保留 SPRD 协议；热插拔先订阅再启动并复查库存，取消后不返回传输。Windows 仅枚举 Present 设备，并监听既有实例 Present 变化；历史未在场的 COM 不能当作当前设备。恢复见 `docs/plans/2026-10-10-sprd-cli-discovery-design.md` 和对应 implementation。
+
+SPRD-14 补齐实机连接：Auto 首次 CHECK_BAUD 默认500ms；完整空 CRC16 VERIFY_ERROR 后只允许一次 CRC16 CONNECT 并要求同校验空 ACK，FDL 拒绝/坏帧/部分帧不降级。BootROM EXEC 后默认有界可取消等待500ms；FDL2 上传独立528-byte profile，存储仍4096；legacy v4只接受精确256-byte元数据，不自动Raw/禁转义。iPlay40/ums512 实机已验证自动发现→BootROM→FDL1→FDL2→StorageReady以及已有FDL2接入；容量/存储/其他型号未验证。恢复见 `docs/plans/2026-10-10-sprd-live-connection-design.md` 和对应 implementation；历史无实机/严格不接受任何VERIFY_ERROR的说明被上述精确范围替代。
 
 开始 Qualcomm 相关工作前，依次阅读：
 

@@ -23,6 +23,10 @@
 <data name="EntryDetectionFailed" xml:space="preserve"><value>无法唯一识别 SPRD 入口阶段；请断开后用显式 BootRom/Fdl1/Fdl2 入口重新连接。</value></data>
 <data name="EntryProbeConnect" xml:space="preserve"><value>SPRD CHECK_BAUD 未收到响应，发送一次 CONNECT 入口查询。</value></data>
 <data name="EntryDetected" xml:space="preserve"><value>SPRD 初始入口阶段：{0}。</value></data>
+<data name="EntryResponse" xml:space="preserve"><value>SPRD 入口查询 0x{0:X4}：响应 0x{1:X4}，载荷 {2} 字节，校验 {3}。</value></data>
+<data name="EntryCrcCorrection" xml:space="preserve"><value>SPRD BootROM 返回 CRC16 校验拒绝；发送一次 CRC16 CONNECT 并等待确认。</value></data>
+<data name="LoaderMetadata" xml:space="preserve"><value>SPRD FDL2 元数据：响应 0x{0:X4}，载荷 {1} 字节，版本 0x{2:X8}。</value></data>
+<data name="EntryResponseRejected" xml:space="preserve"><value>无法唯一识别 SPRD 入口阶段：响应 {0}，载荷 {1} 字节，校验 {2}；请重新进入下载模式，或断开后选择已确认的显式入口。</value></data>
 <data name="NativeUnitsDetected" xml:space="preserve"><value>已识别原生分区清单，但容量单位未知；请提供已确认的容量单位后重新建立配置。</value></data>
 <data name="PartitionSourceDetected" xml:space="preserve"><value>SPRD 分区容量来源：{0}。</value></data>
 <data name="GptQueryUnavailable" xml:space="preserve"><value>SPRD GPT 前缀查询不可用，READ_END 已确认；查询原生分区清单。</value></data>

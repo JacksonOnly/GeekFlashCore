@@ -9,6 +9,8 @@ public sealed record SprdProtocolOptions
     public SprdBootStage EntryStage { get; init; } = SprdBootStage.Auto;
     /// <summary>Maximum synchronous response time for one command.</summary>
     public int CommandTimeoutMilliseconds { get; init; } = 10_000;
+    /// <summary>Auto entry CHECK_BAUD probe budget, capped by command and connection budgets. Later commands keep their normal timeout.</summary>
+    public int EntryProbeTimeoutMilliseconds { get; init; } = 500;
     /// <summary>Total connection budget including asynchronous resource acquisition.</summary>
     public int ConnectTimeoutMilliseconds { get; init; } = 120_000;
     /// <summary>Total budget for one storage operation.</summary>
@@ -17,7 +19,11 @@ public sealed record SprdProtocolOptions
     public int ResourceRequestTimeoutMilliseconds { get; init; } = 30_000;
     /// <summary>Boot ROM upload payload size.</summary>
     public int BootRomBlockSize { get; init; } = 528;
-    /// <summary>FDL upload and storage payload size.</summary>
+    /// <summary>FDL2 upload payload size; independent of storage transfers and conservatively 528 bytes.</summary>
+    public int Fdl2BlockSize { get; init; } = 528;
+    /// <summary>Bounded startup wait after BootROM EXEC ACK, before the single FDL1 handshake. Zero disables it.</summary>
+    public int Fdl1StartDelayMilliseconds { get; init; } = 500;
+    /// <summary>Storage payload size.</summary>
     public int TransferBlockSize { get; init; } = 4096;
     /// <summary>Per-image loader limit; this does not allocate a buffer of that size.</summary>
     public int MaximumLoaderBytes { get; init; } = 32 * 1024 * 1024;
@@ -59,14 +65,15 @@ public sealed record SprdProtocolOptions
     {
         if (!Enum.IsDefined(EntryStage) || !Enum.IsDefined(PartitionLengthEncoding) ||
             !Enum.IsDefined(PartitionTableSource) || !Enum.IsDefined(RawDataMode) ||
-            CommandTimeoutMilliseconds <= 0 || ConnectTimeoutMilliseconds <= 0 || OperationTimeoutMilliseconds <= 0 ||
+            CommandTimeoutMilliseconds <= 0 || EntryProbeTimeoutMilliseconds <= 0 || ConnectTimeoutMilliseconds <= 0 || OperationTimeoutMilliseconds <= 0 ||
             ResourceRequestTimeoutMilliseconds <= 0 || BootRomBlockSize is < 1 or > 65534 ||
+            Fdl2BlockSize is < 1 or > 65534 || Fdl1StartDelayMilliseconds is < 0 or > 10_000 ||
             TransferBlockSize is < 1 or > 65534 || MaximumLoaderBytes is < 1 or > 256 * 1024 * 1024 ||
-            MaximumResponseBytes is < 76 or > 65535 || TransferBlockSize > MaximumResponseBytes ||
+            MaximumResponseBytes is < 76 or > 65535 || TransferBlockSize > MaximumResponseBytes || Fdl2BlockSize > MaximumResponseBytes ||
             MaximumPartitions is < 1 or > 862 || MaximumLogFrames is < 0 or > 1024 ||
             PartitionTableSizeUnitBytes is <= 0 or > 1024 * 1024 * 1024 ||
             EntryTranscodeDisabled && EntryStage != SprdBootStage.Fdl2 ||
-            PadOddPayloads && (BootRomBlockSize % 2 != 0 || TransferBlockSize % 2 != 0) ||
+            PadOddPayloads && (BootRomBlockSize % 2 != 0 || Fdl2BlockSize % 2 != 0 || TransferBlockSize % 2 != 0) ||
             KnownPartitions is null || KnownPartitions.Count > MaximumPartitions)
             throw new ArgumentException(Strings.InvalidOptions);
         if (GptSectorSize is not (null or 512 or 4096) || GptReadBytes is < 1024 or > 4 * 1024 * 1024 ||

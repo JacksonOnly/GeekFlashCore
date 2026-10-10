@@ -5,6 +5,7 @@ using Serilog;
 using Serilog.Events;
 using System.Diagnostics;
 using GeekFlashCore.Protocol.Mtk.Abstractions;
+using GeekFlashCore.Protocol.Sprd.Abstractions;
 using LibUsbDotNet;
 using LibUsbDotNet.LibUsb;
 
@@ -268,7 +269,7 @@ internal sealed partial class ConsoleUi
             FirehoseNakException => Strings.Cli_DeviceRejected,
             UsbException { ErrorCode: Error.NoDevice } => Strings.Cli_UsbDisconnected,
             UsbException { ErrorCode: Error.Pipe } => Strings.Cli_UsbEndpointStalled,
-            MtkResourceException or MtkProtocolException or MtkCapabilityException or MtkExploitException or
+            MtkResourceException or MtkProtocolException or MtkCapabilityException or MtkExploitException or SprdProtocolException or
             ArgumentException or FileNotFoundException or InvalidOperationException or QcomResourceException =>
                 exception.Message.Replace('\r', ' ').Replace('\n', ' '),
             _ => Strings.Cli_OperationFailed

@@ -2,7 +2,7 @@
 
 `GeekFlashCore.Protocol.Sprd.Abstractions` 提供 .NET 8 公共契约，`GeekFlashCore.Protocol.Sprd` 实现同步 `ITransport` 上的 BSL。核心可复用于 CLI、桌面和服务；不依赖参考项目的串口发现、WMI 或平台 DLL。`IProtocol` 异步门面与同步 API 共用串行 gate；只有 Loader Provider 等宿主资源边界等待异步结果。
 
-当前实现 BootROM→FDL1→FDL2、自动/显式已加载 FDL 接入、原生/GPT 分区枚举、流式 Raw/Sparse 写入（framed 或显式 Raw v1/v2）、按范围读取、Chip UID、整分区擦除、正常重启和关机。线路由本地参考源、[YC-nw/SPRDClientCore](https://github.com/YC-nw/SPRDClientCore) 和 [TomKing062/spreadtrum_flash](https://github.com/TomKing062/spreadtrum_flash) 的固定版本及模拟传输交叉验证，尚无 SPRD 实机证据。
+当前实现 BootROM→FDL1→FDL2、自动/显式已加载 FDL 接入、原生/GPT 分区枚举、流式 Raw/Sparse 写入（framed 或显式 Raw v1/v2）、按范围读取、Chip UID、整分区擦除、正常重启和关机。线路由本地参考源、[YC-nw/SPRDClientCore](https://github.com/YC-nw/SPRDClientCore) 和 [TomKing062/spreadtrum_flash](https://github.com/TomKing062/spreadtrum_flash) 的固定版本及模拟传输交叉验证。2026-10-10 已在 iPlay40/ums512 实机验证自动 COM 发现、BootROM CRC 修正握手、两级签名 FDL 上传执行及 StorageReady，也验证了已加载 FDL2 自动重连；存储读写、容量与其他型号仍不能据此视为实机验证。
 
 ## CLI
 
@@ -71,6 +71,10 @@ Raw/Sparse 仍使用同一容量和源稳定性校验，Sparse 仍预检后展�
 `ReadChipUid(ct)` 显式发送 0x1a，要求 0xab 和 1～256 字节，返回独立数组，无字符编码、身份推断、缓存或自动日志。CLI 只在 `sprd-chip-uid` 命令中输出十六进制；普通 connect/info 不触发查询。接口有默认不支持实现，保留原有宿主实现的兼容性。
 
 ### 连接与存储
+
+自动入口的首次 CHECK_BAUD 默认仅等待 500 ms，`EntryProbeTimeoutMilliseconds` 可由宿主覆盖，且仍受单命令和连接总预算封顶；后续命令保留原超时。仅零字节超时允许一次 FDL CONNECT 查询。完整空 VERIFY_ERROR(0x008b) 唯一匹配 CRC16 时，发送一次 CRC16 CONNECT，匹配空 ACK 后才接受 BootROM；不接受带数据的拒绝、FDL 校验拒绝或坏/歧义帧，不重发上传/存储写命令。日志只报告查询/响应号、长度和校验算法，拒绝信息不会输出原始设备载荷。
+
+BootROM EXEC ACK 后默认等待 `Fdl1StartDelayMilliseconds = 500` 再执行一次 FDL1 握手；等待计入连接总预算且可取消，0 可禁用，最大10000。FDL2 上传使用独立 `Fdl2BlockSize = 528`，不再使用存储的 `TransferBlockSize = 4096`；确认设备支持后宿主可分别覆盖，旧宿主仅修改 TransferBlockSize 将只影响存储。FDL2 元数据支持原有 v1/v2 与 TLV，以及实机确认的 legacy v4 **精确256字节**布局；未知版本/截断/无效标志仍拒绝。元数据能力不自动启用 Raw 或禁转义。
 
 ```csharp
 // transport、fdl1Source、fdl2Source、imageSource 与各地址/容量由宿主提供。

@@ -23,6 +23,10 @@
 <data name="EntryDetectionFailed" xml:space="preserve"><value>The SPRD entry stage could not be uniquely identified; disconnect and reconnect with an explicit BootRom/Fdl1/Fdl2 entry.</value></data>
 <data name="EntryProbeConnect" xml:space="preserve"><value>SPRD CHECK_BAUD received no response; sending one CONNECT entry query.</value></data>
 <data name="EntryDetected" xml:space="preserve"><value>SPRD initial entry stage: {0}.</value></data>
+<data name="EntryResponse" xml:space="preserve"><value>SPRD entry query 0x{0:X4}: response 0x{1:X4}, payload {2} bytes, checksum {3}.</value></data>
+<data name="EntryCrcCorrection" xml:space="preserve"><value>SPRD BootROM returned a CRC16 verification rejection; sending one CRC16 CONNECT and awaiting confirmation.</value></data>
+<data name="LoaderMetadata" xml:space="preserve"><value>SPRD FDL2 metadata: response 0x{0:X4}, payload {1} bytes, version 0x{2:X8}.</value></data>
+<data name="EntryResponseRejected" xml:space="preserve"><value>The SPRD entry stage could not be uniquely identified: response {0}, payload {1} bytes, checksum {2}; re-enter download mode, or disconnect and select a confirmed explicit entry.</value></data>
 <data name="NativeUnitsDetected" xml:space="preserve"><value>A native partition list was identified, but its size unit is unknown; recreate the configuration with a confirmed unit.</value></data>
 <data name="PartitionSourceDetected" xml:space="preserve"><value>SPRD partition capacity source: {0}.</value></data>
 <data name="GptQueryUnavailable" xml:space="preserve"><value>The SPRD GPT prefix query is unavailable and READ_END was acknowledged; querying the native partition list.</value></data>

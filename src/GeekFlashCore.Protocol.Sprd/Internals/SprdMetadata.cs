@@ -45,9 +45,10 @@ internal static class SprdMetadata
         }
         else
         {
-            // Known legacy v1/v2 records: 8-byte prefix, optional old-memory byte/reserved,
-            // then flush/storage fields in the newer 256-byte extension.
-            if (version is not (1 or 2) || bytes.Length is not (8 or 12 or 16 or 20 or 256))
+            // Legacy v1/v2 prefixes and the observed v4 fixed 256-byte DA_INFO_T record.
+            // Do not interpret arbitrary versions or truncated v4 capability records.
+            if (!(version is 1 or 2 && bytes.Length is 8 or 12 or 16 or 20 or 256 ||
+                version == 4 && bytes.Length == 256))
                 throw new SprdProtocolException(SprdCommand.Execute);
             uint flag = BinaryPrimitives.ReadUInt32LittleEndian(bytes[4..]);
             if (flag > 1) throw new SprdProtocolException(SprdCommand.Execute);

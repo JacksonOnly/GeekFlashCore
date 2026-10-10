@@ -157,18 +157,22 @@ public sealed partial class SprdProtocol : ISprdProtocol, IDisposable
         {
             State(SprdSessionState.BootRom); Upload(resources.Fdl1!, _options.BootRomBlockSize, "FDL1", progress);
             _wire.Expect(SprdCommand.Execute); _wire.UseCrc = false;
+            _wire.Delay(_options.Fdl1StartDelayMilliseconds);
             version = Handshake();
         }
         if (entry != SprdBootStage.Fdl2)
         {
             State(SprdSessionState.Fdl1);
             if (_options.KeepCharge) _wire.Expect(SprdCommand.KeepCharge);
-            Upload(resources.Fdl2!, _options.TransferBlockSize, "FDL2", progress);
+            Upload(resources.Fdl2!, _options.Fdl2BlockSize, "FDL2", progress);
             var response = _wire.Command(SprdCommand.Execute);
             if (response.Type is not (SprdCommand.Ack or SprdCommand.LoaderInfo))
                 throw new SprdProtocolException(SprdCommand.Execute, response.Type);
             if (response.Type == SprdCommand.LoaderInfo && response.Data.IsEmpty)
                 throw new SprdProtocolException(SprdCommand.Execute, response.Type);
+            Log.ForContext<SprdProtocol>().Debug(Strings.LoaderMetadata,
+                response.Type, response.Data.Length,
+                response.Data.Length >= 4 ? BinaryPrimitives.ReadUInt32LittleEndian(response.Data.Span) : (uint?)null);
             info = SprdMetadata.Loader(response.Data.Span);
         }
         if (_options.DisableTranscode && _wire.Escaped)
@@ -191,7 +195,8 @@ public sealed partial class SprdProtocol : ISprdProtocol, IDisposable
     private (SprdBootStage Stage, string? Version) DetectEntry()
     {
         SprdResponse response; bool connectProbe = false;
-        try { response = _wire.Command(SprdCommand.CheckBaud, detectChecksum: true); }
+        try { response = _wire.Command(SprdCommand.CheckBaud, detectChecksum: true,
+            responseTimeoutMilliseconds: _options.EntryProbeTimeoutMilliseconds); }
         catch (TimeoutException) when (_wire.CanProbeConnect)
         {
             // One different, non-destructive query is allowed only if no response byte arrived.
@@ -201,11 +206,24 @@ public sealed partial class SprdProtocol : ISprdProtocol, IDisposable
             response = _wire.Command(SprdCommand.Connect, detectChecksum: true);
         }
         _wire.UseCrc = response.UseCrc;
+        // Validated metadata only; version text, UID and payload bytes never enter this diagnostic.
+        string checksum = response.UseCrc ? "CRC16" : "FDL";
+        Log.ForContext<SprdProtocol>().Information(Strings.EntryResponse,
+            connectProbe ? SprdCommand.Connect : SprdCommand.CheckBaud, response.Type, response.Data.Length, checksum);
         SprdBootStage entry; string? version = null;
         if (!connectProbe && response.Type == SprdCommand.Version)
         {
             entry = response.UseCrc ? SprdBootStage.BootRom : SprdBootStage.Fdl1;
             version = VersionText(response); _wire.Expect(SprdCommand.Connect);
+        }
+        else if (response.Type == SprdCommand.VerifyError && response.UseCrc && response.Data.IsEmpty)
+        {
+            // A BootROM checksum rejection proves CRC framing, not an accepted connection.
+            // Correct the FDL query checksum once and require its CRC ACK before requesting loaders.
+            Log.ForContext<SprdProtocol>().Warning(Strings.EntryCrcCorrection);
+            var confirmation = _wire.Expect(SprdCommand.Connect);
+            if (!confirmation.Data.IsEmpty) throw new SprdProtocolException(SprdCommand.Connect, confirmation.Type);
+            entry = SprdBootStage.BootRom;
         }
         else if (response.Type == SprdCommand.UnsupportedCommand && !response.UseCrc && response.Data.IsEmpty)
         {
@@ -213,7 +231,7 @@ public sealed partial class SprdProtocol : ISprdProtocol, IDisposable
             entry = SprdBootStage.Fdl2;
             _wire.Expect(SprdCommand.DisableTranscode); _wire.Escaped = false;
         }
-        else throw new InvalidOperationException(Strings.EntryDetectionFailed);
+        else throw new InvalidOperationException(Strings.FormatEntryResponseRejected($"0x{response.Type:X4}", response.Data.Length, checksum));
         Log.ForContext<SprdProtocol>().Information(Strings.EntryDetected, entry);
         return (entry, version);
     }
